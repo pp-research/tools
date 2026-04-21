@@ -1269,8 +1269,9 @@
       <input type="text" placeholder="Search region..." oninput="filterTable('houses-table', this.value)">
     </div>
     <select class="filter-select" onchange="filterByState('houses-table', this.value); this.classList.toggle('active', !!this.value);">
+      <option value="main" selected>Main Regions</option>
       <option value="">All states &amp; regions</option>
-      <option value="capcity">Capital Cities only</option>
+      <option value="capcity">Capital Cities</option>
       <option value="state:nsw">NSW</option>
       <option value="state:vic">VIC</option>
       <option value="state:qld">QLD</option>
@@ -1345,8 +1346,9 @@
       <input type="text" placeholder="Search region..." oninput="filterTable('units-table', this.value)">
     </div>
     <select class="filter-select" onchange="filterByState('units-table', this.value); this.classList.toggle('active', !!this.value);">
+      <option value="main" selected>Main Regions</option>
       <option value="">All states &amp; regions</option>
-      <option value="capcity">Capital Cities only</option>
+      <option value="capcity">Capital Cities</option>
       <option value="state:nsw">NSW</option>
       <option value="state:vic">VIC</option>
       <option value="state:qld">QLD</option>
@@ -1445,8 +1447,9 @@
       <input type="text" placeholder="Search region..." oninput="filterTable('wage-houses-table', this.value)">
     </div>
     <select class="filter-select" onchange="filterByState('wage-houses-table', this.value); this.classList.toggle('active', !!this.value);">
+      <option value="main" selected>Main Regions</option>
       <option value="">All states &amp; regions</option>
-      <option value="capcity">Capital Cities only</option>
+      <option value="capcity">Capital Cities</option>
       <option value="state:nsw">NSW</option>
       <option value="state:vic">VIC</option>
       <option value="state:qld">QLD</option>
@@ -1527,8 +1530,9 @@
       <input type="text" placeholder="Search region..." oninput="filterTable('wage-units-table', this.value)">
     </div>
     <select class="filter-select" onchange="filterByState('wage-units-table', this.value); this.classList.toggle('active', !!this.value);">
+      <option value="main" selected>Main Regions</option>
       <option value="">All states &amp; regions</option>
-      <option value="capcity">Capital Cities only</option>
+      <option value="capcity">Capital Cities</option>
       <option value="state:nsw">NSW</option>
       <option value="state:vic">VIC</option>
       <option value="state:qld">QLD</option>
@@ -2005,7 +2009,7 @@ function renderHouses(p) {
     const forDown    = 1 - upsidePct(forUp);
 
     const rc = getRowClass(region);
-    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
+    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-main="${isMainRegion(state, region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
       <td>${state}</td>
       <td>${region}</td>
       <td>${fmtPop(pop)}</td>
@@ -2062,7 +2066,7 @@ function renderUnits(p) {
     const forDown   = 1 - upsidePct(forUp);
 
     const rc = getRowClass(region);
-    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
+    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-main="${isMainRegion(state, region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
       <td>${state}</td>
       <td>${region}</td>
       <td>${fmtPop(pop)}</td>
@@ -2109,7 +2113,7 @@ function renderWageHouses(p) {
     const forDown   = 1 - upsidePct(forUp);
 
     const rc = getRowClass(region);
-    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
+    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-main="${isMainRegion(state, region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
       <td>${state}</td>
       <td>${region}</td>
       <td>${fmtPop(pop)}</td>
@@ -2159,7 +2163,7 @@ function renderWageUnits(p) {
     const forDown   = 1 - upsidePct(forUp);
 
     const rc = getRowClass(region);
-    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
+    return `<tr class="${rc}" data-region="${region.toLowerCase()}" data-state="${state.trim().toLowerCase()}" data-capcity="${isCapCity(region) ? '1' : '0'}" data-main="${isMainRegion(state, region) ? '1' : '0'}" data-status="${(status||'').toLowerCase()}">
       <td>${state}</td>
       <td>${region}</td>
       <td>${fmtPop(pop)}</td>
@@ -2342,8 +2346,40 @@ function attachHeaderSortHandlers() {
 
 let currentFilters = {};
 
-// stateFilters: tableId → '' | 'capcity' | 'state:nsw' | etc.
-const stateFilters = {};
+// stateFilters: tableId → '' | 'main' | 'capcity' | 'state:nsw' | etc.
+// Default to 'main' so the workbook initially shows only the curated 36 regions
+// even though the data arrays may include hundreds of additional LGAs.
+const stateFilters = {
+  'houses-table':       'main',
+  'units-table':        'main',
+  'wage-houses-table':  'main',
+  'wage-units-table':   'main'
+};
+
+// MAIN_REGION_NAMES: the curated "main" regions (initially the 36 in HOUSES_DATA
+// at script-load time). Used by the Main Regions filter and to distinguish
+// curated rows from LGAs added dynamically by live data fetches.
+//
+// Key format: state-aware lowercased name with state suffix stripped.
+// Built once at boot from the initial HOUSES_DATA contents.
+const MAIN_REGION_NAMES = new Set();
+function _initMainRegionNames() {
+  HOUSES_DATA.forEach(row => {
+    const state = String(row[0] || '').trim().toUpperCase();
+    const region = normalizeRegion(row[1]);
+    MAIN_REGION_NAMES.add(state + '::' + region);
+  });
+  UNITS_DATA.forEach(row => {
+    const state = String(row[0] || '').trim().toUpperCase();
+    const region = normalizeRegion(row[1]);
+    MAIN_REGION_NAMES.add(state + '::' + region);
+  });
+}
+
+function isMainRegion(state, region) {
+  const key = String(state || '').trim().toUpperCase() + '::' + normalizeRegion(region);
+  return MAIN_REGION_NAMES.has(key);
+}
 
 function filterTable(tableId, query) {
   const rows = document.querySelectorAll(`#${tableId} tbody tr`);
@@ -2359,7 +2395,9 @@ function filterTable(tableId, query) {
       (statusFilter === 'closed' && statusVal === 'closed') ||
       (statusFilter === 'tbc' && statusVal === 'tbc');
     let stateMatch = true;
-    if (stateFilter === 'capcity') {
+    if (stateFilter === 'main') {
+      stateMatch = r.dataset.main === '1';
+    } else if (stateFilter === 'capcity') {
       stateMatch = r.dataset.capcity === '1';
     } else if (stateFilter.startsWith('state:')) {
       stateMatch = r.dataset.state === stateFilter.slice(6);
@@ -2634,6 +2672,78 @@ async function loadLatestPrices(force) {
     ingest(data.capitalCities);
     ingest(data.lga);
 
+    // ── Merge previously-unseen LGAs into the data tables ──────────────────
+    // CoreLogic returns ~400 LGAs but the curated HOUSES_DATA / UNITS_DATA
+    // only have the 36 main regions. Append new LGAs so they show up in the
+    // tables. The Main Regions filter (default) hides them; the user can
+    // switch to "All states & regions" or a specific state to see everything.
+    //
+    // We need a state for each LGA. CoreLogic rows have State at column 0.
+    // The same region+propType might appear in both capitalCities and lga
+    // arrays; we de-dupe via a seen-set.
+    {
+      // Set of state::propType::normalizedName for rows already in tables
+      const existingHouses = new Set();
+      HOUSES_DATA.forEach(row => {
+        existingHouses.add(
+          String(row[0] || '').trim().toUpperCase() + '::' + normalizeRegion(row[1])
+        );
+      });
+      const existingUnits = new Set();
+      UNITS_DATA.forEach(row => {
+        existingUnits.add(
+          String(row[0] || '').trim().toUpperCase() + '::' + normalizeRegion(row[1])
+        );
+      });
+
+      // Walk the raw CoreLogic rows. Each row has [State, Region, PropType, ...].
+      const STATE_COL = 0;
+      const seenInBatch = new Set();  // avoid double-adding from cap+lga overlap
+      const considerRow = (r) => {
+        const stateRaw = String(r[STATE_COL] || '').trim().toUpperCase();
+        const regionRaw = r[REGION_COL];
+        const propType = String(r[PROPTYPE_COL] || '').trim().toUpperCase();
+        if (!stateRaw || !regionRaw || (propType !== 'H' && propType !== 'U')) return;
+
+        // Use the cleaner display name (strip "(NSW)" etc. since we have State separately)
+        // but keep the original to retain any disambiguation. Actually, keep raw region
+        // name in display so users see exactly what CoreLogic publishes.
+        const regionDisplay = String(regionRaw).trim();
+        const normKey = stateRaw + '::' + normalizeRegion(regionDisplay);
+        const dedupKey = normKey + '::' + propType;
+        if (seenInBatch.has(dedupKey)) return;
+        seenInBatch.add(dedupKey);
+
+        if (propType === 'H' && !existingHouses.has(normKey)) {
+          // Empty Houses row — calculated fields (6-19) will be filled by recalcAll()
+          HOUSES_DATA.push([
+            stateRaw, regionDisplay,
+            null, null, null, null,            // pop, price, income, AIC
+            null, null, null, null, null, null, '',  // current AI/ceiling/$/%/up/down/status
+            null, null, null, null, null, null, ''   // forecast counterparts
+          ]);
+          existingHouses.add(normKey);
+        }
+        if (propType === 'U' && !existingUnits.has(normKey)) {
+          // Note Units uses a different layout — price is at index 2, AIC at index 4.
+          // Still 20 columns total. Mirror Houses layout for the calculated section.
+          UNITS_DATA.push([
+            stateRaw, regionDisplay,
+            null, null, null, null,
+            null, null, null, null, null, null, '',
+            null, null, null, null, null, null, ''
+          ]);
+          existingUnits.add(normKey);
+        }
+      };
+      const walk = (rows) => {
+        if (!Array.isArray(rows) || rows.length < 2) return;
+        for (let i = 1; i < rows.length; i++) considerRow(rows[i]);
+      };
+      walk(data.capitalCities);
+      walk(data.lga);
+    }
+
     // Apply to HOUSES_DATA (price is index 3) and UNITS_DATA (price is index 2).
     const matched = { houses: 0, units: 0, pop: 0, inc: 0, aicH: 0, aicU: 0 };
     const missing = [];
@@ -2860,17 +2970,21 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const VERSIONS_ENABLED = SUPABASE_URL.indexOf('PASTE_YOUR') === -1 &&
                          SUPABASE_ANON_KEY.indexOf('PASTE_YOUR') === -1;
 
-const versionsMenu = (() => {
-  let supabase = null;
-  let session = null;
-  let allowed = false;
-  let inReadOnlyMode = false;
-  let originalState = null;  // Pre-snapshot state so exit-readonly can restore
+// TEMPORARY: skip the full-page sign-in wall on page load. The Versions
+// feature still appears and may work for already-signed-in users; new
+// sign-ins are disabled while we work around Supabase email rate limits.
+// Set back to false to re-enable the wall.
+const SKIP_SIGNIN_WALL = true;
 
-  // ── Initialise the Supabase client if configured ────────────────────────
+const versionsMenu = (() => {
+  // No-auth version. Anyone with the URL can save / list / load / delete.
+  // Re-enable auth by restoring the previous module + tightening RLS.
+  let supabase = null;
+  let inReadOnlyMode = false;
+  let originalState = null;
+
   function init() {
     if (!VERSIONS_ENABLED) {
-      // Versions feature disabled — fall back to old behaviour (live fetch on load)
       document.getElementById('versions-menu').style.display = 'none';
       loadLatestPrices(true);
       return;
@@ -2883,184 +2997,242 @@ const versionsMenu = (() => {
     }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Disable Save/Versions/Update until auth resolved
-    setToolbarButtonsDisabled(true);
-
-    // Pick up existing session (from magic-link redirect or prior visit)
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (data && data.session) {
-        session = data.session;
-        await checkAllowlist();
-        await bootstrapFromLatestSnapshot();
-      } else {
-        renderSignInWall();
-      }
-    });
-
-    // Listen for auth changes (post-magic-link click)
-    supabase.auth.onAuthStateChange(async (event, s) => {
-      session = s;
-      if (event === 'SIGNED_IN' && session) {
-        await checkAllowlist();
-        await bootstrapFromLatestSnapshot();
-      }
-      if (event === 'SIGNED_OUT') {
-        allowed = false;
-        closeDropdown();
-        renderSignInWall();
-      }
-    });
-
-    // Close dropdown when clicking outside
+    // Click-outside closes dropdown
     document.addEventListener('click', (e) => {
       const menu = document.getElementById('versions-menu');
       if (menu && !menu.contains(e.target)) closeDropdown();
     });
+
+    // Bootstrap: try to load the latest snapshot. If none, fall back to live.
+    bootstrapFromLatestSnapshot();
   }
 
-  function isSignedIn() {
-    return !!session && !!session.user;
-  }
+  function isSignedIn() { return false; }  // legacy stub for callers (e.g. polling)
 
-  function setToolbarButtonsDisabled(disabled) {
-    ['versions-update-btn', 'versions-save-btn', 'versions-load-btn'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) btn.disabled = disabled;
-    });
+  // ── Dropdown UI ─────────────────────────────────────────────────────────
+  const dropdownEl = () => document.getElementById('versions-dropdown');
+  function closeDropdown() {
+    const d = dropdownEl();
+    if (d) d.hidden = true;
   }
+  function showDropdown(html) {
+    const d = dropdownEl();
+    d.innerHTML = html;
+    d.hidden = false;
+  }
+  function cancel() { closeDropdown(); }
 
-  // Full-page sign-in wall shown when the user has no session.
-  function renderSignInWall() {
-    setToolbarButtonsDisabled(true);
-    let wall = document.getElementById('signin-wall');
-    if (!wall) {
-      wall = document.createElement('div');
-      wall.id = 'signin-wall';
-      wall.className = 'signin-wall';
-      document.body.appendChild(wall);
+  // ── Bootstrap (page load): try latest snapshot, fall back to live ─────
+  async function bootstrapFromLatestSnapshot() {
+    try {
+      const { data, error } = await supabase
+        .from('snapshots')
+        .select('id, name, saved_by, saved_at, data')
+        .order('saved_at', { ascending: false })
+        .limit(1);
+      if (error) {
+        console.warn('[Versions] Bootstrap query failed:', error.message);
+        loadLatestPrices(true);
+        return;
+      }
+      if (!data || data.length === 0) {
+        loadLatestPrices(true);
+        setLastUpdatedText('No saved versions yet — click Update, then Save.');
+        return;
+      }
+      applySnapshotAsCurrent(data[0]);
+    } catch (err) {
+      console.warn('[Versions] Bootstrap failed, falling back to live:', err);
+      loadLatestPrices(true);
     }
-    wall.innerHTML = `
-      <div class="signin-wall-card">
-        <div class="signin-wall-title">Sign in</div>
-        <div class="signin-wall-sub">Enter your email to access the runway workbook.</div>
-        <input type="email" class="signin-wall-input" id="wall-email"
-               placeholder="you@example.com" autocomplete="email">
-        <button class="signin-wall-btn" onclick="versionsMenu.wallSendLink()">Send magic link</button>
-        <div class="signin-wall-msg" id="wall-msg"></div>
-      </div>`;
-    wall.hidden = false;
+  }
+
+  // ── Save ────────────────────────────────────────────────────────────────
+  function openSave() {
+    if (!VERSIONS_ENABLED) return alert('Versions feature not configured.');
+    if (inReadOnlyMode) return alert('Exit read-only view before saving a new version.');
+    showDropdown(`
+      <div class="versions-prompt">
+        <label class="versions-prompt-label">Name this version</label>
+        <input type="text" class="versions-prompt-input" id="save-name"
+               placeholder="e.g. IC Apr 2026 — baseline">
+        <label class="versions-prompt-label" style="margin-top:10px;">Your name (optional)</label>
+        <input type="text" class="versions-prompt-input" id="save-by"
+               placeholder="Your name">
+        <label class="versions-prompt-label" style="margin-top:10px;">Note (optional)</label>
+        <input type="text" class="versions-prompt-input" id="save-note"
+               placeholder="Brief description">
+        <div class="versions-prompt-actions">
+          <button class="versions-btn" onclick="versionsMenu.cancel()">Cancel</button>
+          <button class="versions-btn primary" onclick="versionsMenu.saveNow()">Save</button>
+        </div>
+        <div class="versions-prompt-msg" id="save-msg"></div>
+      </div>`);
     setTimeout(() => {
-      const inp = document.getElementById('wall-email');
+      const inp = document.getElementById('save-name');
       if (inp) inp.focus();
-    }, 50);
+    }, 30);
   }
 
-  function hideSignInWall() {
-    const wall = document.getElementById('signin-wall');
-    if (wall) wall.hidden = true;
-  }
-
-  async function wallSendLink() {
-    const input = document.getElementById('wall-email');
-    const msg = document.getElementById('wall-msg');
-    const email = input.value.trim().toLowerCase();
-    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-      msg.textContent = 'Enter a valid email address.';
-      msg.className = 'signin-wall-msg error';
+  async function saveNow() {
+    const nameEl = document.getElementById('save-name');
+    const byEl   = document.getElementById('save-by');
+    const noteEl = document.getElementById('save-note');
+    const msg    = document.getElementById('save-msg');
+    if (!nameEl) return;
+    const name = nameEl.value.trim();
+    const by   = (byEl.value || 'anonymous').trim();
+    const note = noteEl.value.trim();
+    if (!name) {
+      msg.textContent = 'Please enter a name for this version.';
+      msg.className = 'versions-prompt-msg error';
       return;
     }
-    msg.textContent = 'Sending…';
-    msg.className = 'signin-wall-msg';
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email,
-      options: { emailRedirectTo: window.location.href }
-    });
+    msg.textContent = 'Saving…';
+    msg.className = 'versions-prompt-msg';
+    const snapshot = captureSnapshot();
+    const { error } = await supabase
+      .from('snapshots')
+      .insert({ name, saved_by: by, note: note || null, data: snapshot });
     if (error) {
       msg.textContent = 'Error: ' + error.message;
-      msg.className = 'signin-wall-msg error';
-    } else {
-      msg.textContent = 'Check your email for a sign-in link.';
-      msg.className = 'signin-wall-msg success';
-    }
-  }
-
-  // After sign-in succeeds + allowlist verified, bootstrap the workbook from
-  // the most recent snapshot. If none exists, fall through to live fetch.
-  async function bootstrapFromLatestSnapshot() {
-    if (!allowed) {
-      renderNotAllowedWall();
+      msg.className = 'versions-prompt-msg error';
       return;
     }
-    hideSignInWall();
-    setToolbarButtonsDisabled(false);
+    msg.textContent = 'Saved.';
+    msg.className = 'versions-prompt-msg success';
+    setTimeout(closeDropdown, 800);
+  }
 
-    // Try to load the latest snapshot
+  // ── Load (list + view + delete) ─────────────────────────────────────────
+  async function openLoad() {
+    if (!VERSIONS_ENABLED) return alert('Versions feature not configured.');
+    showDropdown(`
+      <div class="versions-dropdown-header">
+        <span class="versions-dropdown-title">Saved Versions</span>
+      </div>
+      <div class="versions-empty">Loading…</div>`);
+    const { data, error } = await supabase
+      .from('snapshots')
+      .select('id, name, saved_by, saved_at, note')
+      .order('saved_at', { ascending: false });
+    const d = dropdownEl();
+    const headerHtml = `
+      <div class="versions-dropdown-header">
+        <span class="versions-dropdown-title">Saved Versions</span>
+      </div>`;
+    if (error) {
+      d.innerHTML = headerHtml +
+        `<div class="versions-empty">Error: ${escapeHtml(error.message)}</div>`;
+      return;
+    }
+    if (!data || data.length === 0) {
+      d.innerHTML = headerHtml +
+        `<div class="versions-empty">No saved versions yet. Click 💾 Save to create one.</div>`;
+      return;
+    }
+    const rowsHtml = data.map(s => {
+      const when = new Date(s.saved_at).toLocaleString('en-AU', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      return `
+        <div class="versions-item">
+          <div class="versions-item-name">${escapeHtml(s.name)}</div>
+          <div class="versions-item-meta">${escapeHtml(s.saved_by || '—')} · ${when}${s.note ? ' · ' + escapeHtml(s.note) : ''}</div>
+          <div class="versions-item-actions">
+            <button class="versions-item-btn" onclick="versionsMenu.load('${s.id}')">View</button>
+            <button class="versions-item-btn danger" onclick="versionsMenu.remove('${s.id}', '${escapeHtml(s.name).replace(/'/g, "\\'")}')">Delete</button>
+          </div>
+        </div>`;
+    }).join('');
+    d.innerHTML = headerHtml + '<div class="versions-list">' + rowsHtml + '</div>';
+  }
+
+  async function load(id) {
     const { data, error } = await supabase
       .from('snapshots')
       .select('id, name, saved_by, saved_at, data')
-      .order('saved_at', { ascending: false })
-      .limit(1);
-
-    if (error) {
-      console.warn('[Versions] Bootstrap query failed:', error.message);
-      // Fallback: live fetch so the user still sees something
-      loadLatestPrices(true);
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      // No snapshots yet — first-time setup. Load live data so the workbook
-      // is populated, and hint that they can save a version.
-      loadLatestPrices(true);
-      setLastUpdatedText('No saved versions yet — click Update, then Save.');
-      return;
-    }
-
-    // Apply the latest snapshot
-    const record = data[0];
-    applySnapshotAsCurrent(record);
+      .eq('id', id)
+      .single();
+    if (error) { alert('Load failed: ' + error.message); return; }
+    applySnapshotReadOnly(data);
+    closeDropdown();
   }
 
-  function renderNotAllowedWall() {
-    setToolbarButtonsDisabled(true);
-    let wall = document.getElementById('signin-wall');
-    if (!wall) {
-      wall = document.createElement('div');
-      wall.id = 'signin-wall';
-      wall.className = 'signin-wall';
-      document.body.appendChild(wall);
+  async function remove(id, name) {
+    if (!confirm('Delete version "' + name + '"? This cannot be undone.')) return;
+    const { error } = await supabase.from('snapshots').delete().eq('id', id);
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    openLoad();
+  }
+
+  // ── Update from live ────────────────────────────────────────────────────
+  async function updateFromLive() {
+    if (inReadOnlyMode) return alert('Exit read-only view before updating.');
+    try {
+      await loadLatestPrices(true);
+    } catch (e) {
+      alert('Update failed: ' + (e.message || e));
+      return;
     }
-    const email = session?.user?.email || 'your email';
-    wall.innerHTML = `
-      <div class="signin-wall-card">
-        <div class="signin-wall-title">Access denied</div>
-        <div class="signin-wall-sub">
-          ${escapeHtml(email)} is not on the allowlist.
-          Contact your administrator to request access.
+    showDropdown(`
+      <div class="versions-prompt">
+        <div style="font-weight:600;font-size:12px;margin-bottom:6px;">Live data loaded.</div>
+        <label class="versions-prompt-label">Save this as a new version?</label>
+        <input type="text" class="versions-prompt-input" id="save-name"
+               placeholder="e.g. Live data Apr 2026">
+        <label class="versions-prompt-label" style="margin-top:10px;">Your name (optional)</label>
+        <input type="text" class="versions-prompt-input" id="save-by" placeholder="Your name">
+        <label class="versions-prompt-label" style="margin-top:10px;">Note (optional)</label>
+        <input type="text" class="versions-prompt-input" id="save-note" placeholder="Brief description">
+        <div class="versions-prompt-actions">
+          <button class="versions-btn" onclick="versionsMenu.cancel()">Not now</button>
+          <button class="versions-btn primary" onclick="versionsMenu.saveNow()">Save version</button>
         </div>
-        <button class="signin-wall-btn" onclick="versionsMenu.signOut()">Sign out</button>
-      </div>`;
-    wall.hidden = false;
+        <div class="versions-prompt-msg" id="save-msg"></div>
+      </div>`);
+    setTimeout(() => {
+      const inp = document.getElementById('save-name');
+      if (inp) inp.focus();
+    }, 30);
   }
 
-  // Subtle "Last updated" indicator in the fetch indicator slot
-  function setLastUpdatedText(text, klass = '') {
-    const indicator = document.getElementById('fetch-indicator');
-    const spinner = indicator ? indicator.querySelector('.fetch-spinner') : null;
-    const txt = document.getElementById('fetch-text');
-    if (!indicator || !txt) return;
-    indicator.style.display = '';
-    indicator.classList.remove('success', 'error');
-    if (klass) indicator.classList.add(klass);
-    if (spinner) spinner.style.visibility = klass === '' ? 'visible' : 'hidden';
-    txt.textContent = text;
+  // ── Snapshot capture / apply ────────────────────────────────────────────
+  function captureSnapshot() {
+    return {
+      schemaVersion: 1,
+      capturedAt: new Date().toISOString(),
+      sourceFile: currentSourceFile,
+      incomeRelease: currentIncomeRelease,
+      aicYear: currentAicYear,
+      popYear: currentPopYear,
+      housesData: JSON.parse(JSON.stringify(HOUSES_DATA)),
+      unitsData:  JSON.parse(JSON.stringify(UNITS_DATA)),
+      inputs: {
+        cashRate:    document.getElementById('h-cashRate').value,
+        bankVar:     document.getElementById('h-bankVarDisplay').value,
+        apraBuffer:  document.getElementById('h-apraBuffer').value,
+        apraBufferF: document.getElementById('h-apraBufferF').value,
+        icForecast:  document.getElementById('h-icForecast').value,
+        bankMargin:  document.getElementById('h-bankMargin').value,
+        inflation:   document.getElementById('h-inflation').value,
+        capWage:     document.getElementById('wg-capCity').value,
+        regWage:     document.getElementById('wg-regional').value,
+        wgYears:     document.getElementById('wg-years').value
+      },
+      subtitles: {
+        cashRateDate:   (document.getElementById('h-cashRate-date')   || {}).textContent || '',
+        bankVarDate:    (document.getElementById('h-bankVar-date')    || {}).textContent || '',
+        inflationDate:  (document.getElementById('h-inflation-date')  || {}).textContent || '',
+        colPopDate:     (document.querySelector('.col-pop-date')      || {}).textContent || '',
+        colPriceDate:   (document.querySelector('.col-price-date')    || {}).textContent || '',
+        colIncomeDate:  (document.querySelector('.col-income-date')   || {}).textContent || ''
+      }
+    };
   }
 
-  // Apply a snapshot record in editable "current" mode (no read-only banner).
-  // Used by bootstrap.
   function applySnapshotAsCurrent(record) {
     applyStateFromSnapshot(record.data);
-    // Render a subtle indicator — no read-only banner
     const when = new Date(record.saved_at).toLocaleString('en-AU', {
       day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
@@ -3070,8 +3242,6 @@ const versionsMenu = (() => {
     );
   }
 
-  // Apply a snapshot record in read-only mode (explicit historical view).
-  // Used by versionsMenu.load().
   function applySnapshotReadOnly(record) {
     originalState = captureSnapshot();
     applyStateFromSnapshot(record.data);
@@ -3088,7 +3258,6 @@ const versionsMenu = (() => {
     document.getElementById('versions-save-btn').disabled = true;
   }
 
-  // Shared data-application routine used by both bootstrap and manual load.
   function applyStateFromSnapshot(snap) {
     if (!snap || snap.schemaVersion !== 1) {
       alert('Unsupported snapshot format.');
@@ -3132,309 +3301,8 @@ const versionsMenu = (() => {
     recalcAll();
   }
 
-  // ── Update flow ─────────────────────────────────────────────────────────
-  // 🔄 Update — fetch live data, then prompt to save as new version
-  async function updateFromLive() {
-    if (inReadOnlyMode) return alert('Exit read-only view before updating.');
-    if (!allowed) return alert('Not authorized.');
-
-    // Call the existing live loader (it updates fetch-indicator itself)
-    try {
-      await loadLatestPrices(true);
-    } catch (e) {
-      alert('Update failed: ' + (e.message || e));
-      return;
-    }
-
-    // Prompt: save this as a new version?
-    showDropdown(`
-      <div class="versions-prompt">
-        <div style="font-weight:600;font-size:12px;margin-bottom:6px;">Live data loaded.</div>
-        <label class="versions-prompt-label">Save this as a new version?</label>
-        <input type="text" class="versions-prompt-input" id="save-name"
-               placeholder="e.g. IC Apr 2026 — baseline">
-        <label class="versions-prompt-label" style="margin-top:10px;">Note (optional)</label>
-        <input type="text" class="versions-prompt-input" id="save-note"
-               placeholder="Brief description">
-        <div class="versions-prompt-actions">
-          <button class="versions-btn" onclick="versionsMenu.cancel()">Not now</button>
-          <button class="versions-btn primary" onclick="versionsMenu.saveNow()">Save version</button>
-        </div>
-        <div class="versions-prompt-msg" id="save-msg"></div>
-      </div>
-    `);
-    setTimeout(() => {
-      const inp = document.getElementById('save-name');
-      if (inp) inp.focus();
-    }, 30);
-  }
-
-  async function checkAllowlist() {
-    if (!session) return;
-    const email = session.user?.email;
-    if (!email) return;
-    const { data, error } = await supabase
-      .from('allowed_emails')
-      .select('email')
-      .ilike('email', email)
-      .limit(1);
-    allowed = !error && data && data.length > 0;
-    if (!allowed) {
-      console.warn('[Versions] Signed in as ' + email + ' but not on allowlist');
-    }
-  }
-
-  // ── Dropdown UI ─────────────────────────────────────────────────────────
-  const dropdownEl = () => document.getElementById('versions-dropdown');
-
-  function closeDropdown() {
-    const d = dropdownEl();
-    if (d) d.hidden = true;
-  }
-
-  function showDropdown(html) {
-    const d = dropdownEl();
-    d.innerHTML = html;
-    d.hidden = false;
-  }
-
-  // ── Sign-in flow ────────────────────────────────────────────────────────
-  function renderSignInPrompt(msg = '', msgClass = '') {
-    showDropdown(`
-      <div class="versions-prompt">
-        <label class="versions-prompt-label">Sign in with your email</label>
-        <input type="email" class="versions-prompt-input" id="signin-email"
-               placeholder="you@example.com" autocomplete="email">
-        <div class="versions-prompt-actions">
-          <button class="versions-btn" onclick="versionsMenu.cancel()">Cancel</button>
-          <button class="versions-btn primary" onclick="versionsMenu.sendMagicLink()">Send magic link</button>
-        </div>
-        <div class="versions-prompt-msg ${msgClass}" id="signin-msg">${msg}</div>
-      </div>
-    `);
-    setTimeout(() => {
-      const inp = document.getElementById('signin-email');
-      if (inp) inp.focus();
-    }, 30);
-  }
-
-  async function sendMagicLink() {
-    const input = document.getElementById('signin-email');
-    const msg = document.getElementById('signin-msg');
-    if (!input) return;
-    const email = input.value.trim().toLowerCase();
-    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-      msg.textContent = 'Enter a valid email address.';
-      msg.className = 'versions-prompt-msg error';
-      return;
-    }
-    msg.textContent = 'Sending…';
-    msg.className = 'versions-prompt-msg';
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email,
-      options: { emailRedirectTo: window.location.href }
-    });
-    if (error) {
-      msg.textContent = 'Error: ' + error.message;
-      msg.className = 'versions-prompt-msg error';
-    } else {
-      msg.textContent = 'Check your email for a sign-in link.';
-      msg.className = 'versions-prompt-msg success';
-    }
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    session = null;
-    allowed = false;
-    closeDropdown();
-  }
-
-  // ── Save flow ───────────────────────────────────────────────────────────
-  async function openSave() {
-    if (!VERSIONS_ENABLED) return alert('Versions feature not configured.');
-    if (inReadOnlyMode) return alert('Exit read-only view before saving a new version.');
-    if (!session) return renderSignInPrompt();
-    if (!allowed) return renderSignInPrompt('Your email is not on the allowlist. Contact your admin.', 'error');
-
-    showDropdown(`
-      <div class="versions-prompt">
-        <label class="versions-prompt-label">Name this version</label>
-        <input type="text" class="versions-prompt-input" id="save-name"
-               placeholder="e.g. IC Apr 2026 — baseline">
-        <label class="versions-prompt-label" style="margin-top:10px;">Note (optional)</label>
-        <input type="text" class="versions-prompt-input" id="save-note"
-               placeholder="Brief description">
-        <div class="versions-prompt-actions">
-          <button class="versions-btn" onclick="versionsMenu.cancel()">Cancel</button>
-          <button class="versions-btn primary" onclick="versionsMenu.saveNow()">Save</button>
-        </div>
-        <div class="versions-prompt-msg" id="save-msg"></div>
-      </div>
-    `);
-    setTimeout(() => {
-      const inp = document.getElementById('save-name');
-      if (inp) inp.focus();
-    }, 30);
-  }
-
-  async function saveNow() {
-    const nameInput = document.getElementById('save-name');
-    const noteInput = document.getElementById('save-note');
-    const msg = document.getElementById('save-msg');
-    if (!nameInput) return;
-    const name = nameInput.value.trim();
-    const note = noteInput.value.trim();
-    if (!name) {
-      msg.textContent = 'Please enter a name for this version.';
-      msg.className = 'versions-prompt-msg error';
-      return;
-    }
-
-    msg.textContent = 'Saving…';
-    msg.className = 'versions-prompt-msg';
-
-    const snapshot = captureSnapshot();
-    const { error } = await supabase
-      .from('snapshots')
-      .insert({
-        name: name,
-        saved_by: session.user.email,
-        note: note || null,
-        data: snapshot
-      });
-
-    if (error) {
-      msg.textContent = 'Error: ' + error.message;
-      msg.className = 'versions-prompt-msg error';
-      return;
-    }
-    msg.textContent = 'Saved.';
-    msg.className = 'versions-prompt-msg success';
-    setTimeout(closeDropdown, 800);
-  }
-
-  // ── Load flow ───────────────────────────────────────────────────────────
-  async function openLoad() {
-    if (!VERSIONS_ENABLED) return alert('Versions feature not configured.');
-    if (!session) return renderSignInPrompt();
-    if (!allowed) return renderSignInPrompt('Your email is not on the allowlist. Contact your admin.', 'error');
-
-    showDropdown(`
-      <div class="versions-dropdown-header">
-        <span class="versions-dropdown-title">Saved Versions</span>
-        <button class="versions-signout" onclick="versionsMenu.signOut()">Sign out</button>
-      </div>
-      <div class="versions-empty">Loading…</div>
-    `);
-
-    const { data, error } = await supabase
-      .from('snapshots')
-      .select('id, name, saved_by, saved_at, note')
-      .order('saved_at', { ascending: false });
-
-    const d = dropdownEl();
-    const headerHtml = `
-      <div class="versions-dropdown-header">
-        <span class="versions-dropdown-title">Saved Versions</span>
-        <button class="versions-signout" onclick="versionsMenu.signOut()">Sign out</button>
-      </div>`;
-
-    if (error) {
-      d.innerHTML = headerHtml +
-        `<div class="versions-empty error">Error: ${error.message}</div>`;
-      return;
-    }
-    if (!data || data.length === 0) {
-      d.innerHTML = headerHtml +
-        `<div class="versions-empty">No saved versions yet. Click 💾 Save to create one.</div>`;
-      return;
-    }
-
-    const ownEmail = session.user.email;
-    const rowsHtml = data.map(s => {
-      const when = new Date(s.saved_at).toLocaleString('en-AU', {
-        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-      });
-      const canDelete = (s.saved_by || '').toLowerCase() === ownEmail.toLowerCase();
-      return `
-        <div class="versions-item">
-          <div class="versions-item-name">${escapeHtml(s.name)}</div>
-          <div class="versions-item-meta">${escapeHtml(s.saved_by)} · ${when}${s.note ? ' · ' + escapeHtml(s.note) : ''}</div>
-          <div class="versions-item-actions">
-            <button class="versions-item-btn" onclick="versionsMenu.load('${s.id}')">View</button>
-            ${canDelete ? `<button class="versions-item-btn danger" onclick="versionsMenu.remove('${s.id}', '${escapeHtml(s.name).replace(/'/g, "\\'")}')">Delete</button>` : ''}
-          </div>
-        </div>`;
-    }).join('');
-
-    d.innerHTML = headerHtml + '<div class="versions-list">' + rowsHtml + '</div>';
-  }
-
-  async function load(id) {
-    const { data, error } = await supabase
-      .from('snapshots')
-      .select('id, name, saved_by, saved_at, data')
-      .eq('id', id)
-      .single();
-    if (error) {
-      alert('Load failed: ' + error.message);
-      return;
-    }
-    applySnapshotReadOnly(data);
-    closeDropdown();
-  }
-
-  async function remove(id, name) {
-    if (!confirm('Delete version "' + name + '"? This cannot be undone.')) return;
-    const { error } = await supabase.from('snapshots').delete().eq('id', id);
-    if (error) {
-      alert('Delete failed: ' + error.message);
-      return;
-    }
-    openLoad();  // refresh the list
-  }
-
-  function cancel() { closeDropdown(); }
-
-  // ── Snapshot capture ─────────────────────────────────────────────────────
-  function captureSnapshot() {
-    // Serialize everything needed to reproduce the workbook state.
-    return {
-      schemaVersion: 1,
-      capturedAt: new Date().toISOString(),
-      sourceFile: currentSourceFile,
-      incomeRelease: currentIncomeRelease,
-      aicYear: currentAicYear,
-      popYear: currentPopYear,
-      housesData: JSON.parse(JSON.stringify(HOUSES_DATA)),
-      unitsData:  JSON.parse(JSON.stringify(UNITS_DATA)),
-      inputs: {
-        cashRate:    document.getElementById('h-cashRate').value,
-        bankVar:     document.getElementById('h-bankVarDisplay').value,
-        apraBuffer:  document.getElementById('h-apraBuffer').value,
-        apraBufferF: document.getElementById('h-apraBufferF').value,
-        icForecast:  document.getElementById('h-icForecast').value,
-        bankMargin:  document.getElementById('h-bankMargin').value,
-        inflation:   document.getElementById('h-inflation').value,
-        capWage:     document.getElementById('wg-capCity').value,
-        regWage:     document.getElementById('wg-regional').value,
-        wgYears:     document.getElementById('wg-years').value
-      },
-      subtitles: {
-        cashRateDate:   (document.getElementById('h-cashRate-date')   || {}).textContent || '',
-        bankVarDate:    (document.getElementById('h-bankVar-date')    || {}).textContent || '',
-        inflationDate:  (document.getElementById('h-inflation-date')  || {}).textContent || '',
-        colPopDate:     (document.querySelector('.col-pop-date')      || {}).textContent || '',
-        colPriceDate:   (document.querySelector('.col-price-date')    || {}).textContent || '',
-        colIncomeDate:  (document.querySelector('.col-income-date')   || {}).textContent || ''
-      }
-    };
-  }
-
   function exitReadOnly() {
     if (!inReadOnlyMode || !originalState) return;
-    // Re-apply the previously stashed live state via the shared helper
     applyStateFromSnapshot(originalState);
     inReadOnlyMode = false;
     originalState = null;
@@ -3444,21 +3312,29 @@ const versionsMenu = (() => {
     document.getElementById('versions-update-btn').disabled = false;
   }
 
+  function setLastUpdatedText(text, klass = '') {
+    const indicator = document.getElementById('fetch-indicator');
+    const spinner = indicator ? indicator.querySelector('.fetch-spinner') : null;
+    const txt = document.getElementById('fetch-text');
+    if (!indicator || !txt) return;
+    indicator.style.display = '';
+    indicator.classList.remove('success', 'error');
+    if (klass) indicator.classList.add(klass);
+    if (spinner) spinner.style.visibility = klass === '' ? 'visible' : 'hidden';
+    txt.textContent = text;
+  }
+
   function escapeHtml(s) {
     return String(s || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  // Public API
   return {
-    init,
-    isSignedIn,
+    init, isSignedIn,
     openSave, saveNow,
     openLoad, load, remove,
     cancel,
-    sendMagicLink, signOut,
-    wallSendLink,
     updateFromLive,
     exitReadOnly
   };
@@ -3473,6 +3349,7 @@ function exitReadOnlyMode() { versionsMenu.exitReadOnly(); }
 //   2. versionsMenu.bootstrapFromLatestSnapshot() either loads the latest
 //      saved snapshot, OR shows a sign-in prompt if no session
 //   3. User clicks Update button to pull fresh live data
+_initMainRegionNames();   // capture the curated 36 before any LGAs are appended
 recalcAll();
 attachHeaderSortHandlers();
 versionsMenu.init();
