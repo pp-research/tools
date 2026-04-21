@@ -628,6 +628,24 @@
     color: var(--text-muted, #6b7280);
     letter-spacing: 0;
   }
+  /* Subtle pencil icon on editable Houses Variables rows.
+     The :has() selector marks rows that contain an actual input field
+     (auto-computed Bank Rate and PP Variable Rate use a span instead). */
+  .vars-row:has(.v-input) .v-label {
+    position: relative;
+    padding-right: 22px;  /* room for the ✎ */
+  }
+  .vars-row:has(.v-input) .v-label::after {
+    content: '✎';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: var(--text-light);
+    opacity: 0.45;
+    font-size: 11px;
+    font-weight: 400;
+    pointer-events: none;
+  }
   .vars-row .v-value {
     padding: 8px 12px;
     font-family: 'DM Sans', sans-serif;
@@ -677,6 +695,53 @@
     box-shadow: 0 1px 4px rgba(10,98,102,0.06);
     align-items: center;
   }
+  /* Side-by-side card row used on Wage Growth tabs.
+     Replaces the single-row strip with two titled cards. */
+  .vars-mirror-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .vars-mirror-row > .vars-mirror {
+    margin-bottom: 0;
+    flex: 1 1 360px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 16px 14px;
+  }
+  .vars-mirror-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-light, var(--border));
+  }
+  .vars-mirror-row .vars-mirror-items {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-around;
+  }
+  /* Inside the side-by-side cards, items don't get a left-border because the
+     card itself provides the visual frame. Each item flexes evenly so they
+     sit centred within the card width. */
+  .vars-mirror-row .vars-mirror-item {
+    border-left: 1px solid var(--border);
+    padding-left: 24px;
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    align-items: center;
+  }
+  .vars-mirror-row .vars-mirror-items > .vars-mirror-item:first-child {
+    border-left: none;
+    padding-left: 0;
+  }
   .vars-mirror-note {
     font-family: 'DM Sans', sans-serif;
     font-size: 11px;
@@ -709,6 +774,56 @@
     font-weight: 600;
     color: var(--text);
     font-variant-numeric: tabular-nums;
+  }
+  /* Editable variant — wage growth controls. Looks identical to read-only
+     mirror items but the value is an inline input the user can change. */
+  .vars-mirror-item.editable .vm-value {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px;
+  }
+  .vars-mirror-item.editable .vm-input {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    background: none;
+    border: none;
+    outline: none;
+    padding: 0;
+    width: 38px;
+    text-align: right;
+    cursor: text;
+    -moz-appearance: textfield;
+  }
+  .vars-mirror-item.editable .vm-input::-webkit-outer-spin-button,
+  .vars-mirror-item.editable .vm-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .vars-mirror-item.editable .vm-input:focus {
+    background: var(--bg-subtle);
+    border-radius: 3px;
+  }
+  .vars-mirror-item.editable .vm-suffix {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  /* Subtle visual cue that these items are editable */
+  .vars-mirror-item.editable {
+    position: relative;
+  }
+  .vars-mirror-item.editable .vm-label::after {
+    content: ' ✎';
+    color: var(--text-light);
+    opacity: 0.5;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
   }
   .rate-card {
     background: var(--bg-card);
@@ -1507,35 +1622,39 @@
 ══════════════════════════════════════════════════ -->
 <div class="panel" id="panel-wage-houses">
 
-  <div class="vars-mirror">
-    <div class="vars-mirror-note">⚙ Edit rates on Houses tab · Wage growth controls below</div>
-    <div class="vars-mirror-item"><div class="vm-label">Cash Rate</div><div class="vm-value" id="wh-cashRateDisplay">4.10%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">Bank Rate</div><div class="vm-value" id="wh-bankRateDisplay">6.01%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">IC Cash Forecast</div><div class="vm-value" id="wh-icForecastDisplay">2.69%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">PP Variable Rate</div><div class="vm-value" id="wh-ppVarDisplay">4.94%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">Inflation</div><div class="vm-value" id="wh-inflationDisplay">7.00%</div></div>
-  </div>
-
-  <div class="wage-extras">
-    <div class="badge" title="Edit cap city wage growth %">
-      Cap City Wage Growth:
-      <input type="number" id="wg-capCity" step="0.1" min="0" max="20" value="3.0"
-        style="background:none;border:none;outline:none;color:var(--yellow);font-weight:500;font-family:inherit;font-size:inherit;width:36px;cursor:text;-moz-appearance:textfield;"
-        oninput="onWageChange()">% p.a.
+  <div class="vars-mirror-row">
+    <div class="vars-mirror" data-card-title="Edit Rates on Houses tab">
+      <div class="vars-mirror-title">Edit Rates on Houses tab</div>
+      <div class="vars-mirror-items">
+        <div class="vars-mirror-item"><div class="vm-label">Cash Rate</div><div class="vm-value" id="wh-cashRateDisplay">4.10%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">Bank Rate</div><div class="vm-value" id="wh-bankRateDisplay">6.01%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">IC Cash Forecast</div><div class="vm-value" id="wh-icForecastDisplay">2.69%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">PP Variable Rate</div><div class="vm-value" id="wh-ppVarDisplay">4.94%</div></div>
+      </div>
     </div>
-    <div class="badge" title="Edit regional wage growth %">
-      Regional Wage Growth:
-      <input type="number" id="wg-regional" step="0.1" min="0" max="20" value="2.0"
-        style="background:none;border:none;outline:none;color:var(--yellow);font-weight:500;font-family:inherit;font-size:inherit;width:36px;cursor:text;-moz-appearance:textfield;"
-        oninput="onWageChange()">% p.a.
+    <div class="vars-mirror" data-card-title="Wage Growth Forecast">
+      <div class="vars-mirror-title">Wage Growth Forecast</div>
+      <div class="vars-mirror-items">
+        <div class="vars-mirror-item editable" title="Edit cap city wage growth %">
+          <div class="vm-label">Capital City</div>
+          <div class="vm-value">
+            <input type="number" id="wg-capCity" class="vm-input" step="0.1" min="0" max="20" value="3.0" oninput="onWageChange()"><span class="vm-suffix">%</span>
+          </div>
+        </div>
+        <div class="vars-mirror-item editable" title="Edit regional wage growth %">
+          <div class="vm-label">Regional</div>
+          <div class="vm-value">
+            <input type="number" id="wg-regional" class="vm-input" step="0.1" min="0" max="20" value="2.0" oninput="onWageChange()"><span class="vm-suffix">%</span>
+          </div>
+        </div>
+        <div class="vars-mirror-item editable" title="Edit years of wage growth">
+          <div class="vm-label">Years Applied</div>
+          <div class="vm-value">
+            <input type="number" id="wg-years" class="vm-input" step="1" min="1" max="20" value="5" oninput="onWageChange()">
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="badge" title="Edit years of wage growth">
-      Years Applied:
-      <input type="number" id="wg-years" step="1" min="1" max="20" value="5"
-        style="background:none;border:none;outline:none;color:var(--yellow);font-weight:500;font-family:inherit;font-size:inherit;width:28px;cursor:text;-moz-appearance:textfield;"
-        oninput="onWageChange()">
-    </div>
-    <div class="badge">Forecast Date: <span>Mar 2026</span></div>
   </div>
 
   <div class="toolbar">
@@ -1613,16 +1732,24 @@
 ══════════════════════════════════════════════════ -->
 <div class="panel" id="panel-wage-units">
 
-  <div class="vars-mirror">
-    <div class="vars-mirror-note">⚙ Edit rates on Houses tab · Edit wages on Wage Growth · Houses tab</div>
-    <div class="vars-mirror-item"><div class="vm-label">Cash Rate</div><div class="vm-value" id="wu-cashRateDisplay">4.10%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">Bank Rate</div><div class="vm-value" id="wu-bankRateDisplay">6.01%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">IC Cash Forecast</div><div class="vm-value" id="wu-icForecastDisplay">2.69%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">PP Variable Rate</div><div class="vm-value" id="wu-ppVarDisplay">4.94%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">Inflation</div><div class="vm-value" id="wu-inflationDisplay">7.00%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">Cap Wage</div><div class="vm-value" id="wu-capCityDisplay">3.00%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">Reg Wage</div><div class="vm-value" id="wu-regionalDisplay">2.00%</div></div>
-    <div class="vars-mirror-item"><div class="vm-label">Years</div><div class="vm-value" id="wu-yearsDisplay">5</div></div>
+  <div class="vars-mirror-row">
+    <div class="vars-mirror" data-card-title="Edit Rates on Houses tab">
+      <div class="vars-mirror-title">Edit Rates on Houses tab</div>
+      <div class="vars-mirror-items">
+        <div class="vars-mirror-item"><div class="vm-label">Cash Rate</div><div class="vm-value" id="wu-cashRateDisplay">4.10%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">Bank Rate</div><div class="vm-value" id="wu-bankRateDisplay">6.01%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">IC Cash Forecast</div><div class="vm-value" id="wu-icForecastDisplay">2.69%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">PP Variable Rate</div><div class="vm-value" id="wu-ppVarDisplay">4.94%</div></div>
+      </div>
+    </div>
+    <div class="vars-mirror" data-card-title="Edit wages controls on Wage Growth · Houses tab">
+      <div class="vars-mirror-title">Edit wages controls on Wage Growth · Houses tab</div>
+      <div class="vars-mirror-items">
+        <div class="vars-mirror-item"><div class="vm-label">Capital City</div><div class="vm-value" id="wu-capCityDisplay">3.00%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">Regional</div><div class="vm-value" id="wu-regionalDisplay">2.00%</div></div>
+        <div class="vars-mirror-item"><div class="vm-label">Years Applied</div><div class="vm-value" id="wu-yearsDisplay">5</div></div>
+      </div>
+    </div>
   </div>
 
   <div class="toolbar">
@@ -2063,22 +2190,29 @@ function updateLabels(p) {
   document.getElementById('u-icForecastDisplay').textContent  = pctPercent(p.icForecast);
   document.getElementById('u-ppVarDisplay').textContent       = pctPercent(p.ppVar);
 
+  // Null-safe text setter — silently no-ops if the target ID was removed
+  // from the HTML (e.g. when we restructure mirror panels).
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
   // Wage houses panel
-  document.getElementById('wh-cashRateDisplay').textContent   = pctPercent(p.cashRate);
-  document.getElementById('wh-icForecastDisplay').textContent = pctPercent(p.icForecast);
-  document.getElementById('wh-bankRateDisplay').textContent   = pctPercent(p.bankRate);
-  document.getElementById('wh-ppVarDisplay').textContent      = pctPercent(p.ppVar);
-  document.getElementById('wh-inflationDisplay').textContent  = pctPercent(p.inflation);
+  setText('wh-cashRateDisplay',   pctPercent(p.cashRate));
+  setText('wh-icForecastDisplay', pctPercent(p.icForecast));
+  setText('wh-bankRateDisplay',   pctPercent(p.bankRate));
+  setText('wh-ppVarDisplay',      pctPercent(p.ppVar));
+  setText('wh-inflationDisplay',  pctPercent(p.inflation));
 
   // Wage units panel
-  document.getElementById('wu-cashRateDisplay').textContent   = pctPercent(p.cashRate);
-  document.getElementById('wu-icForecastDisplay').textContent = pctPercent(p.icForecast);
-  document.getElementById('wu-bankRateDisplay').textContent   = pctPercent(p.bankRate);
-  document.getElementById('wu-ppVarDisplay').textContent      = pctPercent(p.ppVar);
-  document.getElementById('wu-inflationDisplay').textContent  = pctPercent(p.inflation);
-  document.getElementById('wu-capCityDisplay').textContent    = pctPercent(p.capWage);
-  document.getElementById('wu-regionalDisplay').textContent   = pctPercent(p.regWage);
-  document.getElementById('wu-yearsDisplay').textContent      = p.wgYears;
+  setText('wu-cashRateDisplay',   pctPercent(p.cashRate));
+  setText('wu-icForecastDisplay', pctPercent(p.icForecast));
+  setText('wu-bankRateDisplay',   pctPercent(p.bankRate));
+  setText('wu-ppVarDisplay',      pctPercent(p.ppVar));
+  setText('wu-inflationDisplay',  pctPercent(p.inflation));
+  setText('wu-capCityDisplay',    pctPercent(p.capWage));
+  setText('wu-regionalDisplay',   pctPercent(p.regWage));
+  setText('wu-yearsDisplay',      p.wgYears);
 
   // Table header labels
   document.querySelectorAll('.fore-rate-label').forEach(el => {
