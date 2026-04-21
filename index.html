@@ -2916,6 +2916,11 @@ async function loadLatestPrices(force) {
         });
       });
       HOUSES_DATA.forEach(row => {
+        // OVERRIDE MODE: keep bundled AIC defaults for the curated 36 main
+        // regions; only apply live AIC to non-main LGAs. This makes the
+        // workbook match the offline runway baseline. Remove this guard
+        // (the entire `if (isMainRegion(...)) return;` line) to revert.
+        if (isMainRegion(row[0], row[1])) return;
         const key = normalizeRegion(row[1]);
         const hit = aicMap[key];
         if (hit && hit.H != null && !isNaN(Number(hit.H))) {
@@ -2926,6 +2931,8 @@ async function loadLatestPrices(force) {
         }
       });
       UNITS_DATA.forEach(row => {
+        // OVERRIDE MODE: same guard for Units.
+        if (isMainRegion(row[0], row[1])) return;
         const key = normalizeRegion(row[1]);
         const hit = aicMap[key];
         if (hit && hit.U != null && !isNaN(Number(hit.U))) {
