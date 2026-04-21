@@ -400,6 +400,26 @@
   .readonly-banner-exit:hover {
     background: rgba(255,255,255,0.4);
   }
+  .readonly-banner-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .readonly-banner-restore {
+    background: #fff;
+    border: 1px solid #fff;
+    color: #d97706;
+    padding: 4px 14px;
+    border-radius: 5px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .readonly-banner-restore:hover {
+    background: #fef3c7;
+  }
   /* Disable inputs when read-only */
   body.readonly-mode .v-input,
   body.readonly-mode .filter-select,
@@ -1213,7 +1233,10 @@
     <span class="readonly-banner-icon">🔒</span>
     <span id="readonly-banner-msg">Viewing saved version</span>
   </div>
-  <button class="readonly-banner-exit" onclick="exitReadOnlyMode()">Exit saved view</button>
+  <div class="readonly-banner-actions">
+    <button class="readonly-banner-exit" onclick="exitReadOnlyMode()">Exit saved view</button>
+    <button class="readonly-banner-restore" onclick="versionsMenu.restoreFromReadOnly()">Restore this version</button>
+  </div>
 </div>
 
 <div class="tab-bar">
@@ -3067,6 +3090,7 @@ const versionsMenu = (() => {
   let supabase = null;
   let inReadOnlyMode = false;
   let originalState = null;
+  let viewedRecord = null;  // The snapshot record currently being viewed (for Restore)
 
   function init() {
     if (!VERSIONS_ENABLED) {
@@ -3329,6 +3353,7 @@ const versionsMenu = (() => {
 
   function applySnapshotReadOnly(record) {
     originalState = captureSnapshot();
+    viewedRecord = record;
     applyStateFromSnapshot(record.data);
     inReadOnlyMode = true;
     document.body.classList.add('readonly-mode');
@@ -3391,10 +3416,33 @@ const versionsMenu = (() => {
     applyStateFromSnapshot(originalState);
     inReadOnlyMode = false;
     originalState = null;
+    viewedRecord = null;
     document.body.classList.remove('readonly-mode');
     document.getElementById('readonly-banner').hidden = true;
     document.getElementById('versions-save-btn').disabled = false;
     document.getElementById('versions-update-btn').disabled = false;
+  }
+
+  // Restore: keep the currently-viewed snapshot's data loaded but exit
+  // read-only so the user can edit and Save it as a new version.
+  // Unlike exitReadOnly, this does NOT revert to the pre-view state.
+  function restoreFromReadOnly() {
+    if (!inReadOnlyMode || !viewedRecord) return;
+    const restored = viewedRecord;
+    // Discard the stashed pre-view state — the snapshot data is what we want
+    // to keep working from.
+    originalState = null;
+    inReadOnlyMode = false;
+    viewedRecord = null;
+    document.body.classList.remove('readonly-mode');
+    document.getElementById('readonly-banner').hidden = true;
+    document.getElementById('versions-save-btn').disabled = false;
+    document.getElementById('versions-update-btn').disabled = false;
+    // Indicator: show that we're now editing a restored version
+    setLastUpdatedText(
+      `Restored from: ${restored.name} (saved ${new Date(restored.saved_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}). Edit and Save to create a new version.`,
+      'success'
+    );
   }
 
   function setLastUpdatedText(text, klass = '') {
@@ -3421,7 +3469,8 @@ const versionsMenu = (() => {
     openLoad, load, remove,
     cancel,
     updateFromLive,
-    exitReadOnly
+    exitReadOnly,
+    restoreFromReadOnly
   };
 })();
 
