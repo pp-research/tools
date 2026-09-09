@@ -1,0 +1,140 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ranking page — design options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#0B141A;font-family:Montserrat,-apple-system,Segoe UI,Roboto,sans-serif;color:#E6EDF2;padding:28px 0 90px}
+.opt{width:1520px;height:855px;margin:0 auto 26px;background:#132028;border-radius:14px;position:relative;overflow:hidden;padding:44px 58px;border:1px solid #FFFFFF14}
+.tag{position:absolute;top:0;left:0;background:#00A0B4;color:#06141A;font-weight:800;font-size:13px;letter-spacing:.14em;padding:7px 16px;border-radius:0 0 10px 0}
+h2{font-size:32px;font-weight:800;letter-spacing:-.01em;margin:10px 0 2px}
+.sub{color:#8FA1AE;font-size:14.5px;font-weight:500;margin-bottom:20px}
+.gt{color:#7FB7C4;font-weight:800;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase}
+.chip{display:inline-block;border-radius:9px;padding:1px 9px;font-weight:700;font-size:13px;border:1px solid transparent}
+.cg{background:#2F8F5266;border-color:#2F8F52CC}.co{background:#D9962B66;border-color:#D9962BCC}.cr{background:#C4203C66;border-color:#C4203CCC}
+.flag{display:inline-block;background:#C4203C22;border:1px solid #C4203C66;color:#F0A9B6;border-radius:7px;padding:1px 8px;font-size:11.5px;font-weight:600}
+.seg{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:#FFFFFF10;color:#AFC2CD;font-size:11.5px;font-weight:800;border:1px solid #FFFFFF1A}
+.dd{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+/* A ladder */
+.lad{display:grid;grid-template-columns:1fr 1fr;gap:12px 34px;margin-top:6px}
+.lrow{display:flex;align-items:center;gap:16px;padding:12px 18px;border-radius:12px;background:#FFFFFF05;border:1px solid #FFFFFF0A}
+.lrow.top{background:linear-gradient(90deg,#00A0B41A,#FFFFFF05 55%);border-color:#00A0B44D}
+.lnum{font-size:34px;font-weight:900;color:#31424E;width:52px;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+.top .lnum{color:#37B6C9}
+.lname{font-size:18.5px;font-weight:700;min-width:206px}
+.lmeta{color:#8FA1AE;font-size:12.5px;font-weight:500;flex:1}
+.lch{display:flex;gap:8px;align-items:center}
+/* B split */
+.bwrap{display:grid;grid-template-columns:600px 1fr;gap:46px;height:660px}
+.brow{display:grid;grid-template-columns:30px 190px 1fr 44px;align-items:center;gap:12px;padding:8.5px 4px;border-bottom:1px solid #FFFFFF0D;font-size:14px}
+.bbar{height:9px;border-radius:5px;background:#FFFFFF0C;position:relative}
+.bfill{position:absolute;inset:0 auto 0 0;border-radius:5px}
+.bno{color:#5B6E7A;font-weight:800;font-variant-numeric:tabular-nums}
+.bnm{font-weight:700;font-size:14.5px}
+.bsc{font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+/* C medallion table */
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th{text-align:left;color:#7FB7C4;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;padding:8px 12px;border-bottom:1px solid #FFFFFF1F}
+td{padding:9.5px 12px;border-bottom:1px solid #FFFFFF0D;font-size:14px;vertical-align:middle}
+.med{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;font-weight:900;font-size:15px;background:#FFFFFF0A;color:#7A8B96;border:1px solid #FFFFFF14}
+.m1{background:linear-gradient(145deg,#00C4DB,#007685);color:#04222A;border:none;box-shadow:0 0 14px #00A0B466}
+.m2{background:linear-gradient(145deg,#67D6E4,#1E8A9C);color:#04222A;border:none;box-shadow:0 0 10px #00A0B440}
+.m3{background:linear-gradient(145deg,#9ADFE9,#3B98A8);color:#04222A;border:none;box-shadow:0 0 8px #00A0B42E}
+.std{color:#AFC2CD;font-size:13px}
+/* D tiers */
+.tier{margin-top:16px}
+.tt{display:flex;align-items:center;gap:14px;margin:18px 0 10px}
+.tt .gt{font-size:13px}
+.tt::after{content:'';flex:1;height:1px;background:#FFFFFF14}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.cards.c3{grid-template-columns:repeat(3,1fr)}
+.card{background:#FFFFFF06;border:1px solid #FFFFFF0F;border-radius:12px;padding:13px 15px;position:relative}
+.card.top{border-color:#00A0B45C;background:linear-gradient(160deg,#00A0B417,#FFFFFF05 60%)}
+.crk{position:absolute;top:10px;right:12px;font-size:22px;font-weight:900;color:#31424E}
+.card.top .crk{color:#37B6C9}
+.cnm{font-weight:700;font-size:15.5px;margin:2px 0 7px;padding-right:30px}
+.cst{color:#8FA1AE;font-size:11.8px;line-height:1.5;min-height:36px}
+.cch{margin-top:8px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.foot{position:absolute;bottom:20px;left:58px;right:58px;color:#5B6E7A;font-size:11.5px;display:flex;justify-content:space-between}
+</style></head><body>
+<script>
+const ROWS=[
+ [1,'Central','U','#189AB8',7.3,'g',5,'69% of ceiling · +94% runway · 5.0% yield',''],
+ [2,'South','U','#8355AE',6.5,'o',2,'22 days on market · vacancy → 1.4% · demand 9.4',''],
+ [3,'West','U','#1FA268',7.0,'g',6,'demand 10/10 · $640k entry · 4.5% yield',''],
+ [4,'Central Coast','U','#DB5E7E',6.0,'o',1,'best 10-yr CAGR 5.6% · rents +7.3%','red price position'],
+ [5,'East','U','#D28E0A',6.0,'o',3,'vacancy → 0.95% · 4.3% yield',''],
+ [6,'North','U','#4E5A6B',6.0,'o',4,'+78% runway · rents +6.1%',''],
+ [7,'East','H','#D28E0A',6.3,'o',7,'balanced market · migration 22,800',''],
+ [8,'South','H','#8355AE',6.7,'o',9,'demand 10 · +7.5% yr','at ceiling'],
+ [9,'Central Coast','H','#DB5E7E',5.2,'o',8,'6.7% 10-yr CAGR','104% of ceiling'],
+ [10,'North','H','#4E5A6B',5.3,'o',10,'94% of ceiling · +39% runway',''],
+ [11,'West','H','#1FA268',5.4,'o',11,'+11.5% yr momentum','108% of ceiling'],
+ [12,'Central','H','#189AB8',5.0,'o',12,'at ceiling · 3 stagnation episodes','']];
+const chip=(v,b)=>'<span class="chip c'+b+'">'+v.toFixed(1)+'</span>';
+const seg=s=>'<span class="seg">'+s+'</span>';
+const dd=c=>'<span class="dd" style="background:'+c+'"></span>';
+const fl=f=>f?' <span class="flag">⚠ '+f+'</span>':'';
+const hdr=(t)=>'<h2>The full ranking</h2><div class="sub">'+t+'</div>';
+const FOOT='<div class="foot"><span>Composite of the deck’s three pillar scores and a 15-metric evidence rank — method on the closing page</span><span>© 2026 PPA Services Pty Ltd</span></div>';
+
+/* ---- A: leaderboard ladder ---- */
+document.write('<div class="opt"><div class="tag">OPTION A — LEADERBOARD LADDER</div>'
+ +hdr('All twelve markets, strongest case first — pillar score, evidence rank and the one line that defines each')
+ +'<div class="lad">'
+ +ROWS.map(r=>'<div class="lrow'+(r[0]<=3?' top':'')+'"><div class="lnum">'+r[0]+'</div>'
+  +'<div class="lname">'+dd(r[3])+r[1]+' '+seg(r[2])+'</div>'
+  +'<div class="lmeta">'+r[7]+fl(r[8])+'</div>'
+  +'<div class="lch">'+chip(r[4],r[5])+'<span style="color:#5B6E7A;font-size:11.5px;font-weight:700">EV #'+r[6]+'</span></div></div>').join('')
+ +'</div>'+FOOT+'</div>');
+
+/* ---- B: two-lens split ---- */
+let bars=ROWS.map(r=>'<div class="brow"><div class="bno">'+r[0]+'</div>'
+ +'<div class="bnm">'+dd(r[3])+r[1]+' '+seg(r[2])+(r[8]?' <span class="flag">⚠</span>':'')+'</div>'
+ +'<div class="bbar"><div class="bfill" style="width:'+(r[4]/10*100)+'%;background:linear-gradient(90deg,'+r[3]+'CC,'+r[3]+'66)"></div></div>'
+ +'<div class="bsc">'+r[4].toFixed(1)+'</div></div>').join('');
+let W=760,H=560,L=60,T=30;
+let sx=e=>L+( (12-e) /11)*(W-L-30), sy=v=>T+(1-(v-4.6)/(7.5-4.6))*(H-T-60);
+let dots=ROWS.map(r=>{
+ const x=sx(r[6]),y=sy(r[4]);
+ const shape=r[2]==='U'?'<circle cx="'+x+'" cy="'+y+'" r="9" fill="'+r[3]+'" />'
+  :'<rect x="'+(x-8)+'" y="'+(y-8)+'" width="16" height="16" rx="3" fill="'+r[3]+'" transform="rotate(45 '+x+' '+y+')"/>';
+ return shape+'<text x="'+(x+14)+'" y="'+(y+4)+'" fill="#AFC2CD" font-size="11.5" font-weight="600">'+r[1]+' '+r[2]+'</text>';}).join('');
+document.write('<div class="opt"><div class="tag">OPTION B — TWO-LENS SPLIT</div>'
+ +hdr('Left: the final order scored out of ten · Right: where the deck’s pillars and the raw evidence agree')
+ +'<div class="bwrap"><div>'+bars+'</div>'
+ +'<div><svg width="'+W+'" height="'+H+'" style="background:#FFFFFF05;border-radius:12px;border:1px solid #FFFFFF0A">'
+ +'<text x="'+(L+18)+'" y="46" fill="#7FB7C4" font-size="12" font-weight="800" letter-spacing="2">DECK FAVOURS</text>'
+ +'<text x="'+(W-215)+'" y="'+(H-76)+'" fill="#D9962B" font-size="12" font-weight="800" letter-spacing="2" opacity=".8">EVIDENCE FAVOURS</text>'
+ +'<text x="'+(W-200)+'" y="52" fill="#3ECF8E" font-size="12" font-weight="800" letter-spacing="2" opacity=".8">AGREEMENT ↑</text>'
+ +'<line x1="'+L+'" y1="'+(H-50)+'" x2="'+(W-20)+'" y2="'+(H-50)+'" stroke="#FFFFFF22"/>'
+ +'<line x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(H-50)+'" stroke="#FFFFFF22"/>'
+ +'<text x="'+(W/2-60)+'" y="'+(H-18)+'" fill="#5B6E7A" font-size="11.5" font-weight="600">evidence rank (15 metrics) → better</text>'
+ +'<text x="16" y="'+(H/2)+'" fill="#5B6E7A" font-size="11.5" font-weight="600" transform="rotate(-90 16 '+(H/2)+')">deck pillars /10 →</text>'
+ +dots+'</svg></div></div>'+FOOT+'</div>');
+
+/* ---- C: medallion table ---- */
+document.write('<div class="opt"><div class="tag">OPTION C — MEDALLION TABLE</div>'
+ +hdr('The formal read: every market, both lenses, flags stated')
+ +'<table><tr><th style="width:64px">Rank</th><th>Market</th><th style="width:110px">Deck pillars</th><th style="width:112px">Evidence rank</th><th>What carries it</th><th style="width:210px">Watch</th></tr>'
+ +ROWS.map(r=>'<tr><td><span class="med'+(r[0]<=3?' m'+r[0]:'')+'">'+r[0]+'</span></td>'
+  +'<td style="font-weight:700;font-size:15px">'+dd(r[3])+r[1]+' &nbsp;'+seg(r[2])+'</td>'
+  +'<td>'+chip(r[4],r[5])+'<span style="color:#5B6E7A;font-size:11px"> /10</span></td>'
+  +'<td style="color:#8FA1AE;font-weight:700">#'+r[6]+' of 12</td>'
+  +'<td class="std">'+r[7]+'</td><td>'+(r[8]?fl(r[8]):'<span style="color:#3ECF8E80;font-size:12px">clear</span>')+'</td></tr>').join('')
+ +'</table>'+FOOT+'</div>');
+
+/* ---- D: tier bands ---- */
+const tiers=[['FRONT RUNNERS',ROWS.slice(0,3),'c3',true],['IN THE HUNT',ROWS.slice(3,8),'',false],['PRICED FOR PATIENCE',ROWS.slice(8,12),'',false]];
+document.write('<div class="opt"><div class="tag">OPTION D — TIER BANDS</div>'
+ +hdr('Three tiers — who leads, who’s close, and where the price already reflects the story')
+ +tiers.map(t=>'<div class="tier"><div class="tt"><span class="gt">'+t[0]+'</span></div>'
+  +'<div class="cards '+t[2]+'">'
+  +t[1].map(r=>'<div class="card'+(t[3]?' top':'')+'"><div class="crk">'+r[0]+'</div>'
+   +'<div class="cnm">'+dd(r[3])+r[1]+' '+seg(r[2])+'</div>'
+   +'<div class="cst">'+r[7]+'</div>'
+   +'<div class="cch">'+chip(r[4],r[5])+'<span style="color:#5B6E7A;font-size:10.5px;font-weight:700">EV #'+r[6]+'</span>'+fl(r[8])+'</div></div>').join('')
+  +'</div></div>').join('')
+ +FOOT+'</div>');
+</script>
+</body></html>
