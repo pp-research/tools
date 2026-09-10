@@ -202,6 +202,13 @@ body.railshut .stage{margin-left:56px}
    the cover's district list, panel titles, end labels and the tooltip swatch */
 .lgd .tog i{width:.6cqw;height:.6cqw;border-radius:.12cqw;flex:none}
 .lgd .tog[aria-pressed=false]{opacity:.34}
+/* bare chart panels sit on the slide, so their legends take slide ink */
+.pnl.bare .lgd .key,.pnl.bare .lgd .tog{color:#DEE7ED}
+.pnl.bare .lgd .st,.pnl.bare .lgd .st::before{color:#93A4B0}
+.pnl.bare .lgd .tog:hover{color:#7FB7C4}
+[data-shell=light] .pnl.bare .lgd .key,[data-shell=light] .pnl.bare .lgd .tog{color:var(--ink)}
+[data-shell=light] .pnl.bare .lgd .st,[data-shell=light] .pnl.bare .lgd .st::before{color:var(--ink-dim)}
+[data-shell=light] .pnl.bare .lgd .tog:hover{color:var(--teal-text)}
 .lgd .tog:hover{color:var(--teal-text)}
 .lgd .tog:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:3px}
 /* Series keys carry the same flat look, but they are spans rather than buttons: nothing
