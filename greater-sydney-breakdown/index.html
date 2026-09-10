@@ -1449,8 +1449,6 @@ function multiLine(hostId,pick,opt){
  const plotB=Ht-P[2];
  let g='<svg class="ch" viewBox="0 0 '+W+' '+Ht+'" xmlns="http://www.w3.org/2000/svg"'
   +' role="img"><title>'+(opt.title||'')+'</title>';
-  /* the same soft plot panel the tile pages draw behind each chart */
-  g+='<rect x="'+P[3]+'" y="'+P[0]+'" width="'+(W-P[1]-P[3])+'" height="'+(plotB-P[0])+'" class="pbox" fill="#FFFFFF" fill-opacity=".55" stroke="rgba(23,27,36,.10)"/>';
  if(opt.refbands) BANDS.forEach(b=>{const a=Math.max(b.a,y0), z=Math.min(b.b,y1);
   if(z<=a)return;
   g+='<rect x="'+x(a).toFixed(1)+'" y="'+P[0]+'" width="'+(x(z)-x(a)).toFixed(1)+'" height="'
