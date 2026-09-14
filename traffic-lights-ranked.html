@@ -384,11 +384,11 @@ function render(region){
   const rows=[
     {label:'Supply & Demand',h:d.sd_h,u:d.sd_u,rank:d.sd_rank,of:d.universe},
     {label:'Value',h:d.value_h,u:d.value_u,rank:d.value_rank,of:d.universe},
-    {label:'Confidence',h:d.confidence,both:1,rank:d.conf_rank,of:d.conf_of}
+    {label:'Confidence',h:d.confidence,u:d.confidence,both:1,rank:d.conf_rank,of:d.conf_of}
   ];
   document.getElementById('vtBody').innerHTML=rows.map(r=>`
     <div class="vt-row"><div class="rlabel">${r.label}${r.both?'<span class="rboth">both</span>':''}</div>
-      ${r.both?`<div class="vt-cell both">${pill(r.h)}</div>`:`<div class="vt-cell">${pill(r.h)}</div><div class="vt-cell">${pill(r.u)}</div>`}
+      <div class="vt-cell">${pill(r.h)}</div><div class="vt-cell">${pill(r.u)}</div>
       <div class="vt-rank ${r.rank?'':'na'}">${r.rank?`<b>${r.rank}</b>`:`<b>&ndash;</b><span>pending</span>`}</div></div>`).join('');
   document.getElementById('sdInds').innerHTML=d.sd_inds.map(indCard).join('');
   document.getElementById('sdCurExpl').innerHTML='<span class="nlab">Current</span>'+(d.sd_cur_expl||'');

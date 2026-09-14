@@ -111,7 +111,6 @@ h1 .p2{color:var(--teal)}
 .ind .iname{font-size:13.5px;font-weight:700;margin-bottom:2px}
 .ind .imeta{font-size:11.5px;color:var(--text-faint);font-weight:600}
 .ind .iproj{margin-top:2px}
-.vt-cell.both{grid-column:2 / span 2}
 .rlabel .rboth{display:inline-block;margin-left:9px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);border:1px solid var(--teal);vertical-align:3px}
 .ind .ichange{font-size:13.5px;font-weight:800}
 .ind .ichange.up{color:var(--green)}.ind .ichange.down{color:var(--red)}.ind .ichange.flat{color:var(--text-dim)}
@@ -201,9 +200,9 @@ function indCard(i){
 function render(region){
   const d=DATA[region];
   document.getElementById('cardTitle').textContent=region;
-  const rows=[{label:'Supply & Demand',h:d.sd_h,u:d.sd_u},{label:'Value',h:d.value_h,u:d.value_u},{label:'Confidence',h:d.confidence,both:1}];
+  const rows=[{label:'Supply & Demand',h:d.sd_h,u:d.sd_u},{label:'Value',h:d.value_h,u:d.value_u},{label:'Confidence',h:d.confidence,u:d.confidence,both:1}];
   document.getElementById('vtBody').innerHTML=rows.map(r=>`
-    <div class="vt-row"><div class="rlabel">${r.label}${r.both?'<span class="rboth">both</span>':''}</div>${r.both?`<div class="vt-cell both">${pill(r.h)}</div>`:`<div class="vt-cell">${pill(r.h)}</div><div class="vt-cell">${pill(r.u)}</div>`}</div>`).join('');
+    <div class="vt-row"><div class="rlabel">${r.label}${r.both?'<span class="rboth">both</span>':''}</div><div class="vt-cell">${pill(r.h)}</div><div class="vt-cell">${pill(r.u)}</div></div>`).join('');
   document.getElementById('sdInds').innerHTML=d.sd_inds.map(indCard).join('');
   document.getElementById('valueInds').innerHTML=d.value_inds.map(indCard).join('');
   document.getElementById('confHint').textContent='Score '+d.conf_score+' / 2.00 \u2014 same for houses and units';
