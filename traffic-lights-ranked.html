@@ -15,6 +15,7 @@
   --track:rgba(255,255,255,0.06); --track-active-green:rgba(47,191,113,0.12);
   --track-active-amber:rgba(242,169,69,0.12); --off:rgba(255,255,255,0.14);
   --red-bg:rgba(229,96,77,0.12); --menu-bg:rgba(30,36,58,0.96);
+  --tint-g:rgba(47,191,113,0.17); --tint-o:rgba(242,169,69,0.17); --tint-r:rgba(229,96,77,0.17);
   --shadow:0 18px 50px rgba(0,0,0,0.38);
 }
 :root[data-theme="light"]{
@@ -27,6 +28,7 @@
   --track:rgba(31,40,63,0.05); --track-active-green:rgba(30,158,90,0.10);
   --track-active-amber:rgba(217,138,43,0.10); --off:rgba(31,40,63,0.16);
   --red-bg:rgba(214,74,55,0.10); --menu-bg:rgba(255,255,255,0.98);
+  --tint-g:rgba(30,158,90,0.13); --tint-o:rgba(217,138,43,0.15); --tint-r:rgba(214,74,55,0.13);
   --shadow:0 18px 44px rgba(31,40,63,0.13);
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -153,28 +155,43 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
 .slist.mid .sl-head .dot{background:var(--teal)}
 .slist.watch .sl-head{color:var(--orange)}
 .slist.watch .sl-head .dot{background:var(--orange)}
-.sl-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text)}
+.sl-item{display:grid;grid-template-columns:1fr 34px 34px 34px;gap:6px;align-items:center;padding:7px 10px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;color:var(--text)}
 .sl-item:hover{background:var(--surface-2)}
 .sl-item.active{background:var(--track-active-green);color:var(--teal);font-weight:800}
+.sl-item.active .mini .m{color:var(--text)}
 .slist.mid .sl-item.active{background:rgba(0,161,180,.10);color:var(--teal)}
 .slist.peak .sl-item.active{background:rgba(122,90,240,.10);color:#7A5AF0}
 .slist.watch .sl-item.active{background:var(--track-active-amber);color:var(--orange)}
-.sl-item .mini{display:flex;gap:5px;align-items:center}
-.ssort{display:flex;gap:5px;flex-wrap:nowrap;margin:0 0 16px}
-.sseg{margin-bottom:8px}
-.sseg button{flex:1;padding-left:0!important;padding-right:0!important}
-.ssort button{position:relative;font:inherit;font-size:10.5px;white-space:nowrap;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:6px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-faint);cursor:pointer;transition:.14s;text-align:center}
-.ssort button:not([data-k="overall"]){padding-left:20px;padding-right:20px}
-.ssort button:hover{color:var(--teal);border-color:var(--teal)}
-.ssort button[aria-pressed=true]{background:var(--text);border-color:var(--text);color:#fff}
-.ssort .arw{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:9px;font-size:11px;line-height:1;opacity:.85;text-align:center;pointer-events:none}
-.ssort button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.sl-item .mini{display:contents}
+/* Houses / Units is a segmented control: a different shape for a different kind
+   of choice. Sorting is the column header below it, not a second button row. */
+.sseg{display:flex;padding:3px;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;margin:0 0 14px}
+.sseg button{flex:1;font:inherit;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:7px 0;border:0;border-radius:999px;background:transparent;color:var(--text-faint);cursor:pointer}
+.sseg button:hover{color:var(--teal)}
+/* --bg-1 is the only token that reliably contrasts with --text in BOTH themes:
+   near-white on navy in light, navy on near-white in dark. --surface is a
+   translucent overlay and vanishes on the dark pill. */
+.sseg button[aria-pressed=true]{background:var(--text);color:var(--bg-1);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.sseg button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+/* NO transition on these controls. Their colours come from --text / --bg-1,
+   which flip with the theme, and Chrome latches the pre-flip value when a
+   transitioned property resolves through a custom property that changed.
+   The old rule got away with it by hardcoding #fff for the pressed state. */
+/* the column header: names the three chips AND does the sorting */
+.ssort{display:grid;grid-template-columns:1fr 34px 34px 34px;gap:6px;align-items:end;margin:0 0 6px;padding:0 10px 8px;border-bottom:1px solid var(--border)}
+.ssort button{position:relative;font:inherit;font-size:9.5px;white-space:nowrap;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0;border:0;border-radius:0;background:none;color:var(--text-faint);cursor:pointer;text-align:center}
+.ssort button:first-child{text-align:left;letter-spacing:.12em}
+.ssort button:hover{color:var(--teal)}
+.ssort button[aria-pressed=true]{color:var(--text)}
+.ssort .arw{position:static;transform:none;display:inline-block;width:auto;margin-left:1px;font-size:9px;line-height:1;opacity:.8;pointer-events:none}
+.ssort button:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:3px}
 .slist.rank .sl-head{color:var(--text)}
 .slist.rank .sl-head .dot{background:var(--text-faint)}
 .slist.rank .sl-item.active{background:var(--track-active-green);color:var(--teal)}
 .sl-item .pos{display:inline-block;min-width:20px;font-size:11px;font-weight:800;color:var(--text-faint);font-variant-numeric:tabular-nums;margin-right:2px}
-.sl-item .mini .m{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:#fff;letter-spacing:-.02em;flex-shrink:0;font-variant-numeric:tabular-nums}.sl-item .mini .m.none{background:var(--border);color:var(--text-faint)}.sl-item{padding:8px 10px}.sl-item>span:first-child{padding-right:8px}
-.sl-item .mini .m.g{background:var(--green)}.sl-item .mini .m.o{background:var(--orange)}.sl-item .mini .m.r{background:var(--red)}
+.sl-item .mini .m{width:26px;height:26px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:600;color:var(--text);letter-spacing:-.01em;flex-shrink:0;font-variant-numeric:tabular-nums lining-nums}.sl-item .mini .m.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border);color:var(--text-faint)}.sl-item>span:first-child{padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-item .mini .m.g{background:var(--tint-g);box-shadow:inset 0 0 0 1.5px var(--green)}.sl-item .mini .m.o{background:var(--tint-o);box-shadow:inset 0 0 0 1.5px var(--orange)}.sl-item .mini .m.r{background:var(--tint-r);box-shadow:inset 0 0 0 1.5px var(--red)}
+.slist .sl-head .ct{margin-left:auto;font-size:11px;font-weight:700;color:var(--text-faint);font-variant-numeric:tabular-nums}
 @media(max-width:860px){.top-row{grid-template-columns:1fr}}
 .card-title{text-align:center;font-size:24px;font-weight:800;padding:30px 20px 26px;letter-spacing:-.01em}
 .vt-head{display:grid;grid-template-columns:1.5fr 1fr 1fr;padding:16px 40px;
@@ -284,23 +301,23 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
     </div>
     <div class="summary">
       <h3>Region Summary</h3>
-      <div class="sub">Ranks out of 36 for <b id="segNote">houses</b> &mdash; value, supply &amp; demand, confidence. Confidence is the same for both segments.</div>
-      <div class="ssort sseg" id="sseg" role="group" aria-label="Show houses or units"><button data-s="h" aria-pressed="true">Houses</button><button data-s="u">Units</button></div>
-      <div class="ssort" id="ssort" role="group" aria-label="Sort regions by"><button data-k="overall" data-label="Overall" aria-pressed="true">Overall</button><button data-k="value" data-label="Val">Val</button><button data-k="sd" data-label="S&amp;D">S&amp;D</button><button data-k="conf" data-label="Conf">Conf</button></div>
+      <div class="sub">Rank of 36 within each pillar, for <b id="segNote">houses</b>. Confidence has no house/unit split.</div>
+      <div class="sseg" id="sseg" role="group" aria-label="Show houses or units"><button data-s="h" aria-pressed="true">Houses</button><button data-s="u">Units</button></div>
+      <div class="ssort" id="ssort" role="group" aria-label="Sort regions by column"><button data-k="overall" data-label="Region" aria-pressed="true">Region</button><button data-k="value" data-label="Val">Val</button><button data-k="sd" data-label="S&amp;D">S&amp;D</button><button data-k="conf" data-label="Conf">Conf</button></div>
       <div class="slist peak">
-        <div class="sl-head"><span class="dot"></span>Past its peak</div>
+        <div class="sl-head"><span class="dot"></span>Past its peak<span class="ct"></span></div>
         <div id="peakList"></div>
       </div>
       <div class="slist good">
-        <div class="sl-head"><span class="dot"></span>Best time to invest</div>
+        <div class="sl-head"><span class="dot"></span>Best time to invest<span class="ct"></span></div>
         <div id="bestList"></div>
       </div>
       <div class="slist mid">
-        <div class="sl-head"><span class="dot"></span>Worth watching</div>
+        <div class="sl-head"><span class="dot"></span>Worth watching<span class="ct"></span></div>
         <div id="midList"></div>
       </div>
       <div class="slist watch">
-        <div class="sl-head"><span class="dot"></span>Not the best time</div>
+        <div class="sl-head"><span class="dot"></span>Not the best time<span class="ct"></span></div>
         <div id="watchList"></div>
       </div>
       <div class="slist rank" id="rankSec" style="display:none">
@@ -442,7 +459,8 @@ function buildSummary(){
     [peak,best,mid,watch].forEach(a=>a.sort((x,y)=>x.rank-y.rank));
     const put=(id,arr)=>{document.getElementById(id).innerHTML=arr.map(o=>item(o.r)).join('');
       const sec=document.getElementById(id).closest('.slist');
-      if(sec) sec.style.display=arr.length?'':'none';};
+      if(sec){ sec.style.display=arr.length?'':'none';
+        const ct=sec.querySelector('.sl-head .ct'); if(ct) ct.textContent=arr.length; }};
     put('peakList',peak);put('bestList',best);put('midList',mid);put('watchList',watch);
     rankSec.style.display='none';
   } else {
