@@ -323,7 +323,6 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
       <div class="dd-panel" id="ddPanel" role="listbox"></div>
     </div>
   </div>
-  <div class="tabs" role="tablist"><button role="tab" id="tab-dash" aria-controls="pane-dash" aria-selected="true">Dashboard</button><button role="tab" id="tab-work" aria-controls="pane-work" aria-selected="false">Working</button></div>
 <div class="pane" id="pane-dash" role="tabpanel">
 <div class="top-row">
     <div class="left-col">
@@ -382,13 +381,7 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
     </div>
   </div>
   </div>
-<div class="pane" id="pane-work" role="tabpanel" hidden>
-  <div class="wk"><h4>Confidence Indicators</h4><p class="wsub" id="wkConfSub"></p><div class="scroll" id="wkConf"></div></div>
-  <div class="wk"><h4>Value Indicators</h4><p class="wsub" id="wkValSub"></p><div class="scroll" id="wkVal"></div></div>
-  <div class="wk"><h4>Supply &amp; Demand Indicators</h4><p class="wsub" id="wkSdSub"></p><div class="scroll" id="wkSd"></div></div>
-  <div class="wk"><h4>Column formulas</h4><p class="wsub">How each figure in the grids above is derived. This tool is self-contained — nothing is read from a spreadsheet.</p><div class="fml" id="wkFml"></div></div>
-  <div class="wk"><h4>Method</h4><div class="mth" id="wkMth"></div></div>
-</div>
+
 <div class="footer">
     Performance Property Advisory &middot; Data to Q3 2026<br>
     Forecast projects recent trends forward (demand &amp; runway ~6 months, ranking 5-year trend). A projection under current momentum, not a prediction.
@@ -660,155 +653,6 @@ const fmtv=(v,f)=>{
   if(f==='int')return Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
   return String(v);};
 const sgn=s=>`<span class="sgn ${s}">${s}</span>`;
-function grid(rows,opts){
-  const tl=rows[0].tlabels||['t-5','t-4','t-3','t-2','t-1','t0'];
-  const hd=['Component','Series / basis','Type','Latest','Prior / avg','Change','Green if','Red if',
-          'Score /10','Signal','Wt','Slope','×mult','Forecast','Fcst /10','Fcst signal','Pctile']
-;
-  // Value and Supply & Demand are not scored: show where the reading sits
-  // between its red and green thresholds instead of a score out of 10.
-  if(opts.unscored){hd[8]='Position 0\u20131';hd[14]='Fcst position';}
-  const th=hd.concat(tl).map(x=>`<th>${x}</th>`).join('');
-  let tb=rows.map(r=>{
-    const f=r.fmt;
-    return `<tr>
-      <td class="nm">${r.name}</td>
-      <td class="src">${r.basis?('$m · '+r.basis+(r.state?' · '+r.state:'')):(r.month?('as at '+r.month):r.src)}${r.note?'<br><span style="opacity:.75">'+r.note+'</span>':''}</td>
-      <td class="src">${r.typ}</td>
-      <td>${fmtv(r.latest,f)}</td>
-      <td>${r.typ==='GAP'?fmtv(r.prior,f):'&mdash;'}</td>
-      <td>${r.delta!=null?(typeof r.delta==='number'?(f==='pct2'?(r.delta*100).toFixed(2)+'pp':(Math.abs(r.delta)<1&&f!=='int'?r.delta.toFixed(2):(r.delta>0?'+':'')+Number(r.delta).toFixed(1))):r.delta):'&mdash;'}</td>
-      <td class="thr">${fmtv(r.green,f)}</td>
-      <td class="thr">${fmtv(r.red,f)}</td>
-      <td class="nrm"><b>${r.s10!=null?r.s10.toFixed(1):r.norm.toFixed(2)}</b>${r.inv?`<br><span class="dirn">${r.inv}</span>`:''}</td>
-      <td>${sgn(r.sig)}</td>
-      <td>${opts.fcstWt&&r.wtf!=null?r.wt+' / '+r.wtf:r.wt}</td>
-      <td class="tr">${r.slope!=null?Number(r.slope).toFixed(3):'&mdash;'}</td>
-      <td class="tr">${r.mult!=null?r.mult:(r.horiz!=null?'h='+r.horiz:'&mdash;')}</td>
-      <td>${fmtv(r.fcst,f)}</td>
-      <td class="nrm"><b>${r.fs10!=null?r.fs10.toFixed(1):r.fnorm.toFixed(2)}</b></td>
-      <td>${sgn(r.fsig)}</td>
-      <td class="tr">${r.pct!=null?Math.round(r.pct*100)+'%':'&mdash;'}</td>
-      ${(r.trail||[]).map(x=>`<td class="tr">${fmtv(x,f)}</td>`).join('')}
-    </tr>`;}).join('');
-  if(opts.noTotal) return `<table class="gr"><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table>`;
-  const wsum=rows.reduce((a,r)=>a+r.wt,0);
-  const fsum=rows.reduce((a,r)=>a+(r.wtf!=null?r.wtf:r.wt),0);
-  const cur=2*rows.reduce((a,r)=>a+r.norm*r.wt,0)/wsum;
-  const fc =2*rows.reduce((a,r)=>a+r.fnorm*(r.wtf!=null?r.wtf:r.wt),0)/fsum;
-  tb+=`<tr class="tot"><td>Weighted score</td><td colspan="7"></td>
-    <td>${(2*rows.reduce((a,r)=>a+r.s10*r.wt,0)/wsum/2).toFixed(1)}</td><td>${sgn(cur>=AUDIT.green?'GREEN':cur>=AUDIT.orange?'ORANGE':'RED')}</td>
-    <td colspan="4"></td><td>${fc.toFixed(2)}</td><td>${sgn(fc>=AUDIT.green?'GREEN':fc>=AUDIT.orange?'ORANGE':'RED')}</td>
-    <td colspan="${1+(rows[0].trail||[]).length}"></td></tr>`;
-  return `<table class="gr"><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table>`;
-}
-const FORMULAS={
- 'Latest reading':'The most recent observation of each series. Job ads and business/consumer confidence are monthly; lending is quarterly; unemployment and underemployment use a 12-month rolling mean of the monthly rate.',
- 'Change':'Year-on-year for the growth indicators (latest \u00f7 same period a year earlier \u2212 1). Difference against the same period a year earlier for level indicators. Gap against the long-run average for price position.',
- 'Signal (absolute test)':'GREEN if the reading meets the green threshold, RED if it meets the red threshold, ORANGE between. This is the traffic light and is unchanged by the scoring below.',
- 'Forecast':'Damped trend (Gardner\u2013McKenzie). A least-squares slope over the last six readings, then slope \u00d7 \u03c6(1\u2212\u03c6\u02b0)/(1\u2212\u03c6) with \u03c6 = 0.8. Multipliers: 3.725 at h=12, 2.362 at h=4, 0.800 at h=1. Clamped to the series\u2019 historical range where one exists.',
- 'Score out of 10':'Set by the indicator\u2019s own signal band \u2014 green 7.0\u201310.0, orange 4.0\u20136.9, red 1.0\u20133.9 \u2014 then positioned inside that band by percentile among the regions sharing that signal. The score therefore always agrees with the light.',
- 'Direction':'Business confidence, unemployment and underemployment are lower-is-better, encoded in their thresholds. Business confidence is inverted for cycle reasons \u2014 see Method; the other two because lower is simply better. All remaining indicators are higher-is-better.',
- 'Pillar score':'The weighted mean of its indicator scores out of 10. Current weights are equal; forecast weights favour the leading measures.',
- 'Pillar rank':'Regions ordered by pillar score out of 10, 1 = highest.',
- 'Threshold score':'Kept alongside for the verdict only: each indicator normalised to 0\u20131 between its red and green thresholds, weighted, then \u00d7 2. Green \u2265 1.50, orange \u2265 0.70 of 2.00.'
-};
-function srcList(a){
-  const rows=(a.conf_rows||[]);
-  if(!rows.length)return '';
-  let dl='';
-  rows.forEach(r=>{
-    const k=AUDIT.indsrc[r.name]; if(!k)return;
-    const s=AUDIT.sources[k];
-    const link=s[1]?`<a href="${s[1]}" target="_blank" rel="noopener">${s[0]}</a>`:s[0];
-    let extra='';
-    if(r.name==='Business Confidence'&&a.conf_source) extra=` &mdash; ${a.conf_source}`;
-    else if(r.basis&&/^[SM][CP](\+[SM][CP])*$/.test(r.basis))
-      extra=` &mdash; ${r.state}, components reported: ${r.basis}`+(r.basis.length<11?' (remainder suppressed by the ABS; change measured like-for-like)':'');
-    else if(r.basis) extra=` &mdash; ${r.basis}${r.state?', '+r.state:''}`;
-    dl+=`<dt>${r.name}</dt><dd>${link}${extra}${r.month?` &middot; latest ${r.month}`:''}</dd>`;
-  });
-  return dl?`<div class="srcs"><h5>Sources</h5><dl>${dl}</dl></div>`:'';
-}
-function renderWork(region){
-  const a=AUDIT.regions[akey(region)]; if(!a)return;
-  const N=AUDIT.n;
-  document.getElementById('wkSdSub').innerHTML =
-   `Not scored. Each segment reads its demand score straight off the band &mdash; green &ge; 30, amber 10&ndash;29, red &lt; 10 &mdash; `
-   +`where 30 is rent growth matching CPI and 10 is flat rents. Houses read <b>${a.sd_h}</b>, units <b>${a.sd_u}</b>; `
-   +`the headline takes the worse, <b>${a.sd}</b> now and <b>${a.sd_fcst}</b> on forecast. `
-   +`Ranked ${a.sd_rank_h} of ${N} on houses and ${a.sd_rank_u} on units, by demand score.`;
-  document.getElementById('wkValSub').innerHTML =
-   `Not scored. The affordability runway band decides &mdash; green &ge; 65%, amber 40&ndash;64%, red &lt; 40% &mdash; `
-   +`and price position shifts it, 2.5 points of runway for every place the region sits away from its own long-run `
-   +`rank, capped at one whole band. Houses read <b>${a.value_h}</b>, units <b>${a.value_u}</b>; the headline takes `
-   +`the worse, <b>${a.value}</b> now and <b>${a.value_fcst}</b> on forecast. `
-   +`Ranked ${a.value_rank_h} of ${N} on houses and ${a.value_rank_u} on units.`;
-  document.getElementById('wkSd').innerHTML=grid(a.sd_rows,{noTotal:true,unscored:true});
-  document.getElementById('wkVal').innerHTML=grid(a.val_rows,{noTotal:true,unscored:true});
-  if(a.conf_partial){
-    const n=a.conf_rows.length;
-    document.getElementById('wkConfSub').innerHTML =
-      `<b>${n} of 7 indicators assembled.</b> A confidence verdict and score are withheld until the remaining `
-      +`${7-n} are in place \u2014 supply &amp; demand and value are unaffected. Source: ${a.conf_source}.`;
-    document.getElementById('wkConf').innerHTML=grid(a.conf_rows,{fcstWt:true,noTotal:true})+srcList(a);
-  } else if(a.conf_rows){
-    document.getElementById('wkConfSub').innerHTML =
-      `Six macro indicators. Current weights are equal; forecast weights favour the leading measures (shown as now / forecast). `
-      +`Score <b>${a.conf_10.toFixed(1)}</b>/10 &rarr; <b>${a.conf_fc10.toFixed(1)}</b>/10 &middot; verdict ${a.confidence} / ${a.conf_fcst} (threshold ${a.conf_score.toFixed(2)})`
-      +` &middot; Confidence is median days on market: houses ${a.dom_h}, units ${a.dom_u}, green at ${a.conf_cut} or under, giving ${a.confidence_h} and ${a.confidence_u}. The six indicators below are state and national series and cannot split house from unit, so they are kept as background only. Business confidence source: ${a.conf_source}.`;
-    document.getElementById('wkConf').innerHTML=grid(a.conf_rows,{fcstWt:true})+srcList(a);
-  } else {
-    document.getElementById('wkConfSub').innerHTML='Not yet assembled for this region.';
-    document.getElementById('wkConf').innerHTML=
-      '<p class="mth" style="color:var(--text-faint)">The six macro indicators are in place for Melbourne, Canberra, '
-      +'Darwin and Townsville. Supply &amp; demand and value are complete for all '+N+' regions.</p>';
-  }
-  document.getElementById('wkFml').innerHTML='<dl>'+Object.entries(FORMULAS)
-    .map(([k,v])=>`<dt>${k}</dt><dd>${v.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</dd>`).join('')+'</dl>';
-  document.getElementById('wkMth').innerHTML=`
-   <p><b>Structure.</b> Three <b>pillars</b> — supply &amp; demand, value and confidence — each built from <b>indicators</b>. Supply &amp; demand and value are measured per <b>segment</b> (house and unit); confidence draws on six macro indicators. A pillar carries a verdict, a score out of 10 and a rank; an indicator carries a signal and a score out of 10.</p>
-   <p><b>Normalisation.</b> Every component is converted to its position between its own red floor and green ceiling and
-   clamped to 0&ndash;1, so segments drawn from different distributions can be averaged. <code>0</code> means at or worse than
-   the red threshold, <code>1</code> at or better than green. The weighted average is scaled &times;2 and banded at
-   ${AUDIT.green.toFixed(2)} for green and ${AUDIT.orange.toFixed(2)} for orange.</p>
-   <p><b>Signals.</b> A signal is GREEN only at a norm of 1 and RED only at 0, so the traffic light still reports the
-   original threshold test while the norm supplies the gradation behind the verdict.</p>
-   <p><b>Forecasts.</b> Damped trend (Gardner&ndash;McKenzie). A least-squares slope is fitted over the last six readings, then
-   each period ahead contributes &phi;<sup>k</sup> of that slope with &phi; = ${AUDIT.phi}. A horizon of h therefore applies
-   &phi;(1&minus;&phi;<sup>h</sup>)/(1&minus;&phi;) &times; the slope &mdash; ${(0.8*(1-Math.pow(0.8,12))/0.2).toFixed(3)}&times; at h=12,
-   ${(0.8*(1-Math.pow(0.8,4))/0.2).toFixed(3)}&times; at h=4, ${(0.8*(1-Math.pow(0.8,1))/0.2).toFixed(3)}&times; at h=1.
-   The result is then clamped to the series' historical range where one is available.</p>
-   <p><b>Horizons.</b> One year for the growth indicators, whose thresholds are year-on-year, and for the annual series,
-   which cannot be projected to a shorter interval. One quarter for demand score and runway, which move monthly and carry
-   no clamp.</p>
-   <p><b>Trend cap.</b> Underutilisation alone carries a cap: a rise of more than 0.30pp forces its norm to zero,
-   regardless of level, so a low but sharply deteriorating rate cannot read green.</p>
-   <p><b>Red-indicator veto.</b> A confidence verdict cannot be green while any of its six indicators is red. 16 of the 36 regions are capped this way — job ads is red in 12 of them, unemployment in 6, business finance in 1. The veto applies to the current side only: a red reading today is a fact, whereas a projected red is a point estimate, and vetoing on a projection would over-weight it.</p>
-   <p><b>Cycle inversion.</b> Business confidence is inverted in <em>both</em> its light and its score, following the Property Clock: negative media sentiment sits at the bottom of the cycle, in the value phase, while FOMO conditions sit at the peak. Its thresholds are therefore green at or below −10 and red at or above 0 — weak sentiment reads as opportunity, strong sentiment as late cycle. Unemployment and underemployment are also lower-is-better, but for the ordinary reason. Every other indicator is higher-is-better.</p>
-   <p><b>Score follows the signal.</b> Each indicator is scored inside the band its own traffic light sets: green 7.0–10.0, orange 4.0–6.9, red 1.0–3.9. Position within the band comes from the indicator’s percentile among the regions sharing that signal, so the score discriminates without ever contradicting the light. Earlier versions scored purely by percentile across the 36 regions, which produced readings like a green light on 1.5/10 — a market that cleared an absolute threshold most of the field also clears.</p>
-   <p><b>Consumer confidence dropped.</b> The OECD consumer confidence index is a national series, identical for all 36 regions, so it could not differentiate between them: removing it left every rank unchanged (correlation 1.000) while slightly widening the spread of scores. It is excluded from the pillar.</p>
-   <p><b>Score out of 10 and rank.</b> The traffic light is an absolute test; the score is relative. Each component is
-   scored by percentile across the ${AUDIT.n}-region universe. The two can disagree, and the
-   disagreement is information.</p>
-   <p><b>As-at.</b> Demand score and runway are the June 2026 columns of DS-RW; rankings are the 2026 annual series;
-   confidence uses each indicator's own latest reading. The four wired tabs in the workbook carry a July latest in
-   AF/AG, so their sheet norms differ marginally from the June figures used here for comparability across all
-   ${AUDIT.n} regions.</p>`;
-}
-const tabD=document.getElementById('tab-dash'),tabW=document.getElementById('tab-work'),
-      panD=document.getElementById('pane-dash'),panW=document.getElementById('pane-work');
-function showTab(which){
-  const w=which==='work';
-  tabW.setAttribute('aria-selected',w);tabD.setAttribute('aria-selected',!w);
-  panW.hidden=!w;panD.hidden=w;
-  if(w)renderWork(current);
-}
-tabD.addEventListener('click',()=>showTab('dash'));
-tabW.addEventListener('click',()=>showTab('work'));
-const _render=render;
-render=function(r){_render(r);if(!panW.hidden)renderWork(r);};
-
 </script>
 </body>
 </html>
