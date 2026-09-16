@@ -192,7 +192,7 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
 .sl-item .mini .m{width:26px;height:26px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:600;color:var(--text);letter-spacing:-.01em;flex-shrink:0;font-variant-numeric:tabular-nums lining-nums}.sl-item .mini .m.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border);color:var(--text-faint)}.sl-item>span:first-child{padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-item .mini .m.g{background:var(--tint-g);box-shadow:inset 0 0 0 1.5px var(--green)}.sl-item .mini .m.o{background:var(--tint-o);box-shadow:inset 0 0 0 1.5px var(--orange)}.sl-item .mini .m.r{background:var(--tint-r);box-shadow:inset 0 0 0 1.5px var(--red)}
 .slist .sl-head .ct{margin-left:auto;font-size:11px;font-weight:700;color:var(--text-faint);font-variant-numeric:tabular-nums}
-@media(max-width:860px){.top-row{grid-template-columns:1fr}.top-row>.left-col,.top-row>.clockdial,.top-row>.summary{grid-column:1;grid-row:auto}}
+@media(max-width:860px){.top-row{grid-template-columns:1fr}}
 .card-title{text-align:center;font-size:24px;font-weight:800;padding:30px 20px 26px;letter-spacing:-.01em}
 .vt-head{display:grid;grid-template-columns:1.5fr 1fr 1fr;padding:16px 40px;
   border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface-2)}
@@ -260,18 +260,15 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
       opacity:.55;margin-left:8px;vertical-align:middle}
 .clk-off{color:var(--red,#c0392b);font-weight:600}
 #clockCard{margin-top:14px}
-.top-row{grid-template-rows:auto auto}
-.top-row>.left-col{grid-column:1;grid-row:1 / span 2}
-.top-row>.clockdial{grid-column:2;grid-row:1}
-.top-row>.summary{grid-column:2;grid-row:2}
-.clockdial{background:var(--surface);border:1px solid var(--border);border-radius:20px;
+.right-col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.clockdial{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:20px;
   box-shadow:var(--shadow);padding:20px 18px 16px}
 [data-theme="dark"] .clockdial{background:linear-gradient(160deg,#242E49,#1A2134)}
 .cd-head{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
   color:var(--text-faint);display:flex;justify-content:space-between;align-items:baseline;
   margin-bottom:10px}
 .cd-head span{color:var(--teal);font-size:10px;letter-spacing:.1em}
-.cd-svg{display:block;width:100%;height:auto}
+.cd-svg{display:block;width:100%;height:auto;flex:1 1 auto;min-height:0}
 .cd-read{display:flex;gap:16px;margin-top:4px}
 .cd-read>div{flex:1;text-align:center}
 .cd-read .k{font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
@@ -289,7 +286,20 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
 [data-theme="dark"] .clockdial .cd-foot{color:rgba(255,255,255,.45)}
 [data-theme="dark"] .clockdial .cd-foot{border-top-color:rgba(255,255,255,.10)}
 [data-theme="dark"] .clockdial .cd-foot b{color:rgba(255,255,255,.72)}
+.slist.momentum .sl-head{color:#4DB648}
+.slist.momentum .sl-head .dot{background:#4DB648}
+.slist.momentum .sl-item.active{background:rgba(77,182,72,.12);color:#3D9C39}
+.slist.buyvalue .sl-head{color:#33802F}
+.slist.buyvalue .sl-head .dot{background:#33802F}
+.slist.buyvalue .sl-item.active{background:rgba(51,128,47,.12);color:#33802F}
+.slist.correction .sl-head{color:#D93025}
+.slist.correction .sl-head .dot{background:#D93025}
+.slist.correction .sl-item.active{background:rgba(217,48,37,.10);color:#D93025}
+.slist.selling .sl-head{color:#F47C20}
+.slist.selling .sl-head .dot{background:#F47C20}
+.slist.selling .sl-item.active{background:rgba(244,124,32,.12);color:#D2691A}
 </style>
+
 
 
 </head>
@@ -335,6 +345,7 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
       <div class="fcst-note cur-note" id="confCurExpl"></div>
       <div class="fcst-note" id="confFcstExpl"></div>
     </div>
+    <div class="right-col">
     <div class="clockdial" id="clockDial">
       <div class="cd-head">Property Clock <span>Calculated</span></div>
       <svg class="cd-svg" viewBox="0 0 300 300" id="cdSvg" role="img"
@@ -347,26 +358,27 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
       <div class="sub">Rank of 36 within each pillar, for <b id="segNote">houses</b>. Confidence ranks on median days on market &mdash; hover for the days.</div>
       <div class="sseg" id="sseg" role="group" aria-label="Show houses or units"><button data-s="h" aria-pressed="true">Houses</button><button data-s="u">Units</button></div>
       <div class="ssort" id="ssort" role="group" aria-label="Sort regions by column"><button data-k="overall" data-label="Region" aria-pressed="true">Region</button><button data-k="value" data-label="Val">Val</button><button data-k="sd" data-label="S&amp;D">S&amp;D</button><button data-k="conf" data-label="Conf">Conf</button></div>
-      <div class="slist peak">
-        <div class="sl-head"><span class="dot"></span>Past its peak<span class="ct"></span></div>
-        <div id="peakList"></div>
+      <div class="slist momentum">
+        <div class="sl-head"><span class="dot"></span>Momentum<span class="ct"></span></div>
+        <div id="momentumList"></div>
       </div>
-      <div class="slist good">
-        <div class="sl-head"><span class="dot"></span>Best time to invest<span class="ct"></span></div>
-        <div id="bestList"></div>
+      <div class="slist buyvalue">
+        <div class="sl-head"><span class="dot"></span>Buy Value<span class="ct"></span></div>
+        <div id="buyValueList"></div>
       </div>
-      <div class="slist mid">
-        <div class="sl-head"><span class="dot"></span>Worth watching<span class="ct"></span></div>
-        <div id="midList"></div>
+      <div class="slist correction">
+        <div class="sl-head"><span class="dot"></span>Correction<span class="ct"></span></div>
+        <div id="correctionList"></div>
       </div>
-      <div class="slist watch">
-        <div class="sl-head"><span class="dot"></span>Not the best time<span class="ct"></span></div>
-        <div id="watchList"></div>
+      <div class="slist selling">
+        <div class="sl-head"><span class="dot"></span>Selling<span class="ct"></span></div>
+        <div id="sellingList"></div>
       </div>
       <div class="slist rank" id="rankSec" style="display:none">
         <div class="sl-head"><span class="dot"></span><span id="rankHead"></span></div>
         <div id="rankList"></div>
       </div>
+    </div>
     </div>
   </div>
   </div>
@@ -582,28 +594,23 @@ function buildSummary(){
             sd:segR(d,'sd'), value:segR(d,'value'), conf:segR(d,'conf')||99}[sortKey];};
   const item=(r,pos)=>`<div class="sl-item ${r===current?'active':''}" data-r="${r}">`+
     `<span>${pos?`<span class="pos">${pos}</span>`:''}${r}</span>${mini(DATA[r])}</div>`;
-  const cats=['peakList','bestList','midList','watchList'];
+  const cats=['momentumList','buyValueList','correctionList','sellingList'];
   const rankSec=document.getElementById('rankSec');
 
   if(sortKey==='overall'){
-    let peak=[],best=[],mid=[],watch=[];
+    // Buckets are the calculated clock phase for whichever segment is showing,
+    // so the summary can never disagree with the dial above it.
+    const byPhase={'Momentum':[],'Buy Value':[],'Correction':[],'Selling':[]};
     regions.forEach(r=>{const d=DATA[r];
-      const pair=[[segV(d,'sd'),segF(d,'sd')],[segV(d,'value'),segF(d,'value')]];
-      const o={r,rank:rankOf(r)};
-      if(segV(d,'sd')==='RED'||segV(d,'value')==='RED'){watch.push(o);return;}
-      const contrarian=(segV(d,'confidence')==='ORANGE'||segV(d,'confidence')==='RED')&&segF(d,'conf')==='GREEN';
-      const bothGreen=pair.every(([c,f])=>c==='GREEN'&&f==='GREEN');
-      const oneOrange=pair.filter(([c])=>c==='ORANGE').length===1&&pair.filter(([c])=>c==='GREEN').length===1;
-      if(bothGreen&&contrarian){best.push(o);return;}
-      if(oneOrange&&contrarian){mid.push(o);return;}
-      if(bothGreen){peak.push(o);return;}
-      mid.push(o);});
-    [peak,best,mid,watch].forEach(a=>a.sort((x,y)=>x.rank-y.rank));
+      const ph=d[seg==='h'?'clock_phase_h':'clock_phase_u'];
+      (byPhase[ph]||byPhase['Selling']).push({r,rank:rankOf(r)});});
+    Object.values(byPhase).forEach(a=>a.sort((x,y)=>x.rank-y.rank));
     const put=(id,arr)=>{document.getElementById(id).innerHTML=arr.map(o=>item(o.r)).join('');
       const sec=document.getElementById(id).closest('.slist');
       if(sec){ sec.style.display=arr.length?'':'none';
         const ct=sec.querySelector('.sl-head .ct'); if(ct) ct.textContent=arr.length; }};
-    put('peakList',peak);put('bestList',best);put('midList',mid);put('watchList',watch);
+    put('momentumList',byPhase['Momentum']);put('buyValueList',byPhase['Buy Value']);
+    put('correctionList',byPhase['Correction']);put('sellingList',byPhase['Selling']);
     rankSec.style.display='none';
   } else {
     cats.forEach(id=>{const sec=document.getElementById(id).closest('.slist');
@@ -813,4 +820,30 @@ const cdThemeWatch = new MutationObserver(()=>{
   if(t && t.textContent && DATA[t.textContent]) renderClockDial(t.textContent, DATA[t.textContent]);
 });
 cdThemeWatch.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+</script>
+
+<script>
+/* Hold the clock panel to the same height as the headline signals card next to
+   it. They live in different grid children so CSS cannot relate them; an
+   observer can, and it must keep watching because the signals card resizes
+   with the region and with the theme. Stands down when .top-row collapses to
+   one column, where the two are no longer side by side. */
+(function(){
+  const dial = document.getElementById('clockDial');
+  const card = document.querySelector('.left-col > .card');
+  const row  = document.querySelector('.top-row');
+  if(!dial || !card || !row) return;
+  let raf = 0;
+  const sync = () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(()=>{
+      const oneCol = getComputedStyle(row).gridTemplateColumns.split(/\s+/).length < 2;
+      dial.style.height = oneCol ? '' : Math.round(card.getBoundingClientRect().height)+'px';
+    });
+  };
+  new ResizeObserver(sync).observe(card);
+  new ResizeObserver(sync).observe(row);
+  window.addEventListener('resize', sync);
+  sync();
+})();
 </script>
