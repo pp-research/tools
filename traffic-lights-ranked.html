@@ -192,7 +192,7 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
 .sl-item .mini .m{width:26px;height:26px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:600;color:var(--text);letter-spacing:-.01em;flex-shrink:0;font-variant-numeric:tabular-nums lining-nums}.sl-item .mini .m.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border);color:var(--text-faint)}.sl-item>span:first-child{padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-item .mini .m.g{background:var(--tint-g);box-shadow:inset 0 0 0 1.5px var(--green)}.sl-item .mini .m.o{background:var(--tint-o);box-shadow:inset 0 0 0 1.5px var(--orange)}.sl-item .mini .m.r{background:var(--tint-r);box-shadow:inset 0 0 0 1.5px var(--red)}
 .slist .sl-head .ct{margin-left:auto;font-size:11px;font-weight:700;color:var(--text-faint);font-variant-numeric:tabular-nums}
-@media(max-width:860px){.top-row{grid-template-columns:1fr}}
+@media(max-width:860px){.top-row{grid-template-columns:1fr}.top-row>.left-col,.top-row>.clockdial,.top-row>.summary{grid-column:1;grid-row:auto}}
 .card-title{text-align:center;font-size:24px;font-weight:800;padding:30px 20px 26px;letter-spacing:-.01em}
 .vt-head{display:grid;grid-template-columns:1.5fr 1fr 1fr;padding:16px 40px;
   border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface-2)}
@@ -260,7 +260,37 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
       opacity:.55;margin-left:8px;vertical-align:middle}
 .clk-off{color:var(--red,#c0392b);font-weight:600}
 #clockCard{margin-top:14px}
+.top-row{grid-template-rows:auto auto}
+.top-row>.left-col{grid-column:1;grid-row:1 / span 2}
+.top-row>.clockdial{grid-column:2;grid-row:1}
+.top-row>.summary{grid-column:2;grid-row:2}
+.clockdial{background:var(--surface);border:1px solid var(--border);border-radius:20px;
+  box-shadow:var(--shadow);padding:20px 18px 16px}
+[data-theme="dark"] .clockdial{background:linear-gradient(160deg,#242E49,#1A2134)}
+.cd-head{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
+  color:var(--text-faint);display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:10px}
+.cd-head span{color:var(--teal);font-size:10px;letter-spacing:.1em}
+.cd-svg{display:block;width:100%;height:auto}
+.cd-read{display:flex;gap:16px;margin-top:4px}
+.cd-read>div{flex:1;text-align:center}
+.cd-read .k{font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
+  color:var(--text-faint)}
+.cd-read .v{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.2;
+  font-variant-numeric:tabular-nums;color:var(--text)}
+.cd-read .p{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.cd-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
+  font-size:11.5px;color:var(--text-faint);display:flex;justify-content:space-between;gap:8px}
+.cd-foot b{font-weight:700;color:var(--text-dim)}
+.cd-foot .off{color:var(--red)}
+[data-theme="dark"] .clockdial .cd-read .v{color:#fff}
+[data-theme="dark"] .clockdial .cd-head,
+[data-theme="dark"] .clockdial .cd-read .k,
+[data-theme="dark"] .clockdial .cd-foot{color:rgba(255,255,255,.45)}
+[data-theme="dark"] .clockdial .cd-foot{border-top-color:rgba(255,255,255,.10)}
+[data-theme="dark"] .clockdial .cd-foot b{color:rgba(255,255,255,.72)}
 </style>
+
 
 </head>
 <body>
@@ -292,11 +322,6 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
         <div class="vt-head"><span>PILLAR</span><span>HOUSE</span><span>UNIT</span></div>
         <div id="vtBody"></div>
       </div>
-      <div class="card" id="clockCard">
-        <div class="card-title">Property Clock <span class="ctag">calculated</span></div>
-        <div class="vt-head"><span></span><span>HOUSE</span><span>UNIT</span></div>
-        <div id="clockBody"></div>
-      </div>
       <div class="ind-head"><h2>Value Indicators</h2></div>
       <div class="ind-grid" id="valueInds"></div>
       <div class="fcst-note cur-note" id="valueCurExpl"></div>
@@ -309,6 +334,13 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
       <div class="ind-grid" id="indicators"></div>
       <div class="fcst-note cur-note" id="confCurExpl"></div>
       <div class="fcst-note" id="confFcstExpl"></div>
+    </div>
+    <div class="clockdial" id="clockDial">
+      <div class="cd-head">Property Clock <span>Calculated</span></div>
+      <svg class="cd-svg" viewBox="0 0 300 300" id="cdSvg" role="img"
+           aria-label="Calculated property clock position"></svg>
+      <div class="cd-read" id="cdRead"></div>
+      <div class="cd-foot" id="cdFoot"></div>
     </div>
     <div class="summary">
       <h3>Region Summary</h3>
@@ -409,34 +441,100 @@ function tile(i){return `<div class="ind"><div class="itop"><div class="idot ${i
   <div class="ihead">${i.head!=null?i.head:(i.right||i.latest||"")}</div></div>${i.dir?`<div class="irule ${/^Lower/.test(i.dir)?'lo':'hi'}"><b>${i.dir}</b><span>${i.note}</span></div>`:""}</div>`;}
 const indCard=tile, confCard=tile;
 
-// Calculated property clock. The hour comes from the Runway v Demand scatter
-// angle plus 3-year price growth and is baked in; this only lays it out.
-// The committee's own hour sits underneath, because the DISAGREEMENT is the
-// useful part -- a market whose data says 2:00 while the committee says 9:00
-// has either moved or been mis-filed.
-function renderClock(d){
-  const el=document.getElementById('clockBody');
-  if(!el) return;
-  if(d.clock_label_h==null){ el.innerHTML=''; return; }
-  const cell=(lc)=>{
-    const lab=d['clock_label_'+lc], ph=d['clock_phase_'+lc];
-    return `<div class="vt-cell"><span class="clk">${lab}</span>`
-         + `<span class="crank">${ph}</span></div>`;
-  };
-  const cttee=(lc)=>{
-    const c=d['conf_clock_'+lc], g=d['clock_gap_'+lc];
-    if(c==null) return '<div class="vt-cell"><span class="crank">&ndash;</span></div>';
-    const off=(g!=null&&g>=2);
-    return `<div class="vt-cell"><span class="crank${off?' clk-off':''}"`
-         + ` title="Investment committee${g!=null?` &middot; ${g.toFixed(1)}h from the calculated hour`:''}">`
-         + `${c}${off?' &#9888;':''}</span></div>`;
-  };
-  const work=(lc)=>`<div class="vt-cell"><span class="crank" title="Runway, demand score and 3-year price growth are the three inputs">`
-    + `${d['clock_rw_'+lc]}% &middot; ${d['clock_dm_'+lc]} &middot; ${d['clock_p36_'+lc]}%</span></div>`;
-  el.innerHTML =
-      `<div class="vt-row"><div class="rlabel">Calculated</div>${cell('h')}${cell('u')}</div>`
-    + `<div class="vt-row"><div class="rlabel">Committee</div>${cttee('h')}${cttee('u')}</div>`
-    + `<div class="vt-row"><div class="rlabel">Inputs</div>${work('h')}${work('u')}</div>`;
+
+
+/* ---- calculated property clock ------------------------------------------
+   Ring of four phases, ticks inside, phase names arched outside, region name
+   in the middle. Both the house and the unit phase light; the rest fade. */
+const CD_PHASE = {
+  'Buy Value':  {c:'#33802F', a:[4.5, 7.25], lab:'Value'},
+  'Momentum':   {c:'#4DB648', a:[7.25,10],   lab:'Momentum'},
+  'Selling':    {c:'#F47C20', a:[10,  13],   lab:'Selling Window'},
+  'Correction': {c:'#D93025', a:[1,   4.5],  lab:'Correction'},
+};
+const cdPt=(h,r,cx,cy)=>{const a=(h/12)*2*Math.PI-Math.PI/2;return [cx+r*Math.cos(a),cy+r*Math.sin(a)]};
+const cdF=n=>n.toFixed(1);
+const cdMid=p=>{let s=(p.a[1]-p.a[0]+12)%12; if(!s)s=12; return (p.a[0]+s/2)%12};
+function cdRing(h0,h1,rO,rI,cx,cy){
+  const [x0,y0]=cdPt(h0,rO,cx,cy),[x1,y1]=cdPt(h1,rO,cx,cy);
+  const [i0,j0]=cdPt(h1,rI,cx,cy),[i1,j1]=cdPt(h0,rI,cx,cy);
+  const big=((h1-h0+12)%12)>6?1:0;
+  return `M${cdF(x0)} ${cdF(y0)} A${rO} ${rO} 0 ${big} 1 ${cdF(x1)} ${cdF(y1)}`
+       + ` L${cdF(i0)} ${cdF(j0)} A${rI} ${rI} 0 ${big} 0 ${cdF(i1)} ${cdF(j1)} Z`;
+}
+/* a clockwise arc sets text upside down on the bottom half, so those are
+   drawn the other way round; 3 and 9 o'clock are the switchover */
+function cdArc(h0,h1,r,cx,cy,flip){
+  const big=((h1-h0+12)%12)>6?1:0;
+  if(!flip){ const [x0,y0]=cdPt(h0,r,cx,cy),[x1,y1]=cdPt(h1,r,cx,cy);
+    return `M${cdF(x0)} ${cdF(y0)} A${r} ${r} 0 ${big} 1 ${cdF(x1)} ${cdF(y1)}`; }
+  const [x0,y0]=cdPt(h1,r,cx,cy),[x1,y1]=cdPt(h0,r,cx,cy);
+  return `M${cdF(x0)} ${cdF(y0)} A${r} ${r} 0 ${big} 0 ${cdF(x1)} ${cdF(y1)}`;
+}
+/* the centre carries the region name, so it has to cope with Port Macquarie
+   as well as Perth: long names break at the space nearest the middle */
+function cdName(n,cx,cy,ink){
+  if(n.length<=10)
+    return `<text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="22"
+              font-weight="800" letter-spacing="-.4" fill="${ink}">${n}</text>`;
+  const sp=[...n].map((c,i)=>c===' '?i:-1).filter(i=>i>=0);
+  if(!sp.length) return `<text x="${cx}" y="${cy+7}" text-anchor="middle" font-size="15"
+                           font-weight="800" fill="${ink}">${n}</text>`;
+  const b=sp.reduce((a,i)=>Math.abs(i-n.length/2)<Math.abs(a-n.length/2)?i:a,sp[0]);
+  return `<text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="16" font-weight="800"
+            fill="${ink}">${n.slice(0,b)}</text>`
+       + `<text x="${cx}" y="${cy+17}" text-anchor="middle" font-size="16" font-weight="800"
+            fill="${ink}">${n.slice(b+1)}</text>`;
+}
+function renderClockDial(region,d){
+  const svg=document.getElementById('cdSvg'); if(!svg) return;
+  if(d.clock_label_h==null){ svg.innerHTML=''; return; }
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  const cx=150,cy=150,R=94,W=15,rL=R+W/2+10;
+  const lit=new Set([d.clock_phase_h,d.clock_phase_u]);
+  const ink=dark?'#fff':'#1F283F', dim=dark?'rgba(255,255,255,.45)':'#95A0B5';
+  let s=`<defs><filter id="cdGlow" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="5" result="b"/><feMerge>
+    <feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`
+    + Object.entries(CD_PHASE).map(([n,p],i)=>{const m=cdMid(p);
+        return `<path id="cdArc${i}" fill="none" d="${cdArc(p.a[0],p.a[1],rL,cx,cy,m>3&&m<9)}"/>`;
+      }).join('') + `</defs>`;
+  if(dark) s+=`<circle cx="${cx}" cy="${cy}" r="${R+W/2+34}" fill="rgba(255,255,255,.03)"/>`;
+  Object.entries(CD_PHASE).forEach(([n,p])=>{ const on=lit.has(n);
+    s+=`<path d="${cdRing(p.a[0]+0.05,p.a[1]-0.05,R+W/2,R-W/2,cx,cy)}" fill="${p.c}"
+          opacity="${dark?(on?1:.26):(on?1:.20)}" ${dark&&on?'filter="url(#cdGlow)"':''}/>`; });
+  for(let h=1;h<=12;h++){ const maj=h%3===0;
+    const [x0,y0]=cdPt(h,R-W/2-5,cx,cy),[x1,y1]=cdPt(h,R-W/2-(maj?11:8),cx,cy);
+    s+=`<line x1="${cdF(x0)}" y1="${cdF(y0)}" x2="${cdF(x1)}" y2="${cdF(y1)}"
+          stroke="${dark?`rgba(255,255,255,${maj?.5:.22})`:(maj?'#95A0B5':'#C6CDD9')}"
+          stroke-width="${maj?1.6:1}"/>`; }
+  Object.entries(CD_PHASE).forEach(([n,p],i)=>{ const on=lit.has(n);
+    s+=`<text font-size="8.5" font-weight="${on?800:700}" letter-spacing="1.3"
+          fill="${on?p.c:dim}" opacity="${on?1:.7}"><textPath href="#cdArc${i}"
+          startOffset="50%" text-anchor="middle">${p.lab.toUpperCase()}</textPath></text>`; });
+  Object.keys(DATA).forEach(k=>{const o=DATA[k];
+    ['clock_hour_h','clock_hour_u'].forEach(f=>{ if(o[f]==null) return;
+      const [x,y]=cdPt(o[f],R,cx,cy);
+      s+=`<circle cx="${cdF(x)}" cy="${cdF(y)}" r="1.9" fill="#fff" opacity="${dark?.28:.6}"/>`; }); });
+  const [hx,hy]=cdPt(d.clock_hour_h,R,cx,cy),[ux,uy]=cdPt(d.clock_hour_u,R,cx,cy);
+  s+=`<circle cx="${cdF(hx)}" cy="${cdF(hy)}" r="7.5" fill="#fff"
+        stroke="${dark?'none':'#1F283F'}" stroke-width="2.4" ${dark?'filter="url(#cdGlow)"':''}/>`;
+  s+=`<circle cx="${cdF(ux)}" cy="${cdF(uy)}" r="5.5" fill="none"
+        stroke="${dark?'#fff':'#1F283F'}" stroke-width="2.2"/>`;
+  s+=cdName(region,cx,cy,ink);
+  svg.innerHTML=s;
+
+  document.getElementById('cdRead').innerHTML =
+    `<div><div class="k">Houses</div><div class="v">${d.clock_label_h}</div>
+       <div class="p" style="color:${CD_PHASE[d.clock_phase_h].c}">${d.clock_phase_h}</div></div>
+     <div><div class="k">Units</div><div class="v">${d.clock_label_u}</div>
+       <div class="p" style="color:${CD_PHASE[d.clock_phase_u].c}">${d.clock_phase_u}</div></div>`;
+  const cell=(lc)=>{const c=d['conf_clock_'+lc],g=d['clock_gap_'+lc];
+    if(c==null) return '&ndash;';
+    return `<b class="${g!=null&&g>=2?'off':''}">${c}${g!=null&&g>=2?' &#9888;':''}</b>`;};
+  document.getElementById('cdFoot').innerHTML =
+    `<span>Committee ${cell('h')} houses &middot; ${cell('u')} units</span>`
+   +`<span title="Runway, demand score and 3-year price growth">${d.clock_rw_h}% &middot; ${d.clock_dm_h} &middot; ${d.clock_p36_h}%</span>`;
 }
 
 function render(region){
@@ -451,7 +549,7 @@ function render(region){
   document.getElementById('vtBody').innerHTML=rows.map(r=>`
     <div class="vt-row"><div class="rlabel">${r.label}</div>
       <div class="vt-cell">${pill(r.h)}${r.rh?`<span class="crank">#${r.rh} of ${r.of}</span>`:''}</div><div class="vt-cell">${pill(r.u)}${r.ru?`<span class="crank">#${r.ru} of ${r.of}</span>`:''}</div></div>`).join('');
-  renderClock(d);
+  renderClockDial(region,d);
   document.getElementById('sdInds').innerHTML=d.sd_inds.map(indCard).join('');
 
   document.getElementById('sdCurExpl').innerHTML='<span class="nlab">Current</span>'+(d.sd_cur_expl||'');
@@ -707,3 +805,12 @@ render=function(r){_render(r);if(!panW.hidden)renderWork(r);};
 </script>
 </body>
 </html>
+
+<script>
+// the dial picks its palette from the theme, so it must be redrawn on a flip
+const cdThemeWatch = new MutationObserver(()=>{
+  const t=document.getElementById('cardTitle');
+  if(t && t.textContent && DATA[t.textContent]) renderClockDial(t.textContent, DATA[t.textContent]);
+});
+cdThemeWatch.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+</script>
