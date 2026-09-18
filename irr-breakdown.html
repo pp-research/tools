@@ -122,15 +122,40 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .seg input:checked + label{background:var(--accent);color:#06222a}
 .seg input:focus-visible + label{outline:2px solid var(--accent-300);outline-offset:2px}
 
-/* ═══ DISCLOSURE ═══ */
-.disclosure{
-  display:flex;align-items:center;gap:var(--sp-2);width:100%;justify-content:flex-start;
-  background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);
-  color:var(--accent-300);font:700 14px/20px 'Montserrat',sans-serif;padding:12px 16px;
+/* ═══ MODAL ═══
+   Native <dialog> so the backdrop, focus trap and Escape-to-close come from
+   the browser. It is not a window.alert-style modal — it never blocks the
+   event loop, it is just an element. */
+.modal{
+  border:1px solid var(--border-strong);border-radius:var(--r-lg);padding:0;
+  background:var(--panel);color:var(--text);
+  width:min(640px,calc(100vw - 32px));max-height:86vh;overflow:hidden;
+  /* the global `* { margin:0 }` reset kills the UA's `margin:auto` on dialog,
+     which is what centres a modal — put it back */
+  margin:auto;
 }
-.disclosure:hover{border-color:var(--accent);background:var(--panel-2);color:var(--accent-300)}
-.disclosure .chev{display:inline-block;font-size:16px;line-height:1}
-.disclosure[aria-expanded="true"]{border-style:solid;border-color:var(--accent);color:var(--accent)}
+.modal::backdrop{background:rgba(8,12,20,.68)}
+.modal-inner{display:flex;flex-direction:column;max-height:86vh}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);
+  padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--border);flex:0 0 auto;
+}
+.modal-head h2{
+  margin:0;font-size:14px;line-height:20px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);
+}
+.modal-x{
+  background:transparent;border:1px solid transparent;color:var(--muted);
+  font-size:20px;line-height:1;padding:4px 10px;min-height:32px;border-radius:999px;
+}
+.modal-x:hover{color:var(--text);background:var(--panel-2)}
+.modal-body{padding:var(--sp-6);overflow:auto;flex:1 1 auto}
+.modal-foot{
+  display:flex;gap:var(--sp-2);flex-wrap:wrap;flex:0 0 auto;
+  padding:var(--sp-4) var(--sp-6);border-top:1px solid var(--border);background:var(--panel-2);
+}
+#dlgMsg:not(:empty){margin-top:var(--sp-4)}
+#dlgMsg .note:last-child{margin-bottom:0}
 
 /* ═══ FILTERS ═══ */
 .filters{display:grid;grid-template-columns:1fr;gap:var(--sp-3);margin-bottom:var(--sp-3)}
@@ -422,13 +447,46 @@ details .body strong{color:var(--text)}
       <!-- ── PROPERTIES ── -->
       <div class="panel" id="panel-props" role="tabpanel" aria-labelledby="tab-props">
 
-        <!-- adding sits on top, collapsed until wanted -->
-        <section class="card tight">
-          <button type="button" class="disclosure" id="btnAddToggle" aria-expanded="false" aria-controls="addPanel">
-            <span class="chev" aria-hidden="true">+</span> Add properties
-          </button>
+        <section class="card" aria-labelledby="props-h">
+          <div class="card-head">
+            <h2 id="props-h">Properties</h2>
+            <div class="btns" style="margin:0">
+              <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
+            </div>
+          </div>
 
-          <div id="addPanel" hidden style="margin-top:var(--sp-4)">
+          <!-- the import result lands here, outside the modal, so it survives
+               the modal closing itself — a skipped row is the only sign a
+               source row was malformed -->
+          <div id="parseMsg" role="status" aria-live="polite"></div>
+
+          <div class="filters">
+            <div>
+              <label for="propSearch" class="sr-only">Search properties</label>
+              <input type="search" id="propSearch" placeholder="Search name or address…" autocomplete="off">
+            </div>
+            <div>
+              <label for="propCat" class="sr-only">Filter by category</label>
+              <select id="propCat"><option value="">All categories</option></select>
+            </div>
+          </div>
+          <p class="count-line" id="propCount"></p>
+
+          <div id="propsBody"></div>
+        </section>
+      </div>
+
+      <!-- ══════════ ADD PROPERTIES — floating, so the list never moves ══════════ -->
+      <dialog class="modal" id="addDialog" aria-labelledby="add-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="add-h">Add properties</h2>
+            <button type="button" class="modal-x" id="btnAddClose" aria-label="Close">&times;</button>
+          </div>
+
+          <div class="modal-body">
             <h3 style="margin-top:0">Expected column order</h3>
             <div class="colmap">
               <div class="colmap-scroll">
@@ -455,43 +513,17 @@ details .body strong{color:var(--text)}
               </div>
             </div>
 
-            <div class="btns">
-              <button type="button" class="btn-primary" id="btnParse">Add from paste</button>
-              <button type="button" class="btn-ghost" id="btnUpload">Upload .xlsx, .xls or .csv</button>
-              <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
-            </div>
-            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
+            <div id="dlgMsg" role="status" aria-live="polite"></div>
           </div>
 
-          <!-- outside the collapsing panel, so the result and any skipped-row
-               warnings survive the panel closing itself after an import -->
-          <div id="parseMsg" role="status" aria-live="polite"></div>
-        </section>
-
-        <section class="card" aria-labelledby="props-h">
-          <div class="card-head">
-            <h2 id="props-h">Properties</h2>
-            <div class="btns" style="margin:0">
-              <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
-              <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
-            </div>
+          <div class="modal-foot">
+            <button type="button" class="btn-primary" id="btnParse">Add from paste</button>
+            <button type="button" class="btn-ghost" id="btnUpload">Upload .xlsx, .xls or .csv</button>
+            <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
           </div>
-
-          <div class="filters">
-            <div>
-              <label for="propSearch" class="sr-only">Search properties</label>
-              <input type="search" id="propSearch" placeholder="Search name or address…" autocomplete="off">
-            </div>
-            <div>
-              <label for="propCat" class="sr-only">Filter by category</label>
-              <select id="propCat"><option value="">All categories</option></select>
-            </div>
-          </div>
-          <p class="count-line" id="propCount"></p>
-
-          <div id="propsBody"></div>
-        </section>
-      </div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
+      </dialog>
     </div>
   </div>
 </div>
@@ -687,7 +719,7 @@ details .body strong{color:var(--text)}
     if (!all.length) {
       $('propCount').textContent = '';
       $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
-        '<p>Open <strong>Add properties</strong> below to paste rows or upload a spreadsheet, or work out a deal on the left and choose Save to properties.</p></div>';
+        '<p>Choose <strong>+ Add properties</strong> to paste rows or upload a spreadsheet, or work out a deal on the left and choose Save to properties.</p></div>';
       return;
     }
 
@@ -883,10 +915,14 @@ details .body strong{color:var(--text)}
       (skipped.length>6 ? '<li>…and '+(skipped.length-6)+' more</li>' : '')+'</ul>');
   }
 
+  /* The modal shows its own failures so it can stay open and be corrected in
+     place; a success closes it and reports into the page behind. */
+  function dlgSay(html){ $('dlgMsg').innerHTML = html; }
+
   /** Shared tail for paste and file import. */
   function ingest(parsed, source){
     if (!parsed.deals.length) {
-      $('parseMsg').innerHTML = msg('err','Could not read a property from '+source+'. Check the column order shown above.') + skipList(parsed.skipped);
+      dlgSay(msg('err','Could not read a property from '+source+'. Check the column order above.') + skipList(parsed.skipped));
       return;
     }
     var opts = readOpts(), cat = $('impCat').value.trim();
@@ -902,8 +938,8 @@ details .body strong{color:var(--text)}
         '</strong>; check them in the list below.')
       + skipList(parsed.skipped);
 
-    // the job is done, so fold the form away — the message above stays put
-    openAdd(false);
+    // done — close the modal and leave the report on the page behind it
+    closeAdd();
     $('pasteBox').value = '';
 
     var first = parsed.deals[0];
@@ -912,7 +948,7 @@ details .body strong{color:var(--text)}
 
   function doParse(){
     var text = $('pasteBox').value;
-    if (!text.trim()) { $('parseMsg').innerHTML = msg('warn','Nothing to read — paste some rows first.'); return; }
+    if (!text.trim()) { dlgSay(msg('warn','Nothing to read — paste some rows first.')); return; }
     ingest(window.IRRBreakdown.parseDeals(text), 'the paste');
   }
 
@@ -930,15 +966,15 @@ details .body strong{color:var(--text)}
 
   function handleFile(file){
     if (!file) return;
-    openAdd(true);
+    openAdd();
     var name = file.name || 'the file';
     var isCsv = /\.(csv|txt|tsv)$/i.test(name);
-    $('parseMsg').innerHTML = msg('ok','Reading '+esc(name)+'…');
+    dlgSay(msg('ok','Reading '+esc(name)+'…'));
 
     if (isCsv) {
       var fr = new FileReader();
       fr.onload = function(){ ingest(window.IRRBreakdown.parseDeals(String(fr.result)), esc(name)); };
-      fr.onerror = function(){ $('parseMsg').innerHTML = msg('err','Could not read '+esc(name)+'.'); };
+      fr.onerror = function(){ dlgSay(msg('err','Could not read '+esc(name)+'.')); };
       fr.readAsText(file);
       return;
     }
@@ -956,17 +992,17 @@ details .body strong{color:var(--text)}
             var p = window.IRRBreakdown.parseSheetRows(rows);
             if (!best || p.deals.length > best.parsed.deals.length) best = { sheet: sn, parsed: p };
           });
-          if (!best) { $('parseMsg').innerHTML = msg('err','That workbook has no readable sheets.'); return; }
+          if (!best) { dlgSay(msg('err','That workbook has no readable sheets.')); return; }
           var where = esc(name) + (wb.SheetNames.length > 1 ? ' (sheet “'+esc(best.sheet)+'”)' : '');
           ingest(best.parsed, where);
         } catch (e) {
-          $('parseMsg').innerHTML = msg('err','Could not read '+esc(name)+' — '+esc(e.message));
+          dlgSay(msg('err','Could not read '+esc(name)+' — '+esc(e.message)));
         }
       };
-      fr.onerror = function(){ $('parseMsg').innerHTML = msg('err','Could not read '+esc(name)+'.'); };
+      fr.onerror = function(){ dlgSay(msg('err','Could not read '+esc(name)+'.')); };
       fr.readAsArrayBuffer(file);
     }).catch(function(e){
-      $('parseMsg').innerHTML = msg('err', esc(e.message));
+      dlgSay(msg('err', esc(e.message)));
     });
   }
 
@@ -1049,11 +1085,11 @@ details .body strong{color:var(--text)}
   };
   var DEFAULT_TOGGLES = { tRate:'Normalised', tNg:'Off', tRent:'Growing' };
 
-  function openAdd(open){
-    $('btnAddToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
-    $('btnAddToggle').querySelector('.chev').textContent = open ? '–' : '+';
-    $('addPanel').hidden = !open;
+  function openAdd(){
+    var d = $('addDialog');
+    if (!d.open) { dlgSay(''); d.showModal(); }
   }
+  function closeAdd(){ var d = $('addDialog'); if (d.open) d.close(); }
 
   $('btnCalc').addEventListener('click', function(){ calc(); showTab('result'); });
   $('btnCsv').addEventListener('click', exportDetail);
@@ -1061,13 +1097,12 @@ details .body strong{color:var(--text)}
   $('btnUpload').addEventListener('click', function(){ $('fileInput').click(); });
   $('fileInput').addEventListener('change', function(){ handleFile(this.files[0]); this.value = ''; });
   $('btnClearPaste').addEventListener('click', function(){
-    $('pasteBox').value=''; $('parseMsg').innerHTML=''; $('pasteBox').focus();
+    $('pasteBox').value=''; dlgSay(''); $('pasteBox').focus();
   });
-  $('btnAddToggle').addEventListener('click', function(){
-    var open = $('btnAddToggle').getAttribute('aria-expanded') !== 'true';
-    openAdd(open);
-    if (open) $('pasteBox').focus();
-  });
+  $('btnAddOpen').addEventListener('click', function(){ openAdd(); $('pasteBox').focus(); });
+  $('btnAddClose').addEventListener('click', closeAdd);
+  // clicking the backdrop (i.e. the dialog element itself, outside .modal-inner)
+  $('addDialog').addEventListener('click', function(ev){ if (ev.target === $('addDialog')) closeAdd(); });
   $('btnReset').addEventListener('click', function(){
     Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
     Object.keys(DEFAULT_TOGGLES).forEach(function(k){ setRadio(k, DEFAULT_TOGGLES[k]); });
@@ -1131,9 +1166,14 @@ details .body strong{color:var(--text)}
     var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
     if (f) handleFile(f);
   });
-  // a file dropped anywhere else should not navigate the page away
-  ['dragover','drop'].forEach(function(t){
-    window.addEventListener(t, function(ev){ if (!dz.contains(ev.target)) ev.preventDefault(); });
+  // the dropzone lives inside the modal, so a file dropped on the page at large
+  // opens the modal and imports rather than navigating the browser to the file
+  window.addEventListener('dragover', function(ev){ if (!dz.contains(ev.target)) ev.preventDefault(); });
+  window.addEventListener('drop', function(ev){
+    if (dz.contains(ev.target)) return;
+    ev.preventDefault();
+    var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if (f) handleFile(f);
   });
 
   // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
@@ -1150,7 +1190,8 @@ details .body strong{color:var(--text)}
   renderProps();
   calc();
   showTab('props');
-  openAdd(loadProps().length === 0);   // first run has nothing to list, so start open
+  // deliberately no auto-open: a modal appearing unprompted on load is jarring,
+  // and the empty state already points at the button
 
   window.runSelfTest = function(){
     var t = window.IRRBreakdown.selfTest();
