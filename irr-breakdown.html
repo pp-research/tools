@@ -138,6 +138,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .filters input,.filters select{min-height:40px;padding:8px 12px;font-size:14px}
 .filters select{padding-right:34px}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
+#parseMsg:not(:empty){margin-top:var(--sp-4)}
+#parseMsg .note:last-child{margin-bottom:0}
 
 /* ═══ BUTTONS ═══ */
 .btns{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-4)}
@@ -376,9 +378,9 @@ details .body strong{color:var(--text)}
     <div>
       <div id="messages" role="status" aria-live="polite"></div>
 
-      <div class="tabs" role="tablist" aria-label="Results and properties">
-        <button type="button" role="tab" id="tab-result" aria-controls="panel-result" aria-selected="false" tabindex="-1">Result</button>
+      <div class="tabs" role="tablist" aria-label="Properties and result">
         <button type="button" role="tab" id="tab-props" aria-controls="panel-props" aria-selected="true">Properties <span class="badge" id="badgeProps">0</span></button>
+        <button type="button" role="tab" id="tab-result" aria-controls="panel-result" aria-selected="false" tabindex="-1">Result</button>
       </div>
 
       <!-- ── RESULT ── -->
@@ -420,32 +422,7 @@ details .body strong{color:var(--text)}
       <!-- ── PROPERTIES ── -->
       <div class="panel" id="panel-props" role="tabpanel" aria-labelledby="tab-props">
 
-        <!-- the list comes first -->
-        <section class="card" aria-labelledby="props-h">
-          <div class="card-head">
-            <h2 id="props-h">Properties</h2>
-            <div class="btns" style="margin:0">
-              <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
-              <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
-            </div>
-          </div>
-
-          <div class="filters">
-            <div>
-              <label for="propSearch" class="sr-only">Search properties</label>
-              <input type="search" id="propSearch" placeholder="Search name or address…" autocomplete="off">
-            </div>
-            <div>
-              <label for="propCat" class="sr-only">Filter by category</label>
-              <select id="propCat"><option value="">All categories</option></select>
-            </div>
-          </div>
-          <p class="count-line" id="propCount"></p>
-
-          <div id="propsBody"></div>
-        </section>
-
-        <!-- adding is collapsed until wanted -->
+        <!-- adding sits on top, collapsed until wanted -->
         <section class="card tight">
           <button type="button" class="disclosure" id="btnAddToggle" aria-expanded="false" aria-controls="addPanel">
             <span class="chev" aria-hidden="true">+</span> Add properties
@@ -484,8 +461,35 @@ details .body strong{color:var(--text)}
               <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
             </div>
             <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
-            <div id="parseMsg" role="status" aria-live="polite" style="margin-top:var(--sp-4)"></div>
           </div>
+
+          <!-- outside the collapsing panel, so the result and any skipped-row
+               warnings survive the panel closing itself after an import -->
+          <div id="parseMsg" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="card" aria-labelledby="props-h">
+          <div class="card-head">
+            <h2 id="props-h">Properties</h2>
+            <div class="btns" style="margin:0">
+              <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
+            </div>
+          </div>
+
+          <div class="filters">
+            <div>
+              <label for="propSearch" class="sr-only">Search properties</label>
+              <input type="search" id="propSearch" placeholder="Search name or address…" autocomplete="off">
+            </div>
+            <div>
+              <label for="propCat" class="sr-only">Filter by category</label>
+              <select id="propCat"><option value="">All categories</option></select>
+            </div>
+          </div>
+          <p class="count-line" id="propCount"></p>
+
+          <div id="propsBody"></div>
         </section>
       </div>
     </div>
@@ -582,7 +586,8 @@ details .body strong{color:var(--text)}
   }
 
   /* ══════════ TABS ══════════ */
-  var TABS = ['result','props'];
+  /* order matches the strip left to right, so the arrow keys track it */
+  var TABS = ['props','result'];
   function showTab(name){
     TABS.forEach(function(t){
       var btn = $('tab-'+t), panel = $('panel-'+t), on = (t === name);
@@ -894,8 +899,12 @@ details .body strong{color:var(--text)}
     $('parseMsg').innerHTML = msg('ok','Read '+parsed.deals.length+' propert'+(parsed.deals.length===1?'y':'ies')+
         ' from '+source+' — '+bits.join(', ')+(cat ? ', filed under <strong>'+esc(cat)+'</strong>' : '')+
         '. Dates read as <strong>'+(parsed.dayFirst?'day/month/year':'month/day/year')+
-        '</strong>; check them in the list above.')
+        '</strong>; check them in the list below.')
       + skipList(parsed.skipped);
+
+    // the job is done, so fold the form away — the message above stays put
+    openAdd(false);
+    $('pasteBox').value = '';
 
     var first = parsed.deals[0];
     loadIntoForm(first.name, first, cat);
