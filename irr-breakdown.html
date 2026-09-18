@@ -47,8 +47,7 @@ header img{height:40px;width:auto;display:block}
 .cols{display:grid;grid-template-columns:1fr;gap:var(--sp-4)}
 /* min-width:0 stops the wide breakdown table forcing the grid column open
    (grid items default to min-width:auto) and scrolling the whole page.
-   Each panel is a flex column so a hidden card (the batch table) drops out
-   of the gap entirely instead of leaving a phantom space. */
+   Each panel is a flex column so a hidden card drops out of the gap. */
 .cols > *{min-width:0;display:flex;flex-direction:column;gap:var(--sp-4)}
 #messages:empty{display:none}
 #messages .note:last-child{margin-bottom:0}
@@ -63,7 +62,7 @@ input,select,textarea{
   border-radius:var(--r-md);padding:10px 12px;font:600 15px/22px 'Montserrat',sans-serif;
   font-variant-numeric:tabular-nums lining-nums; min-height:44px;
 }
-textarea{font:500 13px/19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;min-height:88px;white-space:pre;overflow-x:auto}
+textarea{font:500 13px/19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;min-height:96px;white-space:pre;overflow-x:auto}
 input:hover,select:hover,textarea:hover{border-color:rgba(255,255,255,.3)}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px solid var(--accent-300);outline-offset:1px}
 input[aria-invalid="true"]{border-color:var(--red)}
@@ -74,6 +73,15 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 .suffix span{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--faint);pointer-events:none}
 .hint{font-size:12px;line-height:17px;color:var(--faint);margin-top:var(--sp-2)}
 .hint code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* drop target for a dragged spreadsheet */
+.dropzone{position:relative;border-radius:var(--r-md)}
+.dropzone.over textarea{border-color:var(--accent);background:rgba(0,160,180,.10)}
+.dropzone.over::after{
+  content:'Drop to import';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  border:2px dashed var(--accent);border-radius:var(--r-md);background:rgba(31,40,63,.82);
+  font-size:13px;font-weight:700;color:var(--accent-300);pointer-events:none;
+}
 
 /* ═══ BUTTONS ═══ */
 .btns{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-4)}
@@ -90,9 +98,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .btn-sm{padding:6px 13px;min-height:32px;font-size:12px}
 .btn-danger{background:transparent;color:#ffb3c1;border-color:rgba(231,35,71,.45)}
 .btn-danger:hover{background:rgba(231,35,71,.14);border-color:var(--red)}
-.chips{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-4)}
-.chip{background:var(--panel-2);border:1px solid var(--border-strong);color:var(--text);border-radius:999px;padding:7px 14px;font:600 12px/16px 'Montserrat',sans-serif;min-height:34px;cursor:pointer}
-.chip:hover{border-color:var(--accent);color:var(--accent-300)}
 
 /* ═══ TABS ═══ */
 .tabs{display:flex;gap:var(--sp-1);background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:var(--sp-1)}
@@ -120,15 +125,15 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .kpi .k-label{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.28;font-weight:700;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;overflow-wrap:anywhere}
 .kpi .k-note{font-size:12px;line-height:16px;color:var(--faint);margin-top:2px}
-.res-name{font-size:15px;line-height:22px;font-weight:700;margin-bottom:var(--sp-4);overflow-wrap:anywhere}
-.res-name:empty{display:none}
 .kpi.lead{border-color:var(--accent);background:linear-gradient(180deg,rgba(0,160,180,.14),rgba(0,160,180,.04))}
 .kpi.lead .k-value{color:var(--accent-300)}
 .pos{color:var(--green)} .neg{color:var(--red)}
+.res-name{font-size:15px;line-height:22px;font-weight:700;margin-bottom:var(--sp-4);overflow-wrap:anywhere}
+.res-name:empty{display:none}
 
 /* ═══ TABLES ═══ */
 .tbl-scroll{overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:var(--r-md)}
-.tbl-scroll.short{max-height:340px}
+.tbl-scroll.short{max-height:420px}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;line-height:18px}
 th,td{padding:9px 12px;text-align:left;white-space:nowrap}
 thead th{
@@ -144,7 +149,7 @@ tbody tr.is-sale{background:rgba(0,160,180,.16);font-weight:700}
 tbody tr.is-sale:hover{background:rgba(0,160,180,.22)}
 tbody tr.fy-end td{border-bottom:1px solid rgba(255,255,255,.2)}
 td.name{white-space:normal;min-width:150px;font-weight:600}
-/* price over its parsed date — keeps the date visible for checking the paste
+/* price over its parsed date — keeps the date visible for checking an import
    without spending two columns on it, so IRR stays on screen in the panel. */
 td.pd{text-align:right;white-space:nowrap}
 td.pd b{display:block;font-weight:600;font-variant-numeric:tabular-nums lining-nums}
@@ -204,28 +209,14 @@ details .body strong{color:var(--text)}
 
   <div class="cols">
 
-  <!-- ══════════ LEFT: INPUTS ══════════ -->
-  <div>
-
-  <section class="card" aria-labelledby="paste-h">
-    <h2 id="paste-h">Paste from the sheet</h2>
-    <label for="pasteBox">Copy one or more rows out of the workbook and paste them here</label>
-    <textarea id="pasteBox" rows="4" spellcheck="false"
-      placeholder="8 Macklin Street&#9;621000&#9;42565&#9;625000&#9;43461&#10;30 Verdun Street&#9;480000&#9;42563&#9;560000&#9;43686"></textarea>
-    <p class="hint">Reads the workbook's column order — <code>property</code>, <code>purchase price</code>, <code>purchase date</code>, <code>sold price</code>, <code>sold date</code>. Extra trailing columns are ignored, the row-number column is skipped, and dates work as Excel serials, <code>22/10/2016</code> or <code>22 Oct 2016</code>. Paste several rows to compute them all at once.</p>
-    <div class="btns">
-      <button type="button" class="btn-primary" id="btnParse">Compute from paste</button>
-      <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
-    </div>
-    <div id="parseMsg" role="status" aria-live="polite" style="margin-top:var(--sp-4)"></div>
-  </section>
-
+    <!-- ══════════ LEFT: THE DEAL ══════════ -->
+    <div>
       <section class="card" aria-labelledby="deal-h">
         <h2 id="deal-h">Deal</h2>
 
         <div class="field">
           <label for="pName">Property name or address</label>
-          <input id="pName" type="text" value="" autocomplete="off" placeholder="Filled in from the paste">
+          <input id="pName" type="text" value="" autocomplete="off" placeholder="Filled in from an import">
         </div>
         <div class="field">
           <label for="pPrice">Purchase price (AUD)</label>
@@ -287,101 +278,104 @@ details .body strong{color:var(--text)}
 
         <div class="btns">
           <button type="button" class="btn-primary" id="btnCalc">Calculate IRR</button>
-          <button type="button" class="btn-ghost" id="btnSave">Save property</button>
+          <button type="button" class="btn-ghost" id="btnSave">Save to properties</button>
           <button type="button" class="btn-ghost" id="btnCsv">Export CSV</button>
           <button type="button" class="btn-ghost" id="btnReset">Reset</button>
         </div>
       </section>
     </div>
 
-    <!-- ══════════ RIGHT: RESULTS ══════════ -->
+    <!-- ══════════ RIGHT: RESULT / PROPERTIES ══════════ -->
     <div>
       <div id="messages" role="status" aria-live="polite"></div>
 
-      <div class="tabs" role="tablist" aria-label="Results">
-        <button type="button" role="tab" id="tab-result" aria-controls="panel-result" aria-selected="true">Result</button>
-        <button type="button" role="tab" id="tab-pasted" aria-controls="panel-pasted" aria-selected="false" tabindex="-1">Pasted <span class="badge" id="badgePasted">0</span></button>
-        <button type="button" role="tab" id="tab-saved" aria-controls="panel-saved" aria-selected="false" tabindex="-1">Saved <span class="badge" id="badgeSaved">0</span></button>
+      <div class="tabs" role="tablist" aria-label="Results and properties">
+        <button type="button" role="tab" id="tab-result" aria-controls="panel-result" aria-selected="false" tabindex="-1">Result</button>
+        <button type="button" role="tab" id="tab-props" aria-controls="panel-props" aria-selected="true">Properties <span class="badge" id="badgeProps">0</span></button>
       </div>
 
-      <div class="panel" id="panel-result" role="tabpanel" aria-labelledby="tab-result">
-      <section class="card" aria-labelledby="res-h">
-        <h2 id="res-h">Result</h2>
-        <div id="resultBody">
-          <div class="empty">
-            <h3>Nothing calculated yet</h3>
-            <p>Paste rows from the sheet above, or enter the four deal terms on the left, to build the monthly breakdown.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="card" id="breakdownCard" hidden aria-labelledby="bd-h">
-        <h2 id="bd-h">Monthly breakdown</h2>
-        <div class="tbl-scroll">
-          <table id="bdTable">
-            <caption class="sr-only">Month-by-month cashflow across the hold period</caption>
-            <thead><tr>
-              <th scope="col">Month</th>
-              <th scope="col" class="num">Cash rate</th>
-              <th scope="col" class="num">Loan</th>
-              <th scope="col" class="num">Interest</th>
-              <th scope="col" class="num">Running</th>
-              <th scope="col" class="num">Rent</th>
-              <th scope="col" class="num">NG refund</th>
-              <th scope="col" class="num">Holding CF</th>
-              <th scope="col" class="num">Net CF</th>
-              <th scope="col" class="num">Cum. finance</th>
-              <th scope="col" class="num">Cum. cashflow</th>
-              <th scope="col" class="num">Accum loss (FY)</th>
-              <th scope="col" class="num">Property value</th>
-            </tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <details>
-          <summary>How this is calculated</summary>
-          <div class="body">
-            <p>Each row is one calendar month, from the 1st of the purchase month to the 1st of the sale month. The IRR is <code>XIRR</code> over the <strong>Net CF</strong> column against those dates (actual/365, the Excel convention).</p>
-            <ul>
-              <li><strong>Interest</strong> = loan × (cash rate + margin + buffer) ÷ 12. Interest-only — no principal is amortised.</li>
-              <li><strong>Property value</strong> compounds geometrically from purchase price to sold price across the hold period, and snaps to the sold price on the final row.</li>
-              <li><strong>Running costs</strong> and <strong>rent</strong> are struck off that month's property value (rent uses the purchase/sold midpoint instead when the rent basis is Flat).</li>
-              <li><strong>Net CF</strong> = holding cashflow, plus the deposit in month 1, plus <em>(sold price − loan + selling costs)</em> in the final month.</li>
-              <li><strong>Negative gearing</strong>, when on, refunds the accumulated FY loss × marginal tax rate each June and at sale. The FY accumulator resets in July.</li>
-              <li><strong>Hold period</strong> uses Excel's <code>YEARFRAC</code> basis 0 (US 30/360).</li>
-            </ul>
-            <p><strong>Two quirks carried over from the workbook, deliberately:</strong> the sale is dated to the <em>1st</em> of the sale month rather than settlement day; and the first row sits before the purchase date yet still accrues a little growth (Excel's <code>YEARFRAC</code> is unsigned). Both shift the IRR slightly. They are reproduced so this tool ties exactly to the sheet — flag them if you want them changed.</p>
-          </div>
-        </details>
-      </section>
-      </div>
-
-      <!-- ══════════ PASTED ══════════ -->
-      <div class="panel" id="panel-pasted" role="tabpanel" aria-labelledby="tab-pasted" hidden>
-        <section class="card" id="batchCard" aria-labelledby="batch-h">
-          <div class="card-head">
-            <h2 id="batch-h">Pasted properties</h2>
-            <div class="btns" style="margin:0">
-              <button type="button" class="btn-ghost btn-sm" id="btnSaveAll">Save all</button>
-              <button type="button" class="btn-ghost btn-sm" id="btnBatchCsv">Export CSV</button>
+      <!-- ── RESULT ── -->
+      <div class="panel" id="panel-result" role="tabpanel" aria-labelledby="tab-result" hidden>
+        <section class="card" aria-labelledby="res-h">
+          <h2 id="res-h">Result</h2>
+          <div id="resultBody">
+            <div class="empty">
+              <h3>Nothing calculated yet</h3>
+              <p>Open a property from the Properties tab, or type the four deal terms on the left.</p>
             </div>
           </div>
-          <div id="batchBody"></div>
+        </section>
+
+        <section class="card" id="breakdownCard" hidden aria-labelledby="bd-h">
+          <h2 id="bd-h">Monthly breakdown</h2>
+          <div class="tbl-scroll">
+            <table id="bdTable">
+              <caption class="sr-only">Month-by-month cashflow across the hold period</caption>
+              <thead><tr>
+                <th scope="col">Month</th>
+                <th scope="col" class="num">Cash rate</th>
+                <th scope="col" class="num">Loan</th>
+                <th scope="col" class="num">Interest</th>
+                <th scope="col" class="num">Running</th>
+                <th scope="col" class="num">Rent</th>
+                <th scope="col" class="num">NG refund</th>
+                <th scope="col" class="num">Holding CF</th>
+                <th scope="col" class="num">Net CF</th>
+                <th scope="col" class="num">Cum. finance</th>
+                <th scope="col" class="num">Cum. cashflow</th>
+                <th scope="col" class="num">Accum loss (FY)</th>
+                <th scope="col" class="num">Property value</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <details>
+            <summary>How this is calculated</summary>
+            <div class="body">
+              <p>Each row is one calendar month, from the 1st of the purchase month to the 1st of the sale month. The IRR is <code>XIRR</code> over the <strong>Net CF</strong> column against those dates (actual/365, the Excel convention).</p>
+              <ul>
+                <li><strong>Interest</strong> = loan × (cash rate + margin + buffer) ÷ 12. Interest-only — no principal is amortised.</li>
+                <li><strong>Property value</strong> compounds geometrically from purchase price to sold price across the hold period, and snaps to the sold price on the final row.</li>
+                <li><strong>Running costs</strong> and <strong>rent</strong> are struck off that month's property value (rent uses the purchase/sold midpoint instead when the rent basis is Flat).</li>
+                <li><strong>Net CF</strong> = holding cashflow, plus the deposit in month 1, plus <em>(sold price − loan + selling costs)</em> in the final month.</li>
+                <li><strong>Negative gearing</strong>, when on, refunds the accumulated FY loss × marginal tax rate each June and at sale. The FY accumulator resets in July.</li>
+                <li><strong>Hold period</strong> uses Excel's <code>YEARFRAC</code> basis 0 (US 30/360).</li>
+              </ul>
+              <p><strong>Two quirks carried over from the workbook, deliberately:</strong> the sale is dated to the <em>1st</em> of the sale month rather than settlement day; and the first row sits before the purchase date yet still accrues a little growth (Excel's <code>YEARFRAC</code> is unsigned). Both shift the IRR slightly. They are reproduced so this tool ties exactly to the sheet — flag them if you want them changed.</p>
+            </div>
+          </details>
         </section>
       </div>
 
-      <!-- ══════════ SAVED ══════════ -->
-      <div class="panel" id="panel-saved" role="tabpanel" aria-labelledby="tab-saved" hidden>
-        <section class="card" aria-labelledby="saved-h">
+      <!-- ── PROPERTIES ── -->
+      <div class="panel" id="panel-props" role="tabpanel" aria-labelledby="tab-props">
+        <section class="card" aria-labelledby="imp-h">
+          <h2 id="imp-h">Add properties</h2>
+          <label for="pasteBox">Paste rows from the sheet, or drop a file on the box</label>
+          <div class="dropzone" id="dropzone">
+            <textarea id="pasteBox" rows="4" spellcheck="false"
+              placeholder="8 Macklin Street&#9;621000&#9;42565&#9;625000&#9;43461&#10;30 Verdun Street&#9;480000&#9;42563&#9;560000&#9;43686"></textarea>
+          </div>
+          <p class="hint">Reads the workbook's column order — <code>property</code>, <code>purchase price</code>, <code>purchase date</code>, <code>sold price</code>, <code>sold date</code>. Extra trailing columns are ignored, the row-number column is skipped, and dates work as Excel serials, <code>22/10/2016</code> or <code>22 Oct 2016</code>.</p>
+          <div class="btns">
+            <button type="button" class="btn-primary" id="btnParse">Add from paste</button>
+            <button type="button" class="btn-ghost" id="btnUpload">Upload .xlsx, .xls or .csv</button>
+            <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
+          </div>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
+          <div id="parseMsg" role="status" aria-live="polite" style="margin-top:var(--sp-4)"></div>
+        </section>
+
+        <section class="card" aria-labelledby="props-h">
           <div class="card-head">
-            <h2 id="saved-h">Saved properties</h2>
+            <h2 id="props-h">Properties</h2>
             <div class="btns" style="margin:0">
-              <button type="button" class="btn-ghost btn-sm" id="btnSavedCsv">Export CSV</button>
-              <button type="button" class="btn-ghost btn-sm" id="btnSavedClear">Clear all</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
             </div>
           </div>
-          <div id="savedBody"></div>
+          <div id="propsBody"></div>
         </section>
       </div>
     </div>
@@ -393,11 +387,10 @@ details .body strong{color:var(--text)}
 (function(){
   'use strict';
   var $ = function(id){ return document.getElementById(id); };
-  var last = null;      // last single computed result
-  var batch = [];       // [{name, deal, res}]
-  var STORE = 'pp-irr-saved-v1';
-
+  var last = null;                    // last computed result
+  var STORE = 'pp-irr-saved-v1';      // kept from the earlier version so existing saves survive
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
   /* ── formatting ── */
   function aud(n, dp){
@@ -416,6 +409,8 @@ details .body strong{color:var(--text)}
   function iso(d){ return d.toISOString().slice(0,10); }
   function esc(s){ return String(s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function pdCell(price, date){ return '<td class="pd"><b>'+aud(price)+'</b><span>'+dLabel(date)+'</span></td>'; }
+  function autoName(s){ return mLabel(s.purchaseDate)+' → '+mLabel(s.soldDate); }
 
   function msg(kind, text){
     var icons = {
@@ -447,8 +442,7 @@ details .body strong{color:var(--text)}
     set('aYield', o.rentalYield*100); set('aNorm', o.normalisedRate*100); set('aTax', o.marginalTaxRate*100);
     set('aComm', o.sellingCommission*100); set('aSpend', o.sellingMarketSpend);
     set('aMargin', o.bankMargin*100); set('aApra', o.apraBuffer*100);
-    set('tRate', o.cashRateBasis); set('tNg', o.negativeGearing);
-    set('tRent', o.rentBasis);
+    set('tRate', o.cashRateBasis); set('tNg', o.negativeGearing); set('tRent', o.rentBasis);
   }
   function readDeal(){
     return {
@@ -457,7 +451,96 @@ details .body strong{color:var(--text)}
     };
   }
 
-  /* ══════════ RENDER ══════════ */
+  /* ══════════ TABS ══════════ */
+  var TABS = ['result','props'];
+  function showTab(name){
+    TABS.forEach(function(t){
+      var btn = $('tab-'+t), panel = $('panel-'+t), on = (t === name);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      btn.tabIndex = on ? 0 : -1;
+      panel.hidden = !on;
+    });
+  }
+  function currentTab(){
+    for (var i=0;i<TABS.length;i++) if ($('tab-'+TABS[i]).getAttribute('aria-selected')==='true') return TABS[i];
+    return 'props';
+  }
+
+  /* ══════════ PROPERTIES STORE (localStorage — this browser only) ══════════ */
+  function loadProps(){
+    try { var v = JSON.parse(localStorage.getItem(STORE) || '[]'); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function putProps(list){
+    try { localStorage.setItem(STORE, JSON.stringify(list)); return true; }
+    catch (e) {
+      $('messages').innerHTML = msg('err','Could not save — this browser is blocking local storage (private window, or site data turned off).');
+      return false;
+    }
+  }
+  function entryFrom(name, deal, opts){
+    return {
+      id: 'p' + Date.now() + Math.random().toString(36).slice(2,7),
+      name: name || 'Untitled property',
+      purchasePrice: deal.purchasePrice,
+      purchaseDate: iso(deal.purchaseDate instanceof Date ? deal.purchaseDate : new Date(deal.purchaseDate)),
+      soldPrice: deal.soldPrice,
+      soldDate: iso(deal.soldDate instanceof Date ? deal.soldDate : new Date(deal.soldDate)),
+      opts: opts, savedAt: new Date().toISOString()
+    };
+  }
+  /** Adds or updates; returns {added, updated}. Same name + dates replaces. */
+  function addEntries(entries){
+    var list = loadProps(), added = 0, updated = 0;
+    entries.forEach(function(e){
+      var dup = -1;
+      for (var i=0;i<list.length;i++){
+        if (list[i].name === e.name && list[i].purchaseDate === e.purchaseDate && list[i].soldDate === e.soldDate) { dup = i; break; }
+      }
+      if (dup >= 0) { e.id = list[dup].id; list[dup] = e; updated++; } else { list.push(e); added++; }
+    });
+    if (!putProps(list)) return null;
+    renderProps();
+    return { added: added, updated: updated };
+  }
+
+  function renderProps(){
+    var list = loadProps();
+    $('badgeProps').textContent = list.length;
+
+    if (!list.length) {
+      $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
+        '<p>Paste rows from the sheet above, upload a spreadsheet, or work out a deal on the left and choose Save to properties.</p></div>';
+      return;
+    }
+
+    var rows = list.map(function(e){
+      var irr = '—', net = '—', hold = '—';
+      try {
+        var r = window.IRRBreakdown.computeBreakdown(e, e.opts);
+        irr = r.summary.irr === null ? '—' : pct(r.summary.irr);
+        net = signed(r.summary.netProfit);
+        hold = r.summary.holdYears.toFixed(2);
+      } catch (err) {}
+      return '<tr>'+
+        '<td class="name">'+esc(e.name)+'</td>'+
+        pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
+        '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
+        '<td class="num"><strong>'+irr+'</strong></td>'+
+        '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-open="'+e.id+'">Open</button>'+
+          '<button type="button" class="btn-danger btn-sm" data-del="'+e.id+'">Delete</button></td>'+
+      '</tr>';
+    }).join('');
+
+    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
+      '<th scope="col">Property</th><th scope="col" class="num">Purchased</th>'+
+      '<th scope="col" class="num">Sold</th><th scope="col" class="num">Hold</th>'+
+      '<th scope="col" class="num">Net profit</th><th scope="col" class="num">IRR</th>'+
+      '<th scope="col"><span class="sr-only">Actions</span></th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  /* ══════════ RENDER THE RESULT ══════════ */
   function render(res, name){
     var s = res.summary;
     $('messages').innerHTML = res.warnings.map(function(w){ return msg('warn', w); }).join('');
@@ -502,7 +585,7 @@ details .body strong{color:var(--text)}
         '</tbody></table>'+
       '</div>';
 
-    var out = res.rows.map(function(r,i){
+    $('bdTable').querySelector('tbody').innerHTML = res.rows.map(function(r,i){
       var isLast = (i === res.rows.length-1);
       var cls = isLast ? ' class="is-sale"' : (r.month===6 ? ' class="fy-end"' : '');
       return '<tr'+cls+'>'+
@@ -513,28 +596,21 @@ details .body strong{color:var(--text)}
         '<td class="num">'+signed(r.monthlyCF)+'</td><td class="num">'+signed(r.netCF)+'</td>'+
         '<td class="num">'+aud(r.cumFinance)+'</td><td class="num">'+signed(r.cumCashflow)+'</td>'+
         '<td class="num">'+aud(r.accumLoss)+'</td><td class="num">'+aud(r.propValue)+'</td></tr>';
-    });
-    $('bdTable').querySelector('tbody').innerHTML = out.join('');
+    }).join('');
     $('breakdownCard').hidden = false;
   }
   function row2(k,v){ return '<tr><td>'+k+'</td><td>'+v+'</td></tr>'; }
-  /** price with its parsed date underneath — one column instead of two */
-  function pdCell(price, date){ return '<td class="pd"><b>'+aud(price)+'</b><span>'+dLabel(date)+'</span></td>'; }
-  /** a deal typed in by hand has no name, so label it by its hold window */
-  function autoName(s){ return mLabel(s.purchaseDate)+' → '+mLabel(s.soldDate); }
 
-  /* ══════════ CALC ══════════ */
   function relabel(){
     if (!last) return;
     var h = $('resultBody').querySelector('.res-name');
     if (h) h.textContent = $('pName').value.trim() || autoName(last.summary);
   }
-
   function showEmpty(){
     last = null;
     $('messages').innerHTML = '';
     $('resultBody').innerHTML = '<div class="empty"><h3>Nothing calculated yet</h3>'+
-      '<p>Paste rows from the sheet on the left, or type the four deal terms in, to build the monthly breakdown.</p></div>';
+      '<p>Open a property from the Properties tab, or type the four deal terms on the left.</p></div>';
     $('breakdownCard').hidden = true;
   }
 
@@ -558,45 +634,6 @@ details .body strong{color:var(--text)}
     }
   }
 
-  /* ══════════ PASTE ══════════ */
-  function doParse(){
-    var text = $('pasteBox').value;
-    if (!text.trim()) { $('parseMsg').innerHTML = msg('warn','Nothing to read — paste some rows first.'); return; }
-
-    var p = window.IRRBreakdown.parseDeals(text);
-    var notes = '';
-
-    if (!p.deals.length) {
-      notes += msg('err','Could not read a property from that. Each row needs a purchase price, purchase date, sold price and sold date, in the sheet’s column order.');
-      $('parseMsg').innerHTML = notes + skipList(p.skipped);
-      return;
-    }
-
-    batch = [];
-    var failed = [];
-    p.deals.forEach(function(d){
-      try { batch.push({ name:d.name, deal:d, res: window.IRRBreakdown.computeBreakdown(d, readOpts()) }); }
-      catch (e) { failed.push({ line:d.name, text:d.name, why:e.message }); }
-    });
-
-    notes += msg('ok','Read '+p.deals.length+' propert'+(p.deals.length===1?'y':'ies')+
-      ', dates as <strong>'+(p.dayFirst?'day/month/year':'month/day/year')+'</strong>. Check the parsed dates below before trusting the numbers.');
-    notes += skipList(p.skipped.concat(failed));
-    $('parseMsg').innerHTML = notes;
-
-    renderBatch();
-    loadIntoForm(batch[0].name, batch[0].deal);
-    // one property goes straight to its detail; several land on the list
-    showTab(batch.length === 1 ? 'result' : 'pasted');
-  }
-
-  function skipList(skipped){
-    if (!skipped.length) return '';
-    return msg('warn','Skipped '+skipped.length+' row'+(skipped.length===1?'':'s')+':<ul>'+
-      skipped.slice(0,6).map(function(s){ return '<li><code>'+esc(String(s.text).slice(0,60))+'</code> — '+esc(s.why)+'</li>'; }).join('')+
-      (skipped.length>6 ? '<li>…and '+(skipped.length-6)+' more</li>' : '')+'</ul>');
-  }
-
   function loadIntoForm(name, d){
     $('pName').value = name || '';
     $('pPrice').value = d.purchasePrice;
@@ -606,120 +643,97 @@ details .body strong{color:var(--text)}
     calc();
   }
 
-  /* ══════════ TABS ══════════ */
-  var TABS = ['result','pasted','saved'];
-  function showTab(name){
-    TABS.forEach(function(t){
-      var btn = $('tab-'+t), panel = $('panel-'+t), on = (t === name);
-      btn.setAttribute('aria-selected', on ? 'true' : 'false');
-      btn.tabIndex = on ? 0 : -1;
-      panel.hidden = !on;
+  /* ══════════ IMPORT ══════════ */
+  function skipList(skipped){
+    if (!skipped.length) return '';
+    return msg('warn','Skipped '+skipped.length+' row'+(skipped.length===1?'':'s')+':<ul>'+
+      skipped.slice(0,6).map(function(s){ return '<li><code>'+esc(String(s.text).slice(0,60))+'</code> — '+esc(s.why)+'</li>'; }).join('')+
+      (skipped.length>6 ? '<li>…and '+(skipped.length-6)+' more</li>' : '')+'</ul>');
+  }
+
+  /** Shared tail for paste and file import. */
+  function ingest(parsed, source){
+    if (!parsed.deals.length) {
+      $('parseMsg').innerHTML = msg('err','Could not read a property from '+source+'. Each row needs a purchase price, purchase date, sold price and sold date, in the sheet’s column order.') + skipList(parsed.skipped);
+      return;
+    }
+    var opts = readOpts();
+    var res = addEntries(parsed.deals.map(function(d){ return entryFrom(d.name, d, opts); }));
+    if (!res) return;
+
+    var bits = [];
+    if (res.added) bits.push('added '+res.added);
+    if (res.updated) bits.push('updated '+res.updated+' already on the list');
+    $('parseMsg').innerHTML = msg('ok','Read '+parsed.deals.length+' propert'+(parsed.deals.length===1?'y':'ies')+
+        ' from '+source+' — '+bits.join(', ')+'. Dates read as <strong>'+
+        (parsed.dayFirst?'day/month/year':'month/day/year')+'</strong>; check them in the table below.')
+      + skipList(parsed.skipped);
+
+    // open the first one so there is something to look at
+    var first = parsed.deals[0];
+    loadIntoForm(first.name, first);
+  }
+
+  function doParse(){
+    var text = $('pasteBox').value;
+    if (!text.trim()) { $('parseMsg').innerHTML = msg('warn','Nothing to read — paste some rows first.'); return; }
+    ingest(window.IRRBreakdown.parseDeals(text), 'the paste');
+  }
+
+  /** SheetJS is ~900KB, so it is only fetched when a spreadsheet is actually opened. */
+  function loadXLSX(){
+    if (window.XLSX) return Promise.resolve();
+    return new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = XLSX_CDN;
+      s.onload = function(){ resolve(); };
+      s.onerror = function(){ reject(new Error('Could not load the spreadsheet reader (needs internet access). A CSV file or a paste works offline.')); };
+      document.head.appendChild(s);
     });
   }
-  function currentTab(){
-    for (var i=0;i<TABS.length;i++) if ($('tab-'+TABS[i]).getAttribute('aria-selected')==='true') return TABS[i];
-    return 'result';
-  }
-  function setBadges(){
-    $('badgePasted').textContent = batch.length;
-    $('badgeSaved').textContent = loadSaved().length;
-  }
 
-  function renderBatch(){
-    if (!batch.length) {
-      $('batchBody').innerHTML = '<div class="empty"><h3>Nothing pasted yet</h3>'+
-        '<p>Paste rows from the sheet on the left and each property is computed here.</p></div>';
-      setBadges();
+  function handleFile(file){
+    if (!file) return;
+    var name = file.name || 'the file';
+    var isCsv = /\.(csv|txt|tsv)$/i.test(name);
+    $('parseMsg').innerHTML = msg('ok','Reading '+esc(name)+'…');
+
+    if (isCsv) {
+      var fr = new FileReader();
+      fr.onload = function(){ ingest(window.IRRBreakdown.parseDeals(String(fr.result)), esc(name)); };
+      fr.onerror = function(){ $('parseMsg').innerHTML = msg('err','Could not read '+esc(name)+'.'); };
+      fr.readAsText(file);
       return;
     }
-    var rows = batch.map(function(b,i){
-      var s = b.res.summary;
-      return '<tr>'+
-        '<td class="name">'+esc(b.name)+'</td>'+
-        pdCell(s.purchasePrice, s.purchaseDate)+ pdCell(s.soldPrice, s.soldDate)+
-        '<td class="num">'+s.holdYears.toFixed(2)+'</td>'+
-        '<td class="num">'+signed(s.netProfit)+'</td>'+
-        '<td class="num"><strong>'+(s.irr===null?'—':pct(s.irr))+'</strong></td>'+
-        '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-open="'+i+'">Open</button>'+
-          '<button type="button" class="btn-ghost btn-sm" data-savebatch="'+i+'">Save</button></td>'+
-      '</tr>';
-    }).join('');
 
-    $('batchBody').innerHTML = '<div class="tbl-scroll short"><table id="batchTable"><thead><tr>'+
-      '<th scope="col">Property</th><th scope="col" class="num">Purchased</th>'+
-      '<th scope="col" class="num">Sold</th><th scope="col" class="num">Hold</th>'+
-      '<th scope="col" class="num">Net profit</th><th scope="col" class="num">IRR</th>'+
-      '<th scope="col"><span class="sr-only">Actions</span></th>'+
-      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
-    setBadges();
+    loadXLSX().then(function(){
+      var fr = new FileReader();
+      fr.onload = function(){
+        try {
+          var wb = window.XLSX.read(new Uint8Array(fr.result), {type:'array'});
+          // Use whichever sheet yields the most properties — the IRR workbook
+          // has six, and only one of them holds the deal list.
+          var best = null;
+          wb.SheetNames.forEach(function(sn){
+            var rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, raw:true, blankrows:false});
+            var p = window.IRRBreakdown.parseSheetRows(rows);
+            if (!best || p.deals.length > best.parsed.deals.length) best = { sheet: sn, parsed: p };
+          });
+          if (!best) { $('parseMsg').innerHTML = msg('err','That workbook has no readable sheets.'); return; }
+          var where = esc(name) + (wb.SheetNames.length > 1 ? ' (sheet “'+esc(best.sheet)+'”)' : '');
+          ingest(best.parsed, where);
+        } catch (e) {
+          $('parseMsg').innerHTML = msg('err','Could not read '+esc(name)+' — '+esc(e.message));
+        }
+      };
+      fr.onerror = function(){ $('parseMsg').innerHTML = msg('err','Could not read '+esc(name)+'.'); };
+      fr.readAsArrayBuffer(file);
+    }).catch(function(e){
+      $('parseMsg').innerHTML = msg('err', esc(e.message));
+    });
   }
 
-  /* ══════════ SAVED PROPERTIES (localStorage, this browser only) ══════════ */
-  function loadSaved(){
-    try { var v = JSON.parse(localStorage.getItem(STORE) || '[]'); return Array.isArray(v) ? v : []; }
-    catch (e) { return []; }
-  }
-  function putSaved(list){
-    try { localStorage.setItem(STORE, JSON.stringify(list)); return true; }
-    catch (e) {
-      $('messages').innerHTML = msg('err','Could not save — this browser is blocking local storage (private window, or site data turned off).');
-      return false;
-    }
-  }
-  function saveEntry(name, deal, opts){
-    var list = loadSaved();
-    var entry = {
-      id: 'p' + Date.now() + Math.random().toString(36).slice(2,7),
-      name: name || 'Untitled property',
-      purchasePrice: deal.purchasePrice,
-      purchaseDate: iso(deal.purchaseDate instanceof Date ? deal.purchaseDate : new Date(deal.purchaseDate)),
-      soldPrice: deal.soldPrice,
-      soldDate: iso(deal.soldDate instanceof Date ? deal.soldDate : new Date(deal.soldDate)),
-      opts: opts, savedAt: new Date().toISOString()
-    };
-    // same property + same dates replaces rather than duplicates
-    var dup = list.findIndex(function(x){
-      return x.name === entry.name && x.purchaseDate === entry.purchaseDate && x.soldDate === entry.soldDate; });
-    if (dup >= 0) list[dup] = entry; else list.push(entry);
-    if (putSaved(list)) renderSaved();
-    return dup >= 0;
-  }
-
-  function renderSaved(){
-    var list = loadSaved();
-    setBadges();
-    if (!list.length) {
-      $('savedBody').innerHTML = '<div class="empty"><h3>No saved properties yet</h3>'+
-        '<p>Choose Save property to keep a deal here. Saved properties stay in this browser only — they are never uploaded.</p></div>';
-      return;
-    }
-    var rows = list.map(function(e, i){
-      var irr = '—', net = '—', hold = '—';
-      try {
-        var r = window.IRRBreakdown.computeBreakdown(e, e.opts);
-        irr = r.summary.irr === null ? '—' : pct(r.summary.irr);
-        net = signed(r.summary.netProfit);
-        hold = r.summary.holdYears.toFixed(2);
-      } catch (err) { irr = '—'; }
-      return '<tr>'+
-        '<td class="name">'+esc(e.name)+'</td>'+
-        pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
-        '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
-        '<td class="num"><strong>'+irr+'</strong></td>'+
-        '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-load="'+e.id+'">Load</button>'+
-          '<button type="button" class="btn-danger btn-sm" data-del="'+e.id+'">Delete</button></td>'+
-      '</tr>';
-    }).join('');
-
-    $('savedBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
-      '<th scope="col">Property</th><th scope="col" class="num">Purchased</th>'+
-      '<th scope="col" class="num">Sold</th><th scope="col" class="num">Hold</th>'+
-      '<th scope="col" class="num">Net profit</th><th scope="col" class="num">IRR</th>'+
-      '<th scope="col"><span class="sr-only">Actions</span></th>'+
-      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
-  }
-
-  /* ══════════ CSV ══════════ */
+  /* ══════════ CSV OUT ══════════ */
   function toCsvText(L){
     return L.map(function(row){
       return row.map(function(c){
@@ -769,16 +783,21 @@ details .body strong{color:var(--text)}
     download(toCsvText(L), 'irr-calculator-'+iso(s.purchaseDate)+'-to-'+iso(s.soldDate)+'.csv');
   }
 
-  function summaryCsv(items, filename){
-    if (!items.length) { $('messages').innerHTML = msg('warn','Nothing to export yet.'); return; }
+  function exportProps(){
+    var list = loadProps();
+    if (!list.length) { $('messages').innerHTML = msg('warn','No properties to export yet.'); return; }
     var L = [['Property','Purchase price','Purchase date','Sold price','Sold date',
               'Hold period (yrs)','Gross profit','Net profit','IRR']];
-    items.forEach(function(it){
-      var s = it.res.summary;
-      L.push([it.name, s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
-              s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]);
+    list.forEach(function(e){
+      try {
+        var s = window.IRRBreakdown.computeBreakdown(e, e.opts).summary;
+        L.push([e.name, s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
+                s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]);
+      } catch (err) {
+        L.push([e.name, e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate, '', '', '', '']);
+      }
     });
-    download(toCsvText(L), filename);
+    download(toCsvText(L), 'irr-calculator-properties.csv');
   }
 
   /* ══════════ WIRING ══════════ */
@@ -789,11 +808,13 @@ details .body strong{color:var(--text)}
     aComm:1.8, aSpend:20000, aMargin:1.75, aApra:0.5
   };
 
-  $('btnCalc').addEventListener('click', calc);
+  $('btnCalc').addEventListener('click', function(){ calc(); showTab('result'); });
   $('btnCsv').addEventListener('click', exportDetail);
   $('btnParse').addEventListener('click', doParse);
+  $('btnUpload').addEventListener('click', function(){ $('fileInput').click(); });
+  $('fileInput').addEventListener('change', function(){ handleFile(this.files[0]); this.value = ''; });
   $('btnClearPaste').addEventListener('click', function(){
-    $('pasteBox').value=''; $('parseMsg').innerHTML=''; batch=[]; renderBatch(); $('pasteBox').focus();
+    $('pasteBox').value=''; $('parseMsg').innerHTML=''; $('pasteBox').focus();
   });
   $('btnReset').addEventListener('click', function(){
     Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
@@ -801,29 +822,18 @@ details .body strong{color:var(--text)}
   });
   $('btnSave').addEventListener('click', function(){
     if (!last) { $('messages').innerHTML = msg('warn','Calculate a result before saving it.'); return; }
-    var replaced = saveEntry($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts());
-    $('messages').innerHTML = msg('ok', replaced ? 'Updated the saved copy of this property.' : 'Saved. It stays in this browser only.');
+    var r = addEntries([entryFrom($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts())]);
+    if (r) $('messages').innerHTML = msg('ok', r.updated ? 'Updated this property on the list.' : 'Saved to properties — this browser only.');
   });
-  $('btnSaveAll').addEventListener('click', function(){
-    batch.forEach(function(b){ saveEntry(b.name, b.deal, readOpts()); });
-    $('parseMsg').innerHTML = msg('ok','Saved '+batch.length+' propert'+(batch.length===1?'y':'ies')+' to this browser.');
-  });
-  $('btnBatchCsv').addEventListener('click', function(){ summaryCsv(batch, 'irr-calculator-pasted.csv'); });
-  $('btnSavedCsv').addEventListener('click', function(){
-    var items = loadSaved().map(function(e){
-      try { return { name:e.name, res: window.IRRBreakdown.computeBreakdown(e, e.opts) }; }
-      catch (err) { return null; }
-    }).filter(Boolean);
-    summaryCsv(items, 'irr-calculator-saved.csv');
-  });
-  $('btnSavedClear').addEventListener('click', function(){
-    var n = loadSaved().length;
+  $('btnPropsCsv').addEventListener('click', exportProps);
+  $('btnPropsClear').addEventListener('click', function(){
+    var n = loadProps().length;
     if (!n) return;
     // Deliberately not a native confirm() — a modal dialog blocks the page.
-    var btn = $('btnSavedClear');
+    var btn = $('btnPropsClear');
     if (btn.dataset.armed === '1') {
-      putSaved([]); renderSaved(); btn.textContent = 'Clear all'; btn.dataset.armed='0';
-      $('messages').innerHTML = msg('ok','Cleared '+n+' saved propert'+(n===1?'y':'ies')+'.');
+      putProps([]); renderProps(); btn.textContent = 'Clear all'; btn.dataset.armed='0';
+      $('messages').innerHTML = msg('ok','Cleared '+n+' propert'+(n===1?'y':'ies')+'.');
     } else {
       btn.textContent = 'Click again to clear '+n; btn.dataset.armed='1';
       setTimeout(function(){ btn.textContent='Clear all'; btn.dataset.armed='0'; }, 4000);
@@ -834,36 +844,42 @@ details .body strong{color:var(--text)}
   document.addEventListener('click', function(ev){
     var b = ev.target.closest ? ev.target.closest('button') : null;
     if (!b) return;
-    if (b.dataset.open !== undefined && b.dataset.open !== '') {
-      var it = batch[+b.dataset.open];
-      if (it) { loadIntoForm(it.name, it.deal); showTab('result'); }
-    }
-    if (b.dataset.savebatch !== undefined && b.dataset.savebatch !== '') {
-      var it2 = batch[+b.dataset.savebatch];
-      if (it2) { saveEntry(it2.name, it2.deal, readOpts()); b.textContent = 'Saved'; }
-    }
-    if (b.dataset.load) {
-      var e = loadSaved().filter(function(x){ return x.id === b.dataset.load; })[0];
+    if (b.dataset.open) {
+      var e = loadProps().filter(function(x){ return x.id === b.dataset.open; })[0];
       if (e) { writeOpts(e.opts); loadIntoForm(e.name, e); showTab('result'); }
     }
     if (b.dataset.del) {
-      putSaved(loadSaved().filter(function(x){ return x.id !== b.dataset.del; }));
-      renderSaved();
+      putProps(loadProps().filter(function(x){ return x.id !== b.dataset.del; }));
+      renderProps();
     }
   });
 
   document.querySelectorAll('input,select').forEach(function(el){
-      // renaming the property only relabels the result — no need to recompute
+    // renaming the property only relabels the result — no need to recompute
     el.addEventListener('change', function(){ if (el.id === 'pName') relabel(); else calc(); });
     el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); calc(); } });
   });
-  // paste straight into the box and go
   $('pasteBox').addEventListener('paste', function(){ setTimeout(doParse, 0); });
 
-  // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
-  TABS.forEach(function(t){
-    $('tab-'+t).addEventListener('click', function(){ showTab(t); });
+  // drag a spreadsheet onto the paste box
+  var dz = $('dropzone');
+  ['dragenter','dragover'].forEach(function(t){
+    dz.addEventListener(t, function(ev){ ev.preventDefault(); dz.classList.add('over'); });
   });
+  ['dragleave','drop'].forEach(function(t){
+    dz.addEventListener(t, function(ev){ ev.preventDefault(); dz.classList.remove('over'); });
+  });
+  dz.addEventListener('drop', function(ev){
+    var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  // a file dropped anywhere else should not navigate the page away
+  ['dragover','drop'].forEach(function(t){
+    window.addEventListener(t, function(ev){ if (!dz.contains(ev.target)) ev.preventDefault(); });
+  });
+
+  // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
+  TABS.forEach(function(t){ $('tab-'+t).addEventListener('click', function(){ showTab(t); }); });
   $('tab-result').parentNode.addEventListener('keydown', function(ev){
     var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
     if (ev.key === 'ArrowRight') to = TABS[(i+1)%n];
@@ -873,9 +889,9 @@ details .body strong{color:var(--text)}
     if (to) { ev.preventDefault(); showTab(to); $('tab-'+to).focus(); }
   });
 
-  renderSaved();
-  renderBatch();
+  renderProps();
   calc();
+  showTab('props');   // start where the work begins
 
   window.runSelfTest = function(){
     var t = window.IRRBreakdown.selfTest();

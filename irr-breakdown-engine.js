@@ -365,74 +365,135 @@
   }
 
   /**
-   * Parse pasted sheet rows into deals.
-   * @param {string} text
-   * @returns {{deals:Array, skipped:Array, dayFirst:boolean}}
+   * Decide d/m vs m/d once for a whole import: any token with a component
+   * above 12 settles it; otherwise assume day-first (Australian sheet).
    */
-  function parseDeals(text) {
-    var lines = String(text || '').split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
-
-    /* Decide d/m vs m/d once for the whole paste: any token with a component
-       above 12 settles it; otherwise assume day-first (Australian sheet). */
-    var dayFirst = true, votesDay = 0, votesMonth = 0;
+  function detectDayFirst(text) {
+    var votesDay = 0, votesMonth = 0;
     String(text || '').replace(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g, function (_, a, b) {
       if (+a > 12 && +b <= 12) votesDay++;
       else if (+b > 12 && +a <= 12) votesMonth++;
       return _;
     });
-    if (votesMonth > votesDay) dayFirst = false;
+    return votesMonth <= votesDay;
+  }
 
-    var deals = [], skipped = [];
+  /**
+   * Core: one row of raw cell values → a deal. Cells may be strings (a paste)
+   * or native numbers/Dates (a spreadsheet read), so each is classified before
+   * position is applied.
+   */
+  function rowToDeal(cells, dayFirst, label) {
+    var joined = cells.join(' ');
+    if (/purchase\s*price/i.test(joined) && /sold/i.test(joined)) return { header: true };
 
-    lines.forEach(function (line, li) {
-      if (/purchase\s*price/i.test(line) && /sold/i.test(line)) return;   // header row
+    var values = [], texts = [], leadTexts = [];
+    cells.forEach(function (raw) {
+      if (raw === null || raw === undefined || raw === '') return;
 
-      var fields = splitFields(line).map(function (f) { return String(f).trim().replace(/^"|"$/g, ''); });
-
-      var values = [], texts = [], leadTexts = [];
-      fields.forEach(function (f) {
-        if (f === '') return;
-        var d = parseFlexDate(f, dayFirst);
-        if (d) { values.push({ kind: 'date', date: d, raw: f }); return; }
-        var m = parseMoney(f);
+      if (raw instanceof Date && !isNaN(raw)) {
+        values.push({ kind: 'date', date: utc(raw.getUTCFullYear(), raw.getUTCMonth() + 1, raw.getUTCDate()) });
+        return;
+      }
+      if (typeof raw === 'number' && isFinite(raw)) {
         // Below 10,000 it is a row number, a hold period, an ROI — never a
         // price and never a date serial, so it can be dropped safely.
-        if (m !== null) { if (Math.abs(m) >= 10000) values.push({ kind: 'num', num: m, raw: f }); return; }
-        if (/[A-Za-z]/.test(f)) {
-          texts.push(f);
-          // Text before the first price is the address. In a comma-separated
-          // paste "8 Macklin Street, Parkside" arrives as two fields, so the
-          // lead run is rejoined; text AFTER the prices (Type, Sales Advisory)
-          // is a different column and stays out of the name.
-          if (!values.length) leadTexts.push(f);
-        }
-      });
-
-      if (values.length < 4) {
-        skipped.push({ line: li + 1, text: line.slice(0, 80), why: 'needs a purchase price, purchase date, sold price and sold date — found ' + values.length + ' usable value' + (values.length === 1 ? '' : 's') });
+        if (Math.abs(raw) >= 10000) values.push({ kind: 'num', num: raw });
         return;
       }
 
-      var v = values.slice(0, 4);
-      var pPrice = v[0].kind === 'num' ? v[0].num : null;
-      var pDate  = v[1].kind === 'date' ? v[1].date : (v[1].kind === 'num' ? parseFlexDate(String(v[1].num), dayFirst) : null);
-      var sPrice = v[2].kind === 'num' ? v[2].num : null;
-      var sDate  = v[3].kind === 'date' ? v[3].date : (v[3].kind === 'num' ? parseFlexDate(String(v[3].num), dayFirst) : null);
-
-      if (pPrice === null || sPrice === null || !pDate || !sDate) {
-        skipped.push({ line: li + 1, text: line.slice(0, 80), why: 'could not tell prices from dates — expected price, date, price, date' });
-        return;
+      var f = String(raw).trim().replace(/^"|"$/g, '');
+      if (f === '') return;
+      var d = parseFlexDate(f, dayFirst);
+      if (d) { values.push({ kind: 'date', date: d }); return; }
+      var m = parseMoney(f);
+      if (m !== null) { if (Math.abs(m) >= 10000) values.push({ kind: 'num', num: m }); return; }
+      if (/[A-Za-z]/.test(f)) {
+        texts.push(f);
+        // Text before the first price is the address. In a comma-separated
+        // paste "8 Macklin Street, Parkside" arrives as two fields, so the
+        // lead run is rejoined; text AFTER the prices (Type, Sales Advisory)
+        // is a different column and stays out of the name.
+        if (!values.length) leadTexts.push(f);
       }
-
-      deals.push({
-        name: leadTexts.length ? leadTexts.join(', ')
-            : (texts.length ? texts[0] : 'Row ' + (li + 1)),
-        purchasePrice: pPrice, purchaseDate: pDate,
-        soldPrice: sPrice, soldDate: sDate
-      });
     });
 
+    if (values.length < 4) {
+      return { why: 'needs a purchase price, purchase date, sold price and sold date — found ' +
+        values.length + ' usable value' + (values.length === 1 ? '' : 's') };
+    }
+
+    var v = values.slice(0, 4);
+    var asDate = function (c) {
+      if (c.kind === 'date') return c.date;
+      if (c.kind === 'num') return parseFlexDate(String(c.num), dayFirst);
+      return null;
+    };
+    var pPrice = v[0].kind === 'num' ? v[0].num : null;
+    var pDate  = asDate(v[1]);
+    var sPrice = v[2].kind === 'num' ? v[2].num : null;
+    var sDate  = asDate(v[3]);
+
+    if (pPrice === null || sPrice === null || !pDate || !sDate) {
+      return { why: 'could not tell prices from dates — expected price, date, price, date' };
+    }
+
+    /* Sanity, because a blank cell mid-row shifts every later column left and
+       the positional read then succeeds on nonsense — a date serial lands in
+       the sold-price slot and something else becomes the sold date. Reject it
+       loudly rather than importing a plausible-looking wrong number. */
+    var y1 = pDate.getUTCFullYear(), y2 = sDate.getUTCFullYear();
+    if (y1 < 1950 || y1 > 2100 || y2 < 1950 || y2 > 2100) {
+      return { why: 'dates came out implausible (' + y1 + ' → ' + y2 + ') — a cell is probably blank, shifting the columns' };
+    }
+    if (sDate.getTime() <= pDate.getTime()) {
+      return { why: 'sold date is not after the purchase date — a cell is probably blank, shifting the columns' };
+    }
+
+    return { deal: {
+      name: leadTexts.length ? leadTexts.join(', ') : (texts.length ? texts[0] : label),
+      purchasePrice: pPrice, purchaseDate: pDate,
+      soldPrice: sPrice, soldDate: sDate
+    } };
+  }
+
+  /** Shared driver over an array of rows, each an array of raw cell values. */
+  function rowsToDeals(rows, dayFirst) {
+    var deals = [], skipped = [];
+    rows.forEach(function (cells, i) {
+      if (!cells || !cells.length) return;
+      if (cells.every(function (c) { return c === null || c === undefined || String(c).trim() === ''; })) return;
+      var r = rowToDeal(cells, dayFirst, 'Row ' + (i + 1));
+      if (r.header) return;
+      if (r.deal) deals.push(r.deal);
+      else skipped.push({ line: i + 1, text: cells.join(' ').slice(0, 80), why: r.why });
+    });
     return { deals: deals, skipped: skipped, dayFirst: dayFirst };
+  }
+
+  /**
+   * Parse pasted sheet rows into deals.
+   * @param {string} text
+   * @returns {{deals:Array, skipped:Array, dayFirst:boolean}}
+   */
+  function parseDeals(text) {
+    var dayFirst = detectDayFirst(text);
+    var rows = String(text || '').split(/\r?\n/)
+      .filter(function (l) { return l.trim() !== ''; })
+      .map(function (line) { return splitFields(line).map(function (f) { return String(f).trim(); }); });
+    return rowsToDeals(rows, dayFirst);
+  }
+
+  /**
+   * Parse rows read out of a spreadsheet (arrays of native cell values).
+   * @param {Array<Array>} rows
+   * @returns {{deals:Array, skipped:Array, dayFirst:boolean}}
+   */
+  function parseSheetRows(rows) {
+    var textish = (rows || []).map(function (r) {
+      return (r || []).filter(function (c) { return typeof c === 'string'; }).join(' ');
+    }).join('\n');
+    return rowsToDeals(rows || [], detectDayFirst(textish));
   }
 
   /* ═══ SELF-TEST — the two worked samples on the workbook's breakdown tabs ═══
@@ -465,7 +526,8 @@
 
   root.IRRBreakdown = {
     computeBreakdown: computeBreakdown,
-    parseDeals: parseDeals, parseFlexDate: parseFlexDate, serialToDate: serialToDate,
+    parseDeals: parseDeals, parseSheetRows: parseSheetRows,
+    parseFlexDate: parseFlexDate, serialToDate: serialToDate,
     xirr: xirr, xnpv: xnpv,
     yearFrac30360US: yearFrac30360US, edate: edate, eomonth: eomonth,
     DEFAULTS: DEFAULTS, RBA: RBA, selfTest: selfTest
