@@ -103,6 +103,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .kpi .k-label{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.28;font-weight:700;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;overflow-wrap:anywhere}
 .kpi .k-note{font-size:12px;line-height:16px;color:var(--faint);margin-top:2px}
+.res-name{font-size:15px;line-height:22px;font-weight:700;margin-bottom:var(--sp-4);overflow-wrap:anywhere}
+.res-name:empty{display:none}
 .kpi.lead{border-color:var(--accent);background:linear-gradient(180deg,rgba(0,160,180,.14),rgba(0,160,180,.04))}
 .kpi.lead .k-value{color:var(--accent-300)}
 .pos{color:var(--green)} .neg{color:var(--red)}
@@ -204,30 +206,25 @@ details .body strong{color:var(--text)}
       <section class="card" aria-labelledby="deal-h">
         <h2 id="deal-h">Deal</h2>
 
-        <div class="chips">
-          <button type="button" class="chip" data-sample="lt">Long-hold sample</button>
-          <button type="button" class="chip" data-sample="st">Short-hold sample</button>
-        </div>
-
         <div class="field">
-          <label for="pName">Property</label>
-          <input id="pName" type="text" value="Long-hold sample" autocomplete="off">
+          <label for="pName">Property name or address</label>
+          <input id="pName" type="text" value="" autocomplete="off" placeholder="Filled in from the paste">
         </div>
         <div class="field">
           <label for="pPrice">Purchase price (AUD)</label>
-          <input id="pPrice" type="number" inputmode="numeric" min="1" step="1000" value="560000">
+          <input id="pPrice" type="number" inputmode="numeric" min="1" step="1000" value="">
         </div>
         <div class="field">
           <label for="pDate">Purchase date</label>
-          <input id="pDate" type="date" value="2016-10-22">
+          <input id="pDate" type="date" value="">
         </div>
         <div class="field">
           <label for="sPrice">Sold price (AUD)</label>
-          <input id="sPrice" type="number" inputmode="numeric" min="1" step="1000" value="1450000">
+          <input id="sPrice" type="number" inputmode="numeric" min="1" step="1000" value="">
         </div>
         <div class="field">
           <label for="sDate">Sold date</label>
-          <input id="sDate" type="date" value="2026-04-25">
+          <input id="sDate" type="date" value="">
         </div>
 
         <h3>Toggles</h3>
@@ -384,10 +381,6 @@ details .body strong{color:var(--text)}
   var batch = [];       // [{name, deal, res}]
   var STORE = 'pp-irr-saved-v1';
 
-  var SAMPLES = {
-    lt: { pName:'Long-hold sample',  pPrice:560000, pDate:'2016-10-22', sPrice:1450000, sDate:'2026-04-25' },
-    st: { pName:'Short-hold sample', pPrice:965000, pDate:'2022-12-19', sPrice:1387500, sDate:'2026-03-31' }
-  };
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   /* ── formatting ── */
@@ -455,7 +448,7 @@ details .body strong{color:var(--text)}
 
     var irrTxt = (s.irr === null) ? '—' : pct(s.irr);
     $('resultBody').innerHTML = ''+
-      (name ? '<p style="font-size:15px;font-weight:700;margin-bottom:var(--sp-4)">'+esc(name)+'</p>' : '')+
+      '<p class="res-name">'+esc(name || '')+'</p>'+
       '<div class="kpis">'+
         '<div class="kpi lead"><div class="k-label">IRR (monthly)</div>'+
           '<div class="k-value">'+irrTxt+'</div>'+
@@ -511,14 +504,33 @@ details .body strong{color:var(--text)}
   function row2(k,v){ return '<tr><td>'+k+'</td><td>'+v+'</td></tr>'; }
   /** price with its parsed date underneath — one column instead of two */
   function pdCell(price, date){ return '<td class="pd"><b>'+aud(price)+'</b><span>'+dLabel(date)+'</span></td>'; }
+  /** a deal typed in by hand has no name, so label it by its hold window */
+  function autoName(s){ return mLabel(s.purchaseDate)+' → '+mLabel(s.soldDate); }
 
   /* ══════════ CALC ══════════ */
+  function relabel(){
+    if (!last) return;
+    var h = $('resultBody').querySelector('.res-name');
+    if (h) h.textContent = $('pName').value.trim() || autoName(last.summary);
+  }
+
+  function showEmpty(){
+    last = null;
+    $('messages').innerHTML = '';
+    $('resultBody').innerHTML = '<div class="empty"><h3>Nothing calculated yet</h3>'+
+      '<p>Paste rows from the sheet on the left, or type the four deal terms in, to build the monthly breakdown.</p></div>';
+    $('breakdownCard').hidden = true;
+  }
+
   function calc(){
     ['pPrice','sPrice','pDate','sDate'].forEach(function(id){ $(id).setAttribute('aria-invalid','false'); });
+    // A half-filled form is not an error — it is just not ready yet.
+    var blank = ['pPrice','pDate','sPrice','sDate'].some(function(id){ return String($(id).value).trim() === ''; });
+    if (blank) { showEmpty(); return; }
     try {
       var res = window.IRRBreakdown.computeBreakdown(readDeal(), readOpts());
       last = res;
-      render(res, $('pName').value.trim());
+      render(res, $('pName').value.trim() || autoName(res.summary));
     } catch (e) {
       last = null;
       $('messages').innerHTML = msg('err', e.message);
@@ -684,7 +696,7 @@ details .body strong{color:var(--text)}
     if (!last) { $('messages').innerHTML = msg('warn','Calculate a result first — there is nothing to export yet.'); return; }
     var s = last.summary, a = last.assumptions, L = [];
     L.push(['Performance Property — IRR Calculator']);
-    L.push(['Property', $('pName').value.trim()]);
+    L.push(['Property', $('pName').value.trim() || autoName(s)]);
     L.push([]);
     L.push(['Purchase price', s.purchasePrice], ['Purchase date', iso(s.purchaseDate)],
            ['Sold price', s.soldPrice], ['Sold date', iso(s.soldDate)],
@@ -726,7 +738,7 @@ details .body strong{color:var(--text)}
 
   /* ══════════ WIRING ══════════ */
   var DEFAULT_FORM = {
-    pName:'Long-hold sample', pPrice:560000, pDate:'2016-10-22', sPrice:1450000, sDate:'2026-04-25',
+    pName:'', pPrice:'', pDate:'', sPrice:'', sDate:'',
     tRate:'Normalised', tNg:'Off', tRent:'Growing',
     aDep:18.5, aLvr:90, aRun:2, aYield:3, aNorm:4.9, aTax:47,
     aComm:1.8, aSpend:20000, aMargin:1.75, aApra:0.5
@@ -744,7 +756,7 @@ details .body strong{color:var(--text)}
   });
   $('btnSave').addEventListener('click', function(){
     if (!last) { $('messages').innerHTML = msg('warn','Calculate a result before saving it.'); return; }
-    var replaced = saveEntry($('pName').value.trim(), readDeal(), readOpts());
+    var replaced = saveEntry($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts());
     $('messages').innerHTML = msg('ok', replaced ? 'Updated the saved copy of this property.' : 'Saved. It stays in this browser only.');
   });
   $('btnSaveAll').addEventListener('click', function(){
@@ -795,15 +807,9 @@ details .body strong{color:var(--text)}
     }
   });
 
-  document.querySelectorAll('.chip').forEach(function(b){
-    b.addEventListener('click', function(){
-      var s = SAMPLES[b.dataset.sample];
-      Object.keys(s).forEach(function(k){ $(k).value = s[k]; });
-      calc();
-    });
-  });
   document.querySelectorAll('input,select').forEach(function(el){
-    el.addEventListener('change', function(){ if (el.id !== 'pName') calc(); });
+    // renaming the property only relabels the result — no need to recompute
+    el.addEventListener('change', function(){ if (el.id === 'pName') relabel(); else calc(); });
     el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); calc(); } });
   });
   // paste straight into the box and go

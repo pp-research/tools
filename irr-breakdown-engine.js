@@ -389,7 +389,7 @@
 
       var fields = splitFields(line).map(function (f) { return String(f).trim().replace(/^"|"$/g, ''); });
 
-      var values = [], texts = [];
+      var values = [], texts = [], leadTexts = [];
       fields.forEach(function (f) {
         if (f === '') return;
         var d = parseFlexDate(f, dayFirst);
@@ -398,7 +398,14 @@
         // Below 10,000 it is a row number, a hold period, an ROI — never a
         // price and never a date serial, so it can be dropped safely.
         if (m !== null) { if (Math.abs(m) >= 10000) values.push({ kind: 'num', num: m, raw: f }); return; }
-        if (/[A-Za-z]/.test(f)) texts.push(f);
+        if (/[A-Za-z]/.test(f)) {
+          texts.push(f);
+          // Text before the first price is the address. In a comma-separated
+          // paste "8 Macklin Street, Parkside" arrives as two fields, so the
+          // lead run is rejoined; text AFTER the prices (Type, Sales Advisory)
+          // is a different column and stays out of the name.
+          if (!values.length) leadTexts.push(f);
+        }
       });
 
       if (values.length < 4) {
@@ -418,7 +425,8 @@
       }
 
       deals.push({
-        name: texts.length ? texts[0] : 'Row ' + (li + 1),
+        name: leadTexts.length ? leadTexts.join(', ')
+            : (texts.length ? texts[0] : 'Row ' + (li + 1)),
         purchasePrice: pPrice, purchaseDate: pDate,
         soldPrice: sPrice, soldDate: sDate
       });
