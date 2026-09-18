@@ -212,6 +212,10 @@ td.name{white-space:normal;min-width:150px;font-weight:600}
 td.pd{text-align:right;white-space:nowrap}
 td.pd b{display:block;font-weight:600;font-variant-numeric:tabular-nums lining-nums}
 td.pd span{display:block;font-size:11px;line-height:15px;color:var(--muted)}
+/* the breakdown is the densest table — tighter gutters, and headers may wrap
+   to two lines so a long label stops dictating the column width */
+#bdTable th,#bdTable td{padding:8px 10px}
+#bdTable thead th{white-space:normal;line-height:14px}
 td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
@@ -391,27 +395,8 @@ details .body strong{color:var(--text)}
 
         <section class="card" id="breakdownCard" hidden aria-labelledby="bd-h">
           <h2 id="bd-h">Monthly breakdown</h2>
-          <div class="tbl-scroll">
-            <table id="bdTable">
-              <caption class="sr-only">Month-by-month cashflow across the hold period</caption>
-              <thead><tr>
-                <th scope="col">Month</th>
-                <th scope="col" class="num">Cash rate</th>
-                <th scope="col" class="num">Loan</th>
-                <th scope="col" class="num">Interest</th>
-                <th scope="col" class="num">Running</th>
-                <th scope="col" class="num">Rent</th>
-                <th scope="col" class="num">NG refund</th>
-                <th scope="col" class="num">Holding CF</th>
-                <th scope="col" class="num">Net CF</th>
-                <th scope="col" class="num">Cum. finance</th>
-                <th scope="col" class="num">Cum. cashflow</th>
-                <th scope="col" class="num">Accum loss (FY)</th>
-                <th scope="col" class="num">Property value</th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <p class="count-line" id="bdConstants"></p>
+          <div class="tbl-scroll" id="bdWrap"></div>
 
           <details>
             <summary>How this is calculated</summary>
@@ -425,6 +410,7 @@ details .body strong{color:var(--text)}
                 <li><strong>Negative gearing</strong>, when on, refunds the accumulated FY loss × marginal tax rate each June and at sale. The FY accumulator resets in July.</li>
                 <li><strong>Hold period</strong> uses Excel's <code>YEARFRAC</code> basis 0 (US 30/360).</li>
               </ul>
+              <p>Columns that would hold the same value on every row are stated once above the table rather than repeated: the loan never changes, and neither does the cash rate on the Normalised basis. <strong>Accum loss (FY)</strong> and <strong>NG refund</strong> appear only when negative gearing is on, and <strong>Cash rate</strong> only on the Actual basis. Export CSV always writes every column, including the loan and cumulative interest, so it still ties column-for-column to the workbook.</p>
               <p><strong>Two quirks carried over from the workbook, deliberately:</strong> the sale is dated to the <em>1st</em> of the sale month rather than settlement day; and the first row sits before the purchase date yet still accrues a little growth (Excel's <code>YEARFRAC</code> is unsigned). Both shift the IRR slightly. They are reproduced so this tool ties exactly to the sheet — flag them if you want them changed.</p>
             </div>
           </details>
@@ -784,21 +770,62 @@ details .body strong{color:var(--text)}
         '</tbody></table>'+
       '</div>';
 
-    $('bdTable').querySelector('tbody').innerHTML = res.rows.map(function(r,i){
-      var isLast = (i === res.rows.length-1);
-      var cls = isLast ? ' class="is-sale"' : (r.month===6 ? ' class="fy-end"' : '');
-      return '<tr'+cls+'>'+
-        '<td>'+mLabel(r.date)+(isLast?' · sale':'')+'</td>'+
-        '<td class="num">'+pct(r.cashRate,2)+'</td><td class="num">'+aud(r.loan)+'</td>'+
-        '<td class="num">'+aud(r.interest)+'</td><td class="num">'+aud(r.running)+'</td>'+
-        '<td class="num">'+aud(r.rent)+'</td><td class="num">'+aud(r.ngRefund)+'</td>'+
-        '<td class="num">'+signed(r.monthlyCF)+'</td><td class="num">'+signed(r.netCF)+'</td>'+
-        '<td class="num">'+aud(r.cumFinance)+'</td><td class="num">'+signed(r.cumCashflow)+'</td>'+
-        '<td class="num">'+aud(r.accumLoss)+'</td><td class="num">'+aud(r.propValue)+'</td></tr>';
-    }).join('');
+    renderBreakdown(res);
     $('breakdownCard').hidden = false;
   }
   function row2(k,v){ return '<tr><td>'+k+'</td><td>'+v+'</td></tr>'; }
+
+  /* ══════════ MONTHLY BREAKDOWN ══════════
+     Columns follow the month's story left to right: when · what it is worth ·
+     what it costs · what it earns · the month's net · actual cash · running
+     total. Anything that holds the same value on every row is stated once in
+     the line above the table instead of being repeated down a column — the
+     loan always, and the cash rate whenever the basis is Normalised. The
+     negative-gearing pair only appears when negative gearing is on. */
+  function renderBreakdown(res){
+    var a = res.assumptions, rows = res.rows, s = res.summary;
+    var showRate = (a.cashRateBasis === 'Actual');
+    var showNg   = (a.negativeGearing === 'On');
+
+    var cols = [
+      { h:'Month',          cls:'',    f:function(r,last){ return mLabel(r.date) + (last ? ' · sale' : ''); } },
+      { h:'Property value', cls:'num', f:function(r){ return aud(r.propValue); } }
+    ];
+    if (showRate) cols.push({ h:'Cash rate', cls:'num', f:function(r){ return pct(r.cashRate,2); } });
+    cols.push(
+      { h:'Interest', cls:'num', f:function(r){ return aud(r.interest); } },
+      { h:'Running',  cls:'num', f:function(r){ return aud(r.running); } },
+      { h:'Rent',     cls:'num', f:function(r){ return aud(r.rent); } }
+    );
+    if (showNg) cols.push(
+      { h:'Accum loss (FY)', cls:'num', f:function(r){ return aud(r.accumLoss); } },
+      { h:'NG refund',       cls:'num', f:function(r){ return aud(r.ngRefund); } }
+    );
+    cols.push(
+      { h:'Holding CF',    cls:'num', f:function(r){ return signed(r.monthlyCF); } },
+      { h:'Net CF',        cls:'num', f:function(r){ return signed(r.netCF); } },
+      { h:'Cumulative CF', cls:'num', f:function(r){ return signed(r.cumCashflow); } }
+    );
+
+    var head = '<thead><tr>' + cols.map(function(c){
+      return '<th scope="col"'+(c.cls?' class="'+c.cls+'"':'')+'>'+c.h+'</th>'; }).join('') + '</tr></thead>';
+
+    var body = rows.map(function(r,i){
+      var last = (i === rows.length-1);
+      var cls = last ? ' class="is-sale"' : (r.month===6 ? ' class="fy-end"' : '');
+      return '<tr'+cls+'>' + cols.map(function(c){
+        return '<td'+(c.cls?' class="'+c.cls+'"':'')+'>'+c.f(r,last)+'</td>'; }).join('') + '</tr>';
+    }).join('');
+
+    $('bdWrap').innerHTML = '<table id="bdTable">'+
+      '<caption class="sr-only">Month-by-month cashflow across the hold period</caption>'+
+      head+'<tbody>'+body+'</tbody></table>';
+
+    var bits = [s.months + ' months', 'interest-only on a ' + aud(s.loan) + ' loan'];
+    bits.push(showRate ? 'cash rate varies by month' : 'cash rate ' + pct(a.normalisedRate,2) + ' throughout');
+    if (!showNg) bits.push('negative gearing off');
+    $('bdConstants').textContent = bits.join(' · ');
+  }
 
   function relabel(){
     if (!last) return;
