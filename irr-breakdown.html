@@ -103,6 +103,25 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .colmap-eg > span:last-child{border-right:0}
 .colmap-note{background:var(--panel-2);padding:7px 12px;font-size:11px;line-height:16px;color:var(--muted);border-top:1px solid var(--border)}
 
+/* ═══ SEGMENTED TOGGLES ═══
+   Real radios so the keyboard, labels and screen readers work natively;
+   the inputs are visually hidden and their labels carry the styling. */
+/* 104px keeps "Neg. gearing" on one line at 11px uppercase */
+.seg-row{display:grid;grid-template-columns:minmax(0,104px) minmax(0,1fr);align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-2)}
+.seg-row:last-of-type{margin-bottom:0}
+.seg-label{font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;background:var(--bg);border:1px solid var(--border-strong);border-radius:999px;padding:2px;min-width:0}
+.seg input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.seg label{
+  flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;
+  margin:0;padding:6px 10px;min-height:30px;border-radius:999px;cursor:pointer;
+  font-size:12px;line-height:16px;font-weight:600;color:var(--muted);white-space:nowrap;
+  transition:background .15s ease,color .15s ease;
+}
+.seg label:hover{color:var(--text);background:var(--panel-2)}
+.seg input:checked + label{background:var(--accent);color:#06222a}
+.seg input:focus-visible + label{outline:2px solid var(--accent-300);outline-offset:2px}
+
 /* ═══ DISCLOSURE ═══ */
 .disclosure{
   display:flex;align-items:center;gap:var(--sp-2);width:100%;justify-content:flex-start;
@@ -251,8 +270,67 @@ details .body strong{color:var(--text)}
 
   <div class="cols">
 
-    <!-- ══════════ LEFT: THE DEAL ══════════ -->
+    <!-- ══════════ LEFT: SETTINGS, THEN THE DEAL ══════════ -->
     <div>
+      <section class="card" aria-labelledby="set-h">
+        <h2 id="set-h">Settings</h2>
+
+        <div class="seg-row">
+          <span class="seg-label" id="lbl-rate">Cash rate</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-rate">
+            <input type="radio" name="tRate" id="tRate-a" value="Normalised" checked>
+            <label for="tRate-a">Normalised</label>
+            <input type="radio" name="tRate" id="tRate-b" value="Actual">
+            <label for="tRate-b">Actual</label>
+          </div>
+        </div>
+        <div class="seg-row">
+          <span class="seg-label" id="lbl-ng">Neg. gearing</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-ng">
+            <input type="radio" name="tNg" id="tNg-a" value="Off" checked>
+            <label for="tNg-a">Off</label>
+            <input type="radio" name="tNg" id="tNg-b" value="On">
+            <label for="tNg-b">On</label>
+          </div>
+        </div>
+        <div class="seg-row">
+          <span class="seg-label" id="lbl-rent">Rent</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-rent">
+            <input type="radio" name="tRent" id="tRent-a" value="Growing" checked>
+            <label for="tRent-a">Growing</label>
+            <input type="radio" name="tRent" id="tRent-b" value="Flat">
+            <label for="tRent-b">Flat</label>
+          </div>
+        </div>
+
+        <details id="assumpBox">
+          <summary>View assumptions</summary>
+          <div class="body" style="color:inherit">
+            <div class="pair">
+              <div class="field"><label for="aDep">Deposit + fee</label><div class="suffix"><input id="aDep" type="number" step="0.1" value="18.5"><span>%</span></div></div>
+              <div class="field"><label for="aLvr">LVR</label><div class="suffix"><input id="aLvr" type="number" step="1" value="90"><span>%</span></div></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aRun">Running cost p.a.</label><div class="suffix"><input id="aRun" type="number" step="0.1" value="2"><span>%</span></div></div>
+              <div class="field"><label for="aYield">Rental yield</label><div class="suffix"><input id="aYield" type="number" step="0.1" value="3"><span>%</span></div></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aNorm">Normalised cash rate</label><div class="suffix"><input id="aNorm" type="number" step="0.01" value="4.9"><span>%</span></div></div>
+              <div class="field"><label for="aTax">Marginal tax rate</label><div class="suffix"><input id="aTax" type="number" step="1" value="47"><span>%</span></div></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aComm">Selling commission</label><div class="suffix"><input id="aComm" type="number" step="0.1" value="1.8"><span>%</span></div></div>
+              <div class="field"><label for="aSpend">Selling market spend</label><input id="aSpend" type="number" step="1000" value="20000"></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aMargin">Bank margin</label><div class="suffix"><input id="aMargin" type="number" step="0.05" value="1.75"><span>%</span></div></div>
+              <div class="field"><label for="aApra">APRA buffer</label><div class="suffix"><input id="aApra" type="number" step="0.05" value="0.5"><span>%</span></div></div>
+            </div>
+            <p style="font-size:12px;color:var(--faint);margin:0">Bank margin and the APRA buffer are added to <strong>actual</strong> cash rates only — the normalised rate already includes them.</p>
+          </div>
+        </details>
+      </section>
+
       <section class="card" aria-labelledby="deal-h">
         <h2 id="deal-h">Deal</h2>
 
@@ -280,47 +358,6 @@ details .body strong{color:var(--text)}
           <label for="sDate">Sold date</label>
           <input id="sDate" type="date" value="">
         </div>
-
-        <h3>Toggles</h3>
-        <div class="field">
-          <label for="tRate">Cash rate basis</label>
-          <select id="tRate"><option>Normalised</option><option>Actual</option></select>
-        </div>
-        <div class="field">
-          <label for="tNg">Negative gearing</label>
-          <select id="tNg"><option>Off</option><option>On</option></select>
-        </div>
-        <div class="field">
-          <label for="tRent">Rent basis</label>
-          <select id="tRent"><option>Growing</option><option>Flat</option></select>
-        </div>
-
-        <details id="assumpBox">
-          <summary>Assumptions</summary>
-          <div class="body" style="color:inherit">
-            <div class="pair">
-              <div class="field"><label for="aDep">Deposit + fee</label><div class="suffix"><input id="aDep" type="number" step="0.1" value="18.5"><span>%</span></div></div>
-              <div class="field"><label for="aLvr">LVR</label><div class="suffix"><input id="aLvr" type="number" step="1" value="90"><span>%</span></div></div>
-            </div>
-            <div class="pair">
-              <div class="field"><label for="aRun">Running cost p.a.</label><div class="suffix"><input id="aRun" type="number" step="0.1" value="2"><span>%</span></div></div>
-              <div class="field"><label for="aYield">Rental yield</label><div class="suffix"><input id="aYield" type="number" step="0.1" value="3"><span>%</span></div></div>
-            </div>
-            <div class="pair">
-              <div class="field"><label for="aNorm">Normalised cash rate</label><div class="suffix"><input id="aNorm" type="number" step="0.01" value="4.9"><span>%</span></div></div>
-              <div class="field"><label for="aTax">Marginal tax rate</label><div class="suffix"><input id="aTax" type="number" step="1" value="47"><span>%</span></div></div>
-            </div>
-            <div class="pair">
-              <div class="field"><label for="aComm">Selling commission</label><div class="suffix"><input id="aComm" type="number" step="0.1" value="1.8"><span>%</span></div></div>
-              <div class="field"><label for="aSpend">Selling market spend</label><input id="aSpend" type="number" step="1000" value="20000"></div>
-            </div>
-            <div class="pair">
-              <div class="field"><label for="aMargin">Bank margin</label><div class="suffix"><input id="aMargin" type="number" step="0.05" value="1.75"><span>%</span></div></div>
-              <div class="field"><label for="aApra">APRA buffer</label><div class="suffix"><input id="aApra" type="number" step="0.05" value="0.5"><span>%</span></div></div>
-            </div>
-            <p style="font-size:12px;color:var(--faint);margin:0">Bank margin and the APRA buffer are added to <strong>actual</strong> cash rates only — the normalised rate already includes them.</p>
-          </div>
-        </details>
 
         <div class="btns">
           <button type="button" class="btn-primary" id="btnCalc">Calculate IRR</button>
@@ -519,6 +556,16 @@ details .body strong{color:var(--text)}
   }
 
   /* ── form <-> state ── */
+  /** the three toggles are segmented radio groups, not selects */
+  function radioVal(name){
+    var el = document.querySelector('input[name="'+name+'"]:checked');
+    return el ? el.value : '';
+  }
+  function setRadio(name, val){
+    var el = document.querySelector('input[name="'+name+'"][value="'+val+'"]');
+    if (el) el.checked = true;
+  }
+
   function readOpts(){
     var p = function(id){ return Number($(id).value) / 100; };
     return {
@@ -526,8 +573,8 @@ details .body strong{color:var(--text)}
       rentalYield: p('aYield'), normalisedRate: p('aNorm'), marginalTaxRate: p('aTax'),
       sellingCommission: p('aComm'), sellingMarketSpend: Number($('aSpend').value),
       bankMargin: p('aMargin'), apraBuffer: p('aApra'),
-      cashRateBasis: $('tRate').value, negativeGearing: $('tNg').value,
-      rentBasis: $('tRent').value
+      cashRateBasis: radioVal('tRate'), negativeGearing: radioVal('tNg'),
+      rentBasis: radioVal('tRent')
     };
   }
   function writeOpts(o){
@@ -537,7 +584,9 @@ details .body strong{color:var(--text)}
     set('aYield', o.rentalYield*100); set('aNorm', o.normalisedRate*100); set('aTax', o.marginalTaxRate*100);
     set('aComm', o.sellingCommission*100); set('aSpend', o.sellingMarketSpend);
     set('aMargin', o.bankMargin*100); set('aApra', o.apraBuffer*100);
-    set('tRate', o.cashRateBasis); set('tNg', o.negativeGearing); set('tRent', o.rentBasis);
+    if (o.cashRateBasis) setRadio('tRate', o.cashRateBasis);
+    if (o.negativeGearing) setRadio('tNg', o.negativeGearing);
+    if (o.rentBasis) setRadio('tRent', o.rentBasis);
   }
   function readDeal(){
     return {
@@ -959,10 +1008,10 @@ details .body strong{color:var(--text)}
   /* ══════════ WIRING ══════════ */
   var DEFAULT_FORM = {
     pName:'', pCat:'', pPrice:'', pDate:'', sPrice:'', sDate:'',
-    tRate:'Normalised', tNg:'Off', tRent:'Growing',
     aDep:18.5, aLvr:90, aRun:2, aYield:3, aNorm:4.9, aTax:47,
     aComm:1.8, aSpend:20000, aMargin:1.75, aApra:0.5
   };
+  var DEFAULT_TOGGLES = { tRate:'Normalised', tNg:'Off', tRent:'Growing' };
 
   function openAdd(open){
     $('btnAddToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -985,6 +1034,7 @@ details .body strong{color:var(--text)}
   });
   $('btnReset').addEventListener('click', function(){
     Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
+    Object.keys(DEFAULT_TOGGLES).forEach(function(k){ setRadio(k, DEFAULT_TOGGLES[k]); });
     $('messages').innerHTML=''; calc();
   });
   $('btnSave').addEventListener('click', function(){
