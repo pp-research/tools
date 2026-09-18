@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IRR breakdown calculator</title>
+<title>IRR Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -183,7 +183,7 @@ details .body strong{color:var(--text)}
     <img src="https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-inverted.png"
          alt="Performance Property">
     <div class="titles">
-      <h1>IRR breakdown calculator</h1>
+      <h1>IRR Calculator</h1>
       <p>Month-by-month cashflow over the hold period, then XIRR — the breakdown method from the IRR workbook</p>
     </div>
   </header>
@@ -581,7 +581,7 @@ details .body strong{color:var(--text)}
   function toCsv(){
     if (!last) { $('messages').innerHTML = msg('warn','Calculate a result first — there is nothing to export yet.'); return; }
     var s = last.summary, a = last.assumptions, L = [];
-    L.push(['Performance Property — IRR breakdown']);
+    L.push(['Performance Property — IRR Calculator']);
     L.push([]);
     L.push(['Purchase price', s.purchasePrice]);
     L.push(['Purchase date', s.purchaseDate.toISOString().slice(0,10)]);
@@ -627,7 +627,7 @@ details .body strong{color:var(--text)}
     var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
     var a2 = document.createElement('a');
     a2.href = URL.createObjectURL(blob);
-    a2.download = 'irr-breakdown-'+s.purchaseDate.toISOString().slice(0,10)+'-to-'+s.soldDate.toISOString().slice(0,10)+'.csv';
+    a2.download = 'irr-calculator-'+s.purchaseDate.toISOString().slice(0,10)+'-to-'+s.soldDate.toISOString().slice(0,10)+'.csv';
     document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
     setTimeout(function(){ URL.revokeObjectURL(a2.href); }, 1000);
   }
