@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IRR breakdown calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══ TOKENS — Performance Property brand, hub dark theme ═══ */
+:root{
+  --bg:#1f283f; --panel:#263148; --panel-2:#2c3853; --border:rgba(255,255,255,.10);
+  --border-strong:rgba(255,255,255,.18);
+  --accent:#00A0B4; --accent-600:#008496; --accent-300:#4dc3d2;
+  --text:#ffffff; --muted:rgba(255,255,255,.58); --faint:rgba(255,255,255,.38);
+  --green:#71B357; --red:#E72347; --yellow:#FFA91F; --blue:#54A6DE;
+  --r-sm:6px; --r-md:10px; --r-lg:16px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px; --sp-8:32px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Montserrat',system-ui,sans-serif; font-weight:500;
+  background:var(--bg); color:var(--text); min-height:100vh;
+  padding:var(--sp-6) var(--sp-4) 64px; line-height:1.5;
+}
+.wrap{max-width:1200px;margin:0 auto}
+
+/* numbers must line up in columns */
+.num{font-variant-numeric:tabular-nums lining-nums;text-align:right;white-space:nowrap}
+
+/* ═══ FOCUS — visible everywhere ═══ */
+:focus-visible{outline:2px solid var(--accent-300);outline-offset:2px;border-radius:var(--r-sm)}
+
+/* ═══ HEADER ═══ */
+header{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)}
+header img{height:40px;width:auto;display:block}
+.titles h1{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em}
+.titles p{font-size:14px;line-height:20px;color:var(--muted);margin-top:2px}
+
+/* ═══ CARDS ═══ */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-6)}
+.card + .card{margin-top:var(--sp-4)}
+.card h2{font-size:14px;line-height:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:var(--sp-4)}
+.card h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:var(--sp-6) 0 var(--sp-3)}
+.card h3:first-of-type{margin-top:0}
+
+/* ═══ LAYOUT ═══ */
+.cols{display:grid;grid-template-columns:1fr;gap:var(--sp-4)}
+/* min-width:0 stops the wide breakdown table forcing the grid column open
+   (grid items default to min-width:auto) and scrolling the whole page. */
+.cols > *{min-width:0}
+@media (min-width:1024px){ .cols{grid-template-columns:360px minmax(0,1fr);align-items:start} .sticky{position:sticky;top:var(--sp-6)} }
+
+/* ═══ FORM ═══ */
+.field{margin-bottom:var(--sp-4)}
+.field:last-child{margin-bottom:0}
+label{display:block;font-size:12px;line-height:16px;font-weight:600;color:var(--muted);margin-bottom:6px}
+input,select{
+  width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border-strong);
+  border-radius:var(--r-md);padding:10px 12px;font:600 15px/22px 'Montserrat',sans-serif;
+  font-variant-numeric:tabular-nums lining-nums; min-height:44px;
+}
+input:hover,select:hover{border-color:rgba(255,255,255,.3)}
+input:focus,select:focus{border-color:var(--accent);outline:2px solid var(--accent-300);outline-offset:1px}
+input[aria-invalid="true"]{border-color:var(--red)}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:38px;cursor:pointer}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+.suffix{position:relative}
+.suffix input{padding-right:34px}
+.suffix span{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--faint);pointer-events:none}
+
+/* ═══ BUTTONS ═══ */
+.btns{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-4)}
+button{
+  font:600 14px/20px 'Montserrat',sans-serif;border-radius:999px;border:1px solid transparent;
+  padding:11px 20px;min-height:44px;cursor:pointer;transition:background .15s ease,border-color .15s ease;
+}
+.btn-primary{background:var(--accent);color:#06222a}
+.btn-primary:hover{background:var(--accent-600);color:#fff}
+.btn-primary:active{background:#00707f}
+.btn-ghost{background:transparent;color:var(--text);border-color:var(--border-strong)}
+.btn-ghost:hover{background:var(--panel-2);border-color:rgba(255,255,255,.32)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.chips{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-4)}
+.chip{background:var(--panel-2);border:1px solid var(--border-strong);color:var(--text);border-radius:999px;padding:7px 14px;font:600 12px/16px 'Montserrat',sans-serif;min-height:34px;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--accent-300)}
+
+/* ═══ KPI STRIP ═══ */
+/* minmax(0,1fr) — plain 1fr keeps min-width:auto, so a long currency value
+   pushes the tracks wider than the card and scrolls the page on a phone. */
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin-bottom:var(--sp-4)}
+@media (min-width:768px){ .kpis{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.kpi{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--sp-4);min-width:0}
+.kpi .k-label{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.28;font-weight:700;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;overflow-wrap:anywhere}
+.kpi .k-note{font-size:12px;line-height:16px;color:var(--faint);margin-top:2px}
+.kpi.lead{border-color:var(--accent);background:linear-gradient(180deg,rgba(0,160,180,.14),rgba(0,160,180,.04))}
+.kpi.lead .k-value{color:var(--accent-300)}
+.pos{color:var(--green)} .neg{color:var(--red)}
+
+/* ═══ TABLES ═══ */
+.tbl-scroll{overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:var(--r-md)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;line-height:18px}
+th,td{padding:9px 12px;text-align:left;white-space:nowrap}
+thead th{
+  position:sticky;top:0;z-index:2;background:var(--panel-2);color:var(--muted);
+  font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  border-bottom:1px solid var(--border-strong);
+}
+tbody td{border-bottom:1px solid rgba(255,255,255,.055)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:rgba(255,255,255,.022)}
+tbody tr:hover{background:rgba(0,160,180,.10)}
+tbody tr.is-sale{background:rgba(0,160,180,.16);font-weight:700}
+tbody tr.is-sale:hover{background:rgba(0,160,180,.22)}
+tbody tr.fy-end td{border-bottom:1px solid rgba(255,255,255,.2)}
+
+/* summary as definition rows */
+.sum{width:100%;font-size:14px}
+.sum td{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.sum tr:last-child td{border-bottom:0}
+.sum td:first-child{color:var(--muted);font-size:13px}
+.sum td:last-child{text-align:right;font-weight:600;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
+.sum tr.total td{font-size:15px;font-weight:700;border-top:1px solid var(--border-strong);padding-top:12px}
+.sum tr.total td:first-child{color:var(--text)}
+@media (min-width:768px){ .two-up{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 var(--sp-8)} }
+.two-up > *{min-width:0}
+
+/* ═══ CHART ═══ */
+.chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin:var(--sp-6) 0 var(--sp-3)}
+.chart-head h3{margin:0}
+.chart-head span{font-size:12px;line-height:16px;color:var(--muted);font-variant-numeric:tabular-nums lining-nums}
+.chart-head b{color:var(--text);font-weight:700}
+.chart-wrap{position:relative}
+svg.chart{display:block;width:100%;height:220px;overflow:visible}
+.tip{
+  position:absolute;pointer-events:none;background:#101725;border:1px solid var(--border-strong);
+  border-radius:var(--r-sm);padding:8px 10px;font-size:12px;line-height:17px;white-space:nowrap;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);opacity:0;transition:opacity .12s ease;z-index:5;
+}
+.tip strong{font-variant-numeric:tabular-nums lining-nums}
+/* Direct labels live in HTML, not the SVG: the chart uses
+   preserveAspectRatio="none", which would stretch any <text> horizontally. */
+.dlabel{position:absolute;transform:translate(-50%,-50%);font-size:11px;line-height:15px;
+  font-variant-numeric:tabular-nums lining-nums;white-space:nowrap;pointer-events:none;text-align:center}
+.dlabel b{display:block;font-size:12px;font-weight:700}
+.dlabel.trough{color:var(--muted)} .dlabel.trough b{color:var(--text)}
+.dlabel.exit{color:var(--accent-300)} .dlabel.exit b{color:var(--accent-300)}
+
+/* ═══ MESSAGES ═══ */
+.note{display:flex;gap:var(--sp-3);align-items:flex-start;border-radius:var(--r-md);padding:12px 14px;font-size:13px;line-height:19px;margin-bottom:var(--sp-4)}
+.note svg{flex:0 0 18px;margin-top:1px}
+.note-warn{background:rgba(255,169,31,.10);border:1px solid rgba(255,169,31,.4);color:#ffd79a}
+.note-err{background:rgba(231,35,71,.10);border:1px solid rgba(231,35,71,.45);color:#ffb3c1}
+.note-ok{background:rgba(113,179,87,.10);border:1px solid rgba(113,179,87,.4);color:#c3e6b4}
+.empty{text-align:center;padding:56px var(--sp-4);color:var(--muted)}
+.empty h3{color:var(--text);font-size:16px;font-weight:600;margin:0 0 6px;text-transform:none;letter-spacing:0}
+.empty p{font-size:14px;max-width:44ch;margin:0 auto}
+
+/* ═══ METHOD NOTES ═══ */
+details{border-top:1px solid var(--border);padding-top:var(--sp-4);margin-top:var(--sp-4)}
+details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent-300);list-style:none;min-height:24px}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'▸ ';display:inline-block;transition:transform .15s ease}
+details[open] summary::before{content:'▾ '}
+details .body{font-size:13px;line-height:20px;color:var(--muted);margin-top:var(--sp-3)}
+details .body p{margin-bottom:var(--sp-3)}
+details .body ul{margin:0 0 var(--sp-3) 18px}
+details .body li{margin-bottom:6px}
+details .body code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+details .body strong{color:var(--text)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img src="https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-inverted.png"
+         alt="Performance Property">
+    <div class="titles">
+      <h1>IRR breakdown calculator</h1>
+      <p>Month-by-month cashflow over the hold period, then XIRR — the breakdown method from the IRR workbook</p>
+    </div>
+  </header>
+
+  <div class="cols">
+
+    <!-- ══════════ INPUTS ══════════ -->
+    <div class="sticky">
+      <section class="card" aria-labelledby="deal-h">
+        <h2 id="deal-h">Deal</h2>
+
+        <div class="chips">
+          <button type="button" class="chip" data-sample="lt">Long-hold sample</button>
+          <button type="button" class="chip" data-sample="st">Short-hold sample</button>
+        </div>
+
+        <div class="field">
+          <label for="pPrice">Purchase price (AUD)</label>
+          <input id="pPrice" type="number" inputmode="numeric" min="1" step="1000" value="560000">
+        </div>
+        <div class="field">
+          <label for="pDate">Purchase date</label>
+          <input id="pDate" type="date" value="2016-10-22">
+        </div>
+        <div class="field">
+          <label for="sPrice">Sold price (AUD)</label>
+          <input id="sPrice" type="number" inputmode="numeric" min="1" step="1000" value="1450000">
+        </div>
+        <div class="field">
+          <label for="sDate">Sold date</label>
+          <input id="sDate" type="date" value="2026-04-25">
+        </div>
+
+        <h3>Toggles</h3>
+        <div class="field">
+          <label for="tRate">Cash rate basis</label>
+          <select id="tRate">
+            <option>Normalised</option>
+            <option>Actual</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tNg">Negative gearing</label>
+          <select id="tNg"><option>Off</option><option>On</option></select>
+        </div>
+        <div class="field">
+          <label for="tRent">Rent basis</label>
+          <select id="tRent"><option>Growing</option><option>Flat</option></select>
+        </div>
+        <div class="field">
+          <label for="tFin">Finance cost basis</label>
+          <select id="tFin"><option>Purchase Price</option><option>Midpoint</option></select>
+        </div>
+
+        <details id="assumpBox">
+          <summary>Assumptions</summary>
+          <div class="body" style="color:inherit">
+            <div class="pair">
+              <div class="field"><label for="aDep">Deposit + fee</label><div class="suffix"><input id="aDep" type="number" step="0.1" value="18.5"><span>%</span></div></div>
+              <div class="field"><label for="aLvr">LVR</label><div class="suffix"><input id="aLvr" type="number" step="1" value="90"><span>%</span></div></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aRun">Running cost p.a.</label><div class="suffix"><input id="aRun" type="number" step="0.1" value="2"><span>%</span></div></div>
+              <div class="field"><label for="aYield">Rental yield</label><div class="suffix"><input id="aYield" type="number" step="0.1" value="3"><span>%</span></div></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aNorm">Normalised cash rate</label><div class="suffix"><input id="aNorm" type="number" step="0.01" value="4.9"><span>%</span></div></div>
+              <div class="field"><label for="aTax">Marginal tax rate</label><div class="suffix"><input id="aTax" type="number" step="1" value="47"><span>%</span></div></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aComm">Selling commission</label><div class="suffix"><input id="aComm" type="number" step="0.1" value="1.8"><span>%</span></div></div>
+              <div class="field"><label for="aSpend">Selling market spend</label><input id="aSpend" type="number" step="1000" value="20000"></div>
+            </div>
+            <div class="pair">
+              <div class="field"><label for="aMargin">Bank margin</label><div class="suffix"><input id="aMargin" type="number" step="0.05" value="1.75"><span>%</span></div></div>
+              <div class="field"><label for="aApra">APRA buffer</label><div class="suffix"><input id="aApra" type="number" step="0.05" value="0.5"><span>%</span></div></div>
+            </div>
+            <p style="font-size:12px;color:var(--faint);margin:0">Bank margin and the APRA buffer are added to <strong>actual</strong> cash rates only — the normalised rate already includes them.</p>
+          </div>
+        </details>
+
+        <div class="btns">
+          <button type="button" class="btn-primary" id="btnCalc">Calculate IRR</button>
+          <button type="button" class="btn-ghost" id="btnCsv">Export CSV</button>
+          <button type="button" class="btn-ghost" id="btnReset">Reset</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ══════════ RESULTS ══════════ -->
+    <div>
+      <div id="messages" role="status" aria-live="polite"></div>
+
+      <section class="card" id="resultCard" aria-labelledby="res-h">
+        <h2 id="res-h">Result</h2>
+        <div id="resultBody">
+          <div class="empty">
+            <h3>Nothing calculated yet</h3>
+            <p>Enter the four deal terms on the left, or load a sample, then choose Calculate IRR to build the monthly breakdown.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="breakdownCard" hidden aria-labelledby="bd-h">
+        <h2 id="bd-h">Monthly breakdown</h2>
+        <div class="tbl-scroll">
+          <table id="bdTable">
+            <caption class="sr-only">Month-by-month cashflow across the hold period</caption>
+            <thead><tr>
+              <th scope="col">Month</th>
+              <th scope="col" class="num">Cash rate</th>
+              <th scope="col" class="num">Loan</th>
+              <th scope="col" class="num">Interest</th>
+              <th scope="col" class="num">Running</th>
+              <th scope="col" class="num">Rent</th>
+              <th scope="col" class="num">NG refund</th>
+              <th scope="col" class="num">Holding CF</th>
+              <th scope="col" class="num">Net CF</th>
+              <th scope="col" class="num">Cum. finance</th>
+              <th scope="col" class="num">Cum. cashflow</th>
+              <th scope="col" class="num">Accum loss (FY)</th>
+              <th scope="col" class="num">Property value</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <details>
+          <summary>How this is calculated</summary>
+          <div class="body">
+            <p>Each row is one calendar month, from the 1st of the purchase month to the 1st of the sale month. The IRR is <code>XIRR</code> over the <strong>Net CF</strong> column against those dates (actual/365, the Excel convention).</p>
+            <ul>
+              <li><strong>Interest</strong> = loan × (cash rate + margin + buffer) ÷ 12. Interest-only — no principal is amortised.</li>
+              <li><strong>Property value</strong> compounds geometrically from purchase price to sold price across the hold period, and snaps to the sold price on the final row.</li>
+              <li><strong>Running costs</strong> and <strong>rent</strong> are struck off that month's property value (rent uses the purchase/sold midpoint instead when the rent basis is Flat).</li>
+              <li><strong>Net CF</strong> = holding cashflow, plus the deposit in month 1, plus <em>(sold price − loan + selling costs)</em> in the final month.</li>
+              <li><strong>Negative gearing</strong>, when on, refunds the accumulated FY loss × marginal tax rate each June and at sale. The FY accumulator resets in July.</li>
+              <li><strong>Hold period</strong> uses Excel's <code>YEARFRAC</code> basis 0 (US 30/360).</li>
+            </ul>
+            <p><strong>Three quirks carried over from the workbook, deliberately:</strong> the sale is dated to the <em>1st</em> of the sale month rather than settlement day; the first row sits before the purchase date yet still accrues a little growth (Excel's <code>YEARFRAC</code> is unsigned); and on the Midpoint finance basis interest is charged on the midpoint loan while only the purchase-basis loan is discharged at sale. Each shifts the IRR slightly. They are reproduced so this tool ties exactly to the sheet — flag them if you want them changed.</p>
+          </div>
+        </details>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="irr-breakdown-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var last = null;
+
+  var SAMPLES = {
+    lt: { pPrice:560000, pDate:'2016-10-22', sPrice:1450000, sDate:'2026-04-25' },
+    st: { pPrice:965000, pDate:'2022-12-19', sPrice:1387500, sDate:'2026-03-31' }
+  };
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  /* ── formatting ── */
+  function aud(n, dp){
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    dp = dp === undefined ? 0 : dp;
+    var s = Math.abs(n).toLocaleString('en-AU',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+    return (n < 0 ? '−$' : '$') + s;
+  }
+  function pct(n, dp){
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    return (n*100).toFixed(dp === undefined ? 2 : dp) + '%';
+  }
+  function signed(n){ return '<span class="'+(n<0?'neg':'pos')+'">'+aud(n)+'</span>'; }
+  function mLabel(d){ return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+  function dLabel(d){ return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+
+  /* ── messages ── */
+  function msg(kind, text){
+    var icons = {
+      warn:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+      err:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+      ok:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+    };
+    return '<div class="note note-'+kind+'">'+
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+icons[kind]+'</svg>'+
+      '<div>'+text+'</div></div>';
+  }
+
+  /* ── read the form ── */
+  function readOpts(){
+    var p = function(id){ return Number($(id).value) / 100; };
+    return {
+      depositAndFee: p('aDep'), lvr: p('aLvr'), runningCostPa: p('aRun'),
+      rentalYield: p('aYield'), normalisedRate: p('aNorm'), marginalTaxRate: p('aTax'),
+      sellingCommission: p('aComm'), sellingMarketSpend: Number($('aSpend').value),
+      bankMargin: p('aMargin'), apraBuffer: p('aApra'),
+      cashRateBasis: $('tRate').value, negativeGearing: $('tNg').value,
+      rentBasis: $('tRent').value, financeCostBasis: $('tFin').value
+    };
+  }
+
+  /* ══════════ CHART — cumulative cashflow (single series) ══════════ */
+  function drawChart(rows){
+    var W = 800, H = 220, padL = 8, padR = 8, padT = 14, padB = 22;
+    var vals = rows.map(function(r){ return r.cumCashflow; });
+    var lo = Math.min.apply(null, vals.concat([0]));
+    var hi = Math.max.apply(null, vals.concat([0]));
+    var span = (hi - lo) || 1;
+    lo -= span*0.08; hi += span*0.08; span = hi - lo;
+
+    var n = rows.length;
+    var x = function(i){ return padL + (n<2?0:(i/(n-1))*(W-padL-padR)); };
+    var y = function(v){ return padT + (1-((v-lo)/span))*(H-padT-padB); };
+
+    var dLine = rows.map(function(r,i){ return (i?'L':'M')+x(i).toFixed(2)+' '+y(r.cumCashflow).toFixed(2); }).join(' ');
+    var dArea = dLine + ' L'+x(n-1).toFixed(2)+' '+y(0).toFixed(2)+' L'+x(0).toFixed(2)+' '+y(0).toFixed(2)+' Z';
+    var yZero = y(0);
+
+    var ticks = [];
+    var step = Math.max(1, Math.floor(n/6));
+    for (var i=0;i<n;i+=step) ticks.push(i);
+    if (ticks[ticks.length-1] !== n-1) ticks.push(n-1);
+
+    var svg = ''+
+      '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" '+
+        'aria-label="Cumulative cashflow from '+mLabel(rows[0].date)+' to '+mLabel(rows[n-1].date)+', ending at '+aud(rows[n-1].cumCashflow)+'">'+
+      '<defs><linearGradient id="cfFill" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%" stop-color="#00A0B4" stop-opacity=".34"/>'+
+        '<stop offset="100%" stop-color="#00A0B4" stop-opacity=".02"/>'+
+      '</linearGradient></defs>'+
+      '<path d="'+dArea+'" fill="url(#cfFill)"/>'+
+      '<line x1="'+padL+'" y1="'+yZero.toFixed(2)+'" x2="'+(W-padR)+'" y2="'+yZero.toFixed(2)+'" stroke="rgba(255,255,255,.28)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>'+
+      '<path d="'+dLine+'" fill="none" stroke="#00A0B4" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'+
+      '<circle cx="'+x(n-1).toFixed(2)+'" cy="'+y(rows[n-1].cumCashflow).toFixed(2)+'" r="4" fill="#00A0B4" stroke="#263148" stroke-width="2" vector-effect="non-scaling-stroke"/>'+
+      '<line id="cx" x1="0" y1="'+padT+'" x2="0" y2="'+(H-padB)+'" stroke="rgba(255,255,255,.4)" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0"/>'+
+      '<circle id="cdot" r="4.5" fill="#00A0B4" stroke="#263148" stroke-width="2" vector-effect="non-scaling-stroke" opacity="0"/>'+
+      '</svg>';
+
+    var axis = '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin-top:2px">'+
+      '<span>'+mLabel(rows[0].date)+'</span><span>'+mLabel(rows[n-1].date)+'</span></div>';
+
+    /* One direct label — the exit. The deepest drawdown almost always sits in
+       the month before the sale, so labelling it on the plot would collide;
+       it goes in the caption above instead, where it is always visible. */
+    var fin = rows[n-1].cumCashflow;
+    var labels = '<div class="dlabel exit" style="left:'+pos(x(n-1),W)+';top:calc('+pos(y(fin),H)+' + 30px);transform:translate(-100%,-50%)">'+
+      'At sale<b>'+aud(fin)+'</b></div>';
+
+    return '<div class="chart-wrap" id="chartWrap">'+svg+labels+'<div class="tip" id="chartTip"></div></div>'+axis;
+  }
+
+  function wireChart(rows){
+    var wrap = $('chartWrap'); if (!wrap) return;
+    var svg = wrap.querySelector('svg'), tip = $('chartTip');
+    var cx = svg.querySelector('#cx'), cdot = svg.querySelector('#cdot');
+    var W = 800, H = 220, padL = 8, padR = 8, padT = 14, padB = 22;
+    var vals = rows.map(function(r){ return r.cumCashflow; });
+    var lo = Math.min.apply(null, vals.concat([0])), hi = Math.max.apply(null, vals.concat([0]));
+    var span0 = (hi-lo)||1; lo -= span0*0.08; hi += span0*0.08; var span = hi-lo;
+    var n = rows.length;
+
+    function onMove(ev){
+      var r = wrap.getBoundingClientRect();
+      var px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+      var frac = Math.max(0, Math.min(1, (px - padL*(r.width/W)) / (r.width * ((W-padL-padR)/W))));
+      var i = Math.round(frac*(n-1));
+      var row = rows[i];
+      var vx = padL + (n<2?0:(i/(n-1))*(W-padL-padR));
+      var vy = padT + (1-((row.cumCashflow-lo)/span))*(H-padT-padB);
+      cx.setAttribute('x1',vx); cx.setAttribute('x2',vx); cx.setAttribute('opacity','1');
+      cdot.setAttribute('cx',vx); cdot.setAttribute('cy',vy); cdot.setAttribute('opacity','1');
+      tip.innerHTML = '<div style="color:var(--muted)">'+mLabel(row.date)+'</div>'+
+                      '<strong>'+aud(row.cumCashflow)+'</strong> cumulative';
+      tip.style.opacity = '1';
+      var left = (vx/W)*r.width + 14;
+      if (left + tip.offsetWidth > r.width) left = (vx/W)*r.width - tip.offsetWidth - 14;
+      tip.style.left = Math.max(0,left)+'px';
+      tip.style.top = Math.max(0,(vy/H)*r.height - 18)+'px';
+    }
+    function onLeave(){ tip.style.opacity='0'; cx.setAttribute('opacity','0'); cdot.setAttribute('opacity','0'); }
+    wrap.addEventListener('mousemove', onMove);
+    wrap.addEventListener('mouseleave', onLeave);
+    wrap.addEventListener('touchmove', onMove, {passive:true});
+    wrap.addEventListener('touchend', onLeave);
+  }
+
+  /* ══════════ RENDER ══════════ */
+  function render(res){
+    var s = res.summary, rows = res.rows;
+
+    var m = '';
+    res.warnings.forEach(function(w){ m += msg('warn', w); });
+    $('messages').innerHTML = m;
+
+    var irrTxt = (s.irr === null) ? '—' : pct(s.irr);
+    var html = ''+
+      '<div class="kpis">'+
+        '<div class="kpi lead"><div class="k-label">IRR (monthly)</div>'+
+          '<div class="k-value">'+irrTxt+'</div>'+
+          '<div class="k-note">'+s.months+' monthly cashflows</div></div>'+
+        '<div class="kpi"><div class="k-label">Net profit</div>'+
+          '<div class="k-value '+(s.netProfit<0?'neg':'pos')+'">'+aud(s.netProfit)+'</div>'+
+          '<div class="k-note">after holding &amp; selling costs</div></div>'+
+        '<div class="kpi"><div class="k-label">Gross profit</div>'+
+          '<div class="k-value">'+aud(s.grossProfit)+'</div>'+
+          '<div class="k-note">'+pct(s.grossProfit/s.purchasePrice,1)+' on purchase</div></div>'+
+        '<div class="kpi"><div class="k-label">Hold period</div>'+
+          '<div class="k-value">'+s.holdYears.toFixed(2)+'</div>'+
+          '<div class="k-note">years (30/360)</div></div>'+
+      '</div>'+
+
+      '<div class="chart-head"><h3>Cumulative cashflow</h3>'+
+        '<span>Peak money at risk <b>'+aud(trough(rows))+'</b></span></div>'+
+      drawChart(rows)+
+
+      '<div class="two-up" style="margin-top:var(--sp-6)">'+
+        '<table class="sum"><tbody>'+
+          row2('Purchase price', aud(s.purchasePrice))+
+          row2('Purchase date', dLabel(s.purchaseDate))+
+          row2('Sold price', aud(s.soldPrice))+
+          row2('Sold date', dLabel(s.soldDate))+
+          row2('Hold period', s.holdYears.toFixed(4)+' yrs')+
+          row2('Loan', aud(s.loan))+
+          row2('Deposit + fee', signed(s.deposit))+
+          row2('Gross profit', signed(s.grossProfit))+
+        '</tbody></table>'+
+        '<table class="sum"><tbody>'+
+          row2('Finance costs (total interest)', aud(s.financeCosts))+
+          row2('Running costs', aud(s.runningCosts))+
+          row2('Rental income', aud(s.rentalIncome))+
+          row2('Net holding (pre-tax)', aud(s.netHoldingPreTax))+
+          row2('Negative gearing refund', aud(s.ngRefund))+
+          row2('After-tax holding', aud(s.afterTaxHolding))+
+          row2('Selling costs', signed(s.sellingCosts))+
+          '<tr class="total"><td>Net profit</td><td>'+signed(s.netProfit)+'</td></tr>'+
+        '</tbody></table>'+
+      '</div>';
+
+    $('resultBody').innerHTML = html;
+    wireChart(rows);
+
+    var tb = $('bdTable').querySelector('tbody'), out = [];
+    rows.forEach(function(r,i){
+      var isLast = (i === rows.length-1);
+      var cls = isLast ? ' class="is-sale"' : (r.month===6 ? ' class="fy-end"' : '');
+      out.push('<tr'+cls+'>'+
+        '<td>'+mLabel(r.date)+(isLast?' · sale':'')+'</td>'+
+        '<td class="num">'+pct(r.cashRate,2)+'</td>'+
+        '<td class="num">'+aud(r.loan)+'</td>'+
+        '<td class="num">'+aud(r.interest)+'</td>'+
+        '<td class="num">'+aud(r.running)+'</td>'+
+        '<td class="num">'+aud(r.rent)+'</td>'+
+        '<td class="num">'+aud(r.ngRefund)+'</td>'+
+        '<td class="num">'+signed(r.monthlyCF)+'</td>'+
+        '<td class="num">'+signed(r.netCF)+'</td>'+
+        '<td class="num">'+aud(r.cumFinance)+'</td>'+
+        '<td class="num">'+signed(r.cumCashflow)+'</td>'+
+        '<td class="num">'+aud(r.accumLoss)+'</td>'+
+        '<td class="num">'+aud(r.propValue)+'</td>'+
+      '</tr>');
+    });
+    tb.innerHTML = out.join('');
+    $('breakdownCard').hidden = false;
+  }
+  function row2(k,v){ return '<tr><td>'+k+'</td><td>'+v+'</td></tr>'; }
+  function pos(v, extent){ return (v/extent*100).toFixed(3)+'%'; }
+  function trough(rows){
+    var lo = rows[0].cumCashflow;
+    for (var i=1;i<rows.length;i++) if (rows[i].cumCashflow < lo) lo = rows[i].cumCashflow;
+    return lo;
+  }
+
+  /* ══════════ ACTIONS ══════════ */
+  function calc(){
+    ['pPrice','sPrice','pDate','sDate'].forEach(function(id){ $(id).setAttribute('aria-invalid','false'); });
+    try {
+      var res = window.IRRBreakdown.computeBreakdown({
+        purchasePrice: Number($('pPrice').value),
+        purchaseDate:  $('pDate').value,
+        soldPrice:     Number($('sPrice').value),
+        soldDate:      $('sDate').value
+      }, readOpts());
+      last = res;
+      render(res);
+    } catch (e) {
+      last = null;
+      $('messages').innerHTML = msg('err', e.message);
+      $('resultBody').innerHTML = '<div class="empty"><h3>Could not calculate</h3><p>Fix the highlighted field and try again.</p></div>';
+      $('breakdownCard').hidden = true;
+      if (/price/i.test(e.message)) $(/Purchase/i.test(e.message)?'pPrice':'sPrice').setAttribute('aria-invalid','true');
+      if (/date/i.test(e.message)) $('sDate').setAttribute('aria-invalid','true');
+    }
+  }
+
+  function toCsv(){
+    if (!last) { $('messages').innerHTML = msg('warn','Calculate a result first — there is nothing to export yet.'); return; }
+    var s = last.summary, a = last.assumptions, L = [];
+    L.push(['Performance Property — IRR breakdown']);
+    L.push([]);
+    L.push(['Purchase price', s.purchasePrice]);
+    L.push(['Purchase date', s.purchaseDate.toISOString().slice(0,10)]);
+    L.push(['Sold price', s.soldPrice]);
+    L.push(['Sold date', s.soldDate.toISOString().slice(0,10)]);
+    L.push(['Hold period (yrs, 30/360)', s.holdYears]);
+    L.push(['Loan', s.loan]);
+    L.push(['Deposit + fee', s.deposit]);
+    L.push(['Gross profit', s.grossProfit]);
+    L.push(['Finance costs', s.financeCosts]);
+    L.push(['Running costs', s.runningCosts]);
+    L.push(['Rental income', s.rentalIncome]);
+    L.push(['Net holding (pre-tax)', s.netHoldingPreTax]);
+    L.push(['Negative gearing refund', s.ngRefund]);
+    L.push(['After-tax holding', s.afterTaxHolding]);
+    L.push(['Selling costs', s.sellingCosts]);
+    L.push(['Net profit', s.netProfit]);
+    L.push(['IRR', s.irr === null ? '' : s.irr]);
+    L.push([]);
+    L.push(['Cash rate basis', a.cashRateBasis], ['Negative gearing', a.negativeGearing],
+           ['Rent basis', a.rentBasis], ['Finance cost basis', a.financeCostBasis],
+           ['Deposit + fee', a.depositAndFee], ['LVR', a.lvr], ['Running cost p.a.', a.runningCostPa],
+           ['Rental yield', a.rentalYield], ['Normalised cash rate', a.normalisedRate],
+           ['Marginal tax rate', a.marginalTaxRate], ['Selling commission', a.sellingCommission],
+           ['Selling market spend', a.sellingMarketSpend], ['Bank margin', a.bankMargin], ['APRA buffer', a.apraBuffer]);
+    L.push([]);
+    L.push(['Date','Year','Month','Cash rate','Loan','Interest','Running costs','Rental income',
+            'NG refund','Holding cashflow','Net cashflow','Cumulative finance','Cumulative cashflow',
+            'Accum loss (FY)','Property value']);
+    last.rows.forEach(function(r){
+      L.push([r.date.toISOString().slice(0,10), r.year, MONTHS[r.month-1], r.cashRate, r.loan,
+              r.interest, r.running, r.rent, r.ngRefund, r.monthlyCF, r.netCF,
+              r.cumFinance, r.cumCashflow, r.accumLoss, r.propValue]);
+    });
+    var csv = L.map(function(row){
+      return row.map(function(c){
+        if (c === null || c === undefined) return '';
+        var t = String(c);
+        return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
+      }).join(',');
+    }).join('\n');
+
+    var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+    var a2 = document.createElement('a');
+    a2.href = URL.createObjectURL(blob);
+    a2.download = 'irr-breakdown-'+s.purchaseDate.toISOString().slice(0,10)+'-to-'+s.soldDate.toISOString().slice(0,10)+'.csv';
+    document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+    setTimeout(function(){ URL.revokeObjectURL(a2.href); }, 1000);
+  }
+
+  var DEFAULT_FORM = {
+    pPrice:560000, pDate:'2016-10-22', sPrice:1450000, sDate:'2026-04-25',
+    tRate:'Normalised', tNg:'Off', tRent:'Growing', tFin:'Purchase Price',
+    aDep:18.5, aLvr:90, aRun:2, aYield:3, aNorm:4.9, aTax:47,
+    aComm:1.8, aSpend:20000, aMargin:1.75, aApra:0.5
+  };
+  function reset(){
+    Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
+    $('messages').innerHTML = '';
+    calc();
+  }
+
+  /* ── wiring ── */
+  $('btnCalc').addEventListener('click', calc);
+  $('btnCsv').addEventListener('click', toCsv);
+  $('btnReset').addEventListener('click', reset);
+  document.querySelectorAll('.chip').forEach(function(b){
+    b.addEventListener('click', function(){
+      var s = SAMPLES[b.dataset.sample];
+      Object.keys(s).forEach(function(k){ $(k).value = s[k]; });
+      calc();
+    });
+  });
+  document.querySelectorAll('input,select').forEach(function(el){
+    el.addEventListener('change', calc);
+    el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') { ev.preventDefault(); calc(); } });
+  });
+
+  calc();
+
+  /* ── self-test against the two worked samples in the workbook ── */
+  window.runSelfTest = function(){
+    var t = window.IRRBreakdown.selfTest();
+    t.forEach(function(c){
+      console.log((c.pass?'PASS':'FAIL')+' — '+c.name+' ('+c.months+' months)');
+      console.table(c.checks);
+    });
+    return t;
+  };
+})();
+</script>
+</body>
+</html>
