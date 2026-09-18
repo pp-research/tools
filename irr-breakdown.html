@@ -243,10 +243,6 @@ details .body strong{color:var(--text)}
           <label for="tRent">Rent basis</label>
           <select id="tRent"><option>Growing</option><option>Flat</option></select>
         </div>
-        <div class="field">
-          <label for="tFin">Finance cost basis</label>
-          <select id="tFin"><option>Purchase Price</option><option>Midpoint</option></select>
-        </div>
 
         <details id="assumpBox">
           <summary>Assumptions</summary>
@@ -359,7 +355,7 @@ details .body strong{color:var(--text)}
               <li><strong>Negative gearing</strong>, when on, refunds the accumulated FY loss × marginal tax rate each June and at sale. The FY accumulator resets in July.</li>
               <li><strong>Hold period</strong> uses Excel's <code>YEARFRAC</code> basis 0 (US 30/360).</li>
             </ul>
-            <p><strong>Three quirks carried over from the workbook, deliberately:</strong> the sale is dated to the <em>1st</em> of the sale month rather than settlement day; the first row sits before the purchase date yet still accrues a little growth (Excel's <code>YEARFRAC</code> is unsigned); and on the Midpoint finance basis interest is charged on the midpoint loan while only the purchase-basis loan is discharged at sale. Each shifts the IRR slightly. They are reproduced so this tool ties exactly to the sheet — flag them if you want them changed.</p>
+            <p><strong>Two quirks carried over from the workbook, deliberately:</strong> the sale is dated to the <em>1st</em> of the sale month rather than settlement day; and the first row sits before the purchase date yet still accrues a little growth (Excel's <code>YEARFRAC</code> is unsigned). Both shift the IRR slightly. They are reproduced so this tool ties exactly to the sheet — flag them if you want them changed.</p>
           </div>
         </details>
       </section>
@@ -432,7 +428,7 @@ details .body strong{color:var(--text)}
       sellingCommission: p('aComm'), sellingMarketSpend: Number($('aSpend').value),
       bankMargin: p('aMargin'), apraBuffer: p('aApra'),
       cashRateBasis: $('tRate').value, negativeGearing: $('tNg').value,
-      rentBasis: $('tRent').value, financeCostBasis: $('tFin').value
+      rentBasis: $('tRent').value
     };
   }
   function writeOpts(o){
@@ -443,7 +439,7 @@ details .body strong{color:var(--text)}
     set('aComm', o.sellingCommission*100); set('aSpend', o.sellingMarketSpend);
     set('aMargin', o.bankMargin*100); set('aApra', o.apraBuffer*100);
     set('tRate', o.cashRateBasis); set('tNg', o.negativeGearing);
-    set('tRent', o.rentBasis); set('tFin', o.financeCostBasis);
+    set('tRent', o.rentBasis);
   }
   function readDeal(){
     return {
@@ -700,7 +696,7 @@ details .body strong{color:var(--text)}
            ['Net profit', s.netProfit], ['IRR', s.irr === null ? '' : s.irr]);
     L.push([]);
     L.push(['Cash rate basis', a.cashRateBasis], ['Negative gearing', a.negativeGearing],
-           ['Rent basis', a.rentBasis], ['Finance cost basis', a.financeCostBasis],
+           ['Rent basis', a.rentBasis],
            ['Deposit + fee', a.depositAndFee], ['LVR', a.lvr], ['Running cost p.a.', a.runningCostPa],
            ['Rental yield', a.rentalYield], ['Normalised cash rate', a.normalisedRate],
            ['Marginal tax rate', a.marginalTaxRate], ['Selling commission', a.sellingCommission],
@@ -731,7 +727,7 @@ details .body strong{color:var(--text)}
   /* ══════════ WIRING ══════════ */
   var DEFAULT_FORM = {
     pName:'Long-hold sample', pPrice:560000, pDate:'2016-10-22', sPrice:1450000, sDate:'2026-04-25',
-    tRate:'Normalised', tNg:'Off', tRent:'Growing', tFin:'Purchase Price',
+    tRate:'Normalised', tNg:'Off', tRent:'Growing',
     aDep:18.5, aLvr:90, aRun:2, aYield:3, aNorm:4.9, aTax:47,
     aComm:1.8, aSpend:20000, aMargin:1.75, aApra:0.5
   };

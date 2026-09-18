@@ -121,8 +121,7 @@
     // toggles
     cashRateBasis:    'Normalised', // B14  Normalised | Actual
     negativeGearing:  'Off',        // B15  Off | On
-    rentBasis:        'Growing',    // B16  Growing | Flat
-    financeCostBasis: 'Purchase Price' // B17  Purchase Price | Midpoint
+    rentBasis:        'Growing'     // B16  Growing | Flat
   };
 
   /* ═══ RBA CASH RATE TARGET (monthly, Jan 2008 – Aug 2026) ═══
@@ -155,7 +154,6 @@
     if (sDate.getTime() < pDate.getTime()) throw new Error('Sold date cannot be before the purchase date');
 
     var normalised = (a.cashRateBasis === 'Normalised');
-    var midpointLoan = (a.financeCostBasis === 'Midpoint');
     var flatRent = (a.rentBasis === 'Flat');
     var ngOn = (a.negativeGearing === 'On');
 
@@ -165,7 +163,7 @@
     var deposit      = -P * a.depositAndFee;                   // H5
     var grossProfit  = S - P;                                  // I5
     var sellingCosts = -(S * a.sellingCommission + a.sellingMarketSpend); // P5
-    var rowLoan      = midpointLoan ? ((P + S) / 2) * a.lvr : loan;       // E column
+    var rowLoan      = loan;                                             // E column
 
     /* ── month grid: 1st of purchase month → 1st of sale month ── */
     var dates = [];
@@ -218,9 +216,7 @@
       // J — holding-only cashflow
       var monthlyCF = -(interest + running - rent) + ngRefund;
 
-      // K — net cashflow: deposit on the first row, sale proceeds on the last.
-      //     NOTE the sheet discharges the PURCHASE-basis loan here ($G$5) even
-      //     when interest was charged on the midpoint loan — reproduced as-is.
+      // K — net cashflow: deposit on the first row, sale proceeds on the last
       var netCF = monthlyCF
         + (i === 0 ? deposit : 0)
         + (isLast ? (S - loan + sellingCosts) : 0);
