@@ -286,6 +286,151 @@
     return isNaN(d) ? null : new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   }
 
+  /* ═══ PASTE PARSER — rows copied straight out of the sheet ═══
+     The 'ADL - Sold' tab is laid out
+       # | Property | Purchase Price | Purchase Date | Sold Price | Sold Date | …
+     so after dropping the row number the first four substantive values always
+     run price, date, price, date. That ordering is what the parser leans on,
+     which means extra trailing columns (hold period, ROI, CAGR, IRR) are
+     harmless and a partial copy of just the four terms works too. */
+
+  var MONTH_NAMES = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+
+  /** Excel serial → Date. Serial 1 is 1 Jan 1900, with Excel's 1900 leap bug. */
+  function serialToDate(n) {
+    var ms = Date.UTC(1899, 11, 30) + Math.round(n) * MS_DAY;
+    var d = new Date(ms);
+    return utc(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
+
+  function parseMoney(s) {
+    var t = String(s).replace(/[\s$,]/g, '');
+    if (t === '' || !/^-?\d*\.?\d+$/.test(t)) return null;
+    var n = parseFloat(t);
+    return isFinite(n) ? n : null;
+  }
+
+  /**
+   * @param {string} s
+   * @param {boolean} dayFirst  how to read an ambiguous d/m vs m/d token
+   */
+  function parseFlexDate(s, dayFirst) {
+    var t = String(s).trim();
+    if (t === '') return null;
+
+    var iso = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (iso) return utc(+iso[1], +iso[2], +iso[3]);
+
+    // 22 Oct 2016 · 22-Oct-16 · Oct 22 2016
+    var named = t.match(/^(\d{1,2})[\s\-\/]+([A-Za-z]{3,})[\s\-\/]+(\d{2,4})$/);
+    if (named && MONTH_NAMES[named[2].slice(0, 3).toLowerCase()]) {
+      return utc(fullYear(+named[3]), MONTH_NAMES[named[2].slice(0, 3).toLowerCase()], +named[1]);
+    }
+    var named2 = t.match(/^([A-Za-z]{3,})[\s\-\/]+(\d{1,2}),?[\s\-\/]+(\d{2,4})$/);
+    if (named2 && MONTH_NAMES[named2[1].slice(0, 3).toLowerCase()]) {
+      return utc(fullYear(+named2[3]), MONTH_NAMES[named2[1].slice(0, 3).toLowerCase()], +named2[2]);
+    }
+
+    var slash = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (slash) {
+      var a = +slash[1], b = +slash[2], y = fullYear(+slash[3]);
+      var day = dayFirst ? a : b, mon = dayFirst ? b : a;
+      if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
+      return utc(y, mon, day);
+    }
+
+    // bare Excel serial
+    if (/^\d{5}(\.\d+)?$/.test(t)) {
+      var n = parseFloat(t);
+      if (n >= 20000 && n <= 80000) return serialToDate(n);
+    }
+    return null;
+  }
+
+  function fullYear(y) { return y < 100 ? (y < 70 ? 2000 + y : 1900 + y) : y; }
+
+  /** Split one line into fields: tabs win, then commas (quote-aware), then 2+ spaces. */
+  function splitFields(line) {
+    if (line.indexOf('\t') >= 0) return line.split('\t');
+    if (line.indexOf(',') >= 0) {
+      var out = [], cur = '', q = false;
+      for (var i = 0; i < line.length; i++) {
+        var c = line[i];
+        if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+        else if (c === ',' && !q) { out.push(cur); cur = ''; }
+        else cur += c;
+      }
+      out.push(cur);
+      // A lone thousands-separated number must not be mistaken for columns.
+      if (out.length > 1 && out.every(function (f) { return /^\s*\d{1,3}\s*$/.test(f); })) return [line];
+      return out;
+    }
+    return line.split(/\s{2,}/);
+  }
+
+  /**
+   * Parse pasted sheet rows into deals.
+   * @param {string} text
+   * @returns {{deals:Array, skipped:Array, dayFirst:boolean}}
+   */
+  function parseDeals(text) {
+    var lines = String(text || '').split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+
+    /* Decide d/m vs m/d once for the whole paste: any token with a component
+       above 12 settles it; otherwise assume day-first (Australian sheet). */
+    var dayFirst = true, votesDay = 0, votesMonth = 0;
+    String(text || '').replace(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g, function (_, a, b) {
+      if (+a > 12 && +b <= 12) votesDay++;
+      else if (+b > 12 && +a <= 12) votesMonth++;
+      return _;
+    });
+    if (votesMonth > votesDay) dayFirst = false;
+
+    var deals = [], skipped = [];
+
+    lines.forEach(function (line, li) {
+      if (/purchase\s*price/i.test(line) && /sold/i.test(line)) return;   // header row
+
+      var fields = splitFields(line).map(function (f) { return String(f).trim().replace(/^"|"$/g, ''); });
+
+      var values = [], texts = [];
+      fields.forEach(function (f) {
+        if (f === '') return;
+        var d = parseFlexDate(f, dayFirst);
+        if (d) { values.push({ kind: 'date', date: d, raw: f }); return; }
+        var m = parseMoney(f);
+        // Below 10,000 it is a row number, a hold period, an ROI — never a
+        // price and never a date serial, so it can be dropped safely.
+        if (m !== null) { if (Math.abs(m) >= 10000) values.push({ kind: 'num', num: m, raw: f }); return; }
+        if (/[A-Za-z]/.test(f)) texts.push(f);
+      });
+
+      if (values.length < 4) {
+        skipped.push({ line: li + 1, text: line.slice(0, 80), why: 'needs a purchase price, purchase date, sold price and sold date — found ' + values.length + ' usable value' + (values.length === 1 ? '' : 's') });
+        return;
+      }
+
+      var v = values.slice(0, 4);
+      var pPrice = v[0].kind === 'num' ? v[0].num : null;
+      var pDate  = v[1].kind === 'date' ? v[1].date : (v[1].kind === 'num' ? parseFlexDate(String(v[1].num), dayFirst) : null);
+      var sPrice = v[2].kind === 'num' ? v[2].num : null;
+      var sDate  = v[3].kind === 'date' ? v[3].date : (v[3].kind === 'num' ? parseFlexDate(String(v[3].num), dayFirst) : null);
+
+      if (pPrice === null || sPrice === null || !pDate || !sDate) {
+        skipped.push({ line: li + 1, text: line.slice(0, 80), why: 'could not tell prices from dates — expected price, date, price, date' });
+        return;
+      }
+
+      deals.push({
+        name: texts.length ? texts[0] : 'Row ' + (li + 1),
+        purchasePrice: pPrice, purchaseDate: pDate,
+        soldPrice: sPrice, soldDate: sDate
+      });
+    });
+
+    return { deals: deals, skipped: skipped, dayFirst: dayFirst };
+  }
+
   /* ═══ SELF-TEST — the two worked samples on the workbook's breakdown tabs ═══
      Addresses deliberately omitted; only the numeric deal terms are needed. */
   function selfTest() {
@@ -316,6 +461,7 @@
 
   root.IRRBreakdown = {
     computeBreakdown: computeBreakdown,
+    parseDeals: parseDeals, parseFlexDate: parseFlexDate, serialToDate: serialToDate,
     xirr: xirr, xnpv: xnpv,
     yearFrac30360US: yearFrac30360US, edate: edate, eomonth: eomonth,
     DEFAULTS: DEFAULTS, RBA: RBA, selfTest: selfTest
