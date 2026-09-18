@@ -94,6 +94,23 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .chip{background:var(--panel-2);border:1px solid var(--border-strong);color:var(--text);border-radius:999px;padding:7px 14px;font:600 12px/16px 'Montserrat',sans-serif;min-height:34px;cursor:pointer}
 .chip:hover{border-color:var(--accent);color:var(--accent-300)}
 
+/* ═══ TABS ═══ */
+.tabs{display:flex;gap:var(--sp-1);background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:var(--sp-1)}
+.tabs button{
+  flex:1 1 0;min-width:0;border-radius:999px;background:transparent;color:var(--muted);
+  border:1px solid transparent;padding:9px 12px;min-height:40px;font:600 13px/20px 'Montserrat',sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.tabs button:hover{color:var(--text);background:var(--panel-2)}
+.tabs button[aria-selected="true"]{background:var(--accent);color:#06222a}
+.tabs button[aria-selected="true"] .badge{background:rgba(0,0,0,.22);color:#06222a}
+.badge{
+  min-width:20px;padding:0 6px;border-radius:999px;background:var(--panel-2);color:var(--muted);
+  font-size:11px;line-height:18px;font-weight:700;font-variant-numeric:tabular-nums lining-nums;
+}
+.panel{display:flex;flex-direction:column;gap:var(--sp-4)}
+.panel[hidden]{display:none}
+
 /* ═══ KPI STRIP ═══ */
 /* minmax(0,1fr) — plain 1fr keeps min-width:auto, so a long currency value
    pushes the tracks wider than the card and scrolls the page on a phone. */
@@ -281,31 +298,13 @@ details .body strong{color:var(--text)}
     <div>
       <div id="messages" role="status" aria-live="polite"></div>
 
-      <!-- ══════════ BATCH RESULTS ══════════ -->
-      <section class="card" id="batchCard" hidden aria-labelledby="batch-h">
-        <div class="card-head">
-          <h2 id="batch-h">Pasted properties</h2>
-          <div class="btns" style="margin:0">
-            <button type="button" class="btn-ghost btn-sm" id="btnSaveAll">Save all</button>
-            <button type="button" class="btn-ghost btn-sm" id="btnBatchCsv">Export CSV</button>
-          </div>
-        </div>
-        <div class="tbl-scroll short">
-          <table id="batchTable">
-            <thead><tr>
-              <th scope="col">Property</th>
-              <th scope="col" class="num">Purchased</th>
-              <th scope="col" class="num">Sold</th>
-              <th scope="col" class="num">Hold</th>
-              <th scope="col" class="num">Net profit</th>
-              <th scope="col" class="num">IRR</th>
-              <th scope="col"><span class="sr-only">Actions</span></th>
-            </tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
+      <div class="tabs" role="tablist" aria-label="Results">
+        <button type="button" role="tab" id="tab-result" aria-controls="panel-result" aria-selected="true">Result</button>
+        <button type="button" role="tab" id="tab-pasted" aria-controls="panel-pasted" aria-selected="false" tabindex="-1">Pasted <span class="badge" id="badgePasted">0</span></button>
+        <button type="button" role="tab" id="tab-saved" aria-controls="panel-saved" aria-selected="false" tabindex="-1">Saved <span class="badge" id="badgeSaved">0</span></button>
+      </div>
 
+      <div class="panel" id="panel-result" role="tabpanel" aria-labelledby="tab-result">
       <section class="card" aria-labelledby="res-h">
         <h2 id="res-h">Result</h2>
         <div id="resultBody">
@@ -356,18 +355,35 @@ details .body strong{color:var(--text)}
           </div>
         </details>
       </section>
+      </div>
+
+      <!-- ══════════ PASTED ══════════ -->
+      <div class="panel" id="panel-pasted" role="tabpanel" aria-labelledby="tab-pasted" hidden>
+        <section class="card" id="batchCard" aria-labelledby="batch-h">
+          <div class="card-head">
+            <h2 id="batch-h">Pasted properties</h2>
+            <div class="btns" style="margin:0">
+              <button type="button" class="btn-ghost btn-sm" id="btnSaveAll">Save all</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnBatchCsv">Export CSV</button>
+            </div>
+          </div>
+          <div id="batchBody"></div>
+        </section>
+      </div>
 
       <!-- ══════════ SAVED ══════════ -->
-      <section class="card" aria-labelledby="saved-h">
-        <div class="card-head">
-          <h2 id="saved-h">Saved properties</h2>
-          <div class="btns" style="margin:0">
-            <button type="button" class="btn-ghost btn-sm" id="btnSavedCsv">Export CSV</button>
-            <button type="button" class="btn-ghost btn-sm" id="btnSavedClear">Clear all</button>
+      <div class="panel" id="panel-saved" role="tabpanel" aria-labelledby="tab-saved" hidden>
+        <section class="card" aria-labelledby="saved-h">
+          <div class="card-head">
+            <h2 id="saved-h">Saved properties</h2>
+            <div class="btns" style="margin:0">
+              <button type="button" class="btn-ghost btn-sm" id="btnSavedCsv">Export CSV</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnSavedClear">Clear all</button>
+            </div>
           </div>
-        </div>
-        <div id="savedBody"></div>
-      </section>
+          <div id="savedBody"></div>
+        </section>
+      </div>
     </div>
   </div>
 </div>
@@ -568,13 +584,10 @@ details .body strong{color:var(--text)}
     notes += skipList(p.skipped.concat(failed));
     $('parseMsg').innerHTML = notes;
 
-    if (batch.length === 1) {
-      $('batchCard').hidden = true;
-      loadIntoForm(batch[0].name, batch[0].deal);
-    } else {
-      renderBatch();
-      loadIntoForm(batch[0].name, batch[0].deal);
-    }
+    renderBatch();
+    loadIntoForm(batch[0].name, batch[0].deal);
+    // one property goes straight to its detail; several land on the list
+    showTab(batch.length === 1 ? 'result' : 'pasted');
   }
 
   function skipList(skipped){
@@ -593,9 +606,33 @@ details .body strong{color:var(--text)}
     calc();
   }
 
+  /* ══════════ TABS ══════════ */
+  var TABS = ['result','pasted','saved'];
+  function showTab(name){
+    TABS.forEach(function(t){
+      var btn = $('tab-'+t), panel = $('panel-'+t), on = (t === name);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      btn.tabIndex = on ? 0 : -1;
+      panel.hidden = !on;
+    });
+  }
+  function currentTab(){
+    for (var i=0;i<TABS.length;i++) if ($('tab-'+TABS[i]).getAttribute('aria-selected')==='true') return TABS[i];
+    return 'result';
+  }
+  function setBadges(){
+    $('badgePasted').textContent = batch.length;
+    $('badgeSaved').textContent = loadSaved().length;
+  }
+
   function renderBatch(){
-    var tb = $('batchTable').querySelector('tbody');
-    tb.innerHTML = batch.map(function(b,i){
+    if (!batch.length) {
+      $('batchBody').innerHTML = '<div class="empty"><h3>Nothing pasted yet</h3>'+
+        '<p>Paste rows from the sheet on the left and each property is computed here.</p></div>';
+      setBadges();
+      return;
+    }
+    var rows = batch.map(function(b,i){
       var s = b.res.summary;
       return '<tr>'+
         '<td class="name">'+esc(b.name)+'</td>'+
@@ -607,7 +644,14 @@ details .body strong{color:var(--text)}
           '<button type="button" class="btn-ghost btn-sm" data-savebatch="'+i+'">Save</button></td>'+
       '</tr>';
     }).join('');
-    $('batchCard').hidden = false;
+
+    $('batchBody').innerHTML = '<div class="tbl-scroll short"><table id="batchTable"><thead><tr>'+
+      '<th scope="col">Property</th><th scope="col" class="num">Purchased</th>'+
+      '<th scope="col" class="num">Sold</th><th scope="col" class="num">Hold</th>'+
+      '<th scope="col" class="num">Net profit</th><th scope="col" class="num">IRR</th>'+
+      '<th scope="col"><span class="sr-only">Actions</span></th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    setBadges();
   }
 
   /* ══════════ SAVED PROPERTIES (localStorage, this browser only) ══════════ */
@@ -643,6 +687,7 @@ details .body strong{color:var(--text)}
 
   function renderSaved(){
     var list = loadSaved();
+    setBadges();
     if (!list.length) {
       $('savedBody').innerHTML = '<div class="empty"><h3>No saved properties yet</h3>'+
         '<p>Choose Save property to keep a deal here. Saved properties stay in this browser only — they are never uploaded.</p></div>';
@@ -748,7 +793,7 @@ details .body strong{color:var(--text)}
   $('btnCsv').addEventListener('click', exportDetail);
   $('btnParse').addEventListener('click', doParse);
   $('btnClearPaste').addEventListener('click', function(){
-    $('pasteBox').value=''; $('parseMsg').innerHTML=''; batch=[]; $('batchCard').hidden=true; $('pasteBox').focus();
+    $('pasteBox').value=''; $('parseMsg').innerHTML=''; batch=[]; renderBatch(); $('pasteBox').focus();
   });
   $('btnReset').addEventListener('click', function(){
     Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
@@ -791,7 +836,7 @@ details .body strong{color:var(--text)}
     if (!b) return;
     if (b.dataset.open !== undefined && b.dataset.open !== '') {
       var it = batch[+b.dataset.open];
-      if (it) { loadIntoForm(it.name, it.deal); $('resultBody').scrollIntoView({block:'start'}); }
+      if (it) { loadIntoForm(it.name, it.deal); showTab('result'); }
     }
     if (b.dataset.savebatch !== undefined && b.dataset.savebatch !== '') {
       var it2 = batch[+b.dataset.savebatch];
@@ -799,7 +844,7 @@ details .body strong{color:var(--text)}
     }
     if (b.dataset.load) {
       var e = loadSaved().filter(function(x){ return x.id === b.dataset.load; })[0];
-      if (e) { writeOpts(e.opts); loadIntoForm(e.name, e); $('resultBody').scrollIntoView({block:'start'}); }
+      if (e) { writeOpts(e.opts); loadIntoForm(e.name, e); showTab('result'); }
     }
     if (b.dataset.del) {
       putSaved(loadSaved().filter(function(x){ return x.id !== b.dataset.del; }));
@@ -808,14 +853,28 @@ details .body strong{color:var(--text)}
   });
 
   document.querySelectorAll('input,select').forEach(function(el){
-    // renaming the property only relabels the result — no need to recompute
+      // renaming the property only relabels the result — no need to recompute
     el.addEventListener('change', function(){ if (el.id === 'pName') relabel(); else calc(); });
     el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); calc(); } });
   });
   // paste straight into the box and go
   $('pasteBox').addEventListener('paste', function(){ setTimeout(doParse, 0); });
 
+  // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
+  TABS.forEach(function(t){
+    $('tab-'+t).addEventListener('click', function(){ showTab(t); });
+  });
+  $('tab-result').parentNode.addEventListener('keydown', function(ev){
+    var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
+    if (ev.key === 'ArrowRight') to = TABS[(i+1)%n];
+    else if (ev.key === 'ArrowLeft') to = TABS[(i-1+n)%n];
+    else if (ev.key === 'Home') to = TABS[0];
+    else if (ev.key === 'End') to = TABS[n-1];
+    if (to) { ev.preventDefault(); showTab(to); $('tab-'+to).focus(); }
+  });
+
   renderSaved();
+  renderBatch();
   calc();
 
   window.runSelfTest = function(){
