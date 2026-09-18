@@ -1152,7 +1152,9 @@ details .body strong{color:var(--text)}
     el.addEventListener('change', function(){ if (el.id === 'pName') relabel(); else if (el.id !== 'pCat') calc(); });
     el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); calc(); } });
   });
-  $('pasteBox').addEventListener('paste', function(){ setTimeout(doParse, 0); });
+  /* No auto-import on paste. It used to fire the moment anything was pasted,
+     which meant the category typed afterwards never applied and the modal shut
+     before the rows could be checked. "Add from paste" is the only trigger. */
 
   // drag a spreadsheet onto the paste box
   var dz = $('dropzone');
