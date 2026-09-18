@@ -38,7 +38,6 @@ header img{height:40px;width:auto;display:block}
 
 /* ═══ CARDS ═══ */
 .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-6)}
-.card + .card{margin-top:var(--sp-4)}
 .card h2{font-size:14px;line-height:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:var(--sp-4)}
 .card h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:var(--sp-6) 0 var(--sp-3)}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)}
@@ -47,9 +46,13 @@ header img{height:40px;width:auto;display:block}
 /* ═══ LAYOUT ═══ */
 .cols{display:grid;grid-template-columns:1fr;gap:var(--sp-4)}
 /* min-width:0 stops the wide breakdown table forcing the grid column open
-   (grid items default to min-width:auto) and scrolling the whole page. */
-.cols > *{min-width:0}
-@media (min-width:1024px){ .cols{grid-template-columns:360px minmax(0,1fr);align-items:start} .sticky{position:sticky;top:var(--sp-6)} }
+   (grid items default to min-width:auto) and scrolling the whole page.
+   Each panel is a flex column so a hidden card (the batch table) drops out
+   of the gap entirely instead of leaving a phantom space. */
+.cols > *{min-width:0;display:flex;flex-direction:column;gap:var(--sp-4)}
+#messages:empty{display:none}
+#messages .note:last-child{margin-bottom:0}
+@media (min-width:1024px){ .cols{grid-template-columns:380px minmax(0,1fr);align-items:start} }
 
 /* ═══ FORM ═══ */
 .field{margin-bottom:var(--sp-4)}
@@ -121,7 +124,12 @@ tbody tr:hover{background:rgba(0,160,180,.10)}
 tbody tr.is-sale{background:rgba(0,160,180,.16);font-weight:700}
 tbody tr.is-sale:hover{background:rgba(0,160,180,.22)}
 tbody tr.fy-end td{border-bottom:1px solid rgba(255,255,255,.2)}
-td.name{white-space:normal;min-width:180px;font-weight:600}
+td.name{white-space:normal;min-width:150px;font-weight:600}
+/* price over its parsed date — keeps the date visible for checking the paste
+   without spending two columns on it, so IRR stays on screen in the panel. */
+td.pd{text-align:right;white-space:nowrap}
+td.pd b{display:block;font-weight:600;font-variant-numeric:tabular-nums lining-nums}
+td.pd span{display:block;font-size:11px;line-height:15px;color:var(--muted)}
 td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
@@ -175,7 +183,11 @@ details .body strong{color:var(--text)}
     </div>
   </header>
 
-  <!-- ══════════ PASTE ══════════ -->
+  <div class="cols">
+
+  <!-- ══════════ LEFT: INPUTS ══════════ -->
+  <div>
+
   <section class="card" aria-labelledby="paste-h">
     <h2 id="paste-h">Paste from the sheet</h2>
     <label for="pasteBox">Copy one or more rows out of the workbook and paste them here</label>
@@ -189,49 +201,6 @@ details .body strong{color:var(--text)}
     <div id="parseMsg" role="status" aria-live="polite" style="margin-top:var(--sp-4)"></div>
   </section>
 
-  <!-- ══════════ BATCH RESULTS ══════════ -->
-  <section class="card" id="batchCard" hidden aria-labelledby="batch-h">
-    <div class="card-head">
-      <h2 id="batch-h">Pasted properties</h2>
-      <div class="btns" style="margin:0">
-        <button type="button" class="btn-ghost btn-sm" id="btnSaveAll">Save all</button>
-        <button type="button" class="btn-ghost btn-sm" id="btnBatchCsv">Export CSV</button>
-      </div>
-    </div>
-    <div class="tbl-scroll short">
-      <table id="batchTable">
-        <thead><tr>
-          <th scope="col">Property</th>
-          <th scope="col" class="num">Purchase</th>
-          <th scope="col">Purchase date</th>
-          <th scope="col" class="num">Sold</th>
-          <th scope="col">Sold date</th>
-          <th scope="col" class="num">Hold</th>
-          <th scope="col" class="num">Net profit</th>
-          <th scope="col" class="num">IRR</th>
-          <th scope="col"><span class="sr-only">Actions</span></th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ══════════ SAVED ══════════ -->
-  <section class="card" aria-labelledby="saved-h">
-    <div class="card-head">
-      <h2 id="saved-h">Saved properties</h2>
-      <div class="btns" style="margin:0">
-        <button type="button" class="btn-ghost btn-sm" id="btnSavedCsv">Export CSV</button>
-        <button type="button" class="btn-ghost btn-sm" id="btnSavedClear">Clear all</button>
-      </div>
-    </div>
-    <div id="savedBody"></div>
-  </section>
-
-  <div class="cols">
-
-    <!-- ══════════ INPUTS ══════════ -->
-    <div class="sticky">
       <section class="card" aria-labelledby="deal-h">
         <h2 id="deal-h">Deal</h2>
 
@@ -315,9 +284,34 @@ details .body strong{color:var(--text)}
       </section>
     </div>
 
-    <!-- ══════════ RESULTS ══════════ -->
+    <!-- ══════════ RIGHT: RESULTS ══════════ -->
     <div>
       <div id="messages" role="status" aria-live="polite"></div>
+
+      <!-- ══════════ BATCH RESULTS ══════════ -->
+      <section class="card" id="batchCard" hidden aria-labelledby="batch-h">
+        <div class="card-head">
+          <h2 id="batch-h">Pasted properties</h2>
+          <div class="btns" style="margin:0">
+            <button type="button" class="btn-ghost btn-sm" id="btnSaveAll">Save all</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnBatchCsv">Export CSV</button>
+          </div>
+        </div>
+        <div class="tbl-scroll short">
+          <table id="batchTable">
+            <thead><tr>
+              <th scope="col">Property</th>
+              <th scope="col" class="num">Purchased</th>
+              <th scope="col" class="num">Sold</th>
+              <th scope="col" class="num">Hold</th>
+              <th scope="col" class="num">Net profit</th>
+              <th scope="col" class="num">IRR</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
       <section class="card" aria-labelledby="res-h">
         <h2 id="res-h">Result</h2>
@@ -368,6 +362,18 @@ details .body strong{color:var(--text)}
             <p><strong>Three quirks carried over from the workbook, deliberately:</strong> the sale is dated to the <em>1st</em> of the sale month rather than settlement day; the first row sits before the purchase date yet still accrues a little growth (Excel's <code>YEARFRAC</code> is unsigned); and on the Midpoint finance basis interest is charged on the midpoint loan while only the purchase-basis loan is discharged at sale. Each shifts the IRR slightly. They are reproduced so this tool ties exactly to the sheet — flag them if you want them changed.</p>
           </div>
         </details>
+      </section>
+
+      <!-- ══════════ SAVED ══════════ -->
+      <section class="card" aria-labelledby="saved-h">
+        <div class="card-head">
+          <h2 id="saved-h">Saved properties</h2>
+          <div class="btns" style="margin:0">
+            <button type="button" class="btn-ghost btn-sm" id="btnSavedCsv">Export CSV</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnSavedClear">Clear all</button>
+          </div>
+        </div>
+        <div id="savedBody"></div>
       </section>
     </div>
   </div>
@@ -507,6 +513,8 @@ details .body strong{color:var(--text)}
     $('breakdownCard').hidden = false;
   }
   function row2(k,v){ return '<tr><td>'+k+'</td><td>'+v+'</td></tr>'; }
+  /** price with its parsed date underneath — one column instead of two */
+  function pdCell(price, date){ return '<td class="pd"><b>'+aud(price)+'</b><span>'+dLabel(date)+'</span></td>'; }
 
   /* ══════════ CALC ══════════ */
   function calc(){
@@ -583,8 +591,7 @@ details .body strong{color:var(--text)}
       var s = b.res.summary;
       return '<tr>'+
         '<td class="name">'+esc(b.name)+'</td>'+
-        '<td class="num">'+aud(s.purchasePrice)+'</td><td>'+dLabel(s.purchaseDate)+'</td>'+
-        '<td class="num">'+aud(s.soldPrice)+'</td><td>'+dLabel(s.soldDate)+'</td>'+
+        pdCell(s.purchasePrice, s.purchaseDate)+ pdCell(s.soldPrice, s.soldDate)+
         '<td class="num">'+s.holdYears.toFixed(2)+'</td>'+
         '<td class="num">'+signed(s.netProfit)+'</td>'+
         '<td class="num"><strong>'+(s.irr===null?'—':pct(s.irr))+'</strong></td>'+
@@ -643,8 +650,7 @@ details .body strong{color:var(--text)}
       } catch (err) { irr = '—'; }
       return '<tr>'+
         '<td class="name">'+esc(e.name)+'</td>'+
-        '<td class="num">'+aud(e.purchasePrice)+'</td><td>'+dLabel(new Date(e.purchaseDate))+'</td>'+
-        '<td class="num">'+aud(e.soldPrice)+'</td><td>'+dLabel(new Date(e.soldDate))+'</td>'+
+        pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
         '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-load="'+e.id+'">Load</button>'+
@@ -653,8 +659,8 @@ details .body strong{color:var(--text)}
     }).join('');
 
     $('savedBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
-      '<th scope="col">Property</th><th scope="col" class="num">Purchase</th><th scope="col">Purchase date</th>'+
-      '<th scope="col" class="num">Sold</th><th scope="col">Sold date</th><th scope="col" class="num">Hold</th>'+
+      '<th scope="col">Property</th><th scope="col" class="num">Purchased</th>'+
+      '<th scope="col" class="num">Sold</th><th scope="col" class="num">Hold</th>'+
       '<th scope="col" class="num">Net profit</th><th scope="col" class="num">IRR</th>'+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
