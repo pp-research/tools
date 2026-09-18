@@ -38,6 +38,7 @@ header img{height:40px;width:auto;display:block}
 
 /* ═══ CARDS ═══ */
 .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-6)}
+.card.tight{padding:var(--sp-3) var(--sp-4)}
 .card h2{font-size:14px;line-height:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:var(--sp-4)}
 .card h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:var(--sp-6) 0 var(--sp-3)}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)}
@@ -45,9 +46,9 @@ header img{height:40px;width:auto;display:block}
 
 /* ═══ LAYOUT ═══ */
 .cols{display:grid;grid-template-columns:1fr;gap:var(--sp-4)}
-/* min-width:0 stops the wide breakdown table forcing the grid column open
-   (grid items default to min-width:auto) and scrolling the whole page.
-   Each panel is a flex column so a hidden card drops out of the gap. */
+/* min-width:0 stops a wide table forcing the grid column open (grid items
+   default to min-width:auto) and scrolling the whole page. Each panel is a
+   flex column so a hidden card drops out of the gap. */
 .cols > *{min-width:0;display:flex;flex-direction:column;gap:var(--sp-4)}
 #messages:empty{display:none}
 #messages .note:last-child{margin-bottom:0}
@@ -67,6 +68,8 @@ input:hover,select:hover,textarea:hover{border-color:rgba(255,255,255,.3)}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px solid var(--accent-300);outline-offset:1px}
 input[aria-invalid="true"]{border-color:var(--red)}
 select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:38px;cursor:pointer}
+input[type=search]{appearance:none}
+input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:14px;width:14px;background:var(--muted);mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M18 6 6 18M6 6l12 12' stroke='black' stroke-width='3' fill='none'/></svg>") center/contain no-repeat;cursor:pointer}
 .pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-3)}
 .suffix{position:relative}
 .suffix input{padding-right:34px}
@@ -82,6 +85,40 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
   border:2px dashed var(--accent);border-radius:var(--r-md);background:rgba(31,40,63,.82);
   font-size:13px;font-weight:700;color:var(--accent-300);pointer-events:none;
 }
+
+/* ═══ COLUMN MAP — the expected shape of a row, shown rather than described ═══ */
+.colmap{border:1px solid var(--border-strong);border-radius:var(--r-md);overflow:hidden;margin-bottom:var(--sp-4)}
+.colmap-scroll{overflow-x:auto}
+.colmap-grid{display:grid;grid-template-columns:minmax(150px,1.6fr) repeat(4,minmax(96px,1fr));min-width:560px}
+.colmap-grid > span{padding:8px 12px;font-size:11px;line-height:16px;white-space:nowrap}
+.colmap-head > span{
+  background:var(--accent);color:#06222a;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  border-right:1px solid rgba(0,0,0,.18);
+}
+.colmap-head > span:last-child{border-right:0}
+.colmap-eg > span{
+  background:var(--bg);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12px;border-right:1px solid var(--border);border-top:1px solid var(--border);
+}
+.colmap-eg > span:last-child{border-right:0}
+.colmap-note{background:var(--panel-2);padding:7px 12px;font-size:11px;line-height:16px;color:var(--muted);border-top:1px solid var(--border)}
+
+/* ═══ DISCLOSURE ═══ */
+.disclosure{
+  display:flex;align-items:center;gap:var(--sp-2);width:100%;justify-content:flex-start;
+  background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);
+  color:var(--accent-300);font:700 14px/20px 'Montserrat',sans-serif;padding:12px 16px;
+}
+.disclosure:hover{border-color:var(--accent);background:var(--panel-2);color:var(--accent-300)}
+.disclosure .chev{display:inline-block;font-size:16px;line-height:1}
+.disclosure[aria-expanded="true"]{border-style:solid;border-color:var(--accent);color:var(--accent)}
+
+/* ═══ FILTERS ═══ */
+.filters{display:grid;grid-template-columns:1fr;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+@media (min-width:600px){ .filters{grid-template-columns:minmax(0,2fr) minmax(0,1fr)} }
+.filters input,.filters select{min-height:40px;padding:8px 12px;font-size:14px}
+.filters select{padding-right:34px}
+.count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
 
 /* ═══ BUTTONS ═══ */
 .btns{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-4)}
@@ -133,7 +170,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 /* ═══ TABLES ═══ */
 .tbl-scroll{overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:var(--r-md)}
-.tbl-scroll.short{max-height:420px}
+.tbl-scroll.short{max-height:440px}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;line-height:18px}
 th,td{padding:9px 12px;text-align:left;white-space:nowrap}
 thead th{
@@ -149,6 +186,8 @@ tbody tr.is-sale{background:rgba(0,160,180,.16);font-weight:700}
 tbody tr.is-sale:hover{background:rgba(0,160,180,.22)}
 tbody tr.fy-end td{border-bottom:1px solid rgba(255,255,255,.2)}
 td.name{white-space:normal;min-width:150px;font-weight:600}
+.cat{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--panel-2);
+  border:1px solid var(--border-strong);color:var(--muted);font-size:10px;line-height:16px;font-weight:600;white-space:nowrap}
 /* price over its parsed date — keeps the date visible for checking an import
    without spending two columns on it, so IRR stays on screen in the panel. */
 td.pd{text-align:right;white-space:nowrap}
@@ -157,6 +196,7 @@ td.pd span{display:block;font-size:11px;line-height:15px;color:var(--muted)}
 td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
+mark{background:rgba(0,160,180,.34);color:var(--text);border-radius:3px;padding:0 1px}
 
 .sum{width:100%;font-size:14px}
 .sum td{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -207,6 +247,8 @@ details .body strong{color:var(--text)}
     </div>
   </header>
 
+  <datalist id="catList"></datalist>
+
   <div class="cols">
 
     <!-- ══════════ LEFT: THE DEAL ══════════ -->
@@ -217,6 +259,10 @@ details .body strong{color:var(--text)}
         <div class="field">
           <label for="pName">Property name or address</label>
           <input id="pName" type="text" value="" autocomplete="off" placeholder="Filled in from an import">
+        </div>
+        <div class="field">
+          <label for="pCat">Category</label>
+          <input id="pCat" type="text" value="" autocomplete="off" list="catList" placeholder="Optional — used by the filter">
         </div>
         <div class="field">
           <label for="pPrice">Purchase price (AUD)</label>
@@ -350,23 +396,8 @@ details .body strong{color:var(--text)}
 
       <!-- ── PROPERTIES ── -->
       <div class="panel" id="panel-props" role="tabpanel" aria-labelledby="tab-props">
-        <section class="card" aria-labelledby="imp-h">
-          <h2 id="imp-h">Add properties</h2>
-          <label for="pasteBox">Paste rows from the sheet, or drop a file on the box</label>
-          <div class="dropzone" id="dropzone">
-            <textarea id="pasteBox" rows="4" spellcheck="false"
-              placeholder="8 Macklin Street&#9;621000&#9;42565&#9;625000&#9;43461&#10;30 Verdun Street&#9;480000&#9;42563&#9;560000&#9;43686"></textarea>
-          </div>
-          <p class="hint">Reads the workbook's column order — <code>property</code>, <code>purchase price</code>, <code>purchase date</code>, <code>sold price</code>, <code>sold date</code>. Extra trailing columns are ignored, the row-number column is skipped, and dates work as Excel serials, <code>22/10/2016</code> or <code>22 Oct 2016</code>.</p>
-          <div class="btns">
-            <button type="button" class="btn-primary" id="btnParse">Add from paste</button>
-            <button type="button" class="btn-ghost" id="btnUpload">Upload .xlsx, .xls or .csv</button>
-            <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
-          </div>
-          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
-          <div id="parseMsg" role="status" aria-live="polite" style="margin-top:var(--sp-4)"></div>
-        </section>
 
+        <!-- the list comes first -->
         <section class="card" aria-labelledby="props-h">
           <div class="card-head">
             <h2 id="props-h">Properties</h2>
@@ -375,7 +406,63 @@ details .body strong{color:var(--text)}
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
             </div>
           </div>
+
+          <div class="filters">
+            <div>
+              <label for="propSearch" class="sr-only">Search properties</label>
+              <input type="search" id="propSearch" placeholder="Search name or address…" autocomplete="off">
+            </div>
+            <div>
+              <label for="propCat" class="sr-only">Filter by category</label>
+              <select id="propCat"><option value="">All categories</option></select>
+            </div>
+          </div>
+          <p class="count-line" id="propCount"></p>
+
           <div id="propsBody"></div>
+        </section>
+
+        <!-- adding is collapsed until wanted -->
+        <section class="card tight">
+          <button type="button" class="disclosure" id="btnAddToggle" aria-expanded="false" aria-controls="addPanel">
+            <span class="chev" aria-hidden="true">+</span> Add properties
+          </button>
+
+          <div id="addPanel" hidden style="margin-top:var(--sp-4)">
+            <h3 style="margin-top:0">Expected column order</h3>
+            <div class="colmap">
+              <div class="colmap-scroll">
+                <div class="colmap-grid colmap-head">
+                  <span>Property</span><span>Purchase price</span><span>Purchase date</span><span>Sold price</span><span>Sold date</span>
+                </div>
+                <div class="colmap-grid colmap-eg">
+                  <span>12 Example St, Suburb</span><span>621000</span><span>14/07/2016</span><span>625000</span><span>27/12/2018</span>
+                </div>
+              </div>
+              <div class="colmap-note">A leading row-number column is skipped, a header row is ignored, and anything after the sold date is left alone. Dates may be Excel serials (<code>42565</code>), <code>14/07/2016</code>, <code>2016-07-14</code> or <code>14 Jul 2016</code>.</div>
+            </div>
+
+            <div class="field">
+              <label for="impCat">Category for this import</label>
+              <input id="impCat" type="text" value="" autocomplete="off" list="catList" placeholder="e.g. Adelaide sold — optional, used by the filter">
+            </div>
+
+            <div class="field">
+              <label for="pasteBox">Paste rows, or drop a file on the box</label>
+              <div class="dropzone" id="dropzone">
+                <textarea id="pasteBox" rows="4" spellcheck="false"
+                  placeholder="12 Example St&#9;621000&#9;42565&#9;625000&#9;43461&#10;34 Sample Rd&#9;480000&#9;42563&#9;560000&#9;43686"></textarea>
+              </div>
+            </div>
+
+            <div class="btns">
+              <button type="button" class="btn-primary" id="btnParse">Add from paste</button>
+              <button type="button" class="btn-ghost" id="btnUpload">Upload .xlsx, .xls or .csv</button>
+              <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
+            <div id="parseMsg" role="status" aria-live="polite" style="margin-top:var(--sp-4)"></div>
+          </div>
         </section>
       </div>
     </div>
@@ -388,7 +475,7 @@ details .body strong{color:var(--text)}
   'use strict';
   var $ = function(id){ return document.getElementById(id); };
   var last = null;                    // last computed result
-  var STORE = 'pp-irr-saved-v1';      // kept from the earlier version so existing saves survive
+  var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
@@ -411,6 +498,14 @@ details .body strong{color:var(--text)}
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function pdCell(price, date){ return '<td class="pd"><b>'+aud(price)+'</b><span>'+dLabel(date)+'</span></td>'; }
   function autoName(s){ return mLabel(s.purchaseDate)+' → '+mLabel(s.soldDate); }
+  /** escape first, then wrap matches — never the other way round */
+  function mark(text, q){
+    var e = esc(text);
+    if (!q) return e;
+    var i = e.toLowerCase().indexOf(esc(q).toLowerCase());
+    if (i < 0) return e;
+    return e.slice(0,i) + '<mark>' + e.slice(i, i+q.length) + '</mark>' + e.slice(i+q.length);
+  }
 
   function msg(kind, text){
     var icons = {
@@ -474,14 +569,15 @@ details .body strong{color:var(--text)}
   function putProps(list){
     try { localStorage.setItem(STORE, JSON.stringify(list)); return true; }
     catch (e) {
-      $('messages').innerHTML = msg('err','Could not save — this browser is blocking local storage (private window, or site data turned off).');
+      $('messages').innerHTML = msg('err','Could not save — either this browser is blocking local storage, or the list has outgrown it.');
       return false;
     }
   }
-  function entryFrom(name, deal, opts){
+  function entryFrom(name, deal, opts, category){
     return {
       id: 'p' + Date.now() + Math.random().toString(36).slice(2,7),
       name: name || 'Untitled property',
+      category: (category || '').trim(),
       purchasePrice: deal.purchasePrice,
       purchaseDate: iso(deal.purchaseDate instanceof Date ? deal.purchaseDate : new Date(deal.purchaseDate)),
       soldPrice: deal.soldPrice,
@@ -504,17 +600,70 @@ details .body strong{color:var(--text)}
     return { added: added, updated: updated };
   }
 
-  function renderProps(){
-    var list = loadProps();
-    $('badgeProps').textContent = list.length;
+  /* ── search + category filter ── */
+  function categoriesOf(list){
+    var seen = {}, out = [];
+    list.forEach(function(e){ var c = (e.category||'').trim(); if (c && !seen[c]) { seen[c]=1; out.push(c); } });
+    return out.sort(function(a,b){ return a.localeCompare(b); });
+  }
+  /* Sentinel for the "no category" filter. It must survive innerHTML round-trip,
+     so no control characters — a U+0000 here is mangled by the HTML parser and
+     the option value silently stops matching. */
+  var NO_CAT = '__uncategorised__';
 
-    if (!list.length) {
+  function syncCategoryControls(list){
+    var cats = categoriesOf(list);
+    var hasUncat = list.some(function(e){ return !(e.category||'').trim(); });
+
+    var sel = $('propCat'), keep = sel.value;
+    var opts = '<option value="">All categories</option>' +
+      cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('') +
+      (hasUncat ? '<option value="'+NO_CAT+'">Uncategorised</option>' : '');
+    sel.innerHTML = opts;
+    // keep the current choice unless it no longer exists
+    sel.value = [].some.call(sel.options, function(o){ return o.value === keep; }) ? keep : '';
+
+    $('catList').innerHTML = cats.map(function(c){ return '<option value="'+esc(c)+'"></option>'; }).join('');
+  }
+  function filterProps(list){
+    var q = $('propSearch').value.trim().toLowerCase();
+    var cat = $('propCat').value;
+    var cats = categoriesOf(list);
+    // only treat the sentinel as "uncategorised" if nothing is actually named that
+    var sentinel = (cats.indexOf(NO_CAT) < 0);
+    return list.filter(function(e){
+      if (sentinel && cat === NO_CAT) { if ((e.category||'').trim()) return false; }
+      else if (cat && (e.category||'').trim() !== cat) return false;
+      if (q && String(e.name||'').toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+
+  function renderProps(){
+    var all = loadProps();
+    $('badgeProps').textContent = all.length;
+    syncCategoryControls(all);
+
+    if (!all.length) {
+      $('propCount').textContent = '';
       $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
-        '<p>Paste rows from the sheet above, upload a spreadsheet, or work out a deal on the left and choose Save to properties.</p></div>';
+        '<p>Open <strong>Add properties</strong> below to paste rows or upload a spreadsheet, or work out a deal on the left and choose Save to properties.</p></div>';
       return;
     }
 
-    var rows = list.map(function(e){
+    var shown = filterProps(all);
+    var q = $('propSearch').value.trim();
+    $('propCount').textContent = shown.length === all.length
+      ? all.length + ' propert' + (all.length===1?'y':'ies')
+      : 'Showing ' + shown.length + ' of ' + all.length;
+
+    if (!shown.length) {
+      $('propsBody').innerHTML = '<div class="empty"><h3>Nothing matches</h3>'+
+        '<p>No property matches that search and category. Clear the filters to see all '+all.length+'.</p></div>';
+      return;
+    }
+
+    var rows = shown.map(function(e){
       var irr = '—', net = '—', hold = '—';
       try {
         var r = window.IRRBreakdown.computeBreakdown(e, e.opts);
@@ -522,8 +671,9 @@ details .body strong{color:var(--text)}
         net = signed(r.summary.netProfit);
         hold = r.summary.holdYears.toFixed(2);
       } catch (err) {}
+      var cat = (e.category||'').trim();
       return '<tr>'+
-        '<td class="name">'+esc(e.name)+'</td>'+
+        '<td class="name">'+mark(e.name, q)+ (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +'</td>'+
         pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
@@ -634,8 +784,9 @@ details .body strong{color:var(--text)}
     }
   }
 
-  function loadIntoForm(name, d){
+  function loadIntoForm(name, d, category){
     $('pName').value = name || '';
+    $('pCat').value = category || '';
     $('pPrice').value = d.purchasePrice;
     $('pDate').value  = iso(d.purchaseDate instanceof Date ? d.purchaseDate : new Date(d.purchaseDate));
     $('sPrice').value = d.soldPrice;
@@ -654,24 +805,24 @@ details .body strong{color:var(--text)}
   /** Shared tail for paste and file import. */
   function ingest(parsed, source){
     if (!parsed.deals.length) {
-      $('parseMsg').innerHTML = msg('err','Could not read a property from '+source+'. Each row needs a purchase price, purchase date, sold price and sold date, in the sheet’s column order.') + skipList(parsed.skipped);
+      $('parseMsg').innerHTML = msg('err','Could not read a property from '+source+'. Check the column order shown above.') + skipList(parsed.skipped);
       return;
     }
-    var opts = readOpts();
-    var res = addEntries(parsed.deals.map(function(d){ return entryFrom(d.name, d, opts); }));
+    var opts = readOpts(), cat = $('impCat').value.trim();
+    var res = addEntries(parsed.deals.map(function(d){ return entryFrom(d.name, d, opts, cat); }));
     if (!res) return;
 
     var bits = [];
     if (res.added) bits.push('added '+res.added);
     if (res.updated) bits.push('updated '+res.updated+' already on the list');
     $('parseMsg').innerHTML = msg('ok','Read '+parsed.deals.length+' propert'+(parsed.deals.length===1?'y':'ies')+
-        ' from '+source+' — '+bits.join(', ')+'. Dates read as <strong>'+
-        (parsed.dayFirst?'day/month/year':'month/day/year')+'</strong>; check them in the table below.')
+        ' from '+source+' — '+bits.join(', ')+(cat ? ', filed under <strong>'+esc(cat)+'</strong>' : '')+
+        '. Dates read as <strong>'+(parsed.dayFirst?'day/month/year':'month/day/year')+
+        '</strong>; check them in the list above.')
       + skipList(parsed.skipped);
 
-    // open the first one so there is something to look at
     var first = parsed.deals[0];
-    loadIntoForm(first.name, first);
+    loadIntoForm(first.name, first, cat);
   }
 
   function doParse(){
@@ -694,6 +845,7 @@ details .body strong{color:var(--text)}
 
   function handleFile(file){
     if (!file) return;
+    openAdd(true);
     var name = file.name || 'the file';
     var isCsv = /\.(csv|txt|tsv)$/i.test(name);
     $('parseMsg').innerHTML = msg('ok','Reading '+esc(name)+'…');
@@ -756,6 +908,7 @@ details .body strong{color:var(--text)}
     var s = last.summary, a = last.assumptions, L = [];
     L.push(['Performance Property — IRR Calculator']);
     L.push(['Property', $('pName').value.trim() || autoName(s)]);
+    L.push(['Category', $('pCat').value.trim()]);
     L.push([]);
     L.push(['Purchase price', s.purchasePrice], ['Purchase date', iso(s.purchaseDate)],
            ['Sold price', s.soldPrice], ['Sold date', iso(s.soldDate)],
@@ -783,18 +936,21 @@ details .body strong{color:var(--text)}
     download(toCsvText(L), 'irr-calculator-'+iso(s.purchaseDate)+'-to-'+iso(s.soldDate)+'.csv');
   }
 
+  /** Exports what the filters are currently showing, not the whole list. */
   function exportProps(){
-    var list = loadProps();
-    if (!list.length) { $('messages').innerHTML = msg('warn','No properties to export yet.'); return; }
-    var L = [['Property','Purchase price','Purchase date','Sold price','Sold date',
+    var all = loadProps();
+    if (!all.length) { $('messages').innerHTML = msg('warn','No properties to export yet.'); return; }
+    var list = filterProps(all);
+    if (!list.length) { $('messages').innerHTML = msg('warn','Nothing matches the current filters, so there is nothing to export.'); return; }
+    var L = [['Property','Category','Purchase price','Purchase date','Sold price','Sold date',
               'Hold period (yrs)','Gross profit','Net profit','IRR']];
     list.forEach(function(e){
       try {
         var s = window.IRRBreakdown.computeBreakdown(e, e.opts).summary;
-        L.push([e.name, s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
+        L.push([e.name, e.category||'', s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
                 s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]);
       } catch (err) {
-        L.push([e.name, e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate, '', '', '', '']);
+        L.push([e.name, e.category||'', e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate, '', '', '', '']);
       }
     });
     download(toCsvText(L), 'irr-calculator-properties.csv');
@@ -802,11 +958,17 @@ details .body strong{color:var(--text)}
 
   /* ══════════ WIRING ══════════ */
   var DEFAULT_FORM = {
-    pName:'', pPrice:'', pDate:'', sPrice:'', sDate:'',
+    pName:'', pCat:'', pPrice:'', pDate:'', sPrice:'', sDate:'',
     tRate:'Normalised', tNg:'Off', tRent:'Growing',
     aDep:18.5, aLvr:90, aRun:2, aYield:3, aNorm:4.9, aTax:47,
     aComm:1.8, aSpend:20000, aMargin:1.75, aApra:0.5
   };
+
+  function openAdd(open){
+    $('btnAddToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('btnAddToggle').querySelector('.chev').textContent = open ? '–' : '+';
+    $('addPanel').hidden = !open;
+  }
 
   $('btnCalc').addEventListener('click', function(){ calc(); showTab('result'); });
   $('btnCsv').addEventListener('click', exportDetail);
@@ -816,13 +978,18 @@ details .body strong{color:var(--text)}
   $('btnClearPaste').addEventListener('click', function(){
     $('pasteBox').value=''; $('parseMsg').innerHTML=''; $('pasteBox').focus();
   });
+  $('btnAddToggle').addEventListener('click', function(){
+    var open = $('btnAddToggle').getAttribute('aria-expanded') !== 'true';
+    openAdd(open);
+    if (open) $('pasteBox').focus();
+  });
   $('btnReset').addEventListener('click', function(){
     Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
     $('messages').innerHTML=''; calc();
   });
   $('btnSave').addEventListener('click', function(){
     if (!last) { $('messages').innerHTML = msg('warn','Calculate a result before saving it.'); return; }
-    var r = addEntries([entryFrom($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts())]);
+    var r = addEntries([entryFrom($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts(), $('pCat').value)]);
     if (r) $('messages').innerHTML = msg('ok', r.updated ? 'Updated this property on the list.' : 'Saved to properties — this browser only.');
   });
   $('btnPropsCsv').addEventListener('click', exportProps);
@@ -840,13 +1007,17 @@ details .body strong{color:var(--text)}
     }
   });
 
+  // filters
+  $('propSearch').addEventListener('input', renderProps);
+  $('propCat').addEventListener('change', renderProps);
+
   // delegated row actions
   document.addEventListener('click', function(ev){
     var b = ev.target.closest ? ev.target.closest('button') : null;
     if (!b) return;
     if (b.dataset.open) {
       var e = loadProps().filter(function(x){ return x.id === b.dataset.open; })[0];
-      if (e) { writeOpts(e.opts); loadIntoForm(e.name, e); showTab('result'); }
+      if (e) { writeOpts(e.opts); loadIntoForm(e.name, e, e.category); showTab('result'); }
     }
     if (b.dataset.del) {
       putProps(loadProps().filter(function(x){ return x.id !== b.dataset.del; }));
@@ -855,8 +1026,9 @@ details .body strong{color:var(--text)}
   });
 
   document.querySelectorAll('input,select').forEach(function(el){
-    // renaming the property only relabels the result — no need to recompute
-    el.addEventListener('change', function(){ if (el.id === 'pName') relabel(); else calc(); });
+    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'impCat' || el.id === 'pasteBox') return;
+    // renaming or recategorising only relabels — no need to recompute
+    el.addEventListener('change', function(){ if (el.id === 'pName') relabel(); else if (el.id !== 'pCat') calc(); });
     el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); calc(); } });
   });
   $('pasteBox').addEventListener('paste', function(){ setTimeout(doParse, 0); });
@@ -891,7 +1063,8 @@ details .body strong{color:var(--text)}
 
   renderProps();
   calc();
-  showTab('props');   // start where the work begins
+  showTab('props');
+  openAdd(loadProps().length === 0);   // first run has nothing to list, so start open
 
   window.runSelfTest = function(){
     var t = window.IRRBreakdown.selfTest();
