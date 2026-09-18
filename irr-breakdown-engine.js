@@ -378,6 +378,84 @@
     return votesMonth <= votesDay;
   }
 
+  /* ── header-aware import ──
+     Positional reading cannot survive our own CSV export, which carries a
+     Category column between the name and the first price. When the first row
+     names its columns, map by name and ignore position entirely; that also
+     lets a category come back on a restore. */
+
+  function normHead(c){ return String(c == null ? '' : c).trim().toLowerCase().replace(/\s+/g, ' '); }
+
+  var HEAD_PATTERNS = {
+    pPrice:   /^(purchase|buy)\s*price$/,
+    pDate:    /^(purchase|buy|bought)\s*date$/,
+    sPrice:   /^(sold|sale|sell)\s*price$/,
+    sDate:    /^(sold|sale|sell)\s*date$/,
+    category: /^categor/,
+    name:     /^(property|address|name|property name|property name or address)$/
+  };
+
+  /** @returns {Object|null} column indices, or null when this is not a header */
+  function detectHeader(cells) {
+    if (!cells || !cells.length) return null;
+    var map = {};
+    cells.forEach(function (c, i) {
+      var t = normHead(c);
+      if (!t) return;
+      Object.keys(HEAD_PATTERNS).forEach(function (k) {
+        if (map[k] === undefined && HEAD_PATTERNS[k].test(t)) map[k] = i;
+      });
+    });
+    var required = ['pPrice', 'pDate', 'sPrice', 'sDate'];
+    for (var i = 0; i < required.length; i++) if (map[required[i]] === undefined) return null;
+    return map;
+  }
+
+  function cellMoney(raw) {
+    if (typeof raw === 'number' && isFinite(raw)) return raw;
+    return parseMoney(String(raw == null ? '' : raw).trim());
+  }
+  function cellDate(raw, dayFirst) {
+    if (raw instanceof Date && !isNaN(raw)) return utc(raw.getUTCFullYear(), raw.getUTCMonth() + 1, raw.getUTCDate());
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return null;
+    return parseFlexDate(s, dayFirst);
+  }
+
+  /** shared guard: a blank cell mid-row silently shifts columns */
+  function sane(pDate, sDate) {
+    var y1 = pDate.getUTCFullYear(), y2 = sDate.getUTCFullYear();
+    if (y1 < 1950 || y1 > 2100 || y2 < 1950 || y2 > 2100) {
+      return 'dates came out implausible (' + y1 + ' → ' + y2 + ') — a cell is probably blank, shifting the columns';
+    }
+    if (sDate.getTime() <= pDate.getTime()) {
+      return 'sold date is not after the purchase date — a cell is probably blank, shifting the columns';
+    }
+    return null;
+  }
+
+  function mappedRow(cells, map, dayFirst, label) {
+    var pPrice = cellMoney(cells[map.pPrice]);
+    var sPrice = cellMoney(cells[map.sPrice]);
+    var pDate  = cellDate(cells[map.pDate], dayFirst);
+    var sDate  = cellDate(cells[map.sDate], dayFirst);
+
+    if (pPrice === null || sPrice === null || !pDate || !sDate) {
+      return { why: 'a purchase price, purchase date, sold price or sold date is missing or unreadable' };
+    }
+    var bad = sane(pDate, sDate);
+    if (bad) return { why: bad };
+
+    var name = map.name !== undefined ? String(cells[map.name] == null ? '' : cells[map.name]).trim() : '';
+    var cat  = map.category !== undefined ? String(cells[map.category] == null ? '' : cells[map.category]).trim() : '';
+
+    return { deal: {
+      name: name || label, category: cat,
+      purchasePrice: pPrice, purchaseDate: pDate,
+      soldPrice: sPrice, soldDate: sDate
+    } };
+  }
+
   /**
    * Core: one row of raw cell values → a deal. Cells may be strings (a paste)
    * or native numbers/Dates (a spreadsheet read), so each is classified before
@@ -442,16 +520,12 @@
        the positional read then succeeds on nonsense — a date serial lands in
        the sold-price slot and something else becomes the sold date. Reject it
        loudly rather than importing a plausible-looking wrong number. */
-    var y1 = pDate.getUTCFullYear(), y2 = sDate.getUTCFullYear();
-    if (y1 < 1950 || y1 > 2100 || y2 < 1950 || y2 > 2100) {
-      return { why: 'dates came out implausible (' + y1 + ' → ' + y2 + ') — a cell is probably blank, shifting the columns' };
-    }
-    if (sDate.getTime() <= pDate.getTime()) {
-      return { why: 'sold date is not after the purchase date — a cell is probably blank, shifting the columns' };
-    }
+    var bad = sane(pDate, sDate);
+    if (bad) return { why: bad };
 
     return { deal: {
       name: leadTexts.length ? leadTexts.join(', ') : (texts.length ? texts[0] : label),
+      category: '',
       purchasePrice: pPrice, purchaseDate: pDate,
       soldPrice: sPrice, soldDate: sDate
     } };
@@ -459,16 +533,27 @@
 
   /** Shared driver over an array of rows, each an array of raw cell values. */
   function rowsToDeals(rows, dayFirst) {
-    var deals = [], skipped = [];
-    rows.forEach(function (cells, i) {
-      if (!cells || !cells.length) return;
-      if (cells.every(function (c) { return c === null || c === undefined || String(c).trim() === ''; })) return;
-      var r = rowToDeal(cells, dayFirst, 'Row ' + (i + 1));
-      if (r.header) return;
+    var deals = [], skipped = [], map = null, start = 0;
+
+    // find a header within the first few rows — a pasted selection may carry
+    // a title line above it
+    for (var h = 0; h < Math.min(3, rows.length); h++) {
+      var m = detectHeader(rows[h]);
+      if (m) { map = m; start = h + 1; break; }
+    }
+
+    for (var i = start; i < rows.length; i++) {
+      var cells = rows[i];
+      if (!cells || !cells.length) continue;
+      if (cells.every(function (c) { return c === null || c === undefined || String(c).trim() === ''; })) continue;
+
+      var r = map ? mappedRow(cells, map, dayFirst, 'Row ' + (i + 1))
+                  : rowToDeal(cells, dayFirst, 'Row ' + (i + 1));
+      if (r.header) continue;
       if (r.deal) deals.push(r.deal);
       else skipped.push({ line: i + 1, text: cells.join(' ').slice(0, 80), why: r.why });
-    });
-    return { deals: deals, skipped: skipped, dayFirst: dayFirst };
+    }
+    return { deals: deals, skipped: skipped, dayFirst: dayFirst, byHeader: !!map };
   }
 
   /**
@@ -526,7 +611,7 @@
 
   root.IRRBreakdown = {
     computeBreakdown: computeBreakdown,
-    parseDeals: parseDeals, parseSheetRows: parseSheetRows,
+    parseDeals: parseDeals, parseSheetRows: parseSheetRows, detectHeader: detectHeader,
     parseFlexDate: parseFlexDate, serialToDate: serialToDate,
     xirr: xirr, xnpv: xnpv,
     yearFrac30360US: yearFrac30360US, edate: edate, eomonth: eomonth,

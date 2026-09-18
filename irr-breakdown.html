@@ -31,7 +31,7 @@ body{
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 /* ═══ HEADER ═══ */
-header{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)}
+header{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)}
 header img{height:40px;width:auto;display:block}
 .titles h1{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em}
 .titles p{font-size:14px;line-height:20px;color:var(--muted);margin-top:2px}
@@ -265,6 +265,17 @@ td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
 mark{background:rgba(0,160,180,.34);color:var(--text);border-radius:3px;padding:0 1px}
+/* sortable headers — a real button inside the th so the keyboard gets it free */
+th .sortbtn{
+  display:flex;align-items:center;gap:5px;width:100%;min-height:0;
+  background:transparent;border:0;padding:0;border-radius:var(--r-sm);cursor:pointer;
+  font:700 11px/14px 'Montserrat',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+}
+th.num .sortbtn{justify-content:flex-end}
+th .sortbtn:hover{color:var(--text)}
+th[aria-sort] .sortbtn{color:var(--accent-300)}
+th .arrow{font-size:9px;line-height:1;opacity:0}
+th[aria-sort] .arrow{opacity:1}
 
 .sum{width:100%;font-size:14px}
 .sum td{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -307,12 +318,11 @@ details .body strong{color:var(--text)}
 <div class="wrap">
 
   <header>
-    <img src="https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-inverted.png"
-         alt="Performance Property">
     <div class="titles">
       <h1>IRR Calculator</h1>
-      <p>Month-by-month cashflow over the hold period, then XIRR — the breakdown method from the IRR workbook</p>
     </div>
+    <img src="https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-inverted.png"
+         alt="Performance Property">
   </header>
 
   <datalist id="catList"></datalist>
@@ -730,6 +740,14 @@ details .body strong{color:var(--text)}
 
     $('catList').innerHTML = cats.map(function(c){ return '<option value="'+esc(c)+'"></option>'; }).join('');
   }
+  /* sorting — null means the order they were added in */
+  var sortKey = null, sortDir = -1;   // -1 desc, 1 asc
+  function setSort(key){
+    if (sortKey === key) { sortDir = -sortDir; }
+    else { sortKey = key; sortDir = (key === 'name') ? 1 : -1; }  // names A→Z, numbers biggest first
+    renderProps();
+  }
+
   function filterProps(list){
     var q = $('propSearch').value.trim().toLowerCase();
     var cat = $('propCat').value;
@@ -768,14 +786,41 @@ details .body strong{color:var(--text)}
       return;
     }
 
-    var rows = shown.map(function(e){
-      var irr = '—', net = '—', hold = '—';
+    // derive once, then sort on the derived values
+    var data = shown.map(function(e){
+      var d = { e:e, irr:null, net:null, hold:null };
       try {
         var r = window.IRRBreakdown.computeBreakdown(e, e.opts);
-        irr = r.summary.irr === null ? '—' : pct(r.summary.irr);
-        net = signed(r.summary.netProfit);
-        hold = r.summary.holdYears.toFixed(2);
+        d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears;
       } catch (err) {}
+      return d;
+    });
+
+    if (sortKey) {
+      var get = {
+        name:     function(d){ return String(d.e.name||'').toLowerCase(); },
+        purchase: function(d){ return d.e.purchaseDate; },
+        sold:     function(d){ return d.e.soldDate; },
+        hold:     function(d){ return d.hold; },
+        net:      function(d){ return d.net; },
+        irr:      function(d){ return d.irr; }
+      }[sortKey];
+      data.sort(function(a,b){
+        var x = get(a), y = get(b);
+        // properties whose IRR is undefined sit at the bottom either way
+        var xn = (x === null || x === undefined), yn = (y === null || y === undefined);
+        if (xn && yn) return 0;
+        if (xn) return 1;
+        if (yn) return -1;
+        return (x < y ? -1 : x > y ? 1 : 0) * sortDir;
+      });
+    }
+
+    var rows = data.map(function(d){
+      var e = d.e;
+      var irr = d.irr === null ? '—' : pct(d.irr);
+      var net = d.net === null ? '—' : signed(d.net);
+      var hold = d.hold === null ? '—' : d.hold.toFixed(2);
       var cat = (e.category||'').trim();
       return '<tr>'+
         '<td class="name">'+mark(e.name, q)+ (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +'</td>'+
@@ -787,10 +832,23 @@ details .body strong{color:var(--text)}
       '</tr>';
     }).join('');
 
-    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
-      '<th scope="col">Property</th><th scope="col" class="num">Purchased</th>'+
-      '<th scope="col" class="num">Sold</th><th scope="col" class="num">Hold</th>'+
-      '<th scope="col" class="num">Net profit</th><th scope="col" class="num">IRR</th>'+
+    var cols = [
+      { key:'name',     label:'Property',   cls:'' },
+      { key:'purchase', label:'Purchased',  cls:'num' },
+      { key:'sold',     label:'Sold',       cls:'num' },
+      { key:'hold',     label:'Hold',       cls:'num' },
+      { key:'net',      label:'Net profit', cls:'num' },
+      { key:'irr',      label:'IRR',        cls:'num' }
+    ];
+    var head = cols.map(function(c){
+      var on = (sortKey === c.key);
+      return '<th scope="col"'+(c.cls?' class="'+c.cls+'"':'')+
+        (on ? ' aria-sort="'+(sortDir===1?'ascending':'descending')+'"' : '')+'>'+
+        '<button type="button" class="sortbtn" data-sortby="'+c.key+'">'+c.label+
+        '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span></button></th>';
+    }).join('');
+
+    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+head+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
@@ -952,6 +1010,9 @@ details .body strong{color:var(--text)}
      place; a success closes it and reports into the page behind. */
   function dlgSay(html){ $('dlgMsg').innerHTML = html; }
 
+  /* set when a workbook offers more than one sheet of properties */
+  var pendingSheets = null, pendingFileName = '';
+
   /** Shared tail for paste and file import. */
   function ingest(parsed, source){
     if (!parsed.deals.length) {
@@ -959,15 +1020,20 @@ details .body strong{color:var(--text)}
       return;
     }
     var opts = readOpts(), cat = $('impCat').value.trim();
-    var res = addEntries(parsed.deals.map(function(d){ return entryFrom(d.name, d, opts, cat); }));
+    // a typed category overrides; otherwise a category carried by the file wins
+    // (that is what makes a CSV export restore its own categories)
+    var res = addEntries(parsed.deals.map(function(d){ return entryFrom(d.name, d, opts, cat || d.category); }));
     if (!res) return;
 
     var bits = [];
     if (res.added) bits.push('added '+res.added);
     if (res.updated) bits.push('updated '+res.updated+' already on the list');
+    var carried = !cat && parsed.deals.some(function(d){ return (d.category||'').trim(); });
     $('parseMsg').innerHTML = msg('ok','Read '+parsed.deals.length+' propert'+(parsed.deals.length===1?'y':'ies')+
-        ' from '+source+' — '+bits.join(', ')+(cat ? ', filed under <strong>'+esc(cat)+'</strong>' : '')+
-        '. Dates read as <strong>'+(parsed.dayFirst?'day/month/year':'month/day/year')+
+        ' from '+source+' — '+bits.join(', ')+
+        (cat ? ', filed under <strong>'+esc(cat)+'</strong>' : (carried ? ', keeping the categories from the file' : ''))+
+        '. Columns read '+(parsed.byHeader ? 'from the header row' : 'by position')+
+        ', dates as <strong>'+(parsed.dayFirst?'day/month/year':'month/day/year')+
         '</strong>; check them in the list below.')
       + skipList(parsed.skipped);
 
@@ -1017,17 +1083,31 @@ details .body strong{color:var(--text)}
       fr.onload = function(){
         try {
           var wb = window.XLSX.read(new Uint8Array(fr.result), {type:'array'});
-          // Use whichever sheet yields the most properties — the IRR workbook
-          // has six, and only one of them holds the deal list.
-          var best = null;
+          /* Several tabs of the IRR workbook parse as property lists, and the
+             one with the most rows is not necessarily the one meant — so when
+             there is more than one candidate, ask instead of guessing. */
+          var cands = [];
           wb.SheetNames.forEach(function(sn){
             var rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, raw:true, blankrows:false});
             var p = window.IRRBreakdown.parseSheetRows(rows);
-            if (!best || p.deals.length > best.parsed.deals.length) best = { sheet: sn, parsed: p };
+            if (p.deals.length) cands.push({ sheet: sn, parsed: p });
           });
-          if (!best) { dlgSay(msg('err','That workbook has no readable sheets.')); return; }
-          var where = esc(name) + (wb.SheetNames.length > 1 ? ' (sheet “'+esc(best.sheet)+'”)' : '');
-          ingest(best.parsed, where);
+          cands.sort(function(a,b){ return b.parsed.deals.length - a.parsed.deals.length; });
+
+          if (!cands.length) { dlgSay(msg('err','No sheet in '+esc(name)+' has readable property rows.')); return; }
+          if (cands.length === 1) {
+            ingest(cands[0].parsed, esc(name)+' (sheet “'+esc(cands[0].sheet)+'”)');
+            return;
+          }
+          pendingSheets = cands; pendingFileName = name;
+          dlgSay(msg('warn','<strong>'+esc(name)+'</strong> has '+cands.length+' sheets that look like property lists. '+
+            'Pick the one to import:'+
+            '<div class="field" style="margin:var(--sp-3) 0 0"><select id="sheetPick">'+
+            cands.map(function(c,i){
+              return '<option value="'+i+'">'+esc(c.sheet)+' — '+c.parsed.deals.length+' propert'+(c.parsed.deals.length===1?'y':'ies')+'</option>';
+            }).join('')+
+            '</select></div>'+
+            '<div class="btns"><button type="button" class="btn-primary" id="sheetGo">Import this sheet</button></div>'));
         } catch (e) {
           dlgSay(msg('err','Could not read '+esc(name)+' — '+esc(e.message)));
         }
@@ -1188,6 +1268,14 @@ details .body strong{color:var(--text)}
   document.addEventListener('click', function(ev){
     var b = ev.target.closest ? ev.target.closest('button') : null;
     if (!b) return;
+    if (b.dataset.sortby) { setSort(b.dataset.sortby); return; }
+    if (b.id === 'sheetGo' && pendingSheets) {
+      var pick = pendingSheets[+($('sheetPick')||{value:0}).value] || pendingSheets[0];
+      var fname = pendingFileName;
+      pendingSheets = null; pendingFileName = '';
+      ingest(pick.parsed, esc(fname)+' (sheet “'+esc(pick.sheet)+'”)');
+      return;
+    }
     if (b.dataset.open) {
       var e = loadProps().filter(function(x){ return x.id === b.dataset.open; })[0];
       if (e) { writeOpts(e.opts); loadIntoForm(e.name, e, e.category); showTab('result'); }
