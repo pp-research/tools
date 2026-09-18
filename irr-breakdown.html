@@ -149,7 +149,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
   font-size:20px;line-height:1;padding:4px 10px;min-height:32px;border-radius:999px;
 }
 .modal-x:hover{color:var(--text);background:var(--panel-2)}
+.modal-sm{width:min(440px,calc(100vw - 32px))}
 .modal-body{padding:var(--sp-6);overflow:auto;flex:1 1 auto}
+.modal-body p{font-size:14px;line-height:21px;color:var(--muted)}
+.modal-body p strong{color:var(--text)}
 .modal-foot{
   display:flex;gap:var(--sp-2);flex-wrap:wrap;flex:0 0 auto;
   padding:var(--sp-4) var(--sp-6);border-top:1px solid var(--border);background:var(--panel-2);
@@ -183,6 +186,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .btn-sm{padding:6px 13px;min-height:32px;font-size:12px}
 .btn-danger{background:transparent;color:#ffb3c1;border-color:rgba(231,35,71,.45)}
 .btn-danger:hover{background:rgba(231,35,71,.14);border-color:var(--red)}
+.btn-danger-solid{background:var(--red);color:#fff;border-color:var(--red)}
+.btn-danger-solid:hover{background:#c41d3b;border-color:#c41d3b}
 
 /* ═══ TABS ═══ */
 .tabs{display:flex;gap:var(--sp-1);background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:var(--sp-1)}
@@ -365,15 +370,15 @@ details .body strong{color:var(--text)}
       </section>
 
       <section class="card" aria-labelledby="deal-h">
-        <h2 id="deal-h">Deal</h2>
+        <h2 id="deal-h">Enter property details or select from the saved properties</h2>
 
         <div class="field">
           <label for="pName">Property name or address</label>
-          <input id="pName" type="text" value="" autocomplete="off" placeholder="Filled in from an import">
+          <input id="pName" type="text" value="" autocomplete="off">
         </div>
         <div class="field">
           <label for="pCat">Category</label>
-          <input id="pCat" type="text" value="" autocomplete="off" list="catList" placeholder="Optional — used by the filter">
+          <input id="pCat" type="text" value="" autocomplete="off" list="catList">
         </div>
         <div class="field">
           <label for="pPrice">Purchase price (AUD)</label>
@@ -504,7 +509,7 @@ details .body strong{color:var(--text)}
 
             <div class="field">
               <label for="impCat">Category for this import</label>
-              <input id="impCat" type="text" value="" autocomplete="off" list="catList" placeholder="e.g. Adelaide sold — optional, used by the filter">
+              <input id="impCat" type="text" value="" autocomplete="off" list="catList" placeholder="e.g. Adelaide sold">
             </div>
 
             <div class="field">
@@ -525,6 +530,21 @@ details .body strong{color:var(--text)}
           </div>
         </div>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
+      </dialog>
+
+      <!-- ══════════ CONFIRM — deleting here cannot be undone ══════════ -->
+      <dialog class="modal modal-sm" id="confirmDialog" aria-labelledby="cf-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="cf-h">Confirm</h2>
+            <button type="button" class="modal-x" id="cfClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body"><p id="cfBody"></p></div>
+          <div class="modal-foot">
+            <button type="button" class="btn-danger-solid" id="cfYes">Delete</button>
+            <button type="button" class="btn-ghost" id="cfNo">Cancel</button>
+          </div>
+        </div>
       </dialog>
     </div>
   </div>
@@ -1093,6 +1113,20 @@ details .body strong{color:var(--text)}
   }
   function closeAdd(){ var d = $('addDialog'); if (d.open) d.close(); }
 
+  /* One reusable confirm. A native confirm() would block the page, and these
+     deletions are unrecoverable — there is no undo and no server copy — so the
+     prompt names exactly what is about to go. */
+  var pendingConfirm = null;
+  function askConfirm(bodyHtml, confirmLabel, onYes){
+    pendingConfirm = onYes;
+    $('cfBody').innerHTML = bodyHtml;
+    $('cfYes').textContent = confirmLabel;
+    var d = $('confirmDialog');
+    if (!d.open) d.showModal();
+    $('cfNo').focus();   // default to the safe option
+  }
+  function closeConfirm(){ pendingConfirm = null; var d = $('confirmDialog'); if (d.open) d.close(); }
+
   $('btnCalc').addEventListener('click', function(){ calc(); showTab('result'); });
   $('btnCsv').addEventListener('click', exportDetail);
   $('btnParse').addEventListener('click', doParse);
@@ -1118,17 +1152,22 @@ details .body strong{color:var(--text)}
   $('btnPropsCsv').addEventListener('click', exportProps);
   $('btnPropsClear').addEventListener('click', function(){
     var n = loadProps().length;
-    if (!n) return;
-    // Deliberately not a native confirm() — a modal dialog blocks the page.
-    var btn = $('btnPropsClear');
-    if (btn.dataset.armed === '1') {
-      putProps([]); renderProps(); btn.textContent = 'Clear all'; btn.dataset.armed='0';
-      $('messages').innerHTML = msg('ok','Cleared '+n+' propert'+(n===1?'y':'ies')+'.');
-    } else {
-      btn.textContent = 'Click again to clear '+n; btn.dataset.armed='1';
-      setTimeout(function(){ btn.textContent='Clear all'; btn.dataset.armed='0'; }, 4000);
-    }
+    if (!n) { $('messages').innerHTML = msg('warn','There are no properties to clear.'); return; }
+    askConfirm('Delete <strong>all '+n+' propert'+(n===1?'y':'ies')+'</strong>? '+
+      'They live only in this browser, so this cannot be undone. Export CSV first if you want a copy.',
+      'Delete everything', function(){
+        putProps([]); renderProps();
+        $('messages').innerHTML = msg('ok','Cleared '+n+' propert'+(n===1?'y':'ies')+'.');
+      });
   });
+
+  $('cfYes').addEventListener('click', function(){
+    var fn = pendingConfirm; closeConfirm(); if (fn) fn();
+  });
+  $('cfNo').addEventListener('click', closeConfirm);
+  $('cfClose').addEventListener('click', closeConfirm);
+  $('confirmDialog').addEventListener('click', function(ev){ if (ev.target === $('confirmDialog')) closeConfirm(); });
+  $('confirmDialog').addEventListener('close', function(){ pendingConfirm = null; });
 
   // filters
   $('propSearch').addEventListener('input', renderProps);
@@ -1143,8 +1182,15 @@ details .body strong{color:var(--text)}
       if (e) { writeOpts(e.opts); loadIntoForm(e.name, e, e.category); showTab('result'); }
     }
     if (b.dataset.del) {
-      putProps(loadProps().filter(function(x){ return x.id !== b.dataset.del; }));
-      renderProps();
+      var id = b.dataset.del;
+      var victim = loadProps().filter(function(x){ return x.id === id; })[0];
+      if (!victim) return;
+      askConfirm('Delete <strong>'+esc(victim.name)+'</strong> from your properties? This cannot be undone.',
+        'Delete property', function(){
+          putProps(loadProps().filter(function(x){ return x.id !== id; }));
+          renderProps();
+          $('messages').innerHTML = msg('ok','Deleted '+esc(victim.name)+'.');
+        });
     }
   });
 
