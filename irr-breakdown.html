@@ -548,6 +548,7 @@ details .body strong{color:var(--text)}
           <div class="modal-foot">
             <button type="button" class="btn-primary" id="btnParse">Add from paste</button>
             <button type="button" class="btn-ghost" id="btnUpload">Upload .xlsx, .xls or .csv</button>
+            <button type="button" class="btn-ghost" id="btnSeed">Load Adelaide set</button>
             <button type="button" class="btn-ghost" id="btnClearPaste">Clear</button>
           </div>
         </div>
@@ -573,6 +574,7 @@ details .body strong{color:var(--text)}
 </div>
 
 <script src="irr-breakdown-engine.js"></script>
+<script src="adl-properties.js"></script>
 <script>
 (function(){
   'use strict';
@@ -772,7 +774,7 @@ details .body strong{color:var(--text)}
     if (!all.length) {
       $('propCount').textContent = '';
       $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
-        '<p>Choose <strong>+ Add properties</strong> to paste rows or upload a spreadsheet, or work out a deal on the left and choose Save to properties.</p></div>';
+        '<p>Choose <strong>+ Add properties</strong> to paste rows, upload a spreadsheet or reload the bundled Adelaide set — or work out a deal on the left and choose Save to properties.</p></div>';
       return;
     }
 
@@ -1059,6 +1061,28 @@ details .body strong{color:var(--text)}
     ingest(window.IRRBreakdown.parseDeals(text), 'the paste');
   }
 
+  /* The Adelaide sold book ships with the tool (adl-properties.js) so the list
+     is populated on a fresh browser without an import. Dedup is by name+dates,
+     so loading it twice updates rather than duplicates. */
+  function seedDeals(){
+    var s = window.IRR_SEED;
+    if (!s || !s.rows || !s.rows.length) return null;
+    return {
+      deals: s.rows.map(function(r){
+        return { name:r[0], category:s.category || '',
+                 purchaseDate: new Date(r[1]+'T00:00:00Z'), soldDate: new Date(r[2]+'T00:00:00Z'),
+                 purchasePrice: r[3], soldPrice: r[4] };
+      }),
+      skipped: [], dayFirst: true, byHeader: true
+    };
+  }
+
+  function loadSeed(){
+    var parsed = seedDeals();
+    if (!parsed) { dlgSay(msg('err','The bundled Adelaide set is not available on this page.')); return; }
+    ingest(parsed, 'the bundled Adelaide set');
+  }
+
   /** SheetJS is ~900KB, so it is only fetched when a spreadsheet is actually opened. */
   function loadXLSX(){
     if (window.XLSX) return Promise.resolve();
@@ -1231,6 +1255,7 @@ details .body strong{color:var(--text)}
   $('btnCsv').addEventListener('click', exportDetail);
   $('btnParse').addEventListener('click', doParse);
   $('btnUpload').addEventListener('click', function(){ $('fileInput').click(); });
+  $('btnSeed').addEventListener('click', loadSeed);
   $('fileInput').addEventListener('change', function(){ handleFile(this.files[0]); this.value = ''; });
   $('btnClearPaste').addEventListener('click', function(){
     $('pasteBox').value=''; dlgSay(''); $('pasteBox').focus();
@@ -1344,6 +1369,19 @@ details .body strong{color:var(--text)}
     else if (ev.key === 'End') to = TABS[n-1];
     if (to) { ev.preventDefault(); showTab(to); $('tab-'+to).focus(); }
   });
+
+  /* First visit on this browser: start with the Adelaide book already loaded.
+     Gated on the key never having existed, so a list you deliberately cleared
+     is not resurrected on the next reload. */
+  try {
+    if (localStorage.getItem(STORE) === null) {
+      var seeded = seedDeals();
+      if (seeded) {
+        var o = readOpts();
+        addEntries(seeded.deals.map(function(d){ return entryFrom(d.name, d, o, d.category); }));
+      }
+    }
+  } catch (e) { /* storage blocked — the Load Adelaide set button still works */ }
 
   renderProps();
   calc();
