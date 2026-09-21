@@ -581,6 +581,9 @@ details .body strong{color:var(--text)}
   var $ = function(id){ return document.getElementById(id); };
   var last = null;                    // last computed result
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
+  /* Bumping this re-seeds every browser once. Gating on STORE alone was wrong:
+     anyone who had already used the tool never received the bundled set. */
+  var SEED_FLAG = 'pp-irr-seed-v1';
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
@@ -707,11 +710,12 @@ details .body strong{color:var(--text)}
   /** Adds or updates; returns {added, updated}. Same name + dates replaces. */
   function addEntries(entries){
     var list = loadProps(), added = 0, updated = 0;
+    // match on the trimmed name: 23 names in the source book carry a trailing
+    // space, so a strict compare would file the same property twice
+    var key = function(e){ return String(e.name||'').trim().toLowerCase() + '|' + e.purchaseDate + '|' + e.soldDate; };
     entries.forEach(function(e){
-      var dup = -1;
-      for (var i=0;i<list.length;i++){
-        if (list[i].name === e.name && list[i].purchaseDate === e.purchaseDate && list[i].soldDate === e.soldDate) { dup = i; break; }
-      }
+      var dup = -1, k = key(e);
+      for (var i=0;i<list.length;i++){ if (key(list[i]) === k) { dup = i; break; } }
       if (dup >= 0) { e.id = list[dup].id; list[dup] = e; updated++; } else { list.push(e); added++; }
     });
     if (!putProps(list)) return null;
@@ -1370,15 +1374,16 @@ details .body strong{color:var(--text)}
     if (to) { ev.preventDefault(); showTab(to); $('tab-'+to).focus(); }
   });
 
-  /* First visit on this browser: start with the Adelaide book already loaded.
-     Gated on the key never having existed, so a list you deliberately cleared
-     is not resurrected on the next reload. */
+  /* Load the bundled Adelaide set once per seed version, merging with whatever
+     is already saved — existing entries update in place rather than duplicate.
+     The flag means a property deleted afterwards stays deleted, while bumping
+     SEED_FLAG still lets a future set reach browsers already in use. */
   try {
-    if (localStorage.getItem(STORE) === null) {
+    if (localStorage.getItem(SEED_FLAG) === null) {
       var seeded = seedDeals();
-      if (seeded) {
-        var o = readOpts();
-        addEntries(seeded.deals.map(function(d){ return entryFrom(d.name, d, o, d.category); }));
+      if (seeded && addEntries(seeded.deals.map(function(d){
+            return entryFrom(d.name, d, readOpts(), d.category); }))) {
+        localStorage.setItem(SEED_FLAG, new Date().toISOString());
       }
     }
   } catch (e) { /* storage blocked — the Load Adelaide set button still works */ }
