@@ -248,6 +248,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 
 /* ═══ BUTTONS ═══ */
 .btns{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-4)}
+/* the two actions that belong together share a row; Reset spans beneath */
+.btn-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2);margin-top:var(--sp-4)}
+.btn-grid .wide{grid-column:1 / -1}
+.btn-grid button{padding-left:var(--sp-2);padding-right:var(--sp-2)}
 button{
   font:700 14px/20px 'Manrope',sans-serif;border-radius:var(--r-md);border:1px solid transparent;
   padding:11px 20px;min-height:44px;cursor:pointer;transition:background .15s ease,border-color .15s ease;
@@ -487,11 +491,10 @@ details .body strong{color:var(--text)}
           <input id="sDate" type="date" value="">
         </div>
 
-        <div class="btns">
+        <div class="btn-grid">
           <button type="button" class="btn-primary" id="btnCalc">Calculate IRR</button>
-          <button type="button" class="btn-ghost" id="btnSave">Save to properties</button>
-          <button type="button" class="btn-ghost" id="btnCsv">Export CSV</button>
-          <button type="button" class="btn-ghost" id="btnReset">Reset</button>
+          <button type="button" class="btn-ghost" id="btnSave">Save</button>
+          <button type="button" class="btn-ghost wide" id="btnReset">Reset</button>
         </div>
       </section>
     </div>
@@ -508,7 +511,12 @@ details .body strong{color:var(--text)}
       <!-- ── RESULT ── -->
       <div class="panel" id="panel-result" role="tabpanel" aria-labelledby="tab-result" hidden>
         <section class="card" aria-labelledby="res-h">
-          <h2 id="res-h">Result</h2>
+          <div class="card-head">
+            <h2 id="res-h">Result</h2>
+            <!-- exports THIS property: summary, every assumption, every monthly
+                 row. The Properties tab has its own one-row-per-property export. -->
+            <button type="button" class="btn-ghost btn-sm" id="btnCsv" disabled>Export CSV</button>
+          </div>
           <div id="resultBody">
             <div class="empty">
               <h3>Nothing calculated yet</h3>
@@ -1038,6 +1046,7 @@ details .body strong{color:var(--text)}
 
     renderBreakdown(res);
     $('breakdownCard').hidden = false;
+    $('btnCsv').disabled = false;
   }
   function row2(k,v){ return '<tr><td>'+k+'</td><td>'+v+'</td></tr>'; }
 
@@ -1110,6 +1119,7 @@ details .body strong{color:var(--text)}
     $('resultBody').innerHTML = '<div class="empty"><h3>Nothing calculated yet</h3>'+
       '<p>Open a property from the Properties tab, or type the four deal terms on the left.</p></div>';
     $('breakdownCard').hidden = true;
+    $('btnCsv').disabled = true;
   }
 
   function calc(){
@@ -1126,6 +1136,7 @@ details .body strong{color:var(--text)}
       $('messages').innerHTML = msg('err', e.message);
       $('resultBody').innerHTML = '<div class="empty"><h3>Could not calculate</h3><p>Fix the highlighted field and try again.</p></div>';
       $('breakdownCard').hidden = true;
+      $('btnCsv').disabled = true;
       if (/Purchase price/i.test(e.message)) $('pPrice').setAttribute('aria-invalid','true');
       if (/Sold price/i.test(e.message)) $('sPrice').setAttribute('aria-invalid','true');
       if (/date/i.test(e.message)) $('sDate').setAttribute('aria-invalid','true');
