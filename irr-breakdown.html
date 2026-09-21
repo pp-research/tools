@@ -29,6 +29,22 @@
   --accent-rgb:43,196,216;
   --on-accent:#06222a; --on-accent-deep:#06222a;
   --border-hover:rgba(255,255,255,.30);
+  /* ── GRADIENTS ──
+     Every gradient ships with the flat colour it sits on as `background-color`,
+     and that flat colour is the stop with the WORST contrast against the text
+     riding on it. So the measured contrast is the conservative one, and if the
+     image fails to paint the control is still a legible solid. Single hue,
+     light above dark — a sheen, not a wash. */
+  --grad-accent:linear-gradient(180deg,#3FD3E5,#22B3C6);        --grad-accent-base:#22B3C6;
+  --grad-accent-hover:linear-gradient(180deg,#34C2D4,#1A9FB1);  --grad-accent-hover-base:#1A9FB1;
+  --grad-accent-active:linear-gradient(180deg,#1FA9BB,#1795A6); --grad-accent-active-base:#1795A6;
+  --grad-danger:linear-gradient(180deg,#F04061,#D81A3C);        --grad-danger-base:#D81A3C;
+  --grad-lead:linear-gradient(180deg,#1C3C48,#152A34);          --grad-lead-base:#152A34;
+  /* the whisper set: a top sheen on raised surfaces, a recess on sunken ones */
+  --grad-sheen:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 140px);
+  --grad-recess:linear-gradient(180deg,rgba(0,0,0,.22),rgba(255,255,255,.015));
+  --grad-page:linear-gradient(180deg,#131A28,#0F1420 640px);
+  --glow-accent:0 6px 18px -8px rgba(43,196,216,.55);
   --text:#F4F7FA; --muted:#A3B0C0; --faint:rgba(255,255,255,.56);
   --green:#71B357; --red:#E72347; --yellow:#FFA91F;
   /* the gain/loss figures are small text, so they need more lift than the
@@ -56,6 +72,17 @@
   --accent-rgb:0,160,180;
   --on-accent:#06222a; --on-accent-deep:#ffffff;
   --border-hover:rgba(23,27,36,.34);
+  /* light carries ink on the resting fill but white once it darkens on hover,
+     so the worst-contrast stop flips from the bottom of the ramp to the top */
+  --grad-accent:linear-gradient(180deg,#00B4C9,#009BAA);        --grad-accent-base:#009BAA;
+  --grad-accent-hover:linear-gradient(180deg,#007E8C,#00646F);  --grad-accent-hover-base:#007E8C;
+  --grad-accent-active:linear-gradient(180deg,#00646F,#004F58); --grad-accent-active-base:#00646F;
+  --grad-danger:linear-gradient(180deg,#D4152F,#A80F24);        --grad-danger-base:#D4152F;
+  --grad-lead:linear-gradient(180deg,#F1F8F9,#E4F0F2);          --grad-lead-base:#E4F0F2;
+  --grad-sheen:linear-gradient(180deg,rgba(23,27,36,.016),rgba(23,27,36,0) 140px);
+  --grad-recess:linear-gradient(180deg,rgba(23,27,36,.07),rgba(23,27,36,.01));
+  --grad-page:linear-gradient(180deg,#EDF0F3,#F2F4F6 640px);
+  --glow-accent:0 6px 16px -9px rgba(0,110,124,.45);
   --accent-text:#00707F;
   --text:#171B24; --muted:rgba(23,27,36,.66); --faint:rgba(23,27,36,.63);
   --green:#3F7D2E; --red:#C1122F; --yellow:#8A5A00;
@@ -70,12 +97,13 @@
 :root[data-theme="light"] .note-ok{background:rgba(63,125,46,.10);border-color:rgba(63,125,46,.34);color:#2E5C22}
 :root[data-theme="light"] .btn-danger{color:#8E0F24;border-color:rgba(193,18,47,.40)}
 :root[data-theme="light"] .modal::backdrop{background:rgba(23,27,36,.45)}
-:root[data-theme="light"] .kpi.lead{background:#EFF6F7;border-color:rgba(0,112,127,.34)}
+:root[data-theme="light"] .kpi.lead{border-color:rgba(0,112,127,.34)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{
   font-family:'Manrope',system-ui,sans-serif; font-weight:500;
-  background:var(--bg); color:var(--text); min-height:100vh;
+  background-color:var(--bg); background-image:var(--grad-page);
+  background-attachment:fixed; color:var(--text); min-height:100vh;
   padding:var(--sp-6) var(--sp-4) 64px; line-height:1.5;
 }
 .wrap{max-width:1200px;margin:0 auto}
@@ -91,7 +119,7 @@ header img{height:40px;width:auto;display:block}
 .titles p{font-size:14px;line-height:20px;color:var(--muted);margin-top:2px}
 
 /* ═══ CARDS ═══ */
-.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-6);box-shadow:var(--edge)}
+.card{background-color:var(--panel);background-image:var(--grad-sheen);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-6);box-shadow:var(--edge)}
 .card.tight{padding:var(--sp-3) var(--sp-4)}
 .card h2{font-size:12px;line-height:18px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);margin-bottom:var(--sp-4)}
 .card h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:var(--sp-6) 0 var(--sp-3)}
@@ -179,7 +207,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .seg-row{display:grid;grid-template-columns:minmax(0,104px) minmax(0,1fr);align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-2)}
 .seg-row:last-of-type{margin-bottom:0}
 .seg-label{font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
-.seg{display:flex;background:var(--bg);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:3px;min-width:0}
+.seg{display:flex;background-color:var(--bg);background-image:var(--grad-recess);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:3px;min-width:0}
 .seg input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .seg label{
   flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;
@@ -188,7 +216,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
   transition:background .15s ease,color .15s ease;
 }
 .seg label:hover{color:var(--text);background:var(--panel-2)}
-.seg input:checked + label{background:var(--accent);color:var(--on-accent)}
+.seg input:checked + label{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
 .seg input:focus-visible + label{outline:2px solid var(--accent-300);outline-offset:2px}
 
 /* ═══ MODAL ═══
@@ -199,6 +227,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
   border:1px solid var(--border-strong);border-radius:var(--r-lg);padding:0;
   background:var(--panel);color:var(--text);
   width:min(640px,calc(100vw - 32px));max-height:86vh;overflow:hidden;box-shadow:var(--edge);
+  background-image:var(--grad-sheen);
   /* the global `* { margin:0 }` reset kills the UA's `margin:auto` on dialog,
      which is what centres a modal — put it back */
   margin:auto;
@@ -256,9 +285,9 @@ button{
   font:700 14px/20px 'Manrope',sans-serif;border-radius:var(--r-md);border:1px solid transparent;
   padding:11px 20px;min-height:44px;cursor:pointer;transition:background .15s ease,border-color .15s ease;
 }
-.btn-primary{background:var(--accent);color:var(--on-accent)}
-.btn-primary:hover{background:var(--accent-600);color:var(--on-accent-deep)}
-.btn-primary:active{background:var(--accent-700);color:var(--on-accent-deep)}
+.btn-primary{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
+.btn-primary:hover{background-color:var(--grad-accent-hover-base);background-image:var(--grad-accent-hover);color:var(--on-accent-deep)}
+.btn-primary:active{background-color:var(--grad-accent-active-base);background-image:var(--grad-accent-active);color:var(--on-accent-deep);box-shadow:none}
 .btn-ghost{background:transparent;color:var(--text);border-color:var(--border-strong)}
 .btn-ghost:hover{background:var(--panel-2);border-color:var(--border-hover)}
 button:disabled{opacity:.45;cursor:not-allowed}
@@ -266,18 +295,18 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px;width:32px;min-height:32px}
 .btn-danger{background:transparent;color:#ffb3c1;border-color:rgba(231,35,71,.45)}
 .btn-danger:hover{background:rgba(231,35,71,.14);border-color:var(--red)}
-.btn-danger-solid{background:var(--red);color:#fff;border-color:var(--red)}
-.btn-danger-solid:hover{background:#c41d3b;border-color:#c41d3b}
+.btn-danger-solid{background-color:var(--grad-danger-base);background-image:var(--grad-danger);color:#fff;border-color:transparent}
+.btn-danger-solid:hover{background-image:linear-gradient(180deg,#D81A3C,#B4122E);border-color:transparent}
 
 /* ═══ TABS ═══ */
-.tabs{display:flex;gap:var(--sp-1);background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:5px;box-shadow:var(--edge)}
+.tabs{display:flex;gap:var(--sp-1);background-color:var(--panel);background-image:var(--grad-recess);border:1px solid var(--border);border-radius:var(--r-md);padding:5px;box-shadow:var(--edge)}
 .tabs button{
   flex:1 1 0;min-width:0;border-radius:8px;background:transparent;color:var(--muted);
   border:1px solid transparent;padding:9px 12px;min-height:40px;font:600 13px/20px 'Manrope',sans-serif;
   display:flex;align-items:center;justify-content:center;gap:7px;
 }
 .tabs button:hover{color:var(--text);background:var(--panel-2)}
-.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+.tabs button[aria-selected="true"]{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
 .tabs button[aria-selected="true"] .badge{background:rgba(255,255,255,.92);color:#06222a}
 .badge{
   min-width:20px;padding:0 6px;border-radius:999px;background:var(--panel-2);color:var(--text);
@@ -295,7 +324,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .kpi .k-label{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.26;font-weight:800;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.03em;overflow-wrap:anywhere}
 .kpi .k-note{font-size:12px;line-height:16px;color:var(--faint);margin-top:2px}
-.kpi.lead{border-color:rgba(43,196,216,.42);background:#17303A}
+.kpi.lead{border-color:rgba(43,196,216,.42);background-color:var(--grad-lead-base);background-image:var(--grad-lead)}
 .kpi.lead .k-value{color:var(--accent-300)}
 .pos{color:var(--money-pos)} .neg{color:var(--money-neg)}
 .res-name{font-size:17px;line-height:24px;font-weight:700;letter-spacing:-.01em;margin-bottom:var(--sp-4);overflow-wrap:anywhere}
@@ -307,7 +336,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;line-height:18px}
 th,td{padding:9px 12px;text-align:left;white-space:nowrap}
 thead th{
-  position:sticky;top:0;z-index:2;background:var(--panel-2);color:var(--muted);
+  position:sticky;top:0;z-index:2;background-color:var(--panel-2);background-image:var(--grad-recess);color:var(--muted);
   font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
   border-bottom:1px solid var(--border-strong);
 }
