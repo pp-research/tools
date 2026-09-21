@@ -15,26 +15,31 @@
 <title>IRR Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ═══ TOKENS — Performance Property brand, hub dark theme ═══ */
+/* ═══ TOKENS — "Midnight": deeper navy ground, lit card edges, brighter teal ═══ */
 :root{
-  --bg:#1f283f; --panel:#263148; --panel-2:#2c3853; --border:rgba(255,255,255,.10);
-  --border-strong:rgba(255,255,255,.18);
-  --accent:#00A0B4; --accent-600:#008496; --accent-300:#4dc3d2;
-  --text:#ffffff; --muted:rgba(255,255,255,.58); --faint:rgba(255,255,255,.54);
+  --bg:#0F1420; --panel:#171E2E; --panel-2:#1C2436; --well:#131A29;
+  --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+  /* the 1px lighter line along the top of each card — what makes the surfaces
+     read as lit from above rather than as flat rectangles */
+  --edge:inset 0 1px 0 rgba(255,255,255,.14);
+  --accent:#2BC4D8; --accent-600:#1AA7BA; --accent-300:#5FD8E8;
+  --accent-700:#159AAB;
+  --accent-rgb:43,196,216;
+  --on-accent:#06222a; --on-accent-deep:#06222a;
+  --border-hover:rgba(255,255,255,.30);
+  --text:#F4F7FA; --muted:#A3B0C0; --faint:rgba(255,255,255,.56);
   --green:#71B357; --red:#E72347; --yellow:#FFA91F;
   /* the gain/loss figures are small text, so they need more lift than the
      chrome colours: brand red on the dark panel is only 2.93:1 */
   --money-pos:#8FCB74; --money-neg:#FF94A6;
-  /* accent as TEXT needs more lift than the fill colour: #00A0B4 on the dark
-     panel is only 4.14:1, below AA for a 14px heading */
-  --accent-text:#4dc3d2;
+  --accent-text:#5FD8E8;
   --row-alt:rgba(255,255,255,.022);
   --row-line:rgba(255,255,255,.055);
   --row-line-strong:rgba(255,255,255,.2);
-  --drop-veil:rgba(31,40,63,.82);
-  --r-sm:6px; --r-md:10px; --r-lg:16px;
+  --drop-veil:rgba(15,20,32,.82);
+  --r-sm:8px; --r-md:12px; --r-lg:16px;
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px; --sp-8:32px;
 }
 
@@ -43,9 +48,14 @@
    which is fine behind white text on a filled button but fails as body text —
    so accent-as-text darkens, and the gain/loss pair darkens with it. */
 :root[data-theme="light"]{
-  --bg:#F2F4F6; --panel:#FFFFFF; --panel-2:#EDF0F3;
+  --bg:#F2F4F6; --panel:#FFFFFF; --panel-2:#EDF0F3; --well:#F7F9FA;
   --border:rgba(23,27,36,.11); --border-strong:rgba(23,27,36,.20);
-  --accent:#00A0B4; --accent-600:#00808F; --accent-300:#00788A;
+  /* no lit edge on white — the shared rule resolves this to nothing */
+  --edge:none;
+  --accent:#00A0B4; --accent-600:#00808F; --accent-700:#00606D; --accent-300:#00788A;
+  --accent-rgb:0,160,180;
+  --on-accent:#06222a; --on-accent-deep:#ffffff;
+  --border-hover:rgba(23,27,36,.34);
   --accent-text:#00707F;
   --text:#171B24; --muted:rgba(23,27,36,.66); --faint:rgba(23,27,36,.63);
   --green:#3F7D2E; --red:#C1122F; --yellow:#8A5A00;
@@ -60,11 +70,11 @@
 :root[data-theme="light"] .note-ok{background:rgba(63,125,46,.10);border-color:rgba(63,125,46,.34);color:#2E5C22}
 :root[data-theme="light"] .btn-danger{color:#8E0F24;border-color:rgba(193,18,47,.40)}
 :root[data-theme="light"] .modal::backdrop{background:rgba(23,27,36,.45)}
-:root[data-theme="light"] .kpi.lead{background:linear-gradient(180deg,rgba(0,160,180,.10),rgba(0,160,180,.03))}
+:root[data-theme="light"] .kpi.lead{background:#EFF6F7;border-color:rgba(0,112,127,.34)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{
-  font-family:'Montserrat',system-ui,sans-serif; font-weight:500;
+  font-family:'Manrope',system-ui,sans-serif; font-weight:500;
   background:var(--bg); color:var(--text); min-height:100vh;
   padding:var(--sp-6) var(--sp-4) 64px; line-height:1.5;
 }
@@ -81,9 +91,9 @@ header img{height:40px;width:auto;display:block}
 .titles p{font-size:14px;line-height:20px;color:var(--muted);margin-top:2px}
 
 /* ═══ CARDS ═══ */
-.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-6)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-6);box-shadow:var(--edge)}
 .card.tight{padding:var(--sp-3) var(--sp-4)}
-.card h2{font-size:14px;line-height:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text);margin-bottom:var(--sp-4)}
+.card h2{font-size:12px;line-height:18px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);margin-bottom:var(--sp-4)}
 .card h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:var(--sp-6) 0 var(--sp-3)}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)}
 .card-head h2{margin:0}
@@ -115,11 +125,11 @@ header img{height:40px;width:auto;display:block}
 label{display:block;font-size:12px;line-height:16px;font-weight:600;color:var(--muted);margin-bottom:6px}
 input,select,textarea{
   width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border-strong);
-  border-radius:var(--r-md);padding:10px 12px;font:600 15px/22px 'Montserrat',sans-serif;
+  border-radius:var(--r-md);padding:10px 12px;font:600 15px/22px 'Manrope',sans-serif;
   font-variant-numeric:tabular-nums lining-nums; min-height:44px;
 }
 textarea{font:500 13px/19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;min-height:96px;white-space:pre;overflow-x:auto}
-input:hover,select:hover,textarea:hover{border-color:rgba(255,255,255,.3)}
+input:hover,select:hover,textarea:hover{border-color:var(--border-hover)}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px solid var(--accent-300);outline-offset:1px}
 input[aria-invalid="true"]{border-color:var(--red)}
 /* The arrow is spelled out per theme rather than driven by a custom property:
@@ -138,7 +148,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 
 /* drop target for a dragged spreadsheet */
 .dropzone{position:relative;border-radius:var(--r-md)}
-.dropzone.over textarea{border-color:var(--accent);background:rgba(0,160,180,.10)}
+.dropzone.over textarea{border-color:var(--accent);background:rgba(var(--accent-rgb),.10)}
 .dropzone.over::after{
   content:'Drop to import';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   border:2px dashed var(--accent);border-radius:var(--r-md);background:var(--drop-veil);
@@ -169,16 +179,16 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .seg-row{display:grid;grid-template-columns:minmax(0,104px) minmax(0,1fr);align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-2)}
 .seg-row:last-of-type{margin-bottom:0}
 .seg-label{font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
-.seg{display:flex;background:var(--bg);border:1px solid var(--border-strong);border-radius:999px;padding:2px;min-width:0}
+.seg{display:flex;background:var(--bg);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:3px;min-width:0}
 .seg input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .seg label{
   flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;
-  margin:0;padding:6px 10px;min-height:30px;border-radius:999px;cursor:pointer;
+  margin:0;padding:6px 10px;min-height:30px;border-radius:8px;cursor:pointer;
   font-size:12px;line-height:16px;font-weight:600;color:var(--muted);white-space:nowrap;
   transition:background .15s ease,color .15s ease;
 }
 .seg label:hover{color:var(--text);background:var(--panel-2)}
-.seg input:checked + label{background:var(--accent);color:#06222a}
+.seg input:checked + label{background:var(--accent);color:var(--on-accent)}
 .seg input:focus-visible + label{outline:2px solid var(--accent-300);outline-offset:2px}
 
 /* ═══ MODAL ═══
@@ -188,7 +198,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .modal{
   border:1px solid var(--border-strong);border-radius:var(--r-lg);padding:0;
   background:var(--panel);color:var(--text);
-  width:min(640px,calc(100vw - 32px));max-height:86vh;overflow:hidden;
+  width:min(640px,calc(100vw - 32px));max-height:86vh;overflow:hidden;box-shadow:var(--edge);
   /* the global `* { margin:0 }` reset kills the UA's `margin:auto` on dialog,
      which is what centres a modal — put it back */
   margin:auto;
@@ -239,14 +249,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 /* ═══ BUTTONS ═══ */
 .btns{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-4)}
 button{
-  font:600 14px/20px 'Montserrat',sans-serif;border-radius:999px;border:1px solid transparent;
+  font:700 14px/20px 'Manrope',sans-serif;border-radius:var(--r-md);border:1px solid transparent;
   padding:11px 20px;min-height:44px;cursor:pointer;transition:background .15s ease,border-color .15s ease;
 }
-.btn-primary{background:var(--accent);color:#06222a}
-.btn-primary:hover{background:var(--accent-600);color:#fff}
-.btn-primary:active{background:#00707f}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-primary:hover{background:var(--accent-600);color:var(--on-accent-deep)}
+.btn-primary:active{background:var(--accent-700);color:var(--on-accent-deep)}
 .btn-ghost{background:transparent;color:var(--text);border-color:var(--border-strong)}
-.btn-ghost:hover{background:var(--panel-2);border-color:rgba(255,255,255,.32)}
+.btn-ghost:hover{background:var(--panel-2);border-color:var(--border-hover)}
 button:disabled{opacity:.45;cursor:not-allowed}
 .btn-sm{padding:6px 13px;min-height:32px;font-size:12px}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px;width:32px;min-height:32px}
@@ -256,14 +266,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .btn-danger-solid:hover{background:#c41d3b;border-color:#c41d3b}
 
 /* ═══ TABS ═══ */
-.tabs{display:flex;gap:var(--sp-1);background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:var(--sp-1)}
+.tabs{display:flex;gap:var(--sp-1);background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:5px;box-shadow:var(--edge)}
 .tabs button{
-  flex:1 1 0;min-width:0;border-radius:999px;background:transparent;color:var(--muted);
-  border:1px solid transparent;padding:9px 12px;min-height:40px;font:600 13px/20px 'Montserrat',sans-serif;
+  flex:1 1 0;min-width:0;border-radius:8px;background:transparent;color:var(--muted);
+  border:1px solid transparent;padding:9px 12px;min-height:40px;font:600 13px/20px 'Manrope',sans-serif;
   display:flex;align-items:center;justify-content:center;gap:7px;
 }
 .tabs button:hover{color:var(--text);background:var(--panel-2)}
-.tabs button[aria-selected="true"]{background:var(--accent);color:#06222a}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
 .tabs button[aria-selected="true"] .badge{background:rgba(255,255,255,.92);color:#06222a}
 .badge{
   min-width:20px;padding:0 6px;border-radius:999px;background:var(--panel-2);color:var(--text);
@@ -279,16 +289,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
 @media (min-width:768px){ .kpis{grid-template-columns:repeat(4,minmax(0,1fr))} }
 .kpi{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--sp-4);min-width:0}
 .kpi .k-label{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.28;font-weight:700;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;overflow-wrap:anywhere}
+.kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.26;font-weight:800;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.03em;overflow-wrap:anywhere}
 .kpi .k-note{font-size:12px;line-height:16px;color:var(--faint);margin-top:2px}
-.kpi.lead{border-color:var(--accent);background:linear-gradient(180deg,rgba(0,160,180,.14),rgba(0,160,180,.04))}
+.kpi.lead{border-color:rgba(43,196,216,.42);background:#17303A}
 .kpi.lead .k-value{color:var(--accent-300)}
 .pos{color:var(--money-pos)} .neg{color:var(--money-neg)}
-.res-name{font-size:15px;line-height:22px;font-weight:700;margin-bottom:var(--sp-4);overflow-wrap:anywhere}
+.res-name{font-size:17px;line-height:24px;font-weight:700;letter-spacing:-.01em;margin-bottom:var(--sp-4);overflow-wrap:anywhere}
 .res-name:empty{display:none}
 
 /* ═══ TABLES ═══ */
-.tbl-scroll{overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:var(--r-md)}
+.tbl-scroll{overflow:auto;max-height:520px;background:var(--well);border:1px solid var(--border);border-radius:var(--r-md)}
 .tbl-scroll.short{max-height:440px}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;line-height:18px}
 th,td{padding:9px 12px;text-align:left;white-space:nowrap}
@@ -300,9 +310,9 @@ thead th{
 tbody td{border-bottom:1px solid var(--row-line)}
 tbody tr:last-child td{border-bottom:0}
 tbody tr:nth-child(even){background:var(--row-alt)}
-tbody tr:hover{background:rgba(0,160,180,.10)}
-tbody tr.is-sale{background:rgba(0,160,180,.16);font-weight:700}
-tbody tr.is-sale:hover{background:rgba(0,160,180,.22)}
+tbody tr:hover{background:rgba(var(--accent-rgb),.10)}
+tbody tr.is-sale{background:rgba(var(--accent-rgb),.16);font-weight:700}
+tbody tr.is-sale:hover{background:rgba(var(--accent-rgb),.22)}
 tbody tr.fy-end td{border-bottom:1px solid var(--row-line-strong)}
 td.name{white-space:normal;min-width:150px;font-weight:600}
 .cat{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--panel-2);
@@ -319,12 +329,12 @@ td.pd span{display:block;font-size:11px;line-height:15px;color:var(--muted)}
 td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
-mark{background:rgba(0,160,180,.34);color:var(--text);border-radius:3px;padding:0 1px}
+mark{background:rgba(var(--accent-rgb),.34);color:var(--text);border-radius:3px;padding:0 1px}
 /* sortable headers — a real button inside the th so the keyboard gets it free */
 th .sortbtn{
   display:flex;align-items:center;gap:5px;width:100%;min-height:0;
   background:transparent;border:0;padding:0;border-radius:var(--r-sm);cursor:pointer;
-  font:700 11px/14px 'Montserrat',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  font:700 11px/14px 'Manrope',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
 }
 th.num .sortbtn{justify-content:flex-end}
 th .sortbtn:hover{color:var(--text)}
