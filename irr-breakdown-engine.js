@@ -121,7 +121,16 @@
     // toggles
     cashRateBasis:    'Normalised', // B14  Normalised | Actual
     negativeGearing:  'Off',        // B15  Off | On
-    rentBasis:        'Growing'     // B16  Growing | Flat
+    rentBasis:        'Growing',    // B16  Growing | Flat
+
+    /* Settlement-accurate timing (default). The workbook dates every cashflow
+       to the 1st of its month and charges a whole month of interest, rent and
+       running costs at both ends of the hold — so the sale is booked up to 30
+       days early and roughly one month of costs too many is charged. With this
+       on, the deposit sits on the purchase date, the sale on the settlement
+       date, and the first and last months accrue pro rata.
+       Set false to reproduce the workbook exactly (used by selfTest). */
+    settlementAccurate: true
   };
 
   /* ═══ RBA CASH RATE TARGET (monthly, Jan 2008 – Aug 2026) ═══
@@ -156,6 +165,7 @@
     var normalised = (a.cashRateBasis === 'Normalised');
     var flatRent = (a.rentBasis === 'Flat');
     var ngOn = (a.negativeGearing === 'On');
+    var exact = (a.settlementAccurate !== false);
 
     /* ── summary block (sheet rows 4–5) ── */
     var holdYears    = yearFrac30360US(pDate, sDate);          // F5
@@ -187,19 +197,35 @@
         if (hit === undefined) { cashRate = 0; missingRates++; } else { cashRate = hit; }
       }
 
+      /* Part-month at each end. A month accrues from the 1st to the 1st of the
+         next month; the purchase month starts at settlement instead, and the
+         sale month ends at settlement. Middle months come out at exactly 1. */
+      var monthNext = edate(d, 1);
+      var daysInM = (monthNext.getTime() - d.getTime()) / MS_DAY;
+      var accStart = (exact && i === 0) ? pDate : d;
+      var accEnd   = (exact && isLast) ? sDate : monthNext;
+      var frac = exact
+        ? Math.max(0, (accEnd.getTime() - accStart.getTime()) / MS_DAY) / daysInM
+        : 1;
+
       // F — interest. Margin + buffer are added to ACTUAL rates only; the
       //     normalised rate already includes them.
-      var interest = rowLoan * (cashRate + (normalised ? 0 : a.bankMargin + a.apraBuffer)) / 12;
+      var interest = rowLoan * (cashRate + (normalised ? 0 : a.bankMargin + a.apraBuffer)) / 12 * frac;
 
       // O — property value: compounds purchase→sold across the hold period,
-      //     snapped to the sold price on the final row.
+      //     snapped to the sold price on the final row. Measured from the day
+      //     accrual starts, so the opening row values at the purchase price
+      //     rather than growing over the days before it was owned.
       var propValue = isLast
         ? S
-        : P * Math.pow(S / P, yearFrac30360US(pDate, d) / holdYears);
+        : P * Math.pow(S / P, yearFrac30360US(pDate, accStart) / holdYears);
 
-      // G / H — running costs and rent
-      var running = propValue * a.runningCostPa / 12;
-      var rent = (flatRent ? (P + S) / 2 : propValue) * a.rentalYield / 12;
+      // G / H — running costs and rent, pro rata on a part month
+      var running = propValue * a.runningCostPa / 12 * frac;
+      var rent = (flatRent ? (P + S) / 2 : propValue) * a.rentalYield / 12 * frac;
+
+      // the date this month's cash is discounted from: real dates at the ends
+      var cfDate = exact ? (i === 0 ? pDate : (isLast ? sDate : d)) : d;
 
       // N — accumulated loss for the financial year. Resets when the PREVIOUS
       //     row was June, i.e. the July row starts the new FY.
@@ -225,7 +251,8 @@
       cumCash += netCF;
 
       rows.push({
-        date: d, year: y, month: mo, cashRate: cashRate, loan: rowLoan,
+        date: d, cfDate: cfDate, monthFraction: frac,
+        year: y, month: mo, cashRate: cashRate, loan: rowLoan,
         interest: interest, running: running, rent: rent, ngRefund: ngRefund,
         monthlyCF: monthlyCF, netCF: netCF, cumFinance: cumFin,
         cumCashflow: cumCash, accumLoss: accumLoss, propValue: propValue
@@ -251,7 +278,7 @@
     var netProfit = grossProfit - afterTaxHolding + sellingCosts;
 
     var amounts = rows.map(function (r) { return r.netCF; });
-    var cfDates = rows.map(function (r) { return r.date; });
+    var cfDates = rows.map(function (r) { return r.cfDate; });
     var irr = xirr(amounts, cfDates);
     if (irr === null && rows.length) {
       warnings.push('IRR is undefined for this deal — the monthly cashflows never change sign, so there is no rate that zeroes the NPV.');
@@ -596,15 +623,22 @@
     ];
     var out = [];
     cases.forEach(function (c) {
-      var res = computeBreakdown(c.deal);
+      /* Pinned to the legacy timing on purpose: this test's job is to prove
+         the port of the workbook's arithmetic is still faithful. The default
+         settlement-accurate mode deliberately departs from the sheet, so it is
+         reported separately rather than asserted against the old numbers. */
+      var res = computeBreakdown(c.deal, { settlementAccurate: false });
       var checks = [];
       Object.keys(c.expect).forEach(function (key) {
         var got = res.summary[key], want = c.expect[key];
         var tol = (key === 'irr') ? 1e-9 : 1e-3;
         checks.push({ field: key, got: got, want: want, pass: Math.abs(got - want) <= tol });
       });
+      var fixed = computeBreakdown(c.deal).summary;
       out.push({ name: c.name, months: res.rows.length, checks: checks,
-                 pass: checks.every(function (x) { return x.pass; }) });
+                 pass: checks.every(function (x) { return x.pass; }),
+                 legacyIrr: res.summary.irr, settlementIrr: fixed.irr,
+                 shiftBps: Math.round((fixed.irr - res.summary.irr) * 10000) });
     });
     return out;
   }
