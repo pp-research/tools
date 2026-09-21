@@ -783,17 +783,8 @@ details .body strong{color:var(--text)}
       rentBasis: radioVal('tRent')
     };
   }
-  function writeOpts(o){
-    if (!o) return;
-    var set = function(id,v){ if (v !== undefined && v !== null) $(id).value = v; };
-    set('aDep', o.depositAndFee*100); set('aLvr', o.lvr*100); set('aRun', o.runningCostPa*100);
-    set('aYield', o.rentalYield*100); set('aNorm', o.normalisedRate*100); set('aTax', o.marginalTaxRate*100);
-    set('aComm', o.sellingCommission*100); set('aSpend', o.sellingMarketSpend);
-    set('aMargin', o.bankMargin*100); set('aApra', o.apraBuffer*100);
-    if (o.cashRateBasis) setRadio('tRate', o.cashRateBasis);
-    if (o.negativeGearing) setRadio('tNg', o.negativeGearing);
-    if (o.rentBasis) setRadio('tRent', o.rentBasis);
-  }
+  /* writeOpts used to push a saved entry's assumptions back into the panel when
+     you opened it. The settings panel is global now, so nothing overwrites it. */
   function readDeal(){
     return {
       purchasePrice: Number($('pPrice').value), purchaseDate: $('pDate').value,
@@ -928,11 +919,15 @@ details .body strong{color:var(--text)}
       return;
     }
 
-    // derive once, then sort on the derived values
+    /* The list is struck against the CURRENT settings, not the ones each entry
+       was saved under — a comparison table is only meaningful if every row is
+       on the same assumptions. Entries still carry the opts in force when they
+       were imported, as a record; nothing computes from them. */
+    var opts = readOpts();
     var data = shown.map(function(e){
       var d = { e:e, irr:null, net:null, hold:null };
       try {
-        var r = window.IRRBreakdown.computeBreakdown(e, e.opts);
+        var r = window.IRRBreakdown.computeBreakdown(e, opts);
         d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears;
       } catch (err) {}
       return d;
@@ -1350,9 +1345,10 @@ details .body strong{color:var(--text)}
     if (!list.length) { $('messages').innerHTML = msg('warn','Nothing matches the current filters, so there is nothing to export.'); return; }
     var L = [['Property','Category','Purchase price','Purchase date','Sold price','Sold date',
               'Hold period (yrs)','Gross profit','Net profit','IRR']];
+    var xOpts = readOpts();
     list.forEach(function(e){
       try {
-        var s = window.IRRBreakdown.computeBreakdown(e, e.opts).summary;
+        var s = window.IRRBreakdown.computeBreakdown(e, xOpts).summary;
         L.push([e.name, e.category||'', s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
                 s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]);
       } catch (err) {
@@ -1520,7 +1516,9 @@ details .body strong{color:var(--text)}
     }
     if (b.dataset.open) {
       var e = loadProps().filter(function(x){ return x.id === b.dataset.open; })[0];
-      if (e) { writeOpts(e.opts); loadIntoForm(e.name, e, e.category); showTab('result'); }
+      /* Deliberately does NOT restore e.opts — the settings panel is global, so
+         snapping it back on open would contradict the list you just read. */
+      if (e) { loadIntoForm(e.name, e, e.category); showTab('result'); }
     }
     if (b.dataset.del) {
       var id = b.dataset.del;
@@ -1535,11 +1533,24 @@ details .body strong{color:var(--text)}
     }
   });
 
+  /* The ten assumptions and the three toggles drive the saved-property list as
+     well as the deal on the left; the deal fields drive only the deal. */
+  var ASSUMPTION_IDS = { aDep:1, aLvr:1, aRun:1, aYield:1, aNorm:1, aTax:1,
+                         aComm:1, aSpend:1, aMargin:1, aApra:1 };
+  function isAssumption(el){
+    return ASSUMPTION_IDS[el.id] === 1 || el.name === 'tRate' || el.name === 'tNg' || el.name === 'tRent';
+  }
   document.querySelectorAll('input,select').forEach(function(el){
     if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'impCat' || el.id === 'pasteBox') return;
-    // renaming or recategorising only relabels — no need to recompute
-    el.addEventListener('change', function(){ if (el.id === 'pName') relabel(); else if (el.id !== 'pCat') calc(); });
-    el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); calc(); } });
+    var recompute = function(){
+      // renaming or recategorising only relabels — no need to recompute
+      if (el.id === 'pName') { relabel(); return; }
+      if (el.id === 'pCat') return;
+      calc();
+      if (isAssumption(el)) renderProps();
+    };
+    el.addEventListener('change', recompute);
+    el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); recompute(); } });
   });
   /* No auto-import on paste. It used to fire the moment anything was pasted,
      which meant the category typed afterwards never applied and the modal shut
