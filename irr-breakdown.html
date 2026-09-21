@@ -173,9 +173,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 
 /* ═══ FILTERS ═══ */
 .filters{display:grid;grid-template-columns:1fr;gap:var(--sp-3);margin-bottom:var(--sp-3)}
-@media (min-width:600px){ .filters{grid-template-columns:minmax(0,2fr) minmax(0,1fr)} }
+/* 1.3fr not 2fr: the category cell also carries the Rename button, so an
+   even split left the select too narrow to read a category name */
+@media (min-width:600px){ .filters{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)} }
 .filters input,.filters select{min-height:40px;padding:8px 12px;font-size:14px}
 .filters select{padding-right:34px}
+.cat-cell{display:flex;gap:var(--sp-2);min-width:0}
+.cat-cell select{flex:1 1 auto;min-width:0}
+.cat-cell button{flex:0 0 auto;min-height:40px}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
 /* the banner sits between the card head and the filters, so the container
    owns the spacing on both sides and the inner note drops its own */
@@ -496,9 +501,11 @@ details .body strong{color:var(--text)}
               <label for="propSearch" class="sr-only">Search properties</label>
               <input type="search" id="propSearch" placeholder="Search name or address…" autocomplete="off">
             </div>
-            <div>
+            <div class="cat-cell">
               <label for="propCat" class="sr-only">Filter by category</label>
               <select id="propCat"><option value="">All categories</option></select>
+              <button type="button" class="btn-ghost btn-sm" id="btnRenameCat"
+                      title="Rename the selected category">Rename</button>
             </div>
           </div>
           <p class="count-line" id="propCount"></p>
@@ -553,6 +560,27 @@ details .body strong{color:var(--text)}
           </div>
         </div>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
+      </dialog>
+
+      <!-- ══════════ PROMPT — used to rename a category ══════════ -->
+      <dialog class="modal modal-sm" id="promptDialog" aria-labelledby="pr-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="pr-h">Rename category</h2>
+            <button type="button" class="modal-x" id="prClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p id="prBody"></p>
+            <div class="field" style="margin-top:var(--sp-4)">
+              <label for="prInput" id="prLabel">New name</label>
+              <input id="prInput" type="text" list="catList" autocomplete="off">
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn-primary" id="prYes">Rename</button>
+            <button type="button" class="btn-ghost" id="prNo">Cancel</button>
+          </div>
+        </div>
       </dialog>
 
       <!-- ══════════ CONFIRM — deleting here cannot be undone ══════════ -->
@@ -1255,6 +1283,60 @@ details .body strong{color:var(--text)}
   }
   function closeConfirm(){ pendingConfirm = null; var d = $('confirmDialog'); if (d.open) d.close(); }
 
+  /* Same pattern as the confirm, with a text field. */
+  var pendingPrompt = null;
+  function askPrompt(title, bodyHtml, label, initial, okLabel, onOk){
+    pendingPrompt = onOk;
+    $('pr-h').textContent = title;
+    $('prBody').innerHTML = bodyHtml;
+    $('prLabel').textContent = label;
+    $('prInput').value = initial || '';
+    $('prYes').textContent = okLabel;
+    var d = $('promptDialog');
+    if (!d.open) d.showModal();
+    $('prInput').focus();
+    $('prInput').select();
+  }
+  function closePrompt(){ pendingPrompt = null; var d = $('promptDialog'); if (d.open) d.close(); }
+
+  /* ── renaming a category across every property that carries it ── */
+  function renameCategory(){
+    var all = loadProps();
+    if (!all.length) { $('messages').innerHTML = msg('warn','There are no properties yet.'); return; }
+
+    var sel = $('propCat').value;
+    if (!sel) {
+      $('messages').innerHTML = msg('warn','Pick a category in the dropdown first — that is the one that gets renamed.');
+      return;
+    }
+    var uncat = (sel === NO_CAT);
+    var from = uncat ? '' : sel;
+    var hits = all.filter(function(e){ return (e.category||'').trim() === from; });
+    if (!hits.length) { $('messages').innerHTML = msg('warn','Nothing is filed under that category.'); return; }
+
+    askPrompt(uncat ? 'Name these properties' : 'Rename category',
+      (uncat
+        ? 'Give a category to the <strong>' + hits.length + '</strong> uncategorised propert' + (hits.length===1?'y':'ies') + '.'
+        : 'Rename <strong>' + esc(from) + '</strong> across <strong>' + hits.length + '</strong> propert' +
+          (hits.length===1?'y':'ies') + '. Reusing an existing name merges the two; leaving it blank clears the category.'),
+      'Category', uncat ? '' : from, uncat ? 'Apply' : 'Rename',
+      function(value){
+        var to = String(value || '').trim();
+        if (!uncat && to === from) return;
+        var list = loadProps(), n = 0;
+        list.forEach(function(e){ if ((e.category||'').trim() === from) { e.category = to; n++; } });
+        if (!putProps(list)) return;
+        // follow the rename in the filter rather than silently resetting it
+        renderProps();
+        var opt = [].filter.call($('propCat').options, function(o){ return o.value === (to || NO_CAT); })[0];
+        $('propCat').value = opt ? opt.value : '';
+        renderProps();
+        $('messages').innerHTML = msg('ok', to
+          ? 'Moved ' + n + ' propert' + (n===1?'y':'ies') + ' to ' + esc(to) + '.'
+          : 'Cleared the category on ' + n + ' propert' + (n===1?'y':'ies') + '.');
+      });
+  }
+
   $('btnCalc').addEventListener('click', function(){ calc(); showTab('result'); });
   $('btnCsv').addEventListener('click', exportDetail);
   $('btnParse').addEventListener('click', doParse);
@@ -1288,6 +1370,18 @@ details .body strong{color:var(--text)}
         putProps([]); renderProps();
         $('messages').innerHTML = msg('ok','Cleared '+n+' propert'+(n===1?'y':'ies')+'.');
       });
+  });
+
+  $('btnRenameCat').addEventListener('click', renameCategory);
+  $('prYes').addEventListener('click', function(){
+    var fn = pendingPrompt, v = $('prInput').value; closePrompt(); if (fn) fn(v);
+  });
+  $('prNo').addEventListener('click', closePrompt);
+  $('prClose').addEventListener('click', closePrompt);
+  $('promptDialog').addEventListener('click', function(ev){ if (ev.target === $('promptDialog')) closePrompt(); });
+  $('promptDialog').addEventListener('close', function(){ pendingPrompt = null; });
+  $('prInput').addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter') { ev.preventDefault(); $('prYes').click(); }
   });
 
   $('cfYes').addEventListener('click', function(){
