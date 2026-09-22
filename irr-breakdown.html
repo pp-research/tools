@@ -327,6 +327,51 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .kpi.lead{border-color:rgba(43,196,216,.42);background-color:var(--grad-lead-base);background-image:var(--grad-lead)}
 .kpi.lead .k-value{color:var(--accent-300)}
 .pos{color:var(--money-pos)} .neg{color:var(--money-neg)}
+/* ═══ OVERVIEW ═══
+   The histogram is a single measure over ordered bins, so it takes one encoding:
+   position carries the IRR, colour only reinforces the sign. The gain/loss tokens
+   are reused rather than a new palette invented — a bar means the same thing here
+   as a figure does in the tables. */
+.ov-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));
+  gap:var(--sp-3);margin-bottom:var(--sp-6)}
+.ov-meta .field{margin:0}
+.ov-stats{width:100%;border-collapse:collapse;font-size:14px}
+.ov-stats td{padding:9px 0;border-bottom:1px solid var(--row-line);vertical-align:baseline}
+.ov-stats tr:last-child td{border-bottom:0}
+.ov-stats td:first-child{color:var(--muted)}
+.ov-stats td:last-child{text-align:right;font-weight:600;white-space:nowrap;
+  font-variant-numeric:tabular-nums lining-nums}
+.ov-stats tr.gap td{border-bottom:0;height:var(--sp-4);padding:0}
+.ov-stats td.none{color:var(--faint);font-weight:400}
+.ov-sec{margin-top:var(--sp-6)}
+.ov-sec:first-child{margin-top:0}
+.ov-sec > h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:var(--sp-3)}
+.ov-bars{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;align-items:end}
+.ov-col{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;
+  text-align:center}
+.ov-count{font-size:11px;line-height:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ov-track{height:148px;display:flex;align-items:flex-end;border-bottom:1px solid var(--row-line-strong)}
+.ov-bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;
+  background-color:var(--money-pos);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0))}
+.ov-bar.is-neg{background-color:var(--money-neg)}
+.ov-bar.is-empty{background:var(--row-line);min-height:2px}
+.ov-axis{font-size:10px;line-height:13px;color:var(--faint);overflow-wrap:anywhere}
+.ov-tip{position:absolute;bottom:calc(100% - 14px);left:50%;transform:translateX(-50%);
+  min-width:132px;max-width:190px;background:var(--panel-2);border:1px solid var(--border-strong);
+  border-radius:var(--r-sm);padding:7px 10px;font-size:11.5px;line-height:1.45;color:var(--text);
+  text-align:left;box-shadow:0 6px 18px -8px rgba(0,0,0,.55);
+  opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:4}
+.ov-col:hover .ov-tip{opacity:1}
+.ov-tip b{display:block;font-size:12.5px}
+.ov-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:var(--sp-6)}
+.ov-rank{display:flex;flex-direction:column;gap:0}
+.ov-rank div{display:flex;gap:var(--sp-3);justify-content:space-between;align-items:baseline;
+  padding:7px 0;border-bottom:1px solid var(--row-line);font-size:13px}
+.ov-rank div:last-child{border-bottom:0}
+.ov-rank span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-rank span:last-child{flex:0 0 auto;font-weight:600;font-variant-numeric:tabular-nums}
 .res-name{font-size:17px;line-height:24px;font-weight:700;letter-spacing:-.01em;margin-bottom:var(--sp-4);overflow-wrap:anywhere}
 .res-name:empty{display:none}
 
@@ -535,6 +580,7 @@ details .body strong{color:var(--text)}
       <div class="tabs" role="tablist" aria-label="Properties and result">
         <button type="button" role="tab" id="tab-props" aria-controls="panel-props" aria-selected="true">Properties <span class="badge" id="badgeProps">0</span></button>
         <button type="button" role="tab" id="tab-result" aria-controls="panel-result" aria-selected="false" tabindex="-1">Result</button>
+        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
       </div>
 
       <!-- ── RESULT ── -->
@@ -612,6 +658,29 @@ details .body strong{color:var(--text)}
           <p class="count-line" id="propCount"></p>
 
           <div id="propsBody"></div>
+        </section>
+      </div>
+
+      <!-- ══════════ OVERVIEW — the whole book at once ══════════ -->
+      <div class="panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden>
+        <section class="card" aria-labelledby="ov-h">
+          <div class="card-head">
+            <h2 id="ov-h">Overview</h2>
+            <p class="count-line" id="ovScope" style="margin:0"></p>
+          </div>
+          <!-- the book only holds SOLD properties, so the purchased and advisory
+               counts have to be typed — they are remembered per browser -->
+          <div class="ov-meta">
+            <div class="field">
+              <label for="ovPurchased">Total properties purchased</label>
+              <input id="ovPurchased" type="number" min="0" step="1" placeholder="not set">
+            </div>
+            <div class="field">
+              <label for="ovAdvisories">Total sales advisories</label>
+              <input id="ovAdvisories" type="number" min="0" step="1" placeholder="not set">
+            </div>
+          </div>
+          <div id="ovBody"></div>
         </section>
       </div>
 
@@ -831,7 +900,7 @@ details .body strong{color:var(--text)}
 
   /* ══════════ TABS ══════════ */
   /* order matches the strip left to right, so the arrow keys track it */
-  var TABS = ['props','result'];
+  var TABS = ['props','result','overview'];
   function showTab(name){
     TABS.forEach(function(t){
       var btn = $('tab-'+t), panel = $('panel-'+t), on = (t === name);
@@ -932,6 +1001,196 @@ details .body strong{color:var(--text)}
     });
   }
 
+  /* ══════════ OVERVIEW ══════════
+     Reads the same derived rows the list does, so it is always on the current
+     settings and the current filter. Median rather than mean throughout: one
+     property whose sale barely clears the loan produces an IRR of −80%, and a
+     mean would let a handful of those speak for the whole book. */
+  /* A book total runs to eight figures and wraps out of a KPI tile, so the
+     overview abbreviates and keeps the exact number on the title. */
+  function audShort(n){
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    var a = Math.abs(n), sign = n < 0 ? '−$' : '$';
+    if (a >= 1e6) return sign + (a/1e6).toFixed(a >= 1e7 ? 1 : 2) + 'm';
+    if (a >= 1e4) return sign + Math.round(a/1e3) + 'k';
+    return aud(n);
+  }
+  var OV_META = 'pp-irr-overview-meta';
+  function loadOvMeta(){
+    try {
+      var v = JSON.parse(localStorage.getItem(OV_META) || '{}');
+      var n = function(x){ return (x === null || x === undefined || x === '' || !isFinite(x)) ? null : Number(x); };
+      return { purchased: n(v.purchased), advisories: n(v.advisories) };
+    } catch (e) { return { purchased:null, advisories:null }; }
+  }
+  function saveOvMeta(){
+    var read = function(id){ var s = $(id).value.trim(); return s === '' ? null : Number(s); };
+    try { localStorage.setItem(OV_META,
+      JSON.stringify({ purchased: read('ovPurchased'), advisories: read('ovAdvisories') })); } catch (e) {}
+  }
+  function median(nums){
+    if (!nums.length) return null;
+    var s = nums.slice().sort(function(a,b){ return a-b; }), m = Math.floor(s.length/2);
+    return s.length % 2 ? s[m] : (s[m-1]+s[m]) / 2;
+  }
+  var IRR_BINS = [
+    { lo:-Infinity, hi:-0.30,    label:'under −30%',  full:'under −30%' },
+    { lo:-0.30,     hi:-0.20,    label:'−30 to −20',  full:'−30% to −20%' },
+    { lo:-0.20,     hi:-0.10,    label:'−20 to −10',  full:'−20% to −10%' },
+    { lo:-0.10,     hi:0,        label:'−10 to 0',    full:'−10% to 0%' },
+    { lo:0,         hi:0.10,     label:'0 to 10',     full:'0% to 10%' },
+    { lo:0.10,      hi:0.20,     label:'10 to 20',    full:'10% to 20%' },
+    { lo:0.20,      hi:0.30,     label:'20 to 30',    full:'20% to 30%' },
+    { lo:0.30,      hi:Infinity, label:'over 30%',    full:'over 30%' }
+  ];
+
+  function renderOverview(data, totalSaved){
+    var scope = $('ovScope'), body = $('ovBody');
+    if (!data.length) {
+      scope.textContent = '';
+      body.innerHTML = '<div class="empty"><h3>Nothing to summarise</h3><p>'+
+        (totalSaved ? 'No property matches the current search and category.'
+                    : 'Add some properties and this fills in.')+'</p></div>';
+      return;
+    }
+    scope.textContent = data.length === totalSaved
+      ? 'All ' + totalSaved + ' properties, on the current assumptions'
+      : data.length + ' of ' + totalSaved + ' properties, on the current assumptions';
+
+    var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
+    data.forEach(function(d){
+      if (d.irr === null || !isFinite(d.irr)) noIrr++; else irrs.push(d.irr);
+      if (d.net !== null && isFinite(d.net)) nets.push(d.net);
+      if (d.hold !== null && isFinite(d.hold)) holds.push(d.hold);
+      var b = Number(d.e.purchasePrice), s = Number(d.e.soldPrice);
+      if (isFinite(b) && b > 0) buys.push(b);
+      if (isFinite(s) && s > 0) sells.push(s);
+      if (isFinite(b) && b > 0 && isFinite(s) && s > 0) {
+        rets.push(s/b - 1);
+        if (d.hold > 0) cagrs.push(Math.pow(s/b, 1/d.hold) - 1);
+      }
+    });
+    var totalNet = nets.reduce(function(a,b){ return a+b; }, 0);
+    var winners = nets.filter(function(v){ return v > 0; }).length;
+    var sold = data.length;
+
+    /* Purchased and advisory counts aren't in the book — it only holds sold
+       properties — so they're typed once and kept per browser. Anything derived
+       from them stays blank until they are. */
+    var meta = loadOvMeta();
+    var purchased = meta.purchased, advisories = meta.advisories;
+    var unsold = (purchased !== null && purchased >= sold) ? purchased - sold : null;
+
+    var row = function(label, value, isNone){
+      return '<tr><td>'+label+'</td><td'+(isNone?' class="none"':'')+'>'+value+'</td></tr>';
+    };
+    var need = '<span title="Type the count above to fill this in">not set</span>';
+    var h = '<table class="ov-stats"><tbody>'+
+      row('Total properties purchased', purchased === null ? need : purchased, purchased===null)+
+      row('Total properties sold', sold)+
+      row('Total properties not sold', unsold === null ? need : unsold, unsold===null)+
+      row('% of properties sold', purchased ? pct(sold/purchased) : need, !purchased)+
+      row('Total sales advisories', advisories === null ? need : advisories, advisories===null)+
+      row('% of sales that were sales advisories',
+          (advisories !== null && sold) ? pct(advisories/sold) : need, advisories===null)+
+      '<tr class="gap"><td colspan="2"></td></tr>'+
+      row('Median purchase price', buys.length ? aud(median(buys)) : '—')+
+      row('Median sale price', sells.length ? aud(median(sells)) : '—')+
+      row('Median hold period (years)', holds.length ? median(holds).toFixed(1) : '—')+
+      row('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—')+
+      row('Median return', rets.length ? pct(median(rets)) : '—')+
+      row('Median IRR', irrs.length ? pct(median(irrs)) : '—')+
+      '<tr class="gap"><td colspan="2"></td></tr>'+
+      row('Total net profit', '<span class="'+(totalNet<0?'neg':'pos')+'" title="'+
+          esc(aud(totalNet))+'">'+audShort(totalNet)+'</span>')+
+      row('Profitable', winners + ' of ' + nets.length + ' · ' +
+          (nets.length ? Math.round(winners/nets.length*100) : 0) + '%')+
+      '</tbody></table>';
+
+    /* ── distribution ── */
+    var counts = IRR_BINS.map(function(b){
+      return irrs.filter(function(v){ return v >= b.lo && v < b.hi; }).length;
+    });
+    var peak = Math.max.apply(null, counts) || 1;
+    /* The bars aren't interactive, so they're not buttons — the whole chart is
+       one labelled image, and the <details> table below carries the detail for
+       anyone not using a pointer. */
+    var alt = IRR_BINS.map(function(b,i){ return counts[i]+' '+b.full; }).join(', ');
+    h += '<div class="ov-sec"><h3>How the IRRs are spread</h3>'+
+         '<div class="ov-bars" role="img" aria-label="'+
+         esc('IRR distribution across '+irrs.length+' properties: '+alt)+'">';
+    IRR_BINS.forEach(function(b, i){
+      var n = counts[i], share = irrs.length ? Math.round(n/irrs.length*100) : 0;
+      var cls = n ? ((b.hi <= 0) ? ' is-neg' : '') : ' is-empty';
+      h += '<div class="ov-col">'+
+        '<span class="ov-tip" aria-hidden="true"><b>'+esc(b.full)+'</b>'+n+
+          ' propert'+(n===1?'y':'ies')+' · '+share+'%</span>'+
+        '<span class="ov-count">'+n+'</span>'+
+        '<span class="ov-track"><span class="ov-bar'+cls+'" style="height:'+
+          (n ? Math.max(2, Math.round(n/peak*100)) : 0)+'%"></span></span>'+
+        '<span class="ov-axis">'+b.label+'</span>'+
+      '</div>';
+    });
+    h += '</div>';
+    if (noIrr) {
+      h += '<p class="count-line" style="margin-top:var(--sp-3)">'+noIrr+' propert'+
+           (noIrr===1?'y has':'ies have')+' no defined IRR — the sale never clears the loan, '+
+           'so the cashflows never change sign. They are left out of the spread and the median.</p>';
+    }
+    h += '<details style="margin-top:var(--sp-3)"><summary>Show the numbers</summary><div class="body">'+
+      '<div class="tbl-scroll" style="max-height:none"><table><thead><tr>'+
+      '<th>IRR band</th><th class="num">Properties</th><th class="num">Share</th>'+
+      '</tr></thead><tbody>';
+    IRR_BINS.forEach(function(b, i){
+      h += '<tr><td>'+esc(b.full)+'</td><td class="num">'+counts[i]+'</td><td class="num">'+
+           (irrs.length ? Math.round(counts[i]/irrs.length*100) : 0)+'%</td></tr>';
+    });
+    h += '</tbody></table></div></div></details></div>';
+
+    /* ── by category, and the two tails ── */
+    var groups = {};
+    data.forEach(function(d){
+      var k = (d.e.category||'').trim() || 'Uncategorised';
+      (groups[k] = groups[k] || []).push(d);
+    });
+    var keys = Object.keys(groups).sort(function(a,b){ return groups[b].length - groups[a].length; });
+
+    h += '<div class="ov-sec">';
+    h += '<h3>By category</h3><div class="tbl-scroll" style="max-height:300px"><table><thead><tr>'+
+         '<th>Category</th><th class="num">No.</th><th class="num">Median IRR</th><th class="num">Net profit</th>'+
+         '</tr></thead><tbody>';
+    keys.forEach(function(k){
+      var g = groups[k];
+      var gi = g.map(function(d){ return d.irr; }).filter(function(v){ return v!==null && isFinite(v); });
+      var gn = g.reduce(function(a,d){ return a + (isFinite(d.net) ? d.net : 0); }, 0);
+      var m = median(gi);
+      h += '<tr><td class="name">'+esc(k)+'</td><td class="num">'+g.length+'</td>'+
+           '<td class="num">'+(m===null?'—':pct(m))+'</td>'+
+           '<td class="num"><span class="'+(gn<0?'neg':'pos')+'" title="'+esc(aud(gn))+'">'+audShort(gn)+'</span></td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+
+    var ranked = data.filter(function(d){ return d.irr!==null && isFinite(d.irr); })
+                     .sort(function(a,b){ return b.irr - a.irr; });
+    var rank = function(title, rows){
+      var s = '<div><h3>'+title+'</h3><div class="ov-rank">';
+      rows.forEach(function(d){
+        s += '<div><span>'+esc(d.e.name||'Untitled')+'</span>'+
+             '<span class="'+(d.irr<0?'neg':'pos')+'">'+pct(d.irr)+'</span></div>';
+      });
+      return s + '</div></div>';
+    };
+    if (ranked.length > 1) {
+      var take = Math.min(5, Math.floor(ranked.length/2));
+      h += '<div class="ov-sec ov-two">'+
+           rank('Strongest '+take, ranked.slice(0, take))+
+           rank('Weakest '+take, ranked.slice(-take).reverse())+
+           '</div>';
+    }
+
+    body.innerHTML = h;
+  }
+
   function renderProps(){
     var all = loadProps();
     $('badgeProps').textContent = all.length;
@@ -941,6 +1200,7 @@ details .body strong{color:var(--text)}
       $('propCount').textContent = '';
       $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
         '<p>Choose <strong>+ Add properties</strong> to paste rows, upload a spreadsheet or reload the bundled Adelaide set — or work out a deal on the left and choose Save to properties.</p></div>';
+      renderOverview([], 0);
       return;
     }
 
@@ -953,6 +1213,7 @@ details .body strong{color:var(--text)}
     if (!shown.length) {
       $('propsBody').innerHTML = '<div class="empty"><h3>Nothing matches</h3>'+
         '<p>No property matches that search and category. Clear the filters to see all '+all.length+'.</p></div>';
+      renderOverview([], all.length);
       return;
     }
 
@@ -969,6 +1230,10 @@ details .body strong{color:var(--text)}
       } catch (err) {}
       return d;
     });
+
+    /* Same derived rows drive the Overview, so 313 breakdowns are run once, not
+       twice — the table sorts a copy below. */
+    renderOverview(data, all.length);
 
     if (sortKey) {
       var get = {
@@ -1581,7 +1846,8 @@ details .body strong{color:var(--text)}
     return ASSUMPTION_IDS[el.id] === 1 || el.name === 'tRate' || el.name === 'tNg' || el.name === 'tRent';
   }
   document.querySelectorAll('input,select').forEach(function(el){
-    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'impCat' || el.id === 'pasteBox') return;
+    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'impCat' || el.id === 'pasteBox'
+        || el.id === 'ovPurchased' || el.id === 'ovAdvisories') return;
     var recompute = function(){
       // renaming or recategorising only relabels — no need to recompute
       if (el.id === 'pName') { relabel(); return; }
@@ -1619,6 +1885,16 @@ details .body strong{color:var(--text)}
   });
 
   // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
+  ['ovPurchased','ovAdvisories'].forEach(function(id){
+    var el = $(id);
+    el.addEventListener('input', function(){ saveOvMeta(); renderProps(); });
+  });
+  (function(){
+    var m = loadOvMeta();
+    if (m.purchased !== null) $('ovPurchased').value = m.purchased;
+    if (m.advisories !== null) $('ovAdvisories').value = m.advisories;
+  })();
+
   TABS.forEach(function(t){ $('tab-'+t).addEventListener('click', function(){ showTab(t); }); });
   $('tab-result').parentNode.addEventListener('keydown', function(ev){
     var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
