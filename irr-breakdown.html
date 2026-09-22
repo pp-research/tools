@@ -340,7 +340,17 @@ button:disabled{opacity:.45;cursor:not-allowed}
   text-transform:uppercase;color:var(--faint);margin-bottom:var(--sp-3)}
 .ov-bars{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;align-items:end}
 .ov-col{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;
-  text-align:center}
+  text-align:center;background:transparent;border:0;padding:0;min-height:0;
+  font:inherit;border-radius:var(--r-sm);cursor:pointer}
+.ov-col[disabled]{cursor:default;opacity:.65}
+.ov-col:not([disabled]):hover .ov-bar{filter:brightness(1.12)}
+.ov-col:focus-visible{outline:2px solid var(--accent-300);outline-offset:3px}
+.ov-col.is-on .ov-bar{outline:2px solid var(--accent);outline-offset:2px}
+.ov-col.is-on .ov-count{color:var(--accent-text);font-weight:700}
+.band-chip{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:5px 12px;
+  border-radius:999px;border:1px solid var(--accent);background:rgba(var(--accent-rgb),.12);
+  color:var(--accent-text);font:600 12px/16px 'Manrope',sans-serif;cursor:pointer}
+.band-chip:hover{background:rgba(var(--accent-rgb),.2)}
 .ov-count{font-size:11px;line-height:14px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ov-track{height:148px;display:flex;align-items:flex-end;border-bottom:1px solid var(--row-line-strong)}
 .ov-bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;
@@ -528,39 +538,64 @@ details .body strong{color:var(--text)}
         </details>
       </section>
 
-      <section class="card" aria-labelledby="deal-h">
-        <h2 id="deal-h">Enter property details or select from the saved properties</h2>
-
-        <div class="field">
-          <label for="pName">Property name or address</label>
-          <input id="pName" type="text" value="" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="pCat">Category</label>
-          <input id="pCat" type="text" value="" autocomplete="off" list="catList">
-        </div>
-        <div class="field">
-          <label for="pPrice">Purchase price (AUD)</label>
-          <input id="pPrice" type="number" inputmode="numeric" min="1" step="1000" value="">
-        </div>
-        <div class="field">
-          <label for="pDate">Purchase date</label>
-          <input id="pDate" type="date" value="">
-        </div>
-        <div class="field">
-          <label for="sPrice">Sold price (AUD)</label>
-          <input id="sPrice" type="number" inputmode="numeric" min="1" step="1000" value="">
-        </div>
-        <div class="field">
-          <label for="sDate">Sold date</label>
-          <input id="sDate" type="date" value="">
+      <!-- One filter set for all three tabs: the list, the result you open from
+           it, and the overview all read the same narrowing. -->
+      <section class="card" aria-labelledby="filt-h">
+        <div class="card-head">
+          <h2 id="filt-h">Filters</h2>
+          <button type="button" class="btn-ghost btn-sm" id="btnClearFilters" hidden>Clear</button>
         </div>
 
-        <div class="btn-grid">
-          <button type="button" class="btn-primary" id="btnCalc">Calculate IRR</button>
-          <button type="button" class="btn-ghost" id="btnSave">Save</button>
-          <button type="button" class="btn-ghost wide" id="btnReset">Reset</button>
+        <div class="field">
+          <label for="fSearch">Search</label>
+          <input id="fSearch" type="search" placeholder="name or address" autocomplete="off">
         </div>
+        <div class="field">
+          <label for="fCat">Category</label>
+          <div class="cat-cell">
+            <select id="fCat"><option value="">All categories</option></select>
+            <button type="button" class="btn-ghost btn-sm" id="btnRenameCat"
+                    title="Rename the selected category">Rename</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fSuburb">Suburb</label>
+          <select id="fSuburb"><option value="">All suburbs</option></select>
+        </div>
+
+        <div class="pair">
+          <div class="field"><label for="fSoldFrom">Sold from</label>
+            <input id="fSoldFrom" type="date"></div>
+          <div class="field"><label for="fSoldTo">Sold to</label>
+            <input id="fSoldTo" type="date"></div>
+        </div>
+        <div class="pair">
+          <div class="field"><label for="fHoldMin">Hold min</label>
+            <div class="suffix"><input id="fHoldMin" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
+          <div class="field"><label for="fHoldMax">Hold max</label>
+            <div class="suffix"><input id="fHoldMax" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
+        </div>
+
+        <div class="seg-row" style="margin-top:var(--sp-3)">
+          <span class="seg-label" id="lbl-outcome">Outcome</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-outcome">
+            <input type="radio" name="fOutcome" id="fOut-a" value="All" checked>
+            <label for="fOut-a">All</label>
+            <input type="radio" name="fOutcome" id="fOut-b" value="Profit">
+            <label for="fOut-b">Profit</label>
+            <input type="radio" name="fOutcome" id="fOut-c" value="Loss">
+            <label for="fOut-c">Loss</label>
+          </div>
+        </div>
+
+        <!-- set by clicking a bar on the Overview, cleared from here -->
+        <div id="bandChipWrap" hidden style="margin-top:var(--sp-3)">
+          <button type="button" class="band-chip" id="bandChip">
+            <span id="bandChipText"></span><span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <p class="count-line" id="filtCount" style="margin:var(--sp-4) 0 0"></p>
       </section>
     </div>
 
@@ -624,6 +659,7 @@ details .body strong{color:var(--text)}
             <h2 id="props-h">Properties</h2>
             <div class="btns" style="margin:0">
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnQuickOpen">Quick IRR</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
             </div>
@@ -634,18 +670,6 @@ details .body strong{color:var(--text)}
                source row was malformed -->
           <div id="parseMsg" role="status" aria-live="polite"></div>
 
-          <div class="filters">
-            <div>
-              <label for="propSearch" class="sr-only">Search properties</label>
-              <input type="search" id="propSearch" placeholder="Search name or address…" autocomplete="off">
-            </div>
-            <div class="cat-cell">
-              <label for="propCat" class="sr-only">Filter by category</label>
-              <select id="propCat"><option value="">All categories</option></select>
-              <button type="button" class="btn-ghost btn-sm" id="btnRenameCat"
-                      title="Rename the selected category">Rename</button>
-            </div>
-          </div>
           <p class="count-line" id="propCount"></p>
 
           <div id="propsBody"></div>
@@ -657,15 +681,58 @@ details .body strong{color:var(--text)}
         <section class="card" aria-labelledby="ov-h">
           <div class="card-head">
             <h2 id="ov-h">Overview</h2>
-            <div class="ov-filter">
-              <label for="ovCat" class="sr-only">Filter the overview by category</label>
-              <select id="ovCat"><option value="">All categories</option></select>
-            </div>
           </div>
           <p class="count-line" id="ovScope"></p>
           <div id="ovBody"></div>
         </section>
       </div>
+
+      <!-- ══════════ QUICK IRR — work out a deal without saving it ══════════ -->
+      <dialog class="modal" id="quickDialog" aria-labelledby="quick-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="quick-h">Quick IRR</h2>
+            <button type="button" class="modal-x" id="btnQuickClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p style="margin-bottom:var(--sp-4)">Four terms and the settings on the left. Nothing is
+            saved unless you choose to.</p>
+            <div class="field">
+              <label for="pName">Property name or address</label>
+              <input id="pName" type="text" value="" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="pCat">Category</label>
+              <input id="pCat" type="text" value="" autocomplete="off" list="catList">
+            </div>
+            <div class="pair">
+              <div class="field">
+                <label for="pPrice">Purchase price (AUD)</label>
+                <input id="pPrice" type="number" inputmode="numeric" min="1" step="1000" value="">
+              </div>
+              <div class="field">
+                <label for="pDate">Purchase date</label>
+                <input id="pDate" type="date" value="">
+              </div>
+            </div>
+            <div class="pair">
+              <div class="field">
+                <label for="sPrice">Sold price (AUD)</label>
+                <input id="sPrice" type="number" inputmode="numeric" min="1" step="1000" value="">
+              </div>
+              <div class="field">
+                <label for="sDate">Sold date</label>
+                <input id="sDate" type="date" value="">
+              </div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn-primary" id="btnCalc">Compute IRR</button>
+            <button type="button" class="btn-ghost" id="btnSave">Save to properties</button>
+            <button type="button" class="btn-ghost" id="btnReset" style="margin-left:auto">Reset</button>
+          </div>
+        </div>
+      </dialog>
 
       <!-- ══════════ ADD PROPERTIES — floating, so the list never moves ══════════ -->
       <dialog class="modal" id="addDialog" aria-labelledby="add-h">
@@ -952,21 +1019,34 @@ details .body strong{color:var(--text)}
     var cats = categoriesOf(list);
     var hasUncat = list.some(function(e){ return !(e.category||'').trim(); });
 
-    var sel = $('propCat'), keep = sel.value;
-    var opts = '<option value="">All categories</option>' +
+    var sel = $('fCat'), keep = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' +
       cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('') +
       (hasUncat ? '<option value="'+NO_CAT+'">Uncategorised</option>' : '');
-    sel.innerHTML = opts;
     // keep the current choice unless it no longer exists
     sel.value = [].some.call(sel.options, function(o){ return o.value === keep; }) ? keep : '';
 
-    /* The Overview's picker is the same filter, not a second one — one of them
-       moving would be worse than having none. */
-    var ov = $('ovCat');
-    ov.innerHTML = opts;
-    ov.value = sel.value;
+    var sub = $('fSuburb'), keepSub = sub.value, subs = suburbsOf(list);
+    sub.innerHTML = '<option value="">All suburbs</option>' +
+      subs.map(function(s){ return '<option value="'+esc(s)+'">'+esc(s)+'</option>'; }).join('');
+    sub.value = [].some.call(sub.options, function(o){ return o.value === keepSub; }) ? keepSub : '';
 
     $('catList').innerHTML = cats.map(function(c){ return '<option value="'+esc(c)+'"></option>'; }).join('');
+  }
+  /* The band is set from the chart, so the panel shows it as a chip you can
+     clear — otherwise a filter set elsewhere would be invisible from here. */
+  function syncFilterChrome(f){
+    var on = f.band !== null;
+    $('bandChipWrap').hidden = !on;
+    if (on) $('bandChipText').textContent = 'IRR ' + IRR_BINS[f.band].full;
+    $('btnClearFilters').hidden = !anyFilterOn(f);
+  }
+  function clearFilters(){
+    ['fSearch','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){ $(id).value = ''; });
+    $('fCat').value = ''; $('fSuburb').value = '';
+    setRadio('fOutcome', 'All');
+    irrBand = null;
+    renderProps();
   }
   /* sorting — null means the order they were added in */
   var sortKey = null, sortDir = -1;   // -1 desc, 1 asc
@@ -976,18 +1056,68 @@ details .body strong{color:var(--text)}
     renderProps();
   }
 
-  function filterProps(list){
-    var q = $('propSearch').value.trim().toLowerCase();
-    var cat = $('propCat').value;
+  /* The suburb isn't stored — it's whatever follows the last comma in the
+     address, which is how every row in the book is written. Rows without one
+     group under "—" rather than disappearing. */
+  function suburbOf(e){
+    var n = String(e.name||''), i = n.lastIndexOf(',');
+    return i < 0 ? '' : n.slice(i+1).trim();
+  }
+  function suburbsOf(list){
+    var seen = {}, out = [];
+    list.forEach(function(e){ var s = suburbOf(e); if (s && !seen[s]) { seen[s]=1; out.push(s); } });
+    return out.sort(function(a,b){ return a.localeCompare(b); });
+  }
+  var irrBand = null;        // index into IRR_BINS, set by clicking a bar
+
+  function numOrNull(v){ var s = String(v).trim(); return s === '' || !isFinite(s) ? null : Number(s); }
+  function readFilters(){
+    return {
+      q: $('fSearch').value.trim().toLowerCase(),
+      cat: $('fCat').value,
+      suburb: $('fSuburb').value,
+      soldFrom: $('fSoldFrom').value,
+      soldTo: $('fSoldTo').value,
+      holdMin: numOrNull($('fHoldMin').value),
+      holdMax: numOrNull($('fHoldMax').value),
+      outcome: radioVal('fOutcome'),
+      band: irrBand
+    };
+  }
+  function anyFilterOn(f){
+    return !!(f.q || f.cat || f.suburb || f.soldFrom || f.soldTo ||
+              f.holdMin !== null || f.holdMax !== null ||
+              f.outcome !== 'All' || f.band !== null);
+  }
+  /* Two passes, because hold, outcome and IRR only exist once a property has
+     been run. Everything here works on the stored fields. */
+  function filterEntries(list, f){
     var cats = categoriesOf(list);
     // only treat the sentinel as "uncategorised" if nothing is actually named that
     var sentinel = (cats.indexOf(NO_CAT) < 0);
     return list.filter(function(e){
-      if (sentinel && cat === NO_CAT) { if ((e.category||'').trim()) return false; }
-      else if (cat && (e.category||'').trim() !== cat) return false;
-      if (q && String(e.name||'').toLowerCase().indexOf(q) < 0) return false;
+      if (sentinel && f.cat === NO_CAT) { if ((e.category||'').trim()) return false; }
+      else if (f.cat && (e.category||'').trim() !== f.cat) return false;
+      if (f.suburb && suburbOf(e) !== f.suburb) return false;
+      if (f.q && String(e.name||'').toLowerCase().indexOf(f.q) < 0) return false;
+      if (f.soldFrom && String(e.soldDate) < f.soldFrom) return false;
+      if (f.soldTo && String(e.soldDate) > f.soldTo) return false;
       return true;
     });
+  }
+  /* `withBand` is false when building the histogram: the chart shows the whole
+     spread so you can see what you're picking out of, with the chosen bar lit. */
+  function passDerived(d, f, withBand){
+    if (f.holdMin !== null && !(d.hold >= f.holdMin)) return false;
+    if (f.holdMax !== null && !(d.hold <= f.holdMax)) return false;
+    if (f.outcome === 'Profit' && !(d.net > 0)) return false;
+    if (f.outcome === 'Loss' && !(d.net < 0)) return false;
+    if (withBand && f.band !== null) {
+      if (d.irr === null || !isFinite(d.irr)) return false;
+      var b = IRR_BINS[f.band];
+      if (!(d.irr >= b.lo && d.irr < b.hi)) return false;
+    }
+    return true;
   }
 
   /* ══════════ OVERVIEW ══════════
@@ -1020,7 +1150,7 @@ details .body strong{color:var(--text)}
     { lo:0.30,      hi:Infinity, label:'over 30%',    full:'over 30%' }
   ];
 
-  function renderOverview(data, totalSaved){
+  function renderOverview(data, spread, totalSaved){
     var scope = $('ovScope'), body = $('ovBody');
     if (!data.length) {
       scope.textContent = '';
@@ -1029,15 +1159,9 @@ details .body strong{color:var(--text)}
                     : 'Add some properties and this fills in.')+'</p></div>';
       return;
     }
-    /* A search typed on the Properties tab also narrows this, and there's no
-       search box here to show it — so say so rather than let the count look odd. */
-    var q = $('propSearch').value.trim();
-    var bits = [data.length === totalSaved
+    scope.textContent = (data.length === totalSaved
       ? 'All ' + totalSaved + ' properties'
-      : data.length + ' of ' + totalSaved + ' properties'];
-    if (q) bits.push('search “' + q + '” is still on');
-    bits.push('on the current assumptions');
-    scope.textContent = bits.join(' · ');
+      : data.length + ' of ' + totalSaved + ' properties') + ' · on the current assumptions';
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
     data.forEach(function(d){
@@ -1091,9 +1215,14 @@ details .body strong{color:var(--text)}
            esc(aud(totalNet)))+
       '</div>';
 
-    /* ── distribution ── */
+    /* ── distribution ──
+       Built from `spread`, which has every filter applied except the band, so
+       picking a bar narrows the rest of the page without collapsing the chart
+       to the one bar you picked. */
+    var spreadIrrs = (spread || data).map(function(d){ return d.irr; })
+      .filter(function(v){ return v !== null && isFinite(v); });
     var counts = IRR_BINS.map(function(b){
-      return irrs.filter(function(v){ return v >= b.lo && v < b.hi; }).length;
+      return spreadIrrs.filter(function(v){ return v >= b.lo && v < b.hi; }).length;
     });
     var peak = Math.max.apply(null, counts) || 1;
     /* The bars aren't interactive, so they're not buttons — the whole chart is
@@ -1101,19 +1230,24 @@ details .body strong{color:var(--text)}
        anyone not using a pointer. */
     var alt = IRR_BINS.map(function(b,i){ return counts[i]+' '+b.full; }).join(', ');
     h += '<div class="ov-sec"><h3>How the IRRs are spread</h3>'+
-         '<div class="ov-bars" role="img" aria-label="'+
-         esc('IRR distribution across '+irrs.length+' properties: '+alt)+'">';
+         '<p class="count-line" style="margin-bottom:var(--sp-3)">Choose a bar to filter '+
+         'everything to that band.</p>'+
+         '<div class="ov-bars" aria-label="'+
+         esc('IRR distribution across '+spreadIrrs.length+' properties: '+alt)+'">';
     IRR_BINS.forEach(function(b, i){
-      var n = counts[i], share = irrs.length ? Math.round(n/irrs.length*100) : 0;
+      var n = counts[i], share = spreadIrrs.length ? Math.round(n/spreadIrrs.length*100) : 0;
       var cls = n ? ((b.hi <= 0) ? ' is-neg' : '') : ' is-empty';
-      h += '<div class="ov-col">'+
+      var on = (irrBand === i);
+      h += '<button type="button" class="ov-col'+(on?' is-on':'')+'" data-band="'+i+'"'+
+           (n ? '' : ' disabled')+' aria-pressed="'+(on?'true':'false')+'" aria-label="'+
+           esc(b.full+': '+n+' propert'+(n===1?'y':'ies')+', '+share+' per cent')+'">'+
         '<span class="ov-tip" aria-hidden="true"><b>'+esc(b.full)+'</b>'+n+
           ' propert'+(n===1?'y':'ies')+' · '+share+'%</span>'+
         '<span class="ov-count">'+n+'</span>'+
         '<span class="ov-track"><span class="ov-bar'+cls+'" style="height:'+
           (n ? Math.max(2, Math.round(n/peak*100)) : 0)+'%"></span></span>'+
         '<span class="ov-axis">'+b.label+'</span>'+
-      '</div>';
+      '</button>';
     });
     h += '</div>';
     if (noIrr) {
@@ -1127,7 +1261,7 @@ details .body strong{color:var(--text)}
       '</tr></thead><tbody>';
     IRR_BINS.forEach(function(b, i){
       h += '<tr><td>'+esc(b.full)+'</td><td class="num">'+counts[i]+'</td><td class="num">'+
-           (irrs.length ? Math.round(counts[i]/irrs.length*100) : 0)+'%</td></tr>';
+           (spreadIrrs.length ? Math.round(counts[i]/spreadIrrs.length*100) : 0)+'%</td></tr>';
     });
     h += '</tbody></table></div></div></details></div>';
 
@@ -1180,33 +1314,24 @@ details .body strong{color:var(--text)}
     $('badgeProps').textContent = all.length;
     syncCategoryControls(all);
 
+    var f = readFilters();
+    syncFilterChrome(f);
+
     if (!all.length) {
       $('propCount').textContent = '';
+      $('filtCount').textContent = '';
       $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
-        '<p>Choose <strong>+ Add properties</strong> to paste rows, upload a spreadsheet or reload the bundled Adelaide set — or work out a deal on the left and choose Save to properties.</p></div>';
-      renderOverview([], 0);
+        '<p>Choose <strong>+ Add properties</strong> to paste rows, upload a spreadsheet or reload the bundled Adelaide set — or work out a deal with <strong>Quick IRR</strong> and save it.</p></div>';
+      renderOverview([], [], 0);
       return;
     }
 
-    var shown = filterProps(all);
-    var q = $('propSearch').value.trim();
-    $('propCount').textContent = shown.length === all.length
-      ? all.length + ' propert' + (all.length===1?'y':'ies')
-      : 'Showing ' + shown.length + ' of ' + all.length;
-
-    if (!shown.length) {
-      $('propsBody').innerHTML = '<div class="empty"><h3>Nothing matches</h3>'+
-        '<p>No property matches that search and category. Clear the filters to see all '+all.length+'.</p></div>';
-      renderOverview([], all.length);
-      return;
-    }
-
-    /* The list is struck against the CURRENT settings, not the ones each entry
-       was saved under — a comparison table is only meaningful if every row is
-       on the same assumptions. Entries still carry the opts in force when they
-       were imported, as a record; nothing computes from them. */
+    /* Pass one on the stored fields, then the breakdowns, then pass two on what
+       only exists once they've run. The settings panel decides the numbers, so
+       every row is struck on the same assumptions — entries still carry the
+       opts in force when they were imported, but nothing computes from them. */
     var opts = readOpts();
-    var data = shown.map(function(e){
+    var derived = filterEntries(all, f).map(function(e){
       var d = { e:e, irr:null, net:null, hold:null };
       try {
         var r = window.IRRBreakdown.computeBreakdown(e, opts);
@@ -1214,10 +1339,26 @@ details .body strong{color:var(--text)}
       } catch (err) {}
       return d;
     });
+    // spread = everything but the band, so the chart shows what you're choosing from
+    var spread = derived.filter(function(d){ return passDerived(d, f, false); });
+    var data   = spread.filter(function(d){ return passDerived(d, f, true); });
 
-    /* Same derived rows drive the Overview, so 313 breakdowns are run once, not
+    var countTxt = data.length === all.length
+      ? all.length + ' propert' + (all.length===1?'y':'ies')
+      : 'Showing ' + data.length + ' of ' + all.length;
+    $('propCount').textContent = countTxt;
+    $('filtCount').textContent = countTxt;
+
+    if (!data.length) {
+      $('propsBody').innerHTML = '<div class="empty"><h3>Nothing matches</h3>'+
+        '<p>No property matches the filters on the left. Choose <strong>Clear</strong> to see all '+all.length+'.</p></div>';
+      renderOverview([], spread, all.length);
+      return;
+    }
+
+    /* Same derived rows drive the Overview, so the breakdowns run once, not
        twice — the table sorts a copy below. */
-    renderOverview(data, all.length);
+    renderOverview(data, spread, all.length);
 
     if (sortKey) {
       var get = {
@@ -1246,7 +1387,8 @@ details .body strong{color:var(--text)}
       var hold = d.hold === null ? '—' : d.hold.toFixed(2);
       var cat = (e.category||'').trim();
       return '<tr>'+
-        '<td class="name">'+mark(e.name, q)+ (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +'</td>'+
+        '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
+          (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +'</td>'+
         pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
@@ -1696,7 +1838,7 @@ details .body strong{color:var(--text)}
     var all = loadProps();
     if (!all.length) { $('messages').innerHTML = msg('warn','There are no properties yet.'); return; }
 
-    var sel = $('propCat').value;
+    var sel = $('fCat').value;
     if (!sel) {
       $('messages').innerHTML = msg('warn','Pick a category in the dropdown first — that is the one that gets renamed.');
       return;
@@ -1720,8 +1862,8 @@ details .body strong{color:var(--text)}
         if (!putProps(list)) return;
         // follow the rename in the filter rather than silently resetting it
         renderProps();
-        var opt = [].filter.call($('propCat').options, function(o){ return o.value === (to || NO_CAT); })[0];
-        $('propCat').value = opt ? opt.value : '';
+        var opt = [].filter.call($('fCat').options, function(o){ return o.value === (to || NO_CAT); })[0];
+        $('fCat').value = opt ? opt.value : '';
         renderProps();
         $('messages').innerHTML = msg('ok', to
           ? 'Moved ' + n + ' propert' + (n===1?'y':'ies') + ' to ' + esc(to) + '.'
@@ -1729,7 +1871,7 @@ details .body strong{color:var(--text)}
       });
   }
 
-  $('btnCalc').addEventListener('click', function(){ calc(); showTab('result'); });
+  $('btnCalc').addEventListener('click', function(){ calc(); closeQuick(); showTab('result'); });
   $('btnCsv').addEventListener('click', exportDetail);
   $('btnParse').addEventListener('click', doParse);
   $('btnUpload').addEventListener('click', function(){ $('fileInput').click(); });
@@ -1750,7 +1892,7 @@ details .body strong{color:var(--text)}
   $('btnSave').addEventListener('click', function(){
     if (!last) { $('messages').innerHTML = msg('warn','Calculate a result before saving it.'); return; }
     var r = addEntries([entryFrom($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts(), $('pCat').value)]);
-    if (r) $('messages').innerHTML = msg('ok', r.updated ? 'Updated this property on the list.' : 'Saved to properties — this browser only.');
+    if (r) { closeQuick(); $('messages').innerHTML = msg('ok', r.updated ? 'Updated this property on the list.' : 'Saved to properties — this browser only.'); }
   });
   $('btnPropsCsv').addEventListener('click', exportProps);
   $('btnPropsClear').addEventListener('click', function(){
@@ -1788,8 +1930,15 @@ details .body strong{color:var(--text)}
   $('confirmDialog').addEventListener('close', function(){ pendingConfirm = null; });
 
   // filters
-  $('propSearch').addEventListener('input', renderProps);
-  $('propCat').addEventListener('change', renderProps);
+  ['fSearch','fCat','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
+    var el = $(id);
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', renderProps);
+  });
+  document.querySelectorAll('input[name="fOutcome"]').forEach(function(el){
+    el.addEventListener('change', renderProps);
+  });
+  $('btnClearFilters').addEventListener('click', clearFilters);
+  $('bandChip').addEventListener('click', function(){ irrBand = null; renderProps(); });
 
   // delegated row actions
   document.addEventListener('click', function(ev){
@@ -1830,7 +1979,7 @@ details .body strong{color:var(--text)}
     return ASSUMPTION_IDS[el.id] === 1 || el.name === 'tRate' || el.name === 'tNg' || el.name === 'tRent';
   }
   document.querySelectorAll('input,select').forEach(function(el){
-    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'ovCat' || el.id === 'impCat' || el.id === 'pasteBox') return;
+    if (el.id === 'impCat' || el.id === 'pasteBox') return;
     var recompute = function(){
       // renaming or recategorising only relabels — no need to recompute
       if (el.id === 'pName') { relabel(); return; }
@@ -1870,9 +2019,24 @@ details .body strong{color:var(--text)}
   // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
   /* Both pickers drive the one filter, so a choice made on either tab is the
      choice the other shows. */
-  $('ovCat').addEventListener('change', function(){
-    $('propCat').value = this.value;
+  /* Clicking a bar sets the band; clicking the lit one clears it. */
+  $('ovBody').addEventListener('click', function(ev){
+    var b = ev.target.closest('.ov-col'); if (!b || b.disabled) return;
+    var i = Number(b.getAttribute('data-band'));
+    irrBand = (irrBand === i) ? null : i;
     renderProps();
+  });
+
+  /* ── Quick IRR: a deal you want to check, not keep ── */
+  function openQuick(){
+    var d = $('quickDialog');
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
+  }
+  function closeQuick(){ var d = $('quickDialog'); if (d.open) d.close(); }
+  $('btnQuickOpen').addEventListener('click', function(){ openQuick(); $('pName').focus(); });
+  $('btnQuickClose').addEventListener('click', closeQuick);
+  $('quickDialog').addEventListener('click', function(ev){
+    if (ev.target === $('quickDialog')) closeQuick();
   });
 
   TABS.forEach(function(t){ $('tab-'+t).addEventListener('click', function(){ showTab(t); }); });
