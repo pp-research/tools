@@ -402,6 +402,29 @@ td.name{white-space:normal;min-width:150px;font-weight:600}
    reads as a flag rather than another category chip. */
 .note-chip{background:var(--note-bg);border-color:var(--note-line);color:var(--note-ink);white-space:normal}
 .faint{color:var(--faint);font-weight:400}
+td.pick,th:first-child:has(.sr-only){width:1%}
+td.pick{padding-right:0}
+td.pick input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
+tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
+.compare-bar{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
+  margin-bottom:var(--sp-3);padding:10px 14px;border-radius:var(--r-md);
+  background:rgba(var(--accent-rgb),.10);border:1px solid var(--accent-line, rgba(var(--accent-rgb),.4));
+  font-size:13px;font-weight:600}
+.scn{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:var(--sp-3)}
+.scn-slot{border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;background:var(--panel-2)}
+.scn-head{display:flex;gap:var(--sp-2);align-items:baseline;margin-bottom:var(--sp-3);font-size:13px}
+.scn-head strong{flex:0 0 auto;color:var(--accent-text);font-size:14px}
+.scn-head span{min-width:0;overflow-wrap:anywhere}
+.scn-btns{display:flex;gap:6px;flex-wrap:wrap}
+table.cmp td:first-child{color:var(--muted);white-space:nowrap}
+table.cmp th.num,table.cmp td.num{text-align:right;font-variant-numeric:tabular-nums lining-nums}
+.edited-chip{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;
+  background:var(--note-bg);border:1px solid var(--note-line);color:var(--note-ink);
+  font-size:10px;line-height:16px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.ov-sec-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  flex-wrap:wrap;margin-bottom:var(--sp-3)}
+.ov-sec-head h3{margin:0}
+.ov-sec-head select{width:auto;min-width:150px;min-height:34px;padding:5px 32px 5px 11px;font-size:13px}
 /* price over its parsed date — keeps the date visible for checking an import
    without spending two columns on it, so IRR stays on screen in the panel. */
 td.pd{text-align:right;white-space:nowrap}
@@ -517,7 +540,7 @@ details .body strong{color:var(--text)}
         </div>
 
         <details id="assumpBox">
-          <summary>View assumptions</summary>
+          <summary>View assumptions <span class="edited-chip" id="assumpEdited" hidden>edited</span></summary>
           <div class="body" style="color:inherit">
             <div class="pair">
               <div class="field"><label for="aDep">Deposit + fee</label><div class="suffix"><input id="aDep" type="number" step="0.1" value="18.5"><span>%</span></div></div>
@@ -665,6 +688,11 @@ details .body strong{color:var(--text)}
                source row was malformed -->
           <div id="parseMsg" role="status" aria-live="polite"></div>
 
+          <div class="compare-bar" id="compareBar" hidden>
+            <span id="compareCount"></span>
+            <button type="button" class="btn-primary btn-sm" id="btnCompare" disabled>Compare</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnComparePickClear">Clear</button>
+          </div>
           <p class="count-line" id="propCount"></p>
 
           <div id="propsBody"></div>
@@ -676,11 +704,23 @@ details .body strong{color:var(--text)}
         <section class="card" aria-labelledby="ov-h">
           <div class="card-head">
             <h2 id="ov-h">Overview</h2>
+            <button type="button" class="btn-ghost btn-sm" id="btnOvCsv">Export CSV</button>
           </div>
           <p class="count-line" id="ovScope"></p>
           <div id="ovBody"></div>
         </section>
       </div>
+
+      <!-- ══════════ COMPARE — two properties, same assumptions ══════════ -->
+      <dialog class="modal" id="cmpDialog" aria-labelledby="cmp-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="cmp-h">Compare</h2>
+            <button type="button" class="modal-x" id="btnCmpClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body" id="cmpBody"></div>
+        </div>
+      </dialog>
 
       <!-- ══════════ QUICK IRR — work out a deal without saving it ══════════ -->
       <dialog class="modal" id="quickDialog" aria-labelledby="quick-h">
@@ -1160,6 +1200,157 @@ details .body strong{color:var(--text)}
     { lo:0.30,      hi:Infinity, label:'over 30%',    full:'over 30%' }
   ];
 
+  /* The book is realised deals, so the dimensions that matter are when it sold
+     and how long it was held — neither of which the old category-only table
+     could show. Sold year and hold sort by their own order; the rest by size. */
+  var OV_GROUPS = {
+    category: { label:'Category',    byCount:true,
+      of:function(d){ return (d.e.category||'').trim() || 'Uncategorised'; } },
+    suburb:   { label:'Suburb',      byCount:true,
+      of:function(d){ return suburbOf(d.e) || '—'; } },
+    soldYear: { label:'Sold year',   byCount:false,
+      of:function(d){ return String(d.e.soldDate||'').slice(0,4) || '—'; } },
+    holdBand: { label:'Hold period', byCount:false, order:['under 2 yrs','2–4 yrs','4–6 yrs','6–8 yrs','8–10 yrs','10 yrs +','—'],
+      of:function(d){
+        var y = d.hold;
+        if (y === null || !isFinite(y)) return '—';
+        return y < 2 ? 'under 2 yrs' : y < 4 ? '2–4 yrs' : y < 6 ? '4–6 yrs'
+             : y < 8 ? '6–8 yrs' : y < 10 ? '8–10 yrs' : '10 yrs +';
+      } }
+  };
+  var ovGroupBy = 'category';
+
+  function groupRows(data){
+    var g = OV_GROUPS[ovGroupBy], buckets = {};
+    data.forEach(function(d){ var k = g.of(d); (buckets[k] = buckets[k] || []).push(d); });
+    var keys = Object.keys(buckets);
+    if (g.byCount) keys.sort(function(a,b){ return buckets[b].length - buckets[a].length; });
+    else if (g.order) keys.sort(function(a,b){ return g.order.indexOf(a) - g.order.indexOf(b); });
+    else keys.sort();
+    return keys.map(function(k){
+      var b = buckets[k];
+      var irrs = [], rets = [], net = 0;
+      b.forEach(function(d){
+        if (d.irr !== null && isFinite(d.irr)) irrs.push(d.irr);
+        if (isFinite(d.net)) net += d.net;
+        var p = Number(d.e.purchasePrice), s = Number(d.e.soldPrice);
+        if (isFinite(p) && p > 0 && isFinite(s) && s > 0) rets.push(s/p - 1);
+      });
+      return { key:k, n:b.length, irr:median(irrs), ret:median(rets), net:net };
+    });
+  }
+
+  /* The ten numbers can be edited and now persist, so a figure can quietly be
+     computed on last week's settings. The toggles are named in the scope line
+     and the numbers get a flag when any of them is off default. */
+  function assumptionsEdited(){
+    if (!DEFAULT_OPTS) return false;
+    return OPT_IDS.some(function(id){ return String($(id).value) !== String(DEFAULT_OPTS[id]); });
+  }
+  function basisText(){
+    return [radioVal('tRate') + ' rate',
+            radioVal('tNg') === 'On' ? 'gearing on' : 'gearing off',
+            radioVal('tRent') === 'Flat' ? 'flat rent' : 'growing rent']
+           .join(' · ') + (assumptionsEdited() ? ' · assumptions edited' : '');
+  }
+  function syncAssumpFlag(){
+    var chip = $('assumpEdited');
+    if (chip) chip.hidden = !assumptionsEdited();
+  }
+
+  /* A scenario is a whole assumption set, stored as the raw field values so
+     loading one puts the panel back exactly as it was. */
+  var SCN_KEY = 'pp-irr-scenario-';
+  function loadScenario(k){
+    try { var v = JSON.parse(localStorage.getItem(SCN_KEY + k) || 'null'); return v || null; }
+    catch (e) { return null; }
+  }
+  function storeScenario(k){
+    var o = {};
+    OPT_IDS.forEach(function(id){ o[id] = $(id).value; });
+    o.tRate = radioVal('tRate'); o.tNg = radioVal('tNg'); o.tRent = radioVal('tRent');
+    try { localStorage.setItem(SCN_KEY + k, JSON.stringify(o)); } catch (e) {}
+    renderProps();
+  }
+  function applyScenario(k){
+    var o = loadScenario(k); if (!o) return;
+    OPT_IDS.forEach(function(id){ if (o[id] !== undefined) $(id).value = o[id]; });
+    if (o.tRate) setRadio('tRate', o.tRate);
+    if (o.tNg)   setRadio('tNg',   o.tNg);
+    if (o.tRent) setRadio('tRent', o.tRent);
+    saveAssumptions(); syncAssumpFlag(); calc(); renderProps();
+    $('messages').innerHTML = msg('ok','Loaded scenario ' + k + ' into the settings panel.');
+  }
+  /* Only what differs from the workbook default is worth naming — a slot that
+     listed all thirteen values would be unreadable and mostly identical. */
+  function scenarioText(o){
+    var LABEL = { aDep:'deposit+fee', aLvr:'LVR', aRun:'running', aYield:'yield',
+                  aNorm:'rate', aTax:'tax', aComm:'commission', aSpend:'spend',
+                  aMargin:'margin', aApra:'APRA' };
+    var bits = [];
+    OPT_IDS.forEach(function(id){
+      if (DEFAULT_OPTS && String(o[id]) !== String(DEFAULT_OPTS[id])) bits.push(LABEL[id] + ' ' + o[id]);
+    });
+    if (o.tRate && o.tRate !== DEFAULT_TOGGLES.tRate) bits.push(o.tRate.toLowerCase() + ' rate');
+    if (o.tNg   && o.tNg   !== DEFAULT_TOGGLES.tNg)   bits.push('gearing ' + o.tNg.toLowerCase());
+    if (o.tRent && o.tRent !== DEFAULT_TOGGLES.tRent) bits.push(o.tRent.toLowerCase() + ' rent');
+    return bits.length ? bits.join(' · ') : 'workbook defaults';
+  }
+  function optsFrom(o){
+    var p = function(id){ return Number(o[id]) / 100; };
+    return {
+      depositAndFee: p('aDep'), lvr: p('aLvr'), runningCostPa: p('aRun'),
+      rentalYield: p('aYield'), normalisedRate: p('aNorm'), marginalTaxRate: p('aTax'),
+      sellingCommission: p('aComm'), sellingMarketSpend: Number(o.aSpend),
+      bankMargin: p('aMargin'), apraBuffer: p('aApra'),
+      cashRateBasis: o.tRate, negativeGearing: o.tNg, rentBasis: o.tRent
+    };
+  }
+  function runScenarios(){
+    var a = loadScenario('A'), b = loadScenario('B');
+    if (!a || !b) return;
+    var all = loadProps(), f = readFilters();
+    var base = filterEntries(all, f);
+    function stats(o){
+      var irrs = [], nets = [], n = 0;
+      base.forEach(function(e){
+        var d = { e:e, irr:null, net:null, hold:null };
+        try { var r = window.IRRBreakdown.computeBreakdown(e, o);
+              d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears; }
+        catch (err) {}
+        if (!passDerived(d, f, true)) return;
+        n++;
+        if (d.irr !== null && isFinite(d.irr)) irrs.push(d.irr);
+        if (d.net !== null && isFinite(d.net)) nets.push(d.net);
+      });
+      return { n:n, med: median(irrs), net: nets.reduce(function(x,y){ return x+y; }, 0),
+               win: nets.filter(function(v){ return v>0; }).length, priced: nets.length };
+    }
+    var A = stats(optsFrom(a)), B = stats(optsFrom(b));
+    var dMed = (A.med !== null && B.med !== null) ? B.med - A.med : null;
+    var line = function(label, av, bv, dv){
+      return '<tr><td>'+label+'</td><td class="num">'+av+'</td><td class="num">'+bv+'</td>'+
+             '<td class="num">'+(dv||'<span class="faint">—</span>')+'</td></tr>';
+    };
+    $('scnOut').innerHTML =
+      '<div class="tbl-scroll" style="max-height:none;margin-top:var(--sp-3)">'+
+      '<table class="cmp"><thead><tr><th></th><th class="num">A</th><th class="num">B</th>'+
+      '<th class="num">Difference</th></tr></thead><tbody>'+
+      line('Median IRR', A.med===null?'—':pct(A.med), B.med===null?'—':pct(B.med),
+           dMed===null?'' : '<span class="'+(dMed>0?'pos':dMed<0?'neg':'')+'">'+
+             (dMed>=0?'+':'−')+pct(Math.abs(dMed))+'</span>')+
+      line('Total net profit', audShort(A.net), audShort(B.net),
+           '<span class="'+(B.net-A.net>0?'pos':B.net-A.net<0?'neg':'')+'">'+
+             signed(B.net-A.net).replace(/<[^>]*>/g,'')+'</span>')+
+      line('Profitable', A.win+' of '+A.priced, B.win+' of '+B.priced,
+           (B.win-A.win) === 0 ? '' : '<span class="'+(B.win>A.win?'pos':'neg')+'">'+
+             (B.win-A.win>0?'+':'−')+Math.abs(B.win-A.win)+'</span>')+
+      '</tbody></table></div>'+
+      '<p class="count-line" style="margin-top:var(--sp-3)">Over the '+A.n+
+      ' propert'+(A.n===1?'y':'ies')+' currently filtered. A: '+esc(scenarioText(a))+
+      '. B: '+esc(scenarioText(b))+'.</p>';
+  }
+
   function renderOverview(data, spread, totalSaved){
     var scope = $('ovScope'), body = $('ovBody');
     if (!data.length) {
@@ -1171,7 +1362,7 @@ details .body strong{color:var(--text)}
     }
     scope.textContent = (data.length === totalSaved
       ? 'All ' + totalSaved + ' properties'
-      : data.length + ' of ' + totalSaved + ' properties') + ' · on the current assumptions';
+      : data.length + ' of ' + totalSaved + ' properties') + ' · ' + basisText();
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
     data.forEach(function(d){
@@ -1275,26 +1466,24 @@ details .body strong{color:var(--text)}
     });
     h += '</tbody></table></div></div></details></div>';
 
-    /* ── by category, and the two tails ── */
-    var groups = {};
-    data.forEach(function(d){
-      var k = (d.e.category||'').trim() || 'Uncategorised';
-      (groups[k] = groups[k] || []).push(d);
+    /* ── the grouped table, and the two tails ── */
+    var rows = groupRows(data);
+    h += '<div class="ov-sec"><div class="ov-sec-head"><h3>Breakdown by</h3>'+
+         '<select id="ovGroup" aria-label="Group the breakdown by">';
+    Object.keys(OV_GROUPS).forEach(function(k){
+      h += '<option value="'+k+'"'+(k===ovGroupBy?' selected':'')+'>'+esc(OV_GROUPS[k].label)+'</option>';
     });
-    var keys = Object.keys(groups).sort(function(a,b){ return groups[b].length - groups[a].length; });
-
-    h += '<div class="ov-sec">';
-    h += '<h3>By category</h3><div class="tbl-scroll" style="max-height:300px"><table><thead><tr>'+
-         '<th>Category</th><th class="num">No.</th><th class="num">Median IRR</th><th class="num">Net profit</th>'+
+    h += '</select></div>';
+    h += '<div class="tbl-scroll" style="max-height:340px"><table><thead><tr>'+
+         '<th>'+esc(OV_GROUPS[ovGroupBy].label)+'</th><th class="num">No.</th>'+
+         '<th class="num">Median IRR</th><th class="num">Median return</th><th class="num">Net profit</th>'+
          '</tr></thead><tbody>';
-    keys.forEach(function(k){
-      var g = groups[k];
-      var gi = g.map(function(d){ return d.irr; }).filter(function(v){ return v!==null && isFinite(v); });
-      var gn = g.reduce(function(a,d){ return a + (isFinite(d.net) ? d.net : 0); }, 0);
-      var m = median(gi);
-      h += '<tr><td class="name">'+esc(k)+'</td><td class="num">'+g.length+'</td>'+
-           '<td class="num">'+(m===null?'—':pct(m))+'</td>'+
-           '<td class="num"><span class="'+(gn<0?'neg':'pos')+'" title="'+esc(aud(gn))+'">'+audShort(gn)+'</span></td></tr>';
+    rows.forEach(function(r){
+      h += '<tr><td class="name">'+esc(r.key)+'</td><td class="num">'+r.n+'</td>'+
+           '<td class="num">'+(r.irr===null?'—':pct(r.irr))+'</td>'+
+           '<td class="num">'+(r.ret===null?'—':pct(r.ret))+'</td>'+
+           '<td class="num"><span class="'+(r.net<0?'neg':'pos')+'" title="'+esc(aud(r.net))+'">'+
+             audShort(r.net)+'</span></td></tr>';
     });
     h += '</tbody></table></div></div>';
 
@@ -1315,6 +1504,33 @@ details .body strong{color:var(--text)}
            rank('Weakest '+take, ranked.slice(-take).reverse())+
            '</div>';
     }
+
+    /* ── scenarios ──
+       "What if the performance fee weren't counted as money in" is the question
+       that moved the median from 10% to 22%, and answering it meant editing the
+       panel, reading a number, editing it back and hoping you remembered the
+       first one. Two slots hold a whole assumption set each. */
+    h += '<div class="ov-sec"><h3>Scenarios</h3>'+
+         '<p class="count-line" style="margin-bottom:var(--sp-3)">Store the settings panel as A or '+
+         'B, then hold the two sets against each other over whatever is filtered here.</p>'+
+         '<div class="scn">';
+    ['A','B'].forEach(function(k){
+      var s = loadScenario(k);
+      h += '<div class="scn-slot"><div class="scn-head"><strong>'+k+'</strong>'+
+        '<span class="faint">'+(s ? esc(scenarioText(s)) : 'empty')+'</span></div>'+
+        '<div class="scn-btns">'+
+          '<button type="button" class="btn-ghost btn-sm" data-scn-save="'+k+'">Store current</button>'+
+          (s ? '<button type="button" class="btn-ghost btn-sm" data-scn-load="'+k+'">Load</button>'+
+               '<button type="button" class="btn-ghost btn-sm" data-scn-clear="'+k+'">Clear</button>' : '')+
+        '</div></div>';
+    });
+    h += '</div>';
+    if (loadScenario('A') && loadScenario('B')) {
+      h += '<button type="button" class="btn-primary btn-sm" id="btnScnRun" '+
+           'style="margin-top:var(--sp-3)">Compare A and B</button>'+
+           '<div id="scnOut"></div>';
+    }
+    h += '</div>';
 
     body.innerHTML = h;
   }
@@ -1396,7 +1612,10 @@ details .body strong{color:var(--text)}
       var net = d.net === null ? '—' : signed(d.net);
       var hold = d.hold === null ? '—' : d.hold.toFixed(2);
       var cat = (e.category||'').trim();
-      return '<tr>'+
+      return '<tr'+(picked.indexOf(e.id)>=0?' class="is-picked"':'')+'>'+
+        '<td class="pick"><input type="checkbox" data-pick="'+e.id+'"'+
+          (picked.indexOf(e.id)>=0?' checked':'')+
+          ' aria-label="Compare '+esc(e.name||'this property')+'"></td>'+
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
           (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +
           ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +'</td>'+
@@ -1425,9 +1644,31 @@ details .body strong{color:var(--text)}
         '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span></button></th>';
     }).join('');
 
-    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+head+
+    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
+      '<th scope="col"><span class="sr-only">Compare</span></th>'+head+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    syncCompareBar();
+  }
+
+  /* ── compare two ──
+     The Result tab is strictly one property at a time, so holding two against
+     each other meant opening one, remembering it, and opening the other. Two
+     is the limit on purpose: a third column makes every row narrower than the
+     numbers in it, and picking a third swaps out the older choice. */
+  var picked = [];
+  function togglePick(id){
+    var i = picked.indexOf(id);
+    if (i >= 0) picked.splice(i, 1);
+    else { picked.push(id); if (picked.length > 2) picked.shift(); }
+    renderProps();
+  }
+  function syncCompareBar(){
+    var bar = $('compareBar');
+    bar.hidden = picked.length === 0;
+    $('compareCount').textContent = picked.length === 1
+      ? '1 picked — choose one more' : picked.length + ' picked';
+    $('btnCompare').disabled = picked.length !== 2;
   }
 
   /* ══════════ RENDER THE RESULT ══════════ */
@@ -1895,7 +2136,7 @@ details .body strong{color:var(--text)}
     OPT_IDS.forEach(function(id){ $(id).value = DEFAULT_OPTS[id]; });
     Object.keys(DEFAULT_TOGGLES).forEach(function(k){ setRadio(k, DEFAULT_TOGGLES[k]); });
     try { localStorage.removeItem(OPTS_KEY); } catch (e) {}
-    calc(); renderProps();
+    calc(); syncAssumpFlag(); renderProps();
     $('messages').innerHTML = msg('ok','Assumptions are back to the workbook defaults.');
   }
 
@@ -2040,11 +2281,21 @@ details .body strong{color:var(--text)}
   $('btnClearFilters').addEventListener('click', clearFilters);
   $('bandChip').addEventListener('click', function(){ irrBand = null; renderProps(); });
 
+  // the compare checkboxes live in a table that is rebuilt on every render
+  document.addEventListener('change', function(ev){
+    var t = ev.target;
+    if (t && t.dataset && t.dataset.pick) togglePick(t.dataset.pick);
+  });
+
   // delegated row actions
   document.addEventListener('click', function(ev){
     var b = ev.target.closest ? ev.target.closest('button') : null;
     if (!b) return;
     if (b.dataset.sortby) { setSort(b.dataset.sortby); return; }
+    if (b.dataset.scnSave)  { storeScenario(b.dataset.scnSave); return; }
+    if (b.dataset.scnLoad)  { applyScenario(b.dataset.scnLoad); return; }
+    if (b.dataset.scnClear) { try { localStorage.removeItem(SCN_KEY + b.dataset.scnClear); } catch (e) {} renderProps(); return; }
+    if (b.id === 'btnScnRun') { runScenarios(); return; }
     if (b.id === 'sheetGo' && pendingSheets) {
       var pick = pendingSheets[+($('sheetPick')||{value:0}).value] || pendingSheets[0];
       var fname = pendingFileName;
@@ -2086,7 +2337,7 @@ details .body strong{color:var(--text)}
       if (el.id === 'pName') { relabel(); return; }
       if (el.id === 'pCat') return;
       calc();
-      if (isAssumption(el)) { saveAssumptions(); renderProps(); }
+      if (isAssumption(el)) { saveAssumptions(); syncAssumpFlag(); renderProps(); }
     };
     el.addEventListener('change', recompute);
     el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); recompute(); } });
@@ -2120,6 +2371,76 @@ details .body strong{color:var(--text)}
   // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
   /* Both pickers drive the one filter, so a choice made on either tab is the
      choice the other shows. */
+  /* The group picker is rebuilt with the body, so the listener is delegated. */
+  $('ovBody').addEventListener('change', function(ev){
+    if (ev.target && ev.target.id === 'ovGroup') { ovGroupBy = ev.target.value; renderProps(); }
+  });
+
+  /* The Overview is the part that goes into a report, and it was the one view
+     with no way out of the tool. Writes what is on screen, filters and all. */
+  function exportOverview(){
+    var all = loadProps();
+    if (!all.length) { $('messages').innerHTML = msg('warn','There are no properties yet.'); return; }
+    var f = readFilters(), opts = readOpts();
+    var derived = filterEntries(all, f).map(function(e){
+      var d = { e:e, irr:null, net:null, hold:null };
+      try { var r = window.IRRBreakdown.computeBreakdown(e, opts);
+            d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears; } catch (err) {}
+      return d;
+    });
+    var spread = derived.filter(function(d){ return passDerived(d, f, false); });
+    var data   = spread.filter(function(d){ return passDerived(d, f, true); });
+    if (!data.length) { $('messages').innerHTML = msg('warn','Nothing matches the filters, so there is nothing to export.'); return; }
+
+    var irrs=[], nets=[], holds=[], buys=[], sells=[], rets=[], cagrs=[];
+    data.forEach(function(d){
+      if (d.irr !== null && isFinite(d.irr)) irrs.push(d.irr);
+      if (d.net !== null && isFinite(d.net)) nets.push(d.net);
+      if (d.hold !== null && isFinite(d.hold)) holds.push(d.hold);
+      var b = Number(d.e.purchasePrice), s = Number(d.e.soldPrice);
+      if (isFinite(b) && b > 0) buys.push(b);
+      if (isFinite(s) && s > 0) sells.push(s);
+      if (isFinite(b) && b > 0 && isFinite(s) && s > 0) {
+        rets.push(s/b - 1);
+        if (d.hold > 0) cagrs.push(Math.pow(s/b, 1/d.hold) - 1);
+      }
+    });
+    var totalNet = nets.reduce(function(a,b){ return a+b; }, 0);
+    var L = [['Performance Property — IRR Calculator, overview']];
+    L.push(['Exported', new Date().toISOString().slice(0,10)]);
+    L.push(['Scope', data.length + ' of ' + all.length + ' properties']);
+    L.push(['Basis', basisText()]);
+    if (f.cat) L.push(['Category filter', f.cat === NO_CAT ? 'Uncategorised' : f.cat]);
+    if (f.suburb) L.push(['Suburb filter', f.suburb]);
+    if (f.q) L.push(['Search', f.q]);
+    if (f.soldFrom || f.soldTo) L.push(['Sold between', (f.soldFrom||'any') + ' and ' + (f.soldTo||'any')]);
+    if (f.holdMin !== null || f.holdMax !== null) L.push(['Hold between', (f.holdMin===null?'any':f.holdMin) + ' and ' + (f.holdMax===null?'any':f.holdMax) + ' yrs']);
+    if (f.band !== null) L.push(['IRR band', IRR_BINS[f.band].full]);
+    L.push([]);
+    L.push(['Headline']);
+    L.push(['Properties', data.length]);
+    L.push(['Profitable', nets.filter(function(v){ return v>0; }).length, 'of', nets.length]);
+    L.push(['Median IRR', median(irrs)]);
+    L.push(['Median purchase price', median(buys)]);
+    L.push(['Median sale price', median(sells)]);
+    L.push(['Median hold period (yrs)', median(holds)]);
+    L.push(['Median CAGR', median(cagrs)]);
+    L.push(['Median return', median(rets)]);
+    L.push(['Total net profit', totalNet]);
+    L.push([]);
+    var spreadIrrs = spread.map(function(d){ return d.irr; }).filter(function(v){ return v!==null && isFinite(v); });
+    L.push(['IRR distribution', 'Properties', 'Share']);
+    IRR_BINS.forEach(function(b){
+      var n = spreadIrrs.filter(function(v){ return v>=b.lo && v<b.hi; }).length;
+      L.push([b.full, n, spreadIrrs.length ? n/spreadIrrs.length : 0]);
+    });
+    L.push([]);
+    L.push(['By ' + OV_GROUPS[ovGroupBy].label, 'Properties', 'Median IRR', 'Median return', 'Net profit']);
+    groupRows(data).forEach(function(r){ L.push([r.key, r.n, r.irr, r.ret, r.net]); });
+    download(toCsvText(L), 'irr-overview.csv');
+  }
+  $('btnOvCsv').addEventListener('click', exportOverview);
+
   /* Clicking a bar sets the band; clicking the lit one clears it. */
   $('ovBody').addEventListener('click', function(ev){
     var b = ev.target.closest('.ov-col'); if (!b || b.disabled) return;
@@ -2127,6 +2448,67 @@ details .body strong{color:var(--text)}
     irrBand = (irrBand === i) ? null : i;
     renderProps();
   });
+
+  /* ── compare, drawn ── */
+  function renderCompare(){
+    var all = loadProps(), opts = readOpts();
+    var two = picked.map(function(id){ return all.filter(function(e){ return e.id === id; })[0]; })
+                    .filter(Boolean);
+    if (two.length !== 2) return;
+    var runs = two.map(function(e){
+      try { return { e:e, s: window.IRRBreakdown.computeBreakdown(e, opts).summary }; }
+      catch (err) { return { e:e, s:null }; }
+    });
+    var rows = [
+      ['Purchase price', function(r){ return r.s ? aud(r.s.purchasePrice) : aud(r.e.purchasePrice); }, function(r){ return r.s && r.s.purchasePrice; }],
+      ['Purchase date',  function(r){ return r.s ? dLabel(r.s.purchaseDate) : '—'; }, null],
+      ['Sold price',     function(r){ return r.s ? aud(r.s.soldPrice) : '<span class="faint">none</span>'; }, function(r){ return r.s && r.s.soldPrice; }],
+      ['Sold date',      function(r){ return r.s ? dLabel(r.s.soldDate) : '—'; }, null],
+      ['Hold period',    function(r){ return r.s ? r.s.holdYears.toFixed(2) + ' yrs' : '—'; }, function(r){ return r.s && r.s.holdYears; }],
+      ['Gross profit',   function(r){ return r.s ? aud(r.s.grossProfit) : '—'; }, function(r){ return r.s && r.s.grossProfit; }],
+      ['Finance costs',  function(r){ return r.s ? aud(r.s.financeCosts) : '—'; }, function(r){ return r.s && r.s.financeCosts; }],
+      ['Running costs',  function(r){ return r.s ? aud(r.s.runningCosts) : '—'; }, function(r){ return r.s && r.s.runningCosts; }],
+      ['Rental income',  function(r){ return r.s ? aud(r.s.rentalIncome) : '—'; }, function(r){ return r.s && r.s.rentalIncome; }],
+      ['Net profit',     function(r){ return r.s ? signed(r.s.netProfit) : '—'; }, function(r){ return r.s && r.s.netProfit; }],
+      ['IRR',            function(r){ return r.s && r.s.irr !== null ? pct(r.s.irr) : '—'; }, function(r){ return r.s && r.s.irr; }]
+    ];
+    var h = '<p class="count-line" style="margin-bottom:var(--sp-4)">Both on the same settings — '+
+            esc(basisText())+'.</p>'+
+      '<div class="tbl-scroll" style="max-height:none"><table class="cmp"><thead><tr><th></th>'+
+      runs.map(function(r){ return '<th class="num">'+esc(r.e.name||'Untitled')+'</th>'; }).join('')+
+      '<th class="num">Difference</th></tr></thead><tbody>';
+    rows.forEach(function(row){
+      var label = row[0], show = row[1], raw = row[2];
+      var diff = '';
+      if (raw) {
+        var a = raw(runs[0]), b = raw(runs[1]);
+        if (isFinite(a) && isFinite(b) && a !== null && b !== null) {
+          var d = b - a;
+          diff = label === 'IRR' ? (d>=0?'+':'−') + pct(Math.abs(d))
+               : label === 'Hold period' ? (d>=0?'+':'−') + Math.abs(d).toFixed(2) + ' yrs'
+               : signed(d);
+          diff = '<span class="'+(d>0?'pos':d<0?'neg':'')+'">'+diff+'</span>';
+        }
+      }
+      h += '<tr><td>'+label+'</td>'+
+           runs.map(function(r){ return '<td class="num">'+show(r)+'</td>'; }).join('')+
+           '<td class="num">'+(diff || '<span class="faint">—</span>')+'</td></tr>';
+    });
+    h += '</tbody></table></div>'+
+         '<p class="count-line" style="margin-top:var(--sp-3)">Difference is the second '+
+         'property less the first.</p>';
+    $('cmpBody').innerHTML = h;
+  }
+  function openCompare(){
+    renderCompare();
+    var d = $('cmpDialog');
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
+  }
+  function closeCompare(){ var d = $('cmpDialog'); if (d.open) d.close(); }
+  $('btnCompare').addEventListener('click', openCompare);
+  $('btnCmpClose').addEventListener('click', closeCompare);
+  $('cmpDialog').addEventListener('click', function(ev){ if (ev.target === $('cmpDialog')) closeCompare(); });
+  $('btnComparePickClear').addEventListener('click', function(){ picked = []; renderProps(); });
 
   /* ── Quick IRR: a deal you want to check, not keep ── */
   function openQuick(){
@@ -2173,6 +2555,7 @@ details .body strong{color:var(--text)}
   captureDefaultOpts();
   restoreAssumptions();
   $('btnResetAssump').addEventListener('click', resetAssumptions);
+  syncAssumpFlag();
 
   renderProps();
   calc();
