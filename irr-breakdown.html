@@ -332,6 +332,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
    position carries the IRR, colour only reinforces the sign. The gain/loss tokens
    are reused rather than a new palette invented — a bar means the same thing here
    as a figure does in the tables. */
+.ov-filter{flex:0 0 auto;min-width:0}
+.ov-filter select{min-height:36px;padding:6px 34px 6px 12px;font-size:13px;width:auto;min-width:180px}
 .ov-sec{margin-top:var(--sp-6)}
 .ov-sec:first-child{margin-top:0}
 .ov-sec > h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.12em;
@@ -655,8 +657,12 @@ details .body strong{color:var(--text)}
         <section class="card" aria-labelledby="ov-h">
           <div class="card-head">
             <h2 id="ov-h">Overview</h2>
-            <p class="count-line" id="ovScope" style="margin:0"></p>
+            <div class="ov-filter">
+              <label for="ovCat" class="sr-only">Filter the overview by category</label>
+              <select id="ovCat"><option value="">All categories</option></select>
+            </div>
           </div>
+          <p class="count-line" id="ovScope"></p>
           <div id="ovBody"></div>
         </section>
       </div>
@@ -954,6 +960,12 @@ details .body strong{color:var(--text)}
     // keep the current choice unless it no longer exists
     sel.value = [].some.call(sel.options, function(o){ return o.value === keep; }) ? keep : '';
 
+    /* The Overview's picker is the same filter, not a second one — one of them
+       moving would be worse than having none. */
+    var ov = $('ovCat');
+    ov.innerHTML = opts;
+    ov.value = sel.value;
+
     $('catList').innerHTML = cats.map(function(c){ return '<option value="'+esc(c)+'"></option>'; }).join('');
   }
   /* sorting — null means the order they were added in */
@@ -1017,9 +1029,15 @@ details .body strong{color:var(--text)}
                     : 'Add some properties and this fills in.')+'</p></div>';
       return;
     }
-    scope.textContent = data.length === totalSaved
-      ? 'All ' + totalSaved + ' properties, on the current assumptions'
-      : data.length + ' of ' + totalSaved + ' properties, on the current assumptions';
+    /* A search typed on the Properties tab also narrows this, and there's no
+       search box here to show it — so say so rather than let the count look odd. */
+    var q = $('propSearch').value.trim();
+    var bits = [data.length === totalSaved
+      ? 'All ' + totalSaved + ' properties'
+      : data.length + ' of ' + totalSaved + ' properties'];
+    if (q) bits.push('search “' + q + '” is still on');
+    bits.push('on the current assumptions');
+    scope.textContent = bits.join(' · ');
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
     data.forEach(function(d){
@@ -1812,7 +1830,7 @@ details .body strong{color:var(--text)}
     return ASSUMPTION_IDS[el.id] === 1 || el.name === 'tRate' || el.name === 'tNg' || el.name === 'tRent';
   }
   document.querySelectorAll('input,select').forEach(function(el){
-    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'impCat' || el.id === 'pasteBox') return;
+    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'ovCat' || el.id === 'impCat' || el.id === 'pasteBox') return;
     var recompute = function(){
       // renaming or recategorising only relabels — no need to recompute
       if (el.id === 'pName') { relabel(); return; }
@@ -1850,6 +1868,13 @@ details .body strong{color:var(--text)}
   });
 
   // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
+  /* Both pickers drive the one filter, so a choice made on either tab is the
+     choice the other shows. */
+  $('ovCat').addEventListener('change', function(){
+    $('propCat').value = this.value;
+    renderProps();
+  });
+
   TABS.forEach(function(t){ $('tab-'+t).addEventListener('click', function(){ showTab(t); }); });
   $('tab-result').parentNode.addEventListener('keydown', function(ev){
     var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
