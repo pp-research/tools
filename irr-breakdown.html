@@ -401,6 +401,7 @@ td.name{white-space:normal;min-width:150px;font-weight:600}
 /* A note states a fact about the deal, not a label you filed it under, so it
    reads as a flag rather than another category chip. */
 .note-chip{background:var(--note-bg);border-color:var(--note-line);color:var(--note-ink);white-space:normal}
+.faint{color:var(--faint);font-weight:400}
 /* price over its parsed date — keeps the date visible for checking an import
    without spending two columns on it, so IRR stays on screen in the panel. */
 td.pd{text-align:right;white-space:nowrap}
@@ -1552,11 +1553,40 @@ details .body strong{color:var(--text)}
     $('btnCsv').disabled = true;
   }
 
+  /* A property can be complete and still have no sale — a compulsory acquisition
+     has everything but a price. That is not an empty form and not an error, so
+     it gets its own state saying what happened and what is known. */
+  function showNoted(){
+    last = null;
+    $('messages').innerHTML = '';
+    var name = $('pName').value.trim() || 'This property';
+    var pp = Number($('pPrice').value), pd = $('pDate').value, sd = $('sDate').value;
+    var fmtd = function(v){ if (!v) return '—'; var d = new Date(v+'T00:00:00Z');
+      return isNaN(d) ? '—' : d.getUTCDate()+' '+MONTHS[d.getUTCMonth()]+' '+d.getUTCFullYear(); };
+    $('resultBody').innerHTML =
+      '<p class="res-name">'+esc(name)+'</p>'+
+      msg('warn','<strong>'+esc(formNote)+'.</strong> There is no sale price, so there is no '+
+          'cashflow to discount and no IRR to work out. The source book records it the same way — '+
+          'its own ROI, CAGR and IRR are blank for this property.')+
+      '<table class="sum"><tbody>'+
+        row2('Purchase price', isFinite(pp) && pp ? aud(pp) : '—')+
+        row2('Purchase date', fmtd(pd))+
+        row2('Date acquired', fmtd(sd))+
+        row2('Sale price', '<span class="faint">none — acquired, not sold</span>')+
+        row2('IRR', '<span class="faint">not applicable</span>')+
+      '</tbody></table>';
+    $('breakdownCard').hidden = true;
+    $('btnCsv').disabled = true;
+  }
+
   function calc(){
     ['pPrice','sPrice','pDate','sDate'].forEach(function(id){ $(id).setAttribute('aria-invalid','false'); });
     // A half-filled form is not an error — it is just not ready yet.
     var blank = ['pPrice','pDate','sPrice','sDate'].some(function(id){ return String($(id).value).trim() === ''; });
-    if (blank) { showEmpty(); return; }
+    if (blank) {
+      if (formNote && String($('sPrice').value).trim() === '') { showNoted(); return; }
+      showEmpty(); return;
+    }
     try {
       var res = window.IRRBreakdown.computeBreakdown(readDeal(), readOpts());
       last = res;
@@ -1573,7 +1603,9 @@ details .body strong{color:var(--text)}
     }
   }
 
+  var formNote = '';          // the note on whatever is currently in the form
   function loadIntoForm(name, d, category){
+    formNote = (d.note || '').trim();
     $('pName').value = name || '';
     $('pCat').value = category || '';
     $('pPrice').value = d.purchasePrice;
@@ -1957,6 +1989,7 @@ details .body strong{color:var(--text)}
   $('btnReset').addEventListener('click', function(){
     Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
     Object.keys(DEFAULT_TOGGLES).forEach(function(k){ setRadio(k, DEFAULT_TOGGLES[k]); });
+    formNote = '';               // a cleared form is a fresh deal, not the last one
     $('messages').innerHTML=''; calc();
   });
   $('btnSave').addEventListener('click', function(){
@@ -2023,14 +2056,8 @@ details .body strong{color:var(--text)}
       var e = loadProps().filter(function(x){ return x.id === b.dataset.open; })[0];
       /* Deliberately does NOT restore e.opts — the settings panel is global, so
          snapping it back on open would contradict the list you just read. */
-      if (e) {
-        loadIntoForm(e.name, e, e.category);
-        if ((e.note||'').trim()) {
-          $('messages').innerHTML = msg('warn', esc(e.name) + ' — ' + esc(e.note) +
-            '. There is no sale price, so no IRR can be worked out for it.');
-        }
-        showTab('result');
-      }
+      // the note belongs in the Result panel, not as a banner over everything
+      if (e) { loadIntoForm(e.name, e, e.category); showTab('result'); }
     }
     if (b.dataset.del) {
       var id = b.dataset.del;
