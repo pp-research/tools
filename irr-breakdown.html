@@ -50,6 +50,7 @@
   /* the gain/loss figures are small text, so they need more lift than the
      chrome colours: brand red on the dark panel is only 2.93:1 */
   --money-pos:#8FCB74; --money-neg:#FF94A6;
+  --note-bg:rgba(255,169,31,.12); --note-line:rgba(255,169,31,.45); --note-ink:#FFD79A;
   --accent-text:#5FD8E8;
   --row-alt:rgba(255,255,255,.022);
   --row-line:rgba(255,255,255,.055);
@@ -87,6 +88,7 @@
   --text:#171B24; --muted:rgba(23,27,36,.66); --faint:rgba(23,27,36,.63);
   --green:#3F7D2E; --red:#C1122F; --yellow:#8A5A00;
   --money-pos:#367020; --money-neg:#C1122F;
+  --note-bg:rgba(160,105,0,.10); --note-line:rgba(160,105,0,.40); --note-ink:#7A4E00;
   --row-alt:rgba(23,27,36,.028);
   --row-line:rgba(23,27,36,.07);
   --row-line-strong:rgba(23,27,36,.22);
@@ -396,6 +398,9 @@ tbody tr.fy-end td{border-bottom:1px solid var(--row-line-strong)}
 td.name{white-space:normal;min-width:150px;font-weight:600}
 .cat{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--panel-2);
   border:1px solid var(--border-strong);color:var(--muted);font-size:10px;line-height:16px;font-weight:600;white-space:nowrap}
+/* A note states a fact about the deal, not a label you filed it under, so it
+   reads as a flag rather than another category chip. */
+.note-chip{background:var(--note-bg);border-color:var(--note-line);color:var(--note-ink);white-space:normal}
 /* price over its parsed date — keeps the date visible for checking an import
    without spending two columns on it, so IRR stays on screen in the panel. */
 td.pd{text-align:right;white-space:nowrap}
@@ -974,6 +979,7 @@ details .body strong{color:var(--text)}
       purchaseDate: iso(deal.purchaseDate instanceof Date ? deal.purchaseDate : new Date(deal.purchaseDate)),
       soldPrice: deal.soldPrice,
       soldDate: iso(deal.soldDate instanceof Date ? deal.soldDate : new Date(deal.soldDate)),
+      note: deal.note || '',
       opts: opts, savedAt: new Date().toISOString()
     };
   }
@@ -994,6 +1000,7 @@ details .body strong{color:var(--text)}
            every "Adelaide" back to "ADL sold". Renaming is a deliberate act and
            outlives an import; an entry with no category still gets one. */
         if ((list[dup].category||'').trim()) e.category = list[dup].category;
+        if (!(e.note||'').trim() && (list[dup].note||'').trim()) e.note = list[dup].note;
         list[dup] = e; updated++;
       } else { list.push(e); added++; }
     });
@@ -1190,9 +1197,9 @@ details .body strong{color:var(--text)}
     var h = '<div class="kpis">'+
       card('Median IRR', irrs.length ? pct(median(irrs)) : '—',
            'half the book did better', 'lead')+
-      card('Properties sold', sold,
-           winners + ' profitable · ' +
-           (nets.length ? Math.round(winners/nets.length*100) : 0) + '%')+
+      card('Properties', sold,
+           winners + ' profitable of ' + nets.length +
+           (sold > nets.length ? ' · ' + (sold - nets.length) + ' with no sale price' : ''))+
       card('Median purchase price', buys.length ? aud(median(buys)) : '—',
            span(buys, function(v){ return audShort(v); }))+
       card('Median sale price', sells.length ? aud(median(sells)) : '—',
@@ -1382,7 +1389,8 @@ details .body strong{color:var(--text)}
       var cat = (e.category||'').trim();
       return '<tr>'+
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
-          (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +'</td>'+
+          (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +
+          ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +'</td>'+
         pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
@@ -1630,7 +1638,7 @@ details .body strong{color:var(--text)}
       deals: s.rows.map(function(r){
         return { name:r[0], category:s.category || '',
                  purchaseDate: new Date(r[1]+'T00:00:00Z'), soldDate: new Date(r[2]+'T00:00:00Z'),
-                 purchasePrice: r[3], soldPrice: r[4] };
+                 purchasePrice: r[3], soldPrice: r[4], note: r[5] || '' };
       }),
       skipped: [], dayFirst: true, byHeader: true
     };
@@ -1987,7 +1995,14 @@ details .body strong{color:var(--text)}
       var e = loadProps().filter(function(x){ return x.id === b.dataset.open; })[0];
       /* Deliberately does NOT restore e.opts — the settings panel is global, so
          snapping it back on open would contradict the list you just read. */
-      if (e) { loadIntoForm(e.name, e, e.category); showTab('result'); }
+      if (e) {
+        loadIntoForm(e.name, e, e.category);
+        if ((e.note||'').trim()) {
+          $('messages').innerHTML = msg('warn', esc(e.name) + ' — ' + esc(e.note) +
+            '. There is no sale price, so no IRR can be worked out for it.');
+        }
+        showTab('result');
+      }
     }
     if (b.dataset.del) {
       var id = b.dataset.del;

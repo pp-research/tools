@@ -1,6 +1,13 @@
-/* Adelaide sold book — 313 properties, exported from the
+/* Adelaide sold book — 314 properties, exported from the
    "ADL - Sold" tab of "Updated IRR Calculation (15 Sep 2026)".
-   [name, purchase date, sold date, purchase price, sold price]
+   [name, purchase date, sold date, purchase price, sold price, note?]
+
+   One row carries a null sold price: 4 Forest Street, Glandore was compulsorily
+   acquired, and the source sheet has the words "Aquired By Government" where the
+   price belongs — which is why its ROI, CAGR and IRR read NA there and every
+   downstream cell is #VALUE!. It is kept so the count matches the book at 314,
+   and the note travels with it; nothing that needs a sale price computes for it.
+
    Loaded by irr-breakdown.html; see the README before changing anything here. */
 window.IRR_SEED = {
   category: "ADL sold",
@@ -88,6 +95,7 @@ window.IRR_SEED = {
     ["23 Addison Rd, Black Forest","2016-08-31","2023-09-05",621000,970000],
     ["9 Corinda Ave, Kensington Park","2017-11-13","2023-09-07",791000,1106000],
     ["14 Keyes Street, Linden Park","2017-05-15","2023-09-30",895000,1430000],
+    ["4 Forest Street, Glandore","2016-09-23","2023-10-02",615000,null,"Acquired by government"],
     ["10 Tungara Ave, Croydon Park","2016-03-18","2023-10-04",560000,840000],
     ["15 Coles Street, Plympton Park","2021-04-14","2023-10-06",481000,632500],
     ["21 Overland Rd, Croydon Park","2017-11-30","2023-10-10",500000,805000],
