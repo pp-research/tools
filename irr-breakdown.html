@@ -332,17 +332,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
    position carries the IRR, colour only reinforces the sign. The gain/loss tokens
    are reused rather than a new palette invented — a bar means the same thing here
    as a figure does in the tables. */
-.ov-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));
-  gap:var(--sp-3);margin-bottom:var(--sp-6)}
-.ov-meta .field{margin:0}
-.ov-stats{width:100%;border-collapse:collapse;font-size:14px}
-.ov-stats td{padding:9px 0;border-bottom:1px solid var(--row-line);vertical-align:baseline}
-.ov-stats tr:last-child td{border-bottom:0}
-.ov-stats td:first-child{color:var(--muted)}
-.ov-stats td:last-child{text-align:right;font-weight:600;white-space:nowrap;
-  font-variant-numeric:tabular-nums lining-nums}
-.ov-stats tr.gap td{border-bottom:0;height:var(--sp-4);padding:0}
-.ov-stats td.none{color:var(--faint);font-weight:400}
 .ov-sec{margin-top:var(--sp-6)}
 .ov-sec:first-child{margin-top:0}
 .ov-sec > h3{font-size:12px;line-height:16px;font-weight:700;letter-spacing:.12em;
@@ -667,18 +656,6 @@ details .body strong{color:var(--text)}
           <div class="card-head">
             <h2 id="ov-h">Overview</h2>
             <p class="count-line" id="ovScope" style="margin:0"></p>
-          </div>
-          <!-- the book only holds SOLD properties, so the purchased and advisory
-               counts have to be typed — they are remembered per browser -->
-          <div class="ov-meta">
-            <div class="field">
-              <label for="ovPurchased">Total properties purchased</label>
-              <input id="ovPurchased" type="number" min="0" step="1" placeholder="not set">
-            </div>
-            <div class="field">
-              <label for="ovAdvisories">Total sales advisories</label>
-              <input id="ovAdvisories" type="number" min="0" step="1" placeholder="not set">
-            </div>
           </div>
           <div id="ovBody"></div>
         </section>
@@ -1015,19 +992,6 @@ details .body strong{color:var(--text)}
     if (a >= 1e4) return sign + Math.round(a/1e3) + 'k';
     return aud(n);
   }
-  var OV_META = 'pp-irr-overview-meta';
-  function loadOvMeta(){
-    try {
-      var v = JSON.parse(localStorage.getItem(OV_META) || '{}');
-      var n = function(x){ return (x === null || x === undefined || x === '' || !isFinite(x)) ? null : Number(x); };
-      return { purchased: n(v.purchased), advisories: n(v.advisories) };
-    } catch (e) { return { purchased:null, advisories:null }; }
-  }
-  function saveOvMeta(){
-    var read = function(id){ var s = $(id).value.trim(); return s === '' ? null : Number(s); };
-    try { localStorage.setItem(OV_META,
-      JSON.stringify({ purchased: read('ovPurchased'), advisories: read('ovAdvisories') })); } catch (e) {}
-  }
   function median(nums){
     if (!nums.length) return null;
     var s = nums.slice().sort(function(a,b){ return a-b; }), m = Math.floor(s.length/2);
@@ -1073,39 +1037,41 @@ details .body strong{color:var(--text)}
     var totalNet = nets.reduce(function(a,b){ return a+b; }, 0);
     var winners = nets.filter(function(v){ return v > 0; }).length;
     var sold = data.length;
-
-    /* Purchased and advisory counts aren't in the book — it only holds sold
-       properties — so they're typed once and kept per browser. Anything derived
-       from them stays blank until they are. */
-    var meta = loadOvMeta();
-    var purchased = meta.purchased, advisories = meta.advisories;
-    var unsold = (purchased !== null && purchased >= sold) ? purchased - sold : null;
-
-    var row = function(label, value, isNone){
-      return '<tr><td>'+label+'</td><td'+(isNone?' class="none"':'')+'>'+value+'</td></tr>';
+    var span = function(a, fmt){
+      if (a.length < 2) return '';
+      var s = a.slice().sort(function(x,y){ return x-y; });
+      return fmt(s[0]) + ' – ' + fmt(s[s.length-1]);
     };
-    var need = '<span title="Type the count above to fill this in">not set</span>';
-    var h = '<table class="ov-stats"><tbody>'+
-      row('Total properties purchased', purchased === null ? need : purchased, purchased===null)+
-      row('Total properties sold', sold)+
-      row('Total properties not sold', unsold === null ? need : unsold, unsold===null)+
-      row('% of properties sold', purchased ? pct(sold/purchased) : need, !purchased)+
-      row('Total sales advisories', advisories === null ? need : advisories, advisories===null)+
-      row('% of sales that were sales advisories',
-          (advisories !== null && sold) ? pct(advisories/sold) : need, advisories===null)+
-      '<tr class="gap"><td colspan="2"></td></tr>'+
-      row('Median purchase price', buys.length ? aud(median(buys)) : '—')+
-      row('Median sale price', sells.length ? aud(median(sells)) : '—')+
-      row('Median hold period (years)', holds.length ? median(holds).toFixed(1) : '—')+
-      row('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—')+
-      row('Median return', rets.length ? pct(median(rets)) : '—')+
-      row('Median IRR', irrs.length ? pct(median(irrs)) : '—')+
-      '<tr class="gap"><td colspan="2"></td></tr>'+
-      row('Total net profit', '<span class="'+(totalNet<0?'neg':'pos')+'" title="'+
-          esc(aud(totalNet))+'">'+audShort(totalNet)+'</span>')+
-      row('Profitable', winners + ' of ' + nets.length + ' · ' +
-          (nets.length ? Math.round(winners/nets.length*100) : 0) + '%')+
-      '</tbody></table>';
+
+    /* Eight cards, so the grid fills two clean rows of four rather than leaving
+       an orphan. "Profitable" rides along as the note on the count. */
+    var card = function(label, value, note, cls){
+      return '<div class="kpi'+(cls?' '+cls:'')+'">'+
+        '<div class="k-label">'+label+'</div>'+
+        '<div class="k-value">'+value+'</div>'+
+        '<div class="k-note">'+(note||'')+'</div></div>';
+    };
+    var h = '<div class="kpis">'+
+      card('Median IRR', irrs.length ? pct(median(irrs)) : '—',
+           'half the book did better', 'lead')+
+      card('Properties sold', sold,
+           winners + ' profitable · ' +
+           (nets.length ? Math.round(winners/nets.length*100) : 0) + '%')+
+      card('Median purchase price', buys.length ? aud(median(buys)) : '—',
+           span(buys, function(v){ return audShort(v); }))+
+      card('Median sale price', sells.length ? aud(median(sells)) : '—',
+           span(sells, function(v){ return audShort(v); }))+
+      card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
+           'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
+      card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
+           'compounded over the hold')+
+      card('Median return', rets.length ? pct(median(rets)) : '—',
+           'sold over purchase')+
+      card('Total net profit',
+           '<span class="'+(totalNet<0?'neg':'pos')+'" title="'+esc(aud(totalNet))+'">'+
+             audShort(totalNet)+'</span>',
+           esc(aud(totalNet)))+
+      '</div>';
 
     /* ── distribution ── */
     var counts = IRR_BINS.map(function(b){
@@ -1846,8 +1812,7 @@ details .body strong{color:var(--text)}
     return ASSUMPTION_IDS[el.id] === 1 || el.name === 'tRate' || el.name === 'tNg' || el.name === 'tRent';
   }
   document.querySelectorAll('input,select').forEach(function(el){
-    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'impCat' || el.id === 'pasteBox'
-        || el.id === 'ovPurchased' || el.id === 'ovAdvisories') return;
+    if (el.id === 'propSearch' || el.id === 'propCat' || el.id === 'impCat' || el.id === 'pasteBox') return;
     var recompute = function(){
       // renaming or recategorising only relabels — no need to recompute
       if (el.id === 'pName') { relabel(); return; }
@@ -1885,16 +1850,6 @@ details .body strong{color:var(--text)}
   });
 
   // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
-  ['ovPurchased','ovAdvisories'].forEach(function(id){
-    var el = $(id);
-    el.addEventListener('input', function(){ saveOvMeta(); renderProps(); });
-  });
-  (function(){
-    var m = loadOvMeta();
-    if (m.purchased !== null) $('ovPurchased').value = m.purchased;
-    if (m.advisories !== null) $('ovAdvisories').value = m.advisories;
-  })();
-
   TABS.forEach(function(t){ $('tab-'+t).addEventListener('click', function(){ showTab(t); }); });
   $('tab-result').parentNode.addEventListener('keydown', function(ev){
     var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
