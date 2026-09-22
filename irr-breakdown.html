@@ -816,7 +816,10 @@ details .body strong{color:var(--text)}
 </div>
 
 <script src="irr-breakdown-engine.js"></script>
-<script src="adl-properties.js"></script>
+<!-- versioned so a browser holding the previous set fetches this one rather than
+     serving its cached copy — Pages sends max-age=600 and the filename alone
+     gives it no reason to look again -->
+<script src="adl-properties.js?v=314"></script>
 <script>
 (function(){
   'use strict';
@@ -825,7 +828,12 @@ details .body strong{color:var(--text)}
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
   /* Bumping this re-seeds every browser once. Gating on STORE alone was wrong:
      anyone who had already used the tool never received the bundled set. */
-  var SEED_FLAG = 'pp-irr-seed-v1';
+  /* Bumped when the bundled set changes, which is the whole point of versioning
+     it: a browser that already seeded v1 has 313 properties and would never see
+     the 314th without being told to reload the set by hand. v2 tops it up on the
+     next load instead. Merging is by name+dates and keeps the category and note
+     already on an entry, so a rename is not undone by the top-up. */
+  var SEED_FLAG = 'pp-irr-seed-v2';
   var THEME_KEY = 'pp-irr-theme-v2';
 
   /* ══════════ THEME ══════════
@@ -1631,12 +1639,32 @@ details .body strong{color:var(--text)}
   /* The Adelaide sold book ships with the tool (adl-properties.js) so the list
      is populated on a fresh browser without an import. Dedup is by name+dates,
      so loading it twice updates rather than duplicates. */
+  /* A top-up files its new rows wherever the rows from this same set already
+     live. Without it, renaming "ADL sold" to "Adelaide" and then receiving a
+     314th property leaves one row sitting on its own under the old name — the
+     rename looks half-undone even though nothing was overwritten. Matching by
+     name rather than trusting the label is what makes this safe. */
+  function seedCategory(s){
+    var saved = loadProps();
+    if (!saved.length) return s.category || '';
+    var filed = {};
+    saved.forEach(function(e){ filed[String(e.name||'').trim().toLowerCase()] = (e.category||'').trim(); });
+    var tally = {}, best = null, bestN = 0;
+    s.rows.forEach(function(r){
+      var c = filed[String(r[0]||'').trim().toLowerCase()];
+      if (c === undefined) return;
+      tally[c] = (tally[c] || 0) + 1;
+      if (tally[c] > bestN) { bestN = tally[c]; best = c; }
+    });
+    return best === null ? (s.category || '') : best;
+  }
   function seedDeals(){
     var s = window.IRR_SEED;
     if (!s || !s.rows || !s.rows.length) return null;
+    var cat = seedCategory(s);
     return {
       deals: s.rows.map(function(r){
-        return { name:r[0], category:s.category || '',
+        return { name:r[0], category:cat,
                  purchaseDate: new Date(r[1]+'T00:00:00Z'), soldDate: new Date(r[2]+'T00:00:00Z'),
                  purchasePrice: r[3], soldPrice: r[4], note: r[5] || '' };
       }),
