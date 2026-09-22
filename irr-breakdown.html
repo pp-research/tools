@@ -102,7 +102,7 @@
 :root[data-theme="light"] .kpi.lead{border-color:rgba(0,112,127,.34)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* A class that sets `display` outbids the UA's [hidden] rule on specificity, so
-   `.compare-bar{display:flex}` and `.edited-chip{display:inline-block}` were
+   `.sel-bar{display:flex}` and `.edited-chip{display:inline-block}` were
    both showing while carrying the attribute. Everything here uses `hidden` to
    mean gone, so say it once and say it loudest. */
 [hidden]{display:none !important}
@@ -412,10 +412,16 @@ td.pick{padding-right:0}
 td.pick input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
 td.pick input:disabled{cursor:not-allowed;opacity:.35}
 tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
-.compare-bar{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
+.sel-bar{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
   margin-bottom:var(--sp-3);padding:10px 14px;border-radius:var(--r-md);
   background:rgba(var(--accent-rgb),.10);border:1px solid var(--accent-line, rgba(var(--accent-rgb),.4));
   font-size:13px;font-weight:600}
+/* Chrome does not fire hover on a disabled button, so a title on one never
+   appears — and "why is this grey?" is exactly the question here. The button
+   stays enabled, wears the disabled look, and says so on click. */
+.btn-off{opacity:.45;cursor:not-allowed}
+td.pick input{margin:0}
+th.pick-all input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
 .scn{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:var(--sp-3)}
 .scn-slot{border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;background:var(--panel-2)}
 .scn-head{display:flex;gap:var(--sp-2);align-items:baseline;margin-bottom:var(--sp-3);font-size:13px}
@@ -672,16 +678,6 @@ details .body strong{color:var(--text)}
           </div>
         </section>
 
-        <!-- the same table the Compare modal draws: picks are made on the
-             Properties tab, but this is where they get read -->
-        <section class="card" id="cmpResCard" hidden aria-labelledby="cmpres-h">
-          <div class="card-head">
-            <h2 id="cmpres-h">Compare</h2>
-            <button type="button" class="btn-ghost btn-sm" id="btnCmpResClear">Clear picks</button>
-          </div>
-          <div id="cmpResBody"></div>
-        </section>
-
         <section class="card" id="breakdownCard" hidden aria-labelledby="bd-h">
           <h2 id="bd-h">Monthly breakdown</h2>
           <p class="count-line" id="bdConstants"></p>
@@ -726,10 +722,16 @@ details .body strong{color:var(--text)}
                source row was malformed -->
           <div id="parseMsg" role="status" aria-live="polite"></div>
 
-          <div class="compare-bar" id="compareBar" hidden>
-            <span id="compareCount"></span>
-            <button type="button" class="btn-primary btn-sm" id="btnCompare" disabled>Compare on Result</button>
-            <button type="button" class="btn-ghost btn-sm" id="btnComparePickClear">Clear</button>
+          <!-- one bar for everything you can do to a selection. Compare is the
+               only action with a ceiling, so rather than being disabled — which
+               in Chrome swallows the tooltip that would explain why — it greys
+               itself and answers on hover. -->
+          <div class="sel-bar" id="selBar" hidden>
+            <span id="selCount"></span>
+            <button type="button" class="btn-primary btn-sm" id="btnCompare">Compare</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnMoveCat">Move category</button>
+            <button type="button" class="btn-ghost btn-sm btn-danger" id="btnDelSel">Delete</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnSelClear" style="margin-left:auto">Clear</button>
           </div>
           <p class="count-line" id="propCount"></p>
 
@@ -893,6 +895,8 @@ details .body strong{color:var(--text)}
   'use strict';
   var $ = function(id){ return document.getElementById(id); };
   var last = null;                    // last computed result
+  /* what the Result card is currently showing: 'empty', 'single' or 'compare' */
+  var resultMode = 'empty';
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
   /* Bumping this re-seeds every browser once. Gating on STORE alone was wrong:
      anyone who had already used the tool never received the bundled set. */
@@ -1563,6 +1567,7 @@ details .body strong{color:var(--text)}
   }
 
   function renderProps(){
+    prunePicks();
     var all = loadProps();
     $('badgeProps').textContent = all.length;
     syncCategoryControls(all);
@@ -1575,6 +1580,7 @@ details .body strong{color:var(--text)}
       $('filtCount').textContent = '';
       $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
         '<p>Choose <strong>+ Add properties</strong> to paste rows, upload a spreadsheet or reload the bundled Adelaide set — or work out a deal with <strong>Quick IRR</strong> and save it.</p></div>';
+      syncSelBar();
       renderOverview([], [], 0);
       return;
     }
@@ -1605,6 +1611,7 @@ details .body strong{color:var(--text)}
     if (!data.length) {
       $('propsBody').innerHTML = '<div class="empty"><h3>Nothing matches</h3>'+
         '<p>No property matches the filters on the left. Choose <strong>Clear</strong> to see all '+all.length+'.</p></div>';
+      syncSelBar();
       renderOverview([], spread, all.length);
       return;
     }
@@ -1633,7 +1640,6 @@ details .body strong{color:var(--text)}
       });
     }
 
-    var full = picked.length >= MAX_PICK;
     var rows = data.map(function(d){
       var e = d.e;
       var irr = d.irr === null ? '—' : pct(d.irr);
@@ -1644,8 +1650,7 @@ details .body strong{color:var(--text)}
       return '<tr'+(on?' class="is-picked"':'')+'>'+
         '<td class="pick"><input type="checkbox" data-pick="'+e.id+'"'+
           (on?' checked':'')+
-          (full && !on ? ' disabled title="Five is the limit — untick one first"' : '')+
-          ' aria-label="Compare '+esc(e.name||'this property')+'"></td>'+
+          ' aria-label="Select '+esc(e.name||'this property')+'"></td>'+
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
           (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +
           ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +'</td>'+
@@ -1673,41 +1678,75 @@ details .body strong{color:var(--text)}
         '<button type="button" class="sortbtn" data-sortby="'+c.key+'">'+c.label+
         '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span></button></th>';
     }).join('');
+    /* Select-all covers what is on screen, not the whole store: with a filter
+       running, "all" can only honestly mean the rows the filter left. */
+    var shown = data.map(function(d){ return d.e.id; });
+    var onNow = shown.filter(function(id){ return picked.indexOf(id) >= 0; }).length;
 
     $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
-      '<th scope="col"><span class="sr-only">Compare</span></th>'+head+
+      '<th scope="col" class="pick-all"><input type="checkbox" id="selAll"'+
+        (onNow && onNow === shown.length ? ' checked' : '')+
+        ' aria-label="Select every property shown"></th>'+head+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
-    syncCompareBar();
+    /* indeterminate is a property, not an attribute, so it can only be set
+       once the element exists */
+    $('selAll').indeterminate = onNow > 0 && onNow < shown.length;
+    syncSelBar();
   }
 
-  /* ── picking properties to compare ──
-     The Result tab is strictly one property at a time, so holding a few
-     against each other meant opening one, remembering it, and opening the
-     next. Five is the ceiling — past that the addresses stop fitting across a
-     screen — and at five the unticked boxes go dead rather than the oldest
-     pick silently falling out from under her. MAX_PICK and the table it feeds
-     live together further down. */
+  /* ── selecting properties ──
+     Ticking is now just selecting, with no ceiling: the bar below the header
+     carries everything you can do to a selection. Only Compare has a limit,
+     and it enforces it on itself rather than on the checkboxes, so selecting
+     forty to re-file them and selecting three to compare them are the same
+     gesture. */
   var picked = [];
   function togglePick(id){
     var i = picked.indexOf(id);
-    if (i >= 0) picked.splice(i, 1);
-    else if (picked.length < MAX_PICK) picked.push(id);
-    renderProps();   /* runs either way, so a blocked tick un-ticks itself */
+    if (i >= 0) picked.splice(i, 1); else picked.push(id);
+    renderProps();
   }
-  function syncCompareBar(){
+  function pickedEntries(){
+    var by = {}; loadProps().forEach(function(e){ by[e.id] = e; });
+    return picked.map(function(id){ return by[id]; }).filter(Boolean);
+  }
+  /* A selection can outlive the rows that carried it — deleting, or a filter
+     that hides them — so it is pruned against the store, not the table. */
+  function prunePicks(){
+    var live = {}; loadProps().forEach(function(e){ live[e.id] = 1; });
+    picked = picked.filter(function(id){ return live[id]; });
+  }
+  function compareBlock(){
     var n = picked.length;
-    $('compareBar').hidden = n === 0;
-    $('compareCount').textContent =
-        n === 1        ? '1 picked — tick at least one more'
-      : n === MAX_PICK ? n + ' picked — the limit, so untick one to swap'
-      :                  n + ' picked';
-    $('btnCompare').disabled = n < 2;
-    renderCompare();
+    if (n < 2)         return 'Tick at least two properties to compare them.';
+    if (n > MAX_PICK)  return 'Compare takes at most ' + MAX_PICK + ' — untick ' +
+                              (n - MAX_PICK) + ' of the ' + n + ' you have selected.';
+    return '';
+  }
+  function syncSelBar(){
+    var n = picked.length;
+    $('selBar').hidden = n === 0;
+    $('selCount').textContent = n + ' selected';
+    var why = compareBlock(), btn = $('btnCompare');
+    btn.classList.toggle('btn-off', !!why);
+    btn.setAttribute('aria-disabled', why ? 'true' : 'false');
+    btn.title = why || 'Put the ' + n + ' selected side by side on the Result tab';
+    /* the compare view is live: change an assumption or a pick while it is up
+       and it restates itself rather than going stale */
+    if (resultMode === 'compare') { if (why) showEmpty(); else drawCompare(); }
   }
 
   /* ══════════ RENDER THE RESULT ══════════ */
+  /* The card's heading and its export both describe one property, so leaving
+     compare has to put them back. */
+  function setResultHead(){
+    $('res-h').textContent = 'Result';
+    $('btnCsv').title = '';
+  }
   function render(res, name){
+    resultMode = 'single';
+    setResultHead();
     var s = res.summary;
     $('messages').innerHTML = res.warnings.map(function(w){ return msg('warn', w); }).join('');
 
@@ -1821,6 +1860,8 @@ details .body strong{color:var(--text)}
     if (h) h.textContent = $('pName').value.trim() || autoName(last.summary);
   }
   function showEmpty(){
+    resultMode = 'empty';
+    setResultHead();
     last = null;
     $('messages').innerHTML = '';
     $('resultBody').innerHTML = '<div class="empty"><h3>Nothing calculated yet</h3>'+
@@ -1833,6 +1874,8 @@ details .body strong{color:var(--text)}
      has everything but a price. That is not an empty form and not an error, so
      it gets its own state saying what happened and what is known. */
   function showNoted(){
+    resultMode = 'single';
+    setResultHead();
     last = null;
     $('messages').innerHTML = '';
     var name = $('pName').value.trim() || 'This property';
@@ -1855,7 +1898,13 @@ details .body strong{color:var(--text)}
     $('btnCsv').disabled = true;
   }
 
+  /* Leaving a comparison is an explicit act — opening a property, Quick IRR,
+     Reset. Everything else that recalculates (an assumption, a toggle) has to
+     refresh what is on the card, not replace it with whatever the deal form
+     happens to be holding. */
+  function leaveCompare(){ if (resultMode === 'compare') resultMode = 'empty'; }
   function calc(){
+    if (resultMode === 'compare') { drawCompare(); return; }
     ['pPrice','sPrice','pDate','sDate'].forEach(function(id){ $(id).setAttribute('aria-invalid','false'); });
     // A half-filled form is not an error — it is just not ready yet.
     var blank = ['pPrice','pDate','sPrice','sDate'].some(function(id){ return String($(id).value).trim() === ''; });
@@ -1881,6 +1930,7 @@ details .body strong{color:var(--text)}
 
   var formNote = '';          // the note on whatever is currently in the form
   function loadIntoForm(name, d, category){
+    leaveCompare();   /* opening a property is a request to see that property */
     formNote = (d.note || '').trim();
     $('pName').value = name || '';
     $('pCat').value = category || '';
@@ -2249,7 +2299,7 @@ details .body strong{color:var(--text)}
       });
   }
 
-  $('btnCalc').addEventListener('click', function(){ calc(); closeQuick(); showTab('result'); });
+  $('btnCalc').addEventListener('click', function(){ leaveCompare(); calc(); closeQuick(); showTab('result'); });
   $('btnCsv').addEventListener('click', exportDetail);
   $('btnParse').addEventListener('click', doParse);
   $('btnUpload').addEventListener('click', function(){ $('fileInput').click(); });
@@ -2266,7 +2316,7 @@ details .body strong{color:var(--text)}
     Object.keys(DEFAULT_FORM).forEach(function(k){ $(k).value = DEFAULT_FORM[k]; });
     Object.keys(DEFAULT_TOGGLES).forEach(function(k){ setRadio(k, DEFAULT_TOGGLES[k]); });
     formNote = '';               // a cleared form is a fresh deal, not the last one
-    $('messages').innerHTML=''; calc();
+    $('messages').innerHTML=''; leaveCompare(); calc();
   });
   $('btnSave').addEventListener('click', function(){
     if (!last) { $('messages').innerHTML = msg('warn','Calculate a result before saving it.'); return; }
@@ -2316,9 +2366,18 @@ details .body strong{color:var(--text)}
   $('btnClearFilters').addEventListener('click', clearFilters);
   $('bandChip').addEventListener('click', function(){ irrBand = null; renderProps(); });
 
-  // the compare checkboxes live in a table that is rebuilt on every render
+  // the selection checkboxes live in a table that is rebuilt on every render
   document.addEventListener('change', function(ev){
     var t = ev.target;
+    if (t && t.id === 'selAll') {
+      /* what is on screen, so a filtered "all" means the filtered set */
+      var shown = [].map.call(document.querySelectorAll('input[data-pick]'),
+                              function(b){ return b.dataset.pick; });
+      if (t.checked) shown.forEach(function(id){ if (picked.indexOf(id) < 0) picked.push(id); });
+      else           picked = picked.filter(function(id){ return shown.indexOf(id) < 0; });
+      renderProps();
+      return;
+    }
     if (t && t.dataset && t.dataset.pick) togglePick(t.dataset.pick);
   });
 
@@ -2485,15 +2544,15 @@ details .body strong{color:var(--text)}
   });
 
   /* ── compare, drawn ──
-     One table with two homes: the modal off the Properties tab, and a card on
-     Result — the picking happens in one tab and the reading usually wants to
-     happen in the other, and a modal you have to dismiss to look at anything
-     else is the wrong shape for that.
+     Drawn into the Result card, because that card's job is to say what you are
+     looking at and two answers stacked on one tab is one too many.
 
-     Five is the ceiling, enforced at the checkbox. With exactly two the last
-     column is the difference between them, which is the whole point of a
-     pair; with three or more that reading has no meaning, so it becomes the
-     spread — highest less lowest — and the best IRR is marked instead. */
+     Five is the ceiling, enforced by the button rather than the checkboxes —
+     selecting is for everything, and only this one action has a limit. With
+     exactly two the last column is the difference between them, which is the
+     whole point of a pair; with three or more that reading has no meaning, so
+     it becomes the spread — highest less lowest — and the best IRR is marked
+     instead. */
   var MAX_PICK = 5;
   var CMP_TAGS = ['A','B','C','D','E'];
 
@@ -2582,21 +2641,78 @@ details .body strong{color:var(--text)}
     return h;
   }
 
-  /* The card lives on Result and fills itself as picks change, so the button
-     on the Properties tab only has to take you there. */
-  function renderCompare(){
+  /* The comparison is a state of the Result card, not a card of its own: the
+     Result tab answers "what am I looking at", and two answers stacked on it
+     is one too many. Opening a property from the list replaces it, which is
+     the same way you leave any other result. */
+  function drawCompare(){
     var h = compareHTML();
-    $('cmpResBody').innerHTML = h;
-    $('cmpResCard').hidden = !h;
+    if (!h) { showEmpty(); return; }
+    resultMode = 'compare';
+    last = null;
+    $('messages').innerHTML = '';
+    $('res-h').textContent = 'Compare — ' + picked.length + ' properties';
+    $('resultBody').innerHTML = h;
+    $('breakdownCard').hidden = true;
+    $('btnCsv').disabled = true;   /* it writes one property's monthly rows */
+    $('btnCsv').title = 'Export writes a single property — open one to use it';
   }
   function showCompare(){
+    var why = compareBlock();
+    if (why) { $('parseMsg').innerHTML = msg('warn', why); return; }
+    $('parseMsg').innerHTML = '';
+    drawCompare();
     showTab('result');
-    $('cmpResCard').scrollIntoView({ block:'start', behavior:'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function clearPicks(){ picked = []; renderProps(); }
   $('btnCompare').addEventListener('click', showCompare);
-  $('btnComparePickClear').addEventListener('click', clearPicks);
-  $('btnCmpResClear').addEventListener('click', clearPicks);
+  $('btnSelClear').addEventListener('click', clearPicks);
+
+  /* ── the other two things you can do to a selection ── */
+  function moveSelected(){
+    var hits = pickedEntries();
+    if (!hits.length) return;
+    askPrompt('Move category',
+      'File <strong>' + hits.length + '</strong> selected propert' + (hits.length===1?'y':'ies') +
+      ' under a category. An existing name moves them into it; a new one creates it; ' +
+      'leaving it blank clears the category.',
+      'Category', (hits[0].category || '').trim(), 'Move',
+      function(value){
+        var to = String(value || '').trim();
+        var ids = {}; picked.forEach(function(id){ ids[id] = 1; });
+        var list = loadProps(), n = 0;
+        list.forEach(function(e){ if (ids[e.id] && (e.category||'').trim() !== to) { e.category = to; n++; } });
+        if (!putProps(list)) return;
+        renderProps();
+        $('parseMsg').innerHTML = msg('ok', n
+          ? n + ' propert' + (n===1?'y':'ies') + ' moved to <strong>' + (to ? esc(to) : 'no category') + '</strong>.'
+          : 'Nothing to change — they were already filed there.');
+      });
+  }
+  function deleteSelected(){
+    var hits = pickedEntries();
+    if (!hits.length) return;
+    var names = hits.slice(0,4).map(function(e){ return esc(e.name || 'Untitled'); }).join(', ');
+    askConfirm(
+      'Delete <strong>' + hits.length + '</strong> propert' + (hits.length===1?'y':'ies') +
+      ' — ' + names + (hits.length > 4 ? ' and ' + (hits.length - 4) + ' more' : '') +
+      '. This browser holds the only copy, so there is nothing to undo it with.',
+      'Delete ' + hits.length,
+      function(){
+        var ids = {}; picked.forEach(function(id){ ids[id] = 1; });
+        var list = loadProps().filter(function(e){ return !ids[e.id]; });
+        if (!putProps(list)) return;
+        picked = [];
+        if (resultMode === 'compare') showEmpty();
+        renderProps();
+        $('parseMsg').innerHTML = msg('ok', hits.length + ' propert' +
+          (hits.length===1?'y':'ies') + ' deleted. The bundled Adelaide set can be reloaded from ' +
+          '<strong>+ Add properties</strong>.');
+      });
+  }
+  $('btnMoveCat').addEventListener('click', moveSelected);
+  $('btnDelSel').addEventListener('click', deleteSelected);
 
   /* ── Quick IRR: a deal you want to check, not keep ── */
   function openQuick(){
