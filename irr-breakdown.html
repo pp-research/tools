@@ -101,6 +101,11 @@
 :root[data-theme="light"] .modal::backdrop{background:rgba(23,27,36,.45)}
 :root[data-theme="light"] .kpi.lead{border-color:rgba(0,112,127,.34)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* A class that sets `display` outbids the UA's [hidden] rule on specificity, so
+   `.compare-bar{display:flex}` and `.edited-chip{display:inline-block}` were
+   both showing while carrying the attribute. Everything here uses `hidden` to
+   mean gone, so say it once and say it loudest. */
+[hidden]{display:none !important}
 html{-webkit-text-size-adjust:100%}
 body{
   font-family:'Manrope',system-ui,sans-serif; font-weight:500;
@@ -405,6 +410,7 @@ td.name{white-space:normal;min-width:150px;font-weight:600}
 td.pick,th:first-child:has(.sr-only){width:1%}
 td.pick{padding-right:0}
 td.pick input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
+td.pick input:disabled{cursor:not-allowed;opacity:.35}
 tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
 .compare-bar{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
   margin-bottom:var(--sp-3);padding:10px 14px;border-radius:var(--r-md);
@@ -417,7 +423,29 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
 .scn-head span{min-width:0;overflow-wrap:anywhere}
 .scn-btns{display:flex;gap:6px;flex-wrap:wrap}
 table.cmp td:first-child{color:var(--muted);white-space:nowrap}
+/* Five columns plus the spread scrolls sideways on a laptop, and a row of
+   numbers with the label scrolled off is unreadable — so the label column
+   stays put. It carries its own background because a sticky cell is painted
+   over whatever passes beneath it. */
+table.cmp td:first-child,table.cmp thead th:first-child{position:sticky;left:0}
+table.cmp td:first-child{z-index:1;background-color:var(--well)}
+/* the seam matters: without it a half-covered "−57.66%" reads as "57.66%" */
+table.cmp td:first-child,table.cmp thead th:first-child{
+  box-shadow:1px 0 0 var(--border-strong),12px 0 14px -8px rgba(0,0,0,.7)}
+table.cmp thead th:first-child{z-index:3}
+/* --row-alt is translucent, so re-lay it as an image over the solid well
+   colour rather than inventing a second, drift-prone opaque token */
+table.cmp tbody tr:nth-child(even) td:first-child{
+  background-image:linear-gradient(var(--row-alt),var(--row-alt))}
+table.cmp tbody tr:hover td:first-child{
+  background-image:linear-gradient(rgba(var(--accent-rgb),.10),rgba(var(--accent-rgb),.10))}
 table.cmp th.num,table.cmp td.num{text-align:right;font-variant-numeric:tabular-nums lining-nums}
+table.cmp th,table.cmp td{padding-left:10px;padding-right:10px}
+table.cmp th.cmp-name{white-space:normal;min-width:112px;max-width:180px;
+  vertical-align:bottom;line-height:1.35;font-weight:600}
+table.cmp th.cmp-name .cmp-tag{display:block;color:var(--muted);font-size:11px;
+  font-weight:700;letter-spacing:.06em}
+table.cmp td.cmp-best{background:rgba(var(--accent-rgb),.16)}
 .edited-chip{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;
   background:var(--note-bg);border:1px solid var(--note-line);color:var(--note-ink);
   font-size:10px;line-height:16px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
@@ -644,6 +672,16 @@ details .body strong{color:var(--text)}
           </div>
         </section>
 
+        <!-- the same table the Compare modal draws: picks are made on the
+             Properties tab, but this is where they get read -->
+        <section class="card" id="cmpResCard" hidden aria-labelledby="cmpres-h">
+          <div class="card-head">
+            <h2 id="cmpres-h">Compare</h2>
+            <button type="button" class="btn-ghost btn-sm" id="btnCmpResClear">Clear picks</button>
+          </div>
+          <div id="cmpResBody"></div>
+        </section>
+
         <section class="card" id="breakdownCard" hidden aria-labelledby="bd-h">
           <h2 id="bd-h">Monthly breakdown</h2>
           <p class="count-line" id="bdConstants"></p>
@@ -690,7 +728,7 @@ details .body strong{color:var(--text)}
 
           <div class="compare-bar" id="compareBar" hidden>
             <span id="compareCount"></span>
-            <button type="button" class="btn-primary btn-sm" id="btnCompare" disabled>Compare</button>
+            <button type="button" class="btn-primary btn-sm" id="btnCompare" disabled>Compare on Result</button>
             <button type="button" class="btn-ghost btn-sm" id="btnComparePickClear">Clear</button>
           </div>
           <p class="count-line" id="propCount"></p>
@@ -710,17 +748,6 @@ details .body strong{color:var(--text)}
           <div id="ovBody"></div>
         </section>
       </div>
-
-      <!-- ══════════ COMPARE — two properties, same assumptions ══════════ -->
-      <dialog class="modal" id="cmpDialog" aria-labelledby="cmp-h">
-        <div class="modal-inner">
-          <div class="modal-head">
-            <h2 id="cmp-h">Compare</h2>
-            <button type="button" class="modal-x" id="btnCmpClose" aria-label="Close">&times;</button>
-          </div>
-          <div class="modal-body" id="cmpBody"></div>
-        </div>
-      </dialog>
 
       <!-- ══════════ QUICK IRR — work out a deal without saving it ══════════ -->
       <dialog class="modal" id="quickDialog" aria-labelledby="quick-h">
@@ -1606,15 +1633,18 @@ details .body strong{color:var(--text)}
       });
     }
 
+    var full = picked.length >= MAX_PICK;
     var rows = data.map(function(d){
       var e = d.e;
       var irr = d.irr === null ? '—' : pct(d.irr);
       var net = d.net === null ? '—' : signed(d.net);
       var hold = d.hold === null ? '—' : d.hold.toFixed(2);
       var cat = (e.category||'').trim();
-      return '<tr'+(picked.indexOf(e.id)>=0?' class="is-picked"':'')+'>'+
+      var on = picked.indexOf(e.id) >= 0;
+      return '<tr'+(on?' class="is-picked"':'')+'>'+
         '<td class="pick"><input type="checkbox" data-pick="'+e.id+'"'+
-          (picked.indexOf(e.id)>=0?' checked':'')+
+          (on?' checked':'')+
+          (full && !on ? ' disabled title="Five is the limit — untick one first"' : '')+
           ' aria-label="Compare '+esc(e.name||'this property')+'"></td>'+
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
           (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +
@@ -1651,24 +1681,29 @@ details .body strong{color:var(--text)}
     syncCompareBar();
   }
 
-  /* ── compare two ──
-     The Result tab is strictly one property at a time, so holding two against
-     each other meant opening one, remembering it, and opening the other. Two
-     is the limit on purpose: a third column makes every row narrower than the
-     numbers in it, and picking a third swaps out the older choice. */
+  /* ── picking properties to compare ──
+     The Result tab is strictly one property at a time, so holding a few
+     against each other meant opening one, remembering it, and opening the
+     next. Five is the ceiling — past that the addresses stop fitting across a
+     screen — and at five the unticked boxes go dead rather than the oldest
+     pick silently falling out from under her. MAX_PICK and the table it feeds
+     live together further down. */
   var picked = [];
   function togglePick(id){
     var i = picked.indexOf(id);
     if (i >= 0) picked.splice(i, 1);
-    else { picked.push(id); if (picked.length > 2) picked.shift(); }
-    renderProps();
+    else if (picked.length < MAX_PICK) picked.push(id);
+    renderProps();   /* runs either way, so a blocked tick un-ticks itself */
   }
   function syncCompareBar(){
-    var bar = $('compareBar');
-    bar.hidden = picked.length === 0;
-    $('compareCount').textContent = picked.length === 1
-      ? '1 picked — choose one more' : picked.length + ' picked';
-    $('btnCompare').disabled = picked.length !== 2;
+    var n = picked.length;
+    $('compareBar').hidden = n === 0;
+    $('compareCount').textContent =
+        n === 1        ? '1 picked — tick at least one more'
+      : n === MAX_PICK ? n + ' picked — the limit, so untick one to swap'
+      :                  n + ' picked';
+    $('btnCompare').disabled = n < 2;
+    renderCompare();
   }
 
   /* ══════════ RENDER THE RESULT ══════════ */
@@ -2449,66 +2484,119 @@ details .body strong{color:var(--text)}
     renderProps();
   });
 
-  /* ── compare, drawn ── */
-  function renderCompare(){
+  /* ── compare, drawn ──
+     One table with two homes: the modal off the Properties tab, and a card on
+     Result — the picking happens in one tab and the reading usually wants to
+     happen in the other, and a modal you have to dismiss to look at anything
+     else is the wrong shape for that.
+
+     Five is the ceiling, enforced at the checkbox. With exactly two the last
+     column is the difference between them, which is the whole point of a
+     pair; with three or more that reading has no meaning, so it becomes the
+     spread — highest less lowest — and the best IRR is marked instead. */
+  var MAX_PICK = 5;
+  var CMP_TAGS = ['A','B','C','D','E'];
+
+  function compareHTML(){
     var all = loadProps(), opts = readOpts();
-    var two = picked.map(function(id){ return all.filter(function(e){ return e.id === id; })[0]; })
-                    .filter(Boolean);
-    if (two.length !== 2) return;
-    var runs = two.map(function(e){
+    var set = picked.map(function(id){
+      return all.filter(function(e){ return e.id === id; })[0];
+    }).filter(Boolean);
+    if (set.length < 2) return '';
+
+    var runs = set.map(function(e){
       try { return { e:e, s: window.IRRBreakdown.computeBreakdown(e, opts).summary }; }
       catch (err) { return { e:e, s:null }; }
     });
+    var pair = runs.length === 2;
+
+    /* label, cell text, raw number (null = not comparable), delta format */
     var rows = [
-      ['Purchase price', function(r){ return r.s ? aud(r.s.purchasePrice) : aud(r.e.purchasePrice); }, function(r){ return r.s && r.s.purchasePrice; }],
-      ['Purchase date',  function(r){ return r.s ? dLabel(r.s.purchaseDate) : '—'; }, null],
-      ['Sold price',     function(r){ return r.s ? aud(r.s.soldPrice) : '<span class="faint">none</span>'; }, function(r){ return r.s && r.s.soldPrice; }],
-      ['Sold date',      function(r){ return r.s ? dLabel(r.s.soldDate) : '—'; }, null],
-      ['Hold period',    function(r){ return r.s ? r.s.holdYears.toFixed(2) + ' yrs' : '—'; }, function(r){ return r.s && r.s.holdYears; }],
-      ['Gross profit',   function(r){ return r.s ? aud(r.s.grossProfit) : '—'; }, function(r){ return r.s && r.s.grossProfit; }],
-      ['Finance costs',  function(r){ return r.s ? aud(r.s.financeCosts) : '—'; }, function(r){ return r.s && r.s.financeCosts; }],
-      ['Running costs',  function(r){ return r.s ? aud(r.s.runningCosts) : '—'; }, function(r){ return r.s && r.s.runningCosts; }],
-      ['Rental income',  function(r){ return r.s ? aud(r.s.rentalIncome) : '—'; }, function(r){ return r.s && r.s.rentalIncome; }],
-      ['Net profit',     function(r){ return r.s ? signed(r.s.netProfit) : '—'; }, function(r){ return r.s && r.s.netProfit; }],
-      ['IRR',            function(r){ return r.s && r.s.irr !== null ? pct(r.s.irr) : '—'; }, function(r){ return r.s && r.s.irr; }]
+      ['Purchase price', function(r){ return r.s ? aud(r.s.purchasePrice) : aud(r.e.purchasePrice); },
+        function(r){ return r.s && r.s.purchasePrice; }, 'aud'],
+      ['Purchase date',  function(r){ return r.s ? dLabel(r.s.purchaseDate) : '—'; }, null, ''],
+      ['Sold price',     function(r){ return r.s ? aud(r.s.soldPrice) : '<span class="faint">none</span>'; },
+        function(r){ return r.s && r.s.soldPrice; }, 'aud'],
+      ['Sold date',      function(r){ return r.s ? dLabel(r.s.soldDate) : '—'; }, null, ''],
+      ['Hold period',    function(r){ return r.s ? r.s.holdYears.toFixed(2) + ' yrs' : '—'; },
+        function(r){ return r.s && r.s.holdYears; }, 'yrs'],
+      ['Gross profit',   function(r){ return r.s ? aud(r.s.grossProfit) : '—'; },
+        function(r){ return r.s && r.s.grossProfit; }, 'aud'],
+      ['Finance costs',  function(r){ return r.s ? aud(r.s.financeCosts) : '—'; },
+        function(r){ return r.s && r.s.financeCosts; }, 'aud'],
+      ['Running costs',  function(r){ return r.s ? aud(r.s.runningCosts) : '—'; },
+        function(r){ return r.s && r.s.runningCosts; }, 'aud'],
+      ['Rental income',  function(r){ return r.s ? aud(r.s.rentalIncome) : '—'; },
+        function(r){ return r.s && r.s.rentalIncome; }, 'aud'],
+      ['Net profit',     function(r){ return r.s ? signed(r.s.netProfit) : '—'; },
+        function(r){ return r.s && r.s.netProfit; }, 'aud'],
+      ['IRR',            function(r){ return r.s && r.s.irr !== null ? pct(r.s.irr) : '—'; },
+        function(r){ return r.s && r.s.irr; }, 'pct']
     ];
-    var h = '<p class="count-line" style="margin-bottom:var(--sp-4)">Both on the same settings — '+
-            esc(basisText())+'.</p>'+
+
+    function num(v){ return (v !== null && v !== undefined && isFinite(v)) ? v : null; }
+    function spread(kind, d){
+      return kind === 'pct' ? pct(d) : kind === 'yrs' ? d.toFixed(2) + ' yrs' : aud(d);
+    }
+    function delta(kind, d){
+      var t = kind === 'pct' ? (d>=0?'+':'−') + pct(Math.abs(d))
+            : kind === 'yrs' ? (d>=0?'+':'−') + Math.abs(d).toFixed(2) + ' yrs'
+            : signed(d);
+      return kind === 'aud' ? t : '<span class="'+(d>0?'pos':d<0?'neg':'')+'">'+t+'</span>';
+    }
+
+    var h = '<p class="count-line" style="margin-bottom:var(--sp-4)">All on the same '+
+            'settings — '+esc(basisText())+'.</p>'+
       '<div class="tbl-scroll" style="max-height:none"><table class="cmp"><thead><tr><th></th>'+
-      runs.map(function(r){ return '<th class="num">'+esc(r.e.name||'Untitled')+'</th>'; }).join('')+
-      '<th class="num">Difference</th></tr></thead><tbody>';
+      runs.map(function(r, i){
+        return '<th class="num cmp-name"><span class="cmp-tag">'+CMP_TAGS[i]+'</span>'+
+               esc(r.e.name || 'Untitled')+'</th>';
+      }).join('')+
+      '<th class="num">'+(pair ? 'Difference' : 'Spread')+'</th></tr></thead><tbody>';
+
     rows.forEach(function(row){
-      var label = row[0], show = row[1], raw = row[2];
-      var diff = '';
-      if (raw) {
-        var a = raw(runs[0]), b = raw(runs[1]);
-        if (isFinite(a) && isFinite(b) && a !== null && b !== null) {
-          var d = b - a;
-          diff = label === 'IRR' ? (d>=0?'+':'−') + pct(Math.abs(d))
-               : label === 'Hold period' ? (d>=0?'+':'−') + Math.abs(d).toFixed(2) + ' yrs'
-               : signed(d);
-          diff = '<span class="'+(d>0?'pos':d<0?'neg':'')+'">'+diff+'</span>';
-        }
+      var label = row[0], show = row[1], raw = row[2], kind = row[3];
+      var vals = raw ? runs.map(function(r){ return num(raw(r)); }) : [];
+      var ok = vals.filter(function(v){ return v !== null; });
+      var last = '';
+      if (ok.length >= 2) {
+        last = pair ? delta(kind, vals[1] - vals[0])
+                    : spread(kind, Math.max.apply(null, ok) - Math.min.apply(null, ok));
       }
+      /* the best IRR is the one thing worth pointing at across five columns */
+      var best = (!pair && label === 'IRR' && ok.length) ? Math.max.apply(null, ok) : null;
       h += '<tr><td>'+label+'</td>'+
-           runs.map(function(r){ return '<td class="num">'+show(r)+'</td>'; }).join('')+
-           '<td class="num">'+(diff || '<span class="faint">—</span>')+'</td></tr>';
+           runs.map(function(r, i){
+             var win = best !== null && vals[i] === best;
+             return '<td class="num'+(win ? ' cmp-best' : '')+'"'+
+                    (win ? ' title="Highest IRR of the picked set"' : '')+'>'+show(r)+'</td>';
+           }).join('')+
+           '<td class="num">'+(last || '<span class="faint">—</span>')+'</td></tr>';
     });
+
     h += '</tbody></table></div>'+
-         '<p class="count-line" style="margin-top:var(--sp-3)">Difference is the second '+
-         'property less the first.</p>';
-    $('cmpBody').innerHTML = h;
+         '<p class="count-line" style="margin-top:var(--sp-3)">'+
+         (pair ? 'Difference is B less A.'
+               : 'Spread is the highest less the lowest. The highest IRR is marked.')+
+         '</p>';
+    return h;
   }
-  function openCompare(){
-    renderCompare();
-    var d = $('cmpDialog');
-    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
+
+  /* The card lives on Result and fills itself as picks change, so the button
+     on the Properties tab only has to take you there. */
+  function renderCompare(){
+    var h = compareHTML();
+    $('cmpResBody').innerHTML = h;
+    $('cmpResCard').hidden = !h;
   }
-  function closeCompare(){ var d = $('cmpDialog'); if (d.open) d.close(); }
-  $('btnCompare').addEventListener('click', openCompare);
-  $('btnCmpClose').addEventListener('click', closeCompare);
-  $('cmpDialog').addEventListener('click', function(ev){ if (ev.target === $('cmpDialog')) closeCompare(); });
-  $('btnComparePickClear').addEventListener('click', function(){ picked = []; renderProps(); });
+  function showCompare(){
+    showTab('result');
+    $('cmpResCard').scrollIntoView({ block:'start', behavior:'smooth' });
+  }
+  function clearPicks(){ picked = []; renderProps(); }
+  $('btnCompare').addEventListener('click', showCompare);
+  $('btnComparePickClear').addEventListener('click', clearPicks);
+  $('btnCmpResClear').addEventListener('click', clearPicks);
 
   /* ── Quick IRR: a deal you want to check, not keep ── */
   function openQuick(){
