@@ -311,7 +311,7 @@ print  "    $_: $moved{$_}\n" for sort keys %moved;
 # cotality-v2/TABLE-CLOCK.md; this is the same table the live build used, and
 # the assignment below reproduces all 72 live positions before the fix is
 # applied (asserted in Phase A2 further down).
-my @T = map { my @p=split /\|/; {ph=>$p[0],t=>$p[1],h=>$p[2],pat=>[@p[3..5]]} } (
+my @TABLE = map { my @p=split /\|/; {ph=>$p[0],t=>$p[1],h=>$p[2],pat=>[@p[3..5]]} } (
  'Selling|10:00|10|R|G|G',     'Selling|10:30|10.5|R|G|O',
  'Selling|11:00|11|R|O|G',     'Selling|11:30|11.5|OR|O|O',
  'Selling|12:00|12|OR|O|O',    'Selling|12:30|12.5|OR|R|O',
@@ -327,7 +327,17 @@ my @T = map { my @p=split /\|/; {ph=>$p[0],t=>$p[1],h=>$p[2],pat=>[@p[3..5]]} } 
 sub acc { index($_[0],$_[1]) >= 0 }
 
 sub assignClock {
-  my $confOf = shift;                       # ->($region,$seg) => GREEN|ORANGE|RED
+  my ($confOf,$noRedSDinSelling) = @_;      # ->($region,$seg) => GREEN|ORANGE|RED
+  # $noRedSDinSelling switches on Shaene's third rule (2026-09-28). It is OFF
+  # for the Phase A2 replay, because that rule deliberately MOVES positions —
+  # the replay has to reproduce the build as it was, or it proves nothing.
+  #
+  # Part of that rule is a TABLE EDIT: 12:30's S&D cell goes R -> O, matching
+  # 11:30 and 12:00. With the gate on, no reading can match an R there anyway,
+  # and she said Selling S&D is orange or green. Taken as a per-call copy so
+  # the base table is never mutated between the replay and the live run.
+  my @T = map { {ph=>$_->{ph}, t=>$_->{t}, h=>$_->{h}, pat=>[@{$_->{pat}}]} } @TABLE;
+  if($noRedSDinSelling){ for my $t (@T){ $t->{pat}[1]='O' if $t->{t} eq '12:30' } }
   my @rows;
   for my $r (@REG){ for my $s (qw(h u)){
     push @rows, { r=>$r, s=>$s, p36=>$DATA->{$r}{"clock_p36_$s"},
@@ -343,8 +353,12 @@ sub assignClock {
       $b=$s if $s>$b } $b };
   my %IX; $IX{$T[$_]{t}}=$_ for 0..$#T;
   my @SLOTS=('11:30','12:00','12:30'); my %redPick;
+  # the 11:30/12:00/12:30 runway-depth placement is a SELLING device, so a
+  # red-S&D reading is excluded from it once Selling is shut to it
   my @red = sort { $b->{eff} <=> $a->{eff} }
-            grep { $_->{sig}[0] eq 'R' && $bestFit->($_) < 2 } @rows;
+            grep { $_->{sig}[0] eq 'R'
+                && !($noRedSDinSelling && $_->{sig}[1] eq 'R')
+                && $bestFit->($_) < 2 } @rows;
   for my $k (0..$#red){
     my $g = @red>1 ? int($k*scalar(@SLOTS)/scalar(@red)) : 0;
     $g = $#SLOTS if $g > $#SLOTS;
@@ -365,13 +379,20 @@ sub assignClock {
     #
     # Both hold on current and corrected data, so they change nothing today.
     # They are gates against future data, which is the point of a gate.
+    #  3. NO RED S&D IN SELLING (Shaene, 2026-09-28): "selling phase should
+    #     have orange/green S&D ... i meant, no red S&D".
     my $sigStr = join '/', @{$x->{sig}};
     my $ggo = $sigStr eq 'G/G/O';
     my $gR  = $x->{sig}[0] eq 'G' && $x->{sig}[1] eq 'R';
+    my $rSD = $noRedSDinSelling && $x->{sig}[1] eq 'R';
     my @ok = grep { acc($T[$_]{pat}[0],$x->{sig}[0])
                  && ($T[$_]{ph} ne 'Buy Value' || $ggo)
-                 && (!$gR || $T[$_]{ph} eq 'Correction') } 0..$#T;
-    # never let a gate empty the pool — fall back to the Value gate and say so
+                 && (!$gR  || $T[$_]{ph} eq 'Correction')
+                 && (!$rSD || $T[$_]{ph} ne 'Selling') } 0..$#T;
+    # R/R/x is the ONE exception to the Value gate: only Selling cells accept a
+    # red Value, so shutting Selling leaves it nowhere. It goes to Correction —
+    # expensive AND no demand is not a peak, it is the unwind.
+    if(!@ok && $rSD){ @ok = grep { $T[$_]{ph} eq 'Correction' } 0..$#T }
     unless(@ok){
       warn "  clock: $x->{r}/$x->{s} $sigStr has no position under the phase "
           ."gates; falling back to the Value gate alone\n";
@@ -393,7 +414,7 @@ sub assignClock {
     my @cand = grep { $fit{$_}==$phFit } @pool;
     my $best=$phFit;
     my $pick = $cand[ int($gr{$x->{r}.$x->{s}} * $#cand + 0.5) ];
-    if($x->{sig}[0] eq 'R' && defined $redPick{$x->{r}.$x->{s}}){
+    if($x->{sig}[0] eq "R" && !$rSD && defined $redPick{$x->{r}.$x->{s}}){
       $pick = $redPick{$x->{r}.$x->{s}};
       $best = (acc($T[$pick]{pat}[1],$x->{sig}[1])?1:0)
             + (acc($T[$pick]{pat}[2],$x->{sig}[2])?1:0);
@@ -418,7 +439,7 @@ if(@cfail){
 }
 print "\nPHASE A2 — clock table reproduces all 72 live positions.\n";
 
-my $newClock = assignClock(sub { $DATA->{$_[0]}{"confidence_$_[1]"} });
+my $newClock = assignClock(sub { $DATA->{$_[0]}{"confidence_$_[1]"} }, 1);
 my (%phMove,%hrMove);
 for my $r (@REG){ for my $s (qw(h u)){
   my $g=$newClock->{"$r|$s"};
