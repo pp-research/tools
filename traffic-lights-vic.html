@@ -418,6 +418,11 @@ table.calc.pvr .na{color:var(--text-faint)}
 .pvr-tt .ttg{font-weight:800;color:var(--teal);border-top:1px solid var(--border);padding-top:5px}
 #pvrSet[hidden]{display:none}
 table.calc.pvr td.pvr-now{white-space:nowrap}
+.pvr-div2{display:flex;flex-direction:column;align-items:center;gap:3px}
+.pvr-div2 .nums{display:flex;gap:2px}
+.pvr-div2 .nums span{width:60px;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.pvr-div2 .nums .lv{text-align:right;padding-right:4px;color:var(--red)}
+.pvr-div2 .nums .rv{text-align:left;padding-left:4px;color:var(--teal)}
 table.calc.pvr td.nm{min-width:150px;max-width:210px;white-space:normal}
 table.calc.pvr td.pvr-now .sub{display:block}
 .pvr-ph-buyvalue{color:var(--teal)!important;font-weight:800}
@@ -1611,8 +1616,9 @@ function renderPVR(){
   const na='<span class="na">&ndash;</span>';
   const body=shown.map(r=>{ const i=r.q?(qOnly.indexOf(r)+1):'&ndash;';   // numbered among the qualifiers; others get a dash
     const bar=r.price==null?'<span class="pvr-atpeak">At its price peak</span>':
-      ('<div class="pvr-div"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'</span><span class="l"><i style="width:'+(Math.max(0,-r.price)*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r">'+
-       (r.rent!=null&&r.rent>0?'<i style="width:'+(r.rent*scale).toFixed(1)+'px"></i>':'')+'</span><span class="rv">'+(r.rent!=null?((r.rent>0?'+':'')+r.rent.toFixed(1).replace('-','−')):'&ndash;')+'</span></div>');
+      ('<div class="pvr-div2"><div class="nums"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'%</span><span class="rv">'+(r.rent!=null?((r.rent>0?'+':'')+r.rent.toFixed(1).replace('-','−')+'%'):'&ndash;')+'</span></div>'+
+       '<div class="pvr-div"><span class="l"><i style="width:'+(Math.max(0,-r.price)*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r">'+
+       (r.rent!=null&&r.rent>0?'<i style="width:'+(r.rent*scale).toFixed(1)+'px"></i>':'')+'</span></div></div>');
     // under the name: Metro, or Regional with the road time to its main town (the drive-time filter's measure)
     const where=r.area==='metro'?'Metro':('Regional'+(r.dm!=null?' &middot; '+pvrHM(r.dm)+' drive'+(r.town?' to '+r.town:''):''));
     return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
