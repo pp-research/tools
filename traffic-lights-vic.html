@@ -417,8 +417,9 @@ table.calc.pvr .na{color:var(--text-faint)}
 .pvr-tile .v{font-size:22px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
 .pvr-tile .v.dn{color:var(--red)}.pvr-tile .v.up{color:var(--teal)}
 .pvr-sel p{font-size:13px;line-height:1.6;color:var(--text-dim);margin:0;padding-top:12px;border-top:1px solid var(--border)}
-.pvr-mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:26px;align-items:start}
-.pvr-mapside{display:flex;flex-direction:column;gap:16px}
+.pvr-mapgrid{display:flex;flex-direction:column;gap:22px}
+.pvr-mapside{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
+@media(max-width:900px){.pvr-mapside{grid-template-columns:1fr}}
 .pvr-mapside .eb{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint)}
 .pvr-mapside p{font-size:13.5px;line-height:1.6;color:var(--text);margin:0}
 .pvr-mapside p.dim{color:var(--text-dim)}
@@ -1467,7 +1468,7 @@ function renderPVR(){
   const mapEl=document.getElementById('pvrMap'), pts=list.filter(r=>r.price!=null&&r.rent!=null);
   if(!pts.length){ mapEl.innerHTML='<div class="pvr-empty">No '+segW+' market '+FILT+' has a stall to plot.</div>'; }
   else {
-    const W=904,H=620,X0=80,X1=842,YT=40,YB=560;   // X1 leaves room for the right-hand % labels
+    const W=1180,H=580,X0=80,X1=1118,YT=40,YB=520;   // full width; X1 leaves room for the right-hand % labels
     const xmin=Math.min(-5,Math.floor(Math.min(...pts.map(r=>r.price))/5)*5), xmax=0;
     const ymax=Math.max(10,Math.ceil(Math.max(...pts.map(r=>r.rent))/10)*10), ymin=Math.min(0,Math.floor(Math.min(...pts.map(r=>r.rent))/5)*5);
     const X=v=>X0+(X1-X0)*(v-xmin)/(xmax-xmin), Y=v=>YB-(YB-YT)*(v-ymin)/(ymax-ymin);
