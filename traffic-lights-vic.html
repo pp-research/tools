@@ -387,6 +387,8 @@ table.calc.pvr td:last-child b{color:#00A1B4}
 .pvr-sub{font-size:13px;line-height:1.6;color:var(--text-dim);margin:0}
 .pvr-note{font-size:12px;line-height:1.6;color:var(--text-faint);margin:0}
 .pvr-foot .pvr-note{flex:1 1 400px}
+.pvr-select{margin-bottom:0}
+.dd-opt .dd-gap{margin-left:auto;margin-right:10px;font-size:12px;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums}
 .pvr-svg{width:100%;height:auto;display:block}
 .pvr-empty{padding:40px 10px;text-align:center;color:var(--text-dim);font-size:14px}
 .pvr-sel .eb{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint)}
@@ -666,6 +668,16 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
   </div>
   <div class="pane" id="pane-pvr" role="tabpanel" hidden>
     <div class="pvr">
+      <div class="region-select pvr-select">
+        <label for="pvrDdInput">SELECT LGA</label>
+        <div class="dd" id="pvrDd">
+          <div class="dd-trigger" id="pvrDdTrigger">
+            <span class="cur"><span class="pin"></span><input type="text" id="pvrDdInput" placeholder="Search LGAs&hellip;" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pvrDdPanel"></span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div class="dd-panel" id="pvrDdPanel" role="listbox"></div>
+        </div>
+      </div>
       <section class="pvr-hero">
         <div class="pvr-hero-txt">
           <div class="pvr-eyebrow">Price v Rent</div>
@@ -1265,7 +1277,8 @@ function renderGrowth(lga,root){
   });
   hit.addEventListener('mouseleave',()=>{ tip.style.opacity=0; cross.style.display='none'; });
 }
-function renderGrowthAll(lga){
+function renderGrowthAll(){   // the history chart lives on Price v Rent, so it follows that tab's own selection
+  const lga=pvrLGA();
   const inl=document.getElementById('gwInline'); if(inl) renderGrowth(lga,inl);
   const m=document.getElementById('gwModal');
   if(m&&!m.hidden) renderGrowth(lga,document.getElementById('gwBig'));
@@ -1277,14 +1290,14 @@ function gwOpen(){
   const m=document.getElementById('gwModal');
   GWRET=document.activeElement;
   m.hidden=false; document.body.style.overflow='hidden';
-  renderGrowth(current,document.getElementById('gwBig'));
+  renderGrowth(pvrLGA(),document.getElementById('gwBig'));
   const c=m.querySelector('.gwmx'); if(c) c.focus();
 }
 function gwClose(){
   const m=document.getElementById('gwModal');
   if(!m||m.hidden) return;
   m.hidden=true; document.body.style.overflow='';
-  renderGrowth(current,document.getElementById('gwInline'));
+  renderGrowth(pvrLGA(),document.getElementById('gwInline'));
   if(GWRET&&GWRET.focus) GWRET.focus();
   GWRET=null;
 }
@@ -1319,8 +1332,11 @@ function pvrRows(seg){
 const pvrHM=m=>Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');
 const pvrPC=x=>(x>0?'+':'')+x.toFixed(1)+'%';
 const pvrNm=l=>l==='Melbourne'?'City of Melbourne':l;
-function pvrPick(l){ current=l; ddInput.placeholder=current; render(current); buildSummary(); }
+let pvrCur=null;   // the Price v Rent selection, independent of the Dashboard's; null = start on the widest gap
+function pvrLGA(){ if(!pvrCur||!LGAS.includes(pvrCur)){ const o=pvrRows(GSEG).out.sort((a,b)=>b.gap-a.gap); pvrCur=o.length?o[0].l:current; } return pvrCur; }
+function pvrPick(l){ pvrCur=l; pvrDdInput.placeholder=pvrNm(l); renderGrowthAll(); }
 function renderPVR(){
+  const cur=pvrLGA();   // Price v Rent keeps its OWN selection, independent of the Dashboard's
   const seg=GSEG, segW=seg==='house'?'house':'unit', {out,skip}=pvrRows(seg);
   const rows=out.filter(r=>PVRF==='all'||r.area===PVRF);
   const FILT={all:'across Victoria',metro:'in metro Melbourne',near:'within 2h15 of Melbourne',far:'beyond 2h15'}[PVRF];
@@ -1339,10 +1355,10 @@ function renderPVR(){
     kv('Within about 2 hours', near.length+' regional', near.length?('led by '+pvrNm(near[0].l)+' &middot; '+(near[0].gap>0?'+':'')+near[0].gap.toFixed(1)+' pts'):'none qualify on '+segW+'s', false, true);
 
   // ---- since-the-peak chart for the selected market
-  const G=GROWTH[current]&&GROWTH[current][seg], idx=document.getElementById('pvrIdx');
+  const G=GROWTH[cur]&&GROWTH[cur][seg], idx=document.getElementById('pvrIdx');
   const CY=G?G.y0+G.p.length-1:null;
-  if(!G){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(current)+'</h3></div><div class="pvr-empty">No '+segW+' price history for this market.</div>'; }
-  else if(!G.stag){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(current)+' '+segW+'s since the price peak</h3></div><div class="pvr-empty">The '+segW+' price is at its peak now, so there is no stall to chart. Pick a market from the map or the ranking below.</div>'; }
+  if(!G){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(cur)+'</h3></div><div class="pvr-empty">No '+segW+' price history for this market.</div>'; }
+  else if(!G.stag){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(cur)+' '+segW+'s since the price peak</h3></div><div class="pvr-empty">The '+segW+' price is at its peak now, so there is no stall to chart. Pick a market from the map or the ranking below.</div>'; }
   else {
     const yrs=[], P=[], R=[]; let pi=100, ri=100, rOK=true;
     for(let y=G.pk;y<=CY;y++){ const i=y-G.y0;
@@ -1360,7 +1376,7 @@ function renderPVR(){
     const both=R.every(v=>v!=null);
     const poly=both?'<polygon points="'+pts(R)+' '+P.map((v,j)=>X(j).toFixed(1)+','+Y(v).toFixed(1)).reverse().join(' ')+'" style="fill:var(--teal);opacity:.14"></polygon>':'';
     const lastR=R[n-1], lastP=P[n-1];
-    idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(current)+' '+segW+'s since the '+G.pk+' peak</h3>'+
+    idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(cur)+' '+segW+'s since the '+G.pk+' peak</h3>'+
       '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(both?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+'</div></div>'+
       '<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Indexed to 100 at the '+G.pk+' peak: price '+lastP.toFixed(1)+(lastR!=null?', rent '+lastR.toFixed(1):'')+'">'+
       '<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+poly+
@@ -1368,26 +1384,26 @@ function renderPVR(){
       '<polyline points="'+pts(P)+'" style="fill:none;stroke:var(--text);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round"></polyline>'+
       (lastR!=null?'<circle cx="'+X(n-1)+'" cy="'+Y(lastR)+'" r="6" style="fill:var(--teal)"></circle><text x="'+(X(n-1)-12)+'" y="'+(Y(lastR)-12)+'" text-anchor="end" style="fill:var(--teal);font-size:13px;font-weight:800">Rent '+lastR.toFixed(1)+'</text>':'')+
       '<circle cx="'+X(n-1)+'" cy="'+Y(lastP)+'" r="6" style="fill:var(--text)"></circle><text x="'+(X(n-1)-12)+'" y="'+(Y(lastP)+22)+'" text-anchor="end" style="fill:var(--text);font-size:13px;font-weight:800">Price '+lastP.toFixed(1)+'</text>'+
-      '</svg><p class="pvr-note">Indexed to 100 in the peak year. Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
+      '</svg><p class="pvr-note">Indexed to 100 in the peak year. Price: December 12-month median, the cur year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
   }
 
   // ---- selected market
-  const me=out.find(r=>r.l===current), sel=document.getElementById('pvrSel');
-  const rankGap=me?out.slice().sort((a,b)=>b.gap-a.gap).findIndex(r=>r.l===current)+1:null;
-  const dv=DRIVE[current], area=pvrArea(current);
+  const me=out.find(r=>r.l===cur), sel=document.getElementById('pvrSel');
+  const rankGap=me?out.slice().sort((a,b)=>b.gap-a.gap).findIndex(r=>r.l===cur)+1:null;
+  const dv=DRIVE[cur], area=pvrArea(cur);
   const where=area==='metro'?'Metro':('Regional &middot; '+(dv?pvrHM(dv.m)+' to '+dv.t:''));
   if(G&&G.stag){
     const gpy=(G.rwin!=null)?(Math.pow((1+G.rwin/100)/(1+G.pwin/100),1/G.stag)-1)*100:null;
     const why=me?('Price peaked in '+G.pk+' and has not been passed since. Rent has kept rising through the stall'+(gpy!=null?', lifting the gross yield about '+Math.round(gpy)+'% a year.':'.'))
       :(G.stag<3?('Price has been below its '+G.pk+' peak for '+G.stag+' year'+(G.stag>1?'s':'')+'; a market qualifies at 3.'):(G.rwin==null?'No rent history reaching back to the '+G.pk+' peak, so it cannot be ranked.':'Rent is no higher than at the '+G.pk+' peak.'));
-    sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:16px"><div><div class="eb">Selected market</div><div class="nm">'+pvrNm(current)+'</div>'+
+    sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:16px"><div><div class="eb">Selected market</div><div class="nm">'+pvrNm(cur)+'</div>'+
       '<div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+(me?(' &middot; ranked '+rankGap+' of '+out.length+' by gap'):' &middot; not in the ranking')+'</div></div>'+
       '<div class="pvr-tiles"><div class="pvr-tile"><div class="k">Price since peak</div><div class="v dn">'+pvrPC(G.pwin)+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Rent since peak</div><div class="v up">'+(G.rwin!=null?pvrPC(G.rwin):'&ndash;')+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Stalled</div><div class="v">'+G.stag+' year'+(G.stag>1?'s':'')+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Gap a year</div><div class="v">'+(gpy!=null?pvrPC(gpy):'&ndash;')+'</div></div></div>'+
       '<p>'+why+'</p></div>';
-  } else sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:12px"><div class="eb">Selected market</div><div class="nm">'+pvrNm(current)+'</div><div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+'</div><p>'+(G?'At its price peak now.':'No '+segW+' price history.')+' Pick a market from the map or the ranking below.</p></div>';
+  } else sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:12px"><div class="eb">Selected market</div><div class="nm">'+pvrNm(cur)+'</div><div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+'</div><p>'+(G?'At its price peak now.':'No '+segW+' price history.')+' Pick a market from the map or the ranking below.</p></div>';
 
   // ---- map: every qualifying market by price since the peak (x) against rent since the peak (y)
   const mapEl=document.getElementById('pvrMap');
@@ -1442,7 +1458,7 @@ function renderPVR(){
   const cols=[['#',null],['Market','l'],['Drive','dm'],['Peak','pk'],['Stalled','stag'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy']];
   const th=cols.map(([t,kk])=>kk?('<th data-k="'+kk+'" class="sortable'+(kk===key?' on':'')+'">'+t+(kk===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
   const body=shown.map(r=>{ const i=sorted.indexOf(r)+1;
-    return '<tr class="pvr-row'+(r.l===current?' active':'')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+'<span class="sub'+(r.area==='near'?' n':'')+'">'+AREA[r.area]+(r.town&&r.area!=='metro'?' &middot; '+r.town:'')+'</span></td>'+
+    return '<tr class="pvr-row'+(r.l===cur?' active':'')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+'<span class="sub'+(r.area==='near'?' n':'')+'">'+AREA[r.area]+(r.town&&r.area!=='metro'?' &middot; '+r.town:'')+'</span></td>'+
       '<td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?pvrHM(r.dm):'&ndash;')+'</td><td>'+r.pk+'</td><td>'+r.stag+'y</td>'+
       '<td><div class="pvr-div"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'</span><span class="l"><i style="width:'+(-r.price*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r"><i style="width:'+(r.rent*scale).toFixed(1)+'px"></i></span><span class="rv">+'+r.rent.toFixed(1)+'</span></div></td>'+
       '<td class="gap"><b>'+(r.gap>0?'+':'')+r.gap.toFixed(1)+'</b></td><td><b>'+(r.gpy>0?'+':'')+r.gpy.toFixed(1)+'%</b></td></tr>'; }).join('');
@@ -1459,10 +1475,10 @@ function renderPVR(){
     if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='dm'||kk==='pk')?1:-1; } renderPVR(); });
   document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrPick(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrPick(tr.dataset.l); } }; });
   document.querySelectorAll('#pvrSeg button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.s===seg));
-    b.onclick=()=>{ if(GSEG!==b.dataset.s){ GSEG=b.dataset.s; STMORE=false; renderGrowthAll(current); } }; });
+    b.onclick=()=>{ if(GSEG!==b.dataset.s){ GSEG=b.dataset.s; STMORE=false; renderGrowthAll(cur); } }; });
   document.querySelectorAll('#pvrFilt button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.f===PVRF));
     b.onclick=()=>{ PVRF=b.dataset.f; PVRALL=false; renderPVR(); }; });
-  const t=document.getElementById('pvrTitle'); if(t) t.textContent=pvrNm(current)+' — full price and rent history';
+  const t=document.getElementById('pvrTitle'); if(t) t.textContent=pvrNm(cur)+' — full price and rent history';
 }
 /* ---- Shortlist: stagnated 3+ years, rent up across it ---- */
 function stagRows(seg){
@@ -1892,6 +1908,30 @@ ddInput.addEventListener('keydown',e=>{
 ddTrigger.addEventListener('click',e=>{if(e.target!==ddInput)ddInput.focus();});
 document.addEventListener('click',e=>{if(!dd.contains(e.target))closeDD();});
 
+/* Price v Rent's own dropdown: the Dashboard's look, its own selection (pvrCur). Qualifying markets show their gap. */
+const pvrDd=document.getElementById('pvrDd'),pvrDdTrigger=document.getElementById('pvrDdTrigger'),pvrDdPanel=document.getElementById('pvrDdPanel'),pvrDdInput=document.getElementById('pvrDdInput');
+let pvrFiltered=LGAS.slice(), pvrKb=-1;
+function pvrBuildOpts(){
+  const q=pvrDdInput.value.trim().toLowerCase(), Q={}; pvrRows(GSEG).out.forEach(r=>{ Q[r.l]=r; });
+  pvrFiltered=q?LGAS.filter(l=>l.toLowerCase().includes(q)||pvrNm(l).toLowerCase().includes(q)):LGAS.slice();
+  if(!pvrFiltered.length){pvrDdPanel.innerHTML='<div class="dd-empty">No LGAs found</div>';return;}
+  pvrDdPanel.innerHTML=pvrFiltered.map((l,i)=>'<div class="dd-opt '+(l===pvrCur?'sel':'')+' '+(i===pvrKb?'kb':'')+'" role="option" data-lga="'+l+'"><span>'+pvrNm(l)+'</span>'+
+    (Q[l]?'<span class="dd-gap" title="Qualifies: gap since the price peak">'+(Q[l].gap>0?'+':'')+Q[l].gap.toFixed(1)+' pts</span>':'')+TICK+'</div>').join('');
+  pvrDdPanel.querySelectorAll('.dd-opt').forEach(o=>o.addEventListener('click',()=>pvrSelect(o.dataset.lga)));
+}
+function pvrSelect(l){ pvrDdInput.value=''; pvrKb=-1; pvrCloseDD(); pvrPick(l); }
+function pvrOpenDD(){ pvrDd.classList.add('open'); pvrDdTrigger.setAttribute('aria-expanded','true'); pvrKb=-1; pvrBuildOpts(); }
+function pvrCloseDD(){ pvrDd.classList.remove('open'); pvrDdTrigger.setAttribute('aria-expanded','false'); pvrDdInput.value=''; pvrKb=-1; }
+pvrDdInput.addEventListener('focus',pvrOpenDD);
+pvrDdInput.addEventListener('input',()=>{ if(!pvrDd.classList.contains('open')) pvrOpenDD(); pvrKb=-1; pvrBuildOpts(); });
+pvrDdInput.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){e.preventDefault(); if(pvrFiltered.length){pvrKb=(pvrKb+1)%pvrFiltered.length; pvrBuildOpts();}}
+  else if(e.key==='ArrowUp'){e.preventDefault(); if(pvrFiltered.length){pvrKb=(pvrKb-1+pvrFiltered.length)%pvrFiltered.length; pvrBuildOpts();}}
+  else if(e.key==='Enter'){e.preventDefault(); if(pvrKb>=0&&pvrFiltered[pvrKb]) pvrSelect(pvrFiltered[pvrKb]); else if(pvrFiltered.length===1) pvrSelect(pvrFiltered[0]);}
+  else if(e.key==='Escape'){ pvrCloseDD(); pvrDdInput.blur(); }});
+pvrDdTrigger.addEventListener('click',e=>{ if(e.target!==pvrDdInput) pvrDdInput.focus(); });
+document.addEventListener('click',e=>{ if(!pvrDd.contains(e.target)) pvrCloseDD(); });
+
 const TABS=[['tab-dash','pane-dash',null],['tab-pvr','pane-pvr',function(){renderGrowthAll(current);}],['tab-runway','pane-runway',function(){renderRunway(current);}],['tab-demand','pane-demand',function(){renderDemand(current);}],['tab-vacancy','pane-vacancy',function(){renderVacancy(current);}],['tab-rent','pane-rent',function(){renderRent(current);}],['tab-work','pane-work',function(){renderWork(current);}],['tab-sources','pane-sources',renderSources]];
 function showTab(id){ TABS.forEach(function(t){ const on=t[0]===id; document.getElementById(t[0]).setAttribute('aria-selected',on); document.getElementById(t[1]).hidden=!on; if(on&&t[2])t[2](); }); }
 TABS.forEach(function(t){ document.getElementById(t[0]).addEventListener('click',function(){ showTab(t[0]); }); });
@@ -1909,5 +1949,6 @@ function setTheme(t){root.setAttribute('data-theme',t);tb.innerHTML=t==='dark'?'
 tb.addEventListener('click',()=>setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'));
 setTheme('light');
 ddInput.placeholder=current;render(current);buildSummary();
+pvrDdInput.placeholder=pvrNm(pvrLGA());
 </script>
 </body></html>
