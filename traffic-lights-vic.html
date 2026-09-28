@@ -686,7 +686,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         </div>
         <div class="pvr-ctls">
           <div class="pvr-seg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">Houses</button><button data-s="unit" aria-pressed="false">Units</button></div>
-          <div class="pvr-chips" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All Victoria</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Within 2h15 drive</button><button data-f="far" aria-pressed="false">Beyond 2h15</button></div>
+          <div class="pvr-chips" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All Victoria</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Within 2h drive</button><button data-f="far" aria-pressed="false">Beyond 2h drive</button></div>
         </div>
       </section>
       <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
@@ -696,7 +696,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
       </section>
       <section class="pvr-card" aria-label="Where every market sits">
         <div class="pvr-cardhead"><h3>Where every market sits</h3>
-          <div class="pvr-legend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h15</span><span><i class="dot f"></i>Regional, beyond</span><span>Dot size = years stalled</span></div>
+          <div class="pvr-legend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span>Dot size = years stalled</span></div>
         </div>
         <div class="pvr-mapgrid">
           <div id="pvrMap"></div>
@@ -1339,7 +1339,7 @@ function renderPVR(){
   const cur=pvrLGA();   // Price v Rent keeps its OWN selection, independent of the Dashboard's
   const seg=GSEG, segW=seg==='house'?'house':'unit', {out,skip}=pvrRows(seg);
   const rows=out.filter(r=>PVRF==='all'||r.area===PVRF);
-  const FILT={all:'across Victoria',metro:'in metro Melbourne',near:'within 2h15 of Melbourne',far:'beyond 2h15'}[PVRF];
+  const FILT={all:'across Victoria',metro:'in metro Melbourne',near:'within 2 hours of Melbourne',far:'beyond 2 hours of Melbourne'}[PVRF];
   const AREA={metro:'Metro',near:'Regional',far:'Regional'};
   const tot=out.length+skip.flat+skip.norent+skip.thin+skip.rentdown;
   const byGap=rows.slice().sort((a,b)=>b.gap-a.gap), byGpy=rows.slice().sort((a,b)=>b.gpy-a.gpy);
