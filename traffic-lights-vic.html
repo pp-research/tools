@@ -712,8 +712,6 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         </div>
       </section>
       <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
-      <section class="pvr-card pvr-selcard" id="pvrSel" aria-label="Selected market"></section>
-      <section class="pvr-card" id="pvrIdx"></section>
       <section class="pvr-card" aria-label="Where every market sits">
         <div class="pvr-cardhead"><h3>Where every market sits</h3>
           <div class="pvr-legend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span><span>Dot size = years stalled</span></div>
@@ -723,13 +721,15 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
           <div class="pvr-mapside" id="pvrMapSide"></div>
         </div>
       </section>
+      <section class="pvr-card pvr-selcard" id="pvrSel" aria-label="Selected market"></section>
+      <section class="pvr-card" id="pvrIdx"></section>
       <section class="pvr-card pvr-tablecard">
         <div class="pvr-cardhead"><h3>Rent up, price stalled &mdash; ranked</h3><span class="pvr-hint" id="pvrShowing"></span></div>
         <p class="pvr-sub" id="pvrSub"></p>
         <div class="scroll" id="pvrTable"></div>
         <div class="pvr-foot"><button class="pvr-btn" id="pvrMore" type="button"></button><p class="pvr-note" id="pvrNote"></p></div>
       </section>
-      <section class="pvr-card">
+      <section class="pvr-card" hidden aria-hidden="true"><!-- year-on-year growth chart: hidden 2026-09-28, redundant with the chart above -->
         <div class="card-title pvr-title" id="pvrTitle">&nbsp;</div>
         <div class="gwrap" id="gwInline">
           <div class="gwhead"><h2>Price vs Rent growth</h2><span class="hint" data-role="hint">year on year</span>
