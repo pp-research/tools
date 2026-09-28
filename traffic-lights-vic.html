@@ -349,6 +349,93 @@ table.calc.pvr tr.pvr-row{cursor:pointer}
 table.calc.pvr tr.pvr-row:hover td{background:var(--surface-2)}
 table.calc.pvr tr.pvr-row.active td{background:var(--track-active-green);color:var(--teal);font-weight:700}
 table.calc.pvr td:last-child b{color:#00A1B4}
+/* Price v Rent tab (2026-09-28 redesign, direction A): hero, headline figures, since-peak chart, map, ranking */
+.pvr{display:flex;flex-direction:column;gap:22px}
+.pvr-hero{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap;padding:6px 0 4px}
+.pvr-hero-txt{flex:1 1 520px;display:flex;flex-direction:column;gap:10px}
+.pvr-eyebrow{font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
+.pvr-h1{font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1.15;color:var(--text);text-align:left;margin:0}
+.pvr-lede{font-size:15px;line-height:1.65;color:var(--text-dim);max-width:720px;margin:0}
+.pvr-ctls{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.pvr-seg{display:flex;padding:4px;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px}
+.pvr-seg button{font:inherit;font-size:13px;font-weight:800;padding:10px 22px;min-height:44px;border:0;border-radius:999px;background:transparent;color:var(--text-faint);cursor:pointer}
+.pvr-seg button[aria-pressed=true]{background:var(--text);color:var(--bg-1)}
+.pvr-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pvr-chips button{font:inherit;font-size:13px;font-weight:700;padding:10px 14px;min-height:44px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--text-dim);cursor:pointer}
+.pvr-chips button:hover{border-color:var(--teal);color:var(--teal)}
+.pvr-chips button[aria-pressed=true]{border-color:var(--text);color:var(--text)}
+.pvr-seg button:focus-visible,.pvr-chips button:focus-visible,.pvr-btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.pvr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.pvr-kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)}
+.pvr-kpi .k{font-size:12px;font-weight:700;color:var(--text-dim)}
+.pvr-kpi .v{font-size:32px;line-height:1.15;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.pvr-kpi .v.t{color:var(--teal)}
+.pvr-kpi .s{font-size:13px;color:var(--text-dim)}
+.pvr-kpi.dark{background:var(--text);border-color:var(--text)}
+.pvr-kpi.dark .k,.pvr-kpi.dark .s{color:var(--bg-3)}
+.pvr-kpi.dark .v{color:var(--bg-1)}
+.pvr-duo{display:grid;grid-template-columns:1.75fr 1fr;gap:18px}
+.pvr-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 26px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;min-width:0}
+.pvr-cardhead{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.pvr-cardhead h3{font-size:18px;font-weight:800;color:var(--text);flex:1 1 auto;margin:0}
+.pvr-legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;font-weight:700;color:var(--text-dim);align-items:center}
+.pvr-legend span{display:inline-flex;align-items:center;gap:7px}
+.pvr-legend .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.pvr-legend .dot.m{background:var(--teal)}.pvr-legend .dot.n{background:var(--orange)}.pvr-legend .dot.f{background:var(--text-faint)}
+.pvr-legend .ln{width:20px;height:3px;border-radius:2px;display:inline-block}
+.pvr-hint{font-size:12.5px;color:var(--text-faint)}
+.pvr-sub{font-size:13px;line-height:1.6;color:var(--text-dim);margin:0}
+.pvr-note{font-size:12px;line-height:1.6;color:var(--text-faint);margin:0;flex:1 1 400px}
+.pvr-svg{width:100%;height:auto;display:block}
+.pvr-empty{padding:40px 10px;text-align:center;color:var(--text-dim);font-size:14px}
+.pvr-sel .eb{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint)}
+.pvr-sel .nm{font-size:26px;font-weight:800;color:var(--text);line-height:1.2}
+.pvr-sel .meta{font-size:13px;color:var(--text-dim)}
+.pvr-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pvr-tile{padding:14px 16px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;gap:4px}
+.pvr-tile .k{font-size:12px;font-weight:700;color:var(--text-dim)}
+.pvr-tile .v{font-size:22px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.pvr-tile .v.dn{color:var(--red)}.pvr-tile .v.up{color:var(--teal)}
+.pvr-sel p{font-size:13px;line-height:1.6;color:var(--text-dim);margin:0;padding-top:12px;border-top:1px solid var(--border)}
+.pvr-mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:26px;align-items:start}
+.pvr-mapside{display:flex;flex-direction:column;gap:16px}
+.pvr-mapside .eb{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint)}
+.pvr-mapside p{font-size:13.5px;line-height:1.6;color:var(--text);margin:0}
+.pvr-mapside p.dim{color:var(--text-dim)}
+.pvr-callout{padding:16px 18px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;gap:6px}
+.pvr-callout.reg{background:var(--track-active-amber)}
+.pvr-callout .k{font-size:12px;font-weight:700;color:var(--text-dim)}
+.pvr-callout.reg .k{color:var(--orange)}
+.pvr-callout .v{font-size:22px;font-weight:800;color:var(--text)}
+.pvr-callout .s{font-size:12.5px;line-height:1.55;color:var(--text-dim)}
+.pvr-map-dot{cursor:pointer}
+.pvr-map-dot:hover,.pvr-map-dot:focus{stroke:var(--text);stroke-width:2.5;outline:none}
+table.calc.pvr th:nth-child(1),table.calc.pvr td:nth-child(1){color:var(--text-faint);width:34px}
+table.calc.pvr th:nth-child(n+3),table.calc.pvr td:nth-child(n+3){text-align:right;font-variant-numeric:tabular-nums}
+table.calc.pvr th:nth-child(6),table.calc.pvr td:nth-child(6){text-align:center}
+table.calc.pvr th.sortable{cursor:pointer;white-space:nowrap}
+table.calc.pvr th.sortable:hover,table.calc.pvr th.on{color:var(--teal)}
+table.calc.pvr tr.pvr-row{cursor:pointer}
+table.calc.pvr tr.pvr-row:hover td{background:var(--surface-2)}
+table.calc.pvr tr.pvr-row.active td{background:var(--track-active-green)}
+table.calc.pvr td .sub{display:block;font-size:11.5px;font-weight:600;color:var(--text-faint)}
+table.calc.pvr td .sub.n{color:var(--orange)}
+table.calc.pvr td.gap b{font-size:14.5px;font-weight:800;color:var(--text)}
+.pvr-div{display:flex;align-items:center;justify-content:center;gap:0}
+.pvr-div .l,.pvr-div .r{width:90px;display:flex}
+.pvr-div .l{justify-content:flex-end}
+.pvr-div .l i{height:9px;background:var(--red);opacity:.75;border-radius:5px 0 0 5px;display:block}
+.pvr-div .r i{height:9px;background:var(--teal);border-radius:0 5px 5px 0;display:block}
+.pvr-div .z{width:2px;height:16px;background:var(--text-dim)}
+.pvr-div .lv,.pvr-div .rv{width:46px;font-size:11.5px;font-variant-numeric:tabular-nums}
+.pvr-div .lv{text-align:right;padding-right:6px;color:var(--red)}
+.pvr-div .rv{text-align:left;padding-left:6px;color:var(--teal)}
+.pvr-foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:4px}
+.pvr-btn{font:inherit;font-size:14px;font-weight:800;padding:12px 20px;min-height:44px;border:0;border-radius:999px;background:var(--teal);color:#fff;cursor:pointer}
+.pvr-btn[hidden]{display:none}
+#pane-pvr .gwrap{margin-top:0}
+@media(max-width:1100px){.pvr-duo,.pvr-mapgrid{grid-template-columns:1fr}.pvr-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pvr-ctls{align-items:flex-start}.pvr-chips{justify-content:flex-start}}
+@media(max-width:640px){.pvr-kpis{grid-template-columns:1fr}}
 .sthead{display:grid;grid-template-columns:42px 1fr 34px 46px;gap:7px;align-items:center;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text-faint);padding:0 10px 7px;border-bottom:1px solid var(--border);margin-bottom:4px}
 .sthead span:nth-child(3),.sthead span:nth-child(4){text-align:right}
 .st-item{display:grid;grid-template-columns:42px 1fr 34px 46px;gap:7px;align-items:center;padding:8px 10px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:background .14s}
@@ -577,8 +664,39 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
     </div>
   </div>
   <div class="pane" id="pane-pvr" role="tabpanel" hidden>
-    <div class="top-row">
-      <div class="left-col">
+    <div class="pvr">
+      <section class="pvr-hero">
+        <div class="pvr-hero-txt">
+          <div class="pvr-eyebrow">Price v Rent</div>
+          <h2 class="pvr-h1">Where rent has outrun a stalled price</h2>
+          <p class="pvr-lede">Every Victorian LGA measured from its own price peak, so markets with different histories compare fairly. The wider the gap, the more the yield has lifted while the price has not.</p>
+        </div>
+        <div class="pvr-ctls">
+          <div class="pvr-seg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">Houses</button><button data-s="unit" aria-pressed="false">Units</button></div>
+          <div class="pvr-chips" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All Victoria</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Within 2h15 drive</button><button data-f="far" aria-pressed="false">Beyond 2h15</button></div>
+        </div>
+      </section>
+      <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
+      <section class="pvr-duo">
+        <div class="pvr-card" id="pvrIdx"></div>
+        <div class="pvr-card" id="pvrSel"></div>
+      </section>
+      <section class="pvr-card" aria-label="Where every market sits">
+        <div class="pvr-cardhead"><h3>Where every market sits</h3>
+          <div class="pvr-legend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h15</span><span><i class="dot f"></i>Regional, beyond</span><span>Dot size = years stalled</span></div>
+        </div>
+        <div class="pvr-mapgrid">
+          <div id="pvrMap"></div>
+          <div class="pvr-mapside" id="pvrMapSide"></div>
+        </div>
+      </section>
+      <section class="pvr-card pvr-tablecard">
+        <div class="pvr-cardhead"><h3>Rent up, price stalled &mdash; ranked</h3><span class="pvr-hint" id="pvrShowing"></span></div>
+        <p class="pvr-sub" id="pvrSub"></p>
+        <div class="scroll" id="pvrTable"></div>
+        <div class="pvr-foot"><button class="pvr-btn" id="pvrMore" type="button"></button><p class="pvr-note" id="pvrNote"></p></div>
+      </section>
+      <section class="pvr-card">
         <div class="card-title pvr-title" id="pvrTitle">&nbsp;</div>
         <div class="gwrap" id="gwInline">
           <div class="gwhead"><h2>Price vs Rent growth</h2><span class="hint" data-role="hint">year on year</span>
@@ -588,25 +706,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
           <div class="gwplot"><div data-role="body"></div><div class="gwtip" data-role="tip"></div></div>
           <div class="gwnote" data-role="note"></div>
         </div>
-        <div class="wk" id="pvrWrap">
-          <h4>Rent up, price stalled &mdash; every VIC LGA</h4>
-          <p class="wsub" id="pvrSub"></p>
-          <div class="pvr-ctl"><div class="gwseg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">House</button><button data-s="unit" aria-pressed="false">Unit</button></div><div class="gwseg" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Regional &le;2h15 drive</button><button data-f="far" aria-pressed="false">Regional &gt;2h15 drive</button></div></div>
-          <div class="scroll" id="pvrTable"></div>
-          <p class="wsub" id="pvrNote"></p>
-        </div>
-      </div>
-      <div class="right-col">
-      <div class="summary" id="stagPanel">
-        <h3>Stagnant, rents still rising</h3>
-        <div class="sub">Price peaked 3+ years ago and has not been passed since &mdash; but rent has risen across that stretch</div>
-        <div class="ssort" id="stSort" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">House</button><button data-s="unit" aria-pressed="false">Unit</button></div>
-        <div class="sthead"><span>VAL RANK</span><span>MARKET</span><span>STAG</span><span>RENT</span></div>
-        <div id="stList"></div>
-        <div class="sl-more" id="stMore" style="display:none"></div>
-        <div class="stnote" id="stNote"></div>
-      </div>
-      </div>
+      </section>
     </div>
   </div>
   <div class="pane" id="pane-work" role="tabpanel" hidden>
@@ -1189,14 +1289,16 @@ function gwClose(){
 }
 /* ---- Price v Rent tab: every VIC LGA ranked by how far rent has outrun a stalled price ----
    Each market is measured from ITS OWN price peak (so it does not matter when its history starts): price and rent
-   are the change from the peak year to now, gap = rent minus price in percentage points. Same qualifying test as the
-   "Stagnant, rents still rising" panel: graded segment, not thin, price peak 3+ years ago and not passed, rent verifiably
-   higher than at the peak. Nominal medians. Distance is Cotality's average distance from the Melbourne GPO. */
-let PVRSORT='gap', PVRDIR=-1, PVRF='all';
+   are the change from the peak year to now, gap = rent minus price in percentage points. Qualifying test: graded
+   segment, not thin, price peak 3+ years ago and not passed, rent verifiably higher than at the peak. Nominal medians.
+   Layout (2026-09-28, direction A): headline figures, since-the-peak chart + selected market, map, ranking, history. */
+let PVRSORT='gap', PVRDIR=-1, PVRF='all', PVRALL=false;
 // The "about 2 hours from Melbourne" ring: regional LGAs whose main town is within 2h15 by road (Shaene, 2026-09-28,
 // option a). OSRM free-flow times run a little slow on Victorian highways, so 2h15 keeps the markets that are ~2 hours
 // in practice (Colac, Alexandra, Euroa, Beaufort, Traralgon) and drops Mansfield (2h39) and Maryborough (2h17).
 const PVRDRIVE=135;   // minutes
+const PVRCAP=8;       // rows shown before "Show all"
+function pvrArea(l){ const dv=DRIVE[l]; return METRO.has(l)?'metro':(dv&&dv.m<=PVRDRIVE?'near':'far'); }
 function pvrRows(seg){
   const out=[], skip={flat:0,norent:0,thin:0,rentdown:0,ungraded:0};
   LGAS.forEach(l=>{ const g=GROWTH[l]&&GROWTH[l][seg]; if(!g) return;
@@ -1207,45 +1309,159 @@ function pvrRows(seg){
     if(g.rwin==null){skip.norent++;return;}
     if(g.rwin<=0){skip.rentdown++;return;}
     const metro=METRO.has(l), dv=DRIVE[l], dm=metro?null:(dv?dv.m:null);
-    const area=metro?'metro':(dm!=null&&dm<=PVRDRIVE?'near':'far');
     // gpy = gap per year, so stalls of different lengths compare: the compound annual rate at which rent has outrun price
     // since the peak, ((1+rent)/(1+price))^(1/years) - 1 -- i.e. how fast the gross yield has risen each year
     const gpy=(Math.pow((1+g.rwin/100)/(1+g.pwin/100),1/g.stag)-1)*100;
-    out.push({l,area,dm,town:dv?dv.t:null,pk:g.pk,stag:g.stag,price:g.pwin,rent:g.rwin,gap:g.rwin-g.pwin,gpy}); });
+    out.push({l,area:pvrArea(l),dm,town:dv?dv.t:null,pk:g.pk,stag:g.stag,price:g.pwin,rent:g.rwin,gap:g.rwin-g.pwin,gpy}); });
   return {out,skip};
 }
+const pvrHM=m=>Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');
+const pvrPC=x=>(x>0?'+':'')+x.toFixed(1)+'%';
+const pvrNm=l=>l==='Melbourne'?'City of Melbourne':l;
+function pvrPick(l){ current=l; ddInput.placeholder=current; render(current); buildSummary(); }
 function renderPVR(){
-  const seg=GSEG, {out,skip}=pvrRows(seg);
+  const seg=GSEG, segW=seg==='house'?'house':'unit', {out,skip}=pvrRows(seg);
   const rows=out.filter(r=>PVRF==='all'||r.area===PVRF);
-  const key=PVRSORT, dir=PVRDIR;
-  rows.sort((a,b)=>{ let x=a[key], y=b[key]; if(key==='dm'){ x=x==null?-1:x; y=y==null?-1:y; }   // metro (no drive time) sorts as nearest
-    const c=(typeof x==='string')?x.localeCompare(y):(x-y); return (c*dir)||(b.gap-a.gap); });
-  const hm=m=>Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');
+  const FILT={all:'across Victoria',metro:'in metro Melbourne',near:'within 2h15 of Melbourne',far:'beyond 2h15'}[PVRF];
   const AREA={metro:'Metro',near:'Regional',far:'Regional'};
-  const pc=x=>(x>0?'+':'')+x.toFixed(1)+'%';
-  const cols=[['#',null],['LGA','l'],['Area','area'],['Drive','dm'],['Price peak','pk'],['Stalled','stag'],['Price since','price'],['Rent since','rent'],['Gap','gap'],['Gap / yr','gpy']];
-  const th=cols.map(([t,k])=>k?('<th data-k="'+k+'" class="sortable'+(k===key?' on':'')+'">'+t+(k===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
-  const body=rows.map((r,i)=>'<tr class="pvr-row'+(r.l===current?' active':'')+'" data-l="'+r.l+'"><td>'+(i+1)+'</td><td class="nm">'+r.l+'</td><td>'+AREA[r.area]+
-    '</td><td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?hm(r.dm):'&ndash;')+'</td><td>'+r.pk+'</td><td>'+r.stag+'y</td><td>'+pc(r.price)+'</td><td>'+pc(r.rent)+'</td><td><b>'+(r.gap>0?'+':'')+r.gap.toFixed(1)+'</b></td><td><b>'+(r.gpy>0?'+':'')+r.gpy.toFixed(1)+'%</b></td></tr>').join('');
+  const tot=out.length+skip.flat+skip.norent+skip.thin+skip.rentdown;
+  const byGap=rows.slice().sort((a,b)=>b.gap-a.gap), byGpy=rows.slice().sort((a,b)=>b.gpy-a.gpy);
+  const near=out.filter(r=>r.area==='near').sort((a,b)=>b.gap-a.gap);
+
+  // ---- headline figures
+  const kv=(label,value,sub,teal,dark)=>'<div class="pvr-kpi'+(dark?' dark':'')+'"><div class="k">'+label+'</div><div class="v'+(teal?' t':'')+'">'+value+'</div><div class="s">'+sub+'</div></div>';
+  const g0=byGap[0], y0=byGpy[0];
+  document.getElementById('pvrKpis').innerHTML=
+    kv('Markets qualifying', String(rows.length), (PVRF==='all'?('of '+tot+' graded '+segW+' markets'):FILT)+' &middot; stalled 3+ years, rent up')+
+    kv('Widest gap', g0?((g0.gap>0?'+':'')+g0.gap.toFixed(1)+' pts'):'&ndash;', g0?(pvrNm(g0.l)+' &middot; price '+pvrPC(g0.price)+', rent '+pvrPC(g0.rent)):'none '+FILT, true)+
+    kv('Fastest yield lift', y0?((y0.gpy>0?'+':'')+y0.gpy.toFixed(1)+'% a yr'):'&ndash;', y0?(pvrNm(y0.l)+' &middot; over '+y0.stag+' years'):'none '+FILT, true)+
+    kv('Within about 2 hours', near.length+' regional', near.length?('led by '+pvrNm(near[0].l)+' &middot; '+(near[0].gap>0?'+':'')+near[0].gap.toFixed(1)+' pts'):'none qualify on '+segW+'s', false, true);
+
+  // ---- since-the-peak chart for the selected market
+  const G=GROWTH[current]&&GROWTH[current][seg], idx=document.getElementById('pvrIdx');
+  const CY=G?G.y0+G.p.length-1:null;
+  if(!G){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(current)+'</h3></div><div class="pvr-empty">No '+segW+' price history for this market.</div>'; }
+  else if(!G.stag){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(current)+' '+segW+'s since the price peak</h3></div><div class="pvr-empty">The '+segW+' price is at its peak now, so there is no stall to chart. Pick a market from the map or the ranking below.</div>'; }
+  else {
+    const yrs=[], P=[], R=[]; let pi=100, ri=100, rOK=true;
+    for(let y=G.pk;y<=CY;y++){ const i=y-G.y0;
+      if(y>G.pk){ pi*=1+(G.p[i]||0)/100; if(G.r[i]==null) rOK=false; else ri*=1+G.r[i]/100; }
+      yrs.push(y); P.push(pi); R.push(rOK?ri:null); }
+    if(G.rwin!=null) R[R.length-1]=100+G.rwin;           // the endpoint is the page's rent-since-peak figure
+    P[P.length-1]=100+G.pwin;
+    const vals=P.concat(R.filter(v=>v!=null)), lo=Math.floor(Math.min(...vals,95)/10)*10, hi=Math.ceil(Math.max(...vals,105)/10)*10;
+    const W=860,H=320,X0=64,X1=820,YT=24,YB=280, n=yrs.length;
+    const X=j=>n>1?X0+(X1-X0)*j/(n-1):(X0+X1)/2, Y=v=>YB-(YB-YT)*(v-lo)/(hi-lo);
+    let grid='', ticks='';
+    for(let v=lo; v<=hi; v+=10){ grid+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)'+(v===100?';stroke:var(--text-faint);stroke-dasharray:4 4':'')+'"></line>'; ticks+='<text x="'+(X0-10)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'; }
+    yrs.forEach((y,j)=>{ ticks+='<text x="'+X(j)+'" y="'+(H-12)+'" text-anchor="middle">'+(j===n-1?'Now':y)+'</text>'; });
+    const pts=a=>a.map((v,j)=>v==null?null:X(j).toFixed(1)+','+Y(v).toFixed(1)).filter(Boolean).join(' ');
+    const both=R.every(v=>v!=null);
+    const poly=both?'<polygon points="'+pts(R)+' '+P.map((v,j)=>X(j).toFixed(1)+','+Y(v).toFixed(1)).reverse().join(' ')+'" style="fill:var(--teal);opacity:.14"></polygon>':'';
+    const lastR=R[n-1], lastP=P[n-1];
+    idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(current)+' '+segW+'s since the '+G.pk+' peak</h3>'+
+      '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(both?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+'</div></div>'+
+      '<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Indexed to 100 at the '+G.pk+' peak: price '+lastP.toFixed(1)+(lastR!=null?', rent '+lastR.toFixed(1):'')+'">'+
+      '<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+poly+
+      (R.some(v=>v!=null)?'<polyline points="'+pts(R)+'" style="fill:none;stroke:var(--teal);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round"></polyline>':'')+
+      '<polyline points="'+pts(P)+'" style="fill:none;stroke:var(--text);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round"></polyline>'+
+      (lastR!=null?'<circle cx="'+X(n-1)+'" cy="'+Y(lastR)+'" r="6" style="fill:var(--teal)"></circle><text x="'+(X(n-1)-12)+'" y="'+(Y(lastR)-12)+'" text-anchor="end" style="fill:var(--teal);font-size:13px;font-weight:800">Rent '+lastR.toFixed(1)+'</text>':'')+
+      '<circle cx="'+X(n-1)+'" cy="'+Y(lastP)+'" r="6" style="fill:var(--text)"></circle><text x="'+(X(n-1)-12)+'" y="'+(Y(lastP)+22)+'" text-anchor="end" style="fill:var(--text);font-size:13px;font-weight:800">Price '+lastP.toFixed(1)+'</text>'+
+      '</svg><p class="pvr-note">Indexed to 100 in the peak year. Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
+  }
+
+  // ---- selected market
+  const me=out.find(r=>r.l===current), sel=document.getElementById('pvrSel');
+  const rankGap=me?out.slice().sort((a,b)=>b.gap-a.gap).findIndex(r=>r.l===current)+1:null;
+  const dv=DRIVE[current], area=pvrArea(current);
+  const where=area==='metro'?'Metro':('Regional &middot; '+(dv?pvrHM(dv.m)+' to '+dv.t:''));
+  if(G&&G.stag){
+    const gpy=(G.rwin!=null)?(Math.pow((1+G.rwin/100)/(1+G.pwin/100),1/G.stag)-1)*100:null;
+    const why=me?('Price peaked in '+G.pk+' and has not been passed since. Rent has kept rising through the stall'+(gpy!=null?', lifting the gross yield about '+Math.round(gpy)+'% a year.':'.'))
+      :(G.stag<3?('Price has been below its '+G.pk+' peak for '+G.stag+' year'+(G.stag>1?'s':'')+'; a market qualifies at 3.'):(G.rwin==null?'No rent history reaching back to the '+G.pk+' peak, so it cannot be ranked.':'Rent is no higher than at the '+G.pk+' peak.'));
+    sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:16px"><div><div class="eb">Selected market</div><div class="nm">'+pvrNm(current)+'</div>'+
+      '<div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+(me?(' &middot; ranked '+rankGap+' of '+out.length+' by gap'):' &middot; not in the ranking')+'</div></div>'+
+      '<div class="pvr-tiles"><div class="pvr-tile"><div class="k">Price since peak</div><div class="v dn">'+pvrPC(G.pwin)+'</div></div>'+
+      '<div class="pvr-tile"><div class="k">Rent since peak</div><div class="v up">'+(G.rwin!=null?pvrPC(G.rwin):'&ndash;')+'</div></div>'+
+      '<div class="pvr-tile"><div class="k">Stalled</div><div class="v">'+G.stag+' year'+(G.stag>1?'s':'')+'</div></div>'+
+      '<div class="pvr-tile"><div class="k">Gap a year</div><div class="v">'+(gpy!=null?pvrPC(gpy):'&ndash;')+'</div></div></div>'+
+      '<p>'+why+'</p></div>';
+  } else sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:12px"><div class="eb">Selected market</div><div class="nm">'+pvrNm(current)+'</div><div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+'</div><p>'+(G?'At its price peak now.':'No '+segW+' price history.')+' Pick a market from the map or the ranking below.</p></div>';
+
+  // ---- map: every qualifying market by price since the peak (x) against rent since the peak (y)
+  const mapEl=document.getElementById('pvrMap');
+  if(!rows.length){ mapEl.innerHTML='<div class="pvr-empty">No '+segW+' market '+FILT+' meets the test.</div>'; }
+  else {
+    const W=904,H=620,X0=80,X1=880,YT=40,YB=560;
+    const xmin=Math.min(-5,Math.floor(Math.min(...rows.map(r=>r.price))/5)*5), xmax=0;
+    const ymax=Math.max(10,Math.ceil(Math.max(...rows.map(r=>r.rent))/10)*10), ymin=0;
+    const X=v=>X0+(X1-X0)*(v-xmin)/(xmax-xmin), Y=v=>YB-(YB-YT)*(v-ymin)/(ymax-ymin);
+    let s='<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+rows.length+' '+segW+' markets plotted by price change against rent change since each one\'s price peak">';
+    s+='<rect x="'+X0+'" y="'+YT+'" width="'+((X1-X0)/2)+'" height="'+((YB-YT)/2)+'" style="fill:var(--teal);opacity:.07"></rect>';
+    s+='<text x="'+(X0+12)+'" y="'+(YT+22)+'" style="fill:var(--teal);font-size:12px;font-weight:800">Price down most, rent up most</text>';
+    for(let v=xmin; v<=xmax; v+=5) s+='<line x1="'+X(v)+'" y1="'+YT+'" x2="'+X(v)+'" y2="'+YB+'" style="stroke:var(--border)"></line><text x="'+X(v)+'" y="'+(YB+22)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:12px">'+(v<0?'−'+(-v):v)+'%</text>';
+    const ystep=ymax>40?10:5;
+    for(let v=ymin; v<=ymax; v+=ystep) s+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)"></line><text x="'+(X1+10)+'" y="'+(Y(v)+4)+'" style="fill:var(--text-faint);font-size:12px">'+(v>0?'+':'')+v+'%</text>';
+    s+='<text x="'+((X0+X1)/2)+'" y="'+(H-10)+'" text-anchor="middle" style="fill:var(--text);font-size:12.5px;font-weight:800">Price since the peak</text>';
+    s+='<text x="40" y="'+((YT+YB)/2)+'" text-anchor="middle" transform="rotate(-90 40 '+((YT+YB)/2)+')" style="fill:var(--text);font-size:12.5px;font-weight:800">Rent since the peak</text>';
+    // equal-gap lines: rent = gap + price
+    [20,40,60].forEach(gp=>{ const pts=[]; for(let px=xmin; px<=xmax+1e-9; px+=0.25){ const ry=gp+px; if(ry>=ymin&&ry<=ymax) pts.push([px,ry]); }
+      if(pts.length<2) return; const p0=pts[0], p1=pts[pts.length-1];
+      s+='<line x1="'+X(p0[0])+'" y1="'+Y(p0[1])+'" x2="'+X(p1[0])+'" y2="'+Y(p1[1])+'" style="stroke:var(--text-dim);stroke-width:1.2;stroke-dasharray:6 5;opacity:.6"></line>';
+      const ang=Math.atan2(Y(p1[1])-Y(p0[1]),X(p1[0])-X(p0[0]))*180/Math.PI, tx=X(p0[0])+22, ty=Y(p0[1]+(p1[1]-p0[1])*22/(X(p1[0])-X(p0[0])))-6;
+      s+='<text x="'+tx+'" y="'+ty+'" transform="rotate('+ang.toFixed(1)+' '+tx+' '+ty+')" style="fill:var(--text-dim);font-size:11px;font-weight:800">Gap '+gp+' pts</text>'; });
+    const col={metro:'var(--teal)',near:'var(--orange)',far:'var(--text-faint)'};
+    const rad=st=>st>=5?11:st===4?9:7;
+    rows.slice().sort((a,b)=>rad(b.stag)-rad(a.stag)).forEach(r=>{
+      s+='<circle class="pvr-map-dot" data-l="'+r.l+'" tabindex="0" cx="'+X(r.price).toFixed(1)+'" cy="'+Y(r.rent).toFixed(1)+'" r="'+rad(r.stag)+'" style="fill:'+col[r.area]+';stroke:var(--bg-1);stroke-width:1.5"><title>'+pvrNm(r.l)+': price '+pvrPC(r.price)+', rent '+pvrPC(r.rent)+' since '+r.pk+' ('+r.stag+'y) · gap '+r.gap.toFixed(1)+' pts'+(r.dm!=null?' · '+pvrHM(r.dm)+' drive':'')+'</title></circle>'; });
+    if(me && rows.includes(me)) s+='<circle cx="'+X(me.price).toFixed(1)+'" cy="'+Y(me.rent).toFixed(1)+'" r="'+(rad(me.stag)+6)+'" style="fill:none;stroke:var(--text);stroke-width:2"></circle>';
+    // labels: the five widest gaps, the top three regional within reach, and the selected market -- skipping any that would collide
+    const want=[...new Set([...byGap.slice(0,5), ...rows.filter(r=>r.area==='near').sort((a,b)=>b.gap-a.gap).slice(0,3), ...(me&&rows.includes(me)?[me]:[])])];
+    const placed=[];
+    want.forEach(r=>{ const x=X(r.price)+rad(r.stag)+6, y=Y(r.rent)+4, w=(pvrNm(r.l).length+(r.area==='near'?8:0))*7.2;
+      if(placed.some(p=>Math.abs(p.y-y)<15&&x<p.x+p.w&&p.x<x+w)) return; placed.push({x,y,w});
+      const flip=x+w>X1-4; const tx=flip?X(r.price)-rad(r.stag)-6:x;
+      s+='<text x="'+tx.toFixed(1)+'" y="'+y.toFixed(1)+'"'+(flip?' text-anchor="end"':'')+' style="fill:'+(r.area==='near'?'var(--orange)':'var(--text)')+';font-size:12px;font-weight:800;pointer-events:none">'+pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):'')+(r===me?' · selected':'')+'</text>'; });
+    mapEl.innerHTML=s+'</svg>';
+    mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrPick(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrPick(c.dataset.l); } }; });
+  }
+  const b40=rows.filter(r=>r.gap>=40), topReg=near[0];
+  document.getElementById('pvrMapSide').innerHTML=
+    '<div style="display:flex;flex-direction:column;gap:8px"><div class="eb">How to read it</div><p>Each dot is one market, placed by how far price has fallen and rent has risen since its own peak. Up and to the left is the most extreme case.</p><p class="dim">Markets on the same dashed line share a gap. Hover a dot for its figures; click it to select it across the page.</p></div>'+
+    '<div class="pvr-callout"><div class="k">Beyond the 40-point line</div><div class="v">'+b40.length+' market'+(b40.length===1?'':'s')+'</div><div class="s">'+(b40.length?b40.sort((a,b)=>b.gap-a.gap).map(r=>pvrNm(r.l)).join(', '):'None '+FILT)+'</div></div>'+
+    (topReg?'<div class="pvr-callout reg"><div class="k">Closest regional case</div><div class="v">'+pvrNm(topReg.l)+'</div><div class="s">Price '+pvrPC(topReg.price)+', rent '+pvrPC(topReg.rent)+' since '+topReg.pk+' &middot; '+pvrHM(topReg.dm)+' to '+topReg.town+'</div></div>':'');
+
+  // ---- ranking
+  const key=PVRSORT, dir=PVRDIR;
+  const sorted=rows.slice().sort((a,b)=>{ let x=a[key], y=b[key]; if(key==='dm'){ x=x==null?-1:x; y=y==null?-1:y; }   // metro (no drive time) sorts as nearest
+    const c=(typeof x==='string')?x.localeCompare(y):(x-y); return (c*dir)||(b.gap-a.gap); });
+  const shown=PVRALL?sorted:sorted.slice(0,PVRCAP);
+  if(!PVRALL && me && sorted.indexOf(me)>=PVRCAP) shown.push(me);   // the selected market stays visible
+  const scale=90/Math.max(1,...rows.map(r=>Math.max(-r.price,r.rent)));
+  const cols=[['#',null],['Market','l'],['Drive','dm'],['Peak','pk'],['Stalled','stag'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy']];
+  const th=cols.map(([t,kk])=>kk?('<th data-k="'+kk+'" class="sortable'+(kk===key?' on':'')+'">'+t+(kk===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
+  const body=shown.map(r=>{ const i=sorted.indexOf(r)+1;
+    return '<tr class="pvr-row'+(r.l===current?' active':'')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+'<span class="sub'+(r.area==='near'?' n':'')+'">'+AREA[r.area]+(r.town&&r.area!=='metro'?' &middot; '+r.town:'')+'</span></td>'+
+      '<td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?pvrHM(r.dm):'&ndash;')+'</td><td>'+r.pk+'</td><td>'+r.stag+'y</td>'+
+      '<td><div class="pvr-div"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'</span><span class="l"><i style="width:'+(-r.price*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r"><i style="width:'+(r.rent*scale).toFixed(1)+'px"></i></span><span class="rv">+'+r.rent.toFixed(1)+'</span></div></td>'+
+      '<td class="gap"><b>'+(r.gap>0?'+':'')+r.gap.toFixed(1)+'</b></td><td><b>'+(r.gpy>0?'+':'')+r.gpy.toFixed(1)+'%</b></td></tr>'; }).join('');
   document.getElementById('pvrTable').innerHTML=rows.length
     ?('<table class="calc pvr"><thead><tr>'+th+'</tr></thead><tbody>'+body+'</tbody></table>')
-    :'<div class="stempty">No '+seg+' market in this area meets the test.</div>';
-  const nAll=out.length, tot=nAll+skip.flat+skip.norent+skip.thin+skip.rentdown;
-  document.getElementById('pvrSub').innerHTML='<b>'+nAll+'</b> of '+tot+' graded '+seg+' markets have a price that peaked 3+ years ago and has not been passed, with rent higher than at that peak. '+
-    'Ranked by the <b>gap</b>: rent growth minus price change since the peak, in percentage points &mdash; the wider it is, the more extreme the case. '+
-    '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price since the peak (the rise in gross yield each year). Click any column to rank by it.';
-  document.getElementById('pvrNote').innerHTML='Each market is measured from its own price peak, so series that start in different years compare fairly. '+
-    'Left out on '+seg+': '+skip.flat+' not stalled 3+ years, '+skip.rentdown+' with rent no higher than at the peak, '+skip.norent+' with no rent history reaching back to the peak, '+skip.thin+' too thin to rank. '+
-    'Nominal medians; rent to the 12 months to Jun 2026. Drive is the road time from the Melbourne GPO to the LGA&rsquo;s main town (hover for the town) &mdash; '+
-    'OpenStreetMap routing, free-flow with no traffic, which runs a little slow on highways; &ldquo;about 2 hours&rdquo; is taken as 2h15 or less. Metro LGAs are all well inside it. Click a row to load that market.';
-  document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const k=h.dataset.k;
-    if(k===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=k; PVRDIR=(k==='l'||k==='area'||k==='dm'||k==='pk')?1:-1; } renderPVR(); });
-  document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>tr.onclick=()=>{ current=tr.dataset.l; ddInput.placeholder=current; render(current); buildSummary(); });
+    :'<div class="pvr-empty">No '+segW+' market '+FILT+' meets the test.</div>';
+  document.getElementById('pvrShowing').textContent=rows.length?('Showing '+Math.min(shown.length,rows.length)+' of '+rows.length+' · sort by any column'):'';
+  document.getElementById('pvrSub').innerHTML='Ranked by the <b>gap</b>: rent growth minus price change since the peak, in percentage points. '+
+    '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price (the rise in gross yield each year).';
+  const more=document.getElementById('pvrMore'); more.hidden=rows.length<=PVRCAP; more.textContent=PVRALL?'Show fewer':('Show all '+rows.length+' markets'); more.onclick=()=>{ PVRALL=!PVRALL; renderPVR(); };
+  document.getElementById('pvrNote').innerHTML='Left out on '+segW+'s: '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '+
+    'Nominal medians; rent to the 12 months to Jun 2026. Drive: road time from the Melbourne GPO to the main town (OpenStreetMap routing, no traffic); &ldquo;about 2 hours&rdquo; is 2h15 or less.';
+  document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const kk=h.dataset.k;
+    if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='dm'||kk==='pk')?1:-1; } renderPVR(); });
+  document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrPick(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrPick(tr.dataset.l); } }; });
   document.querySelectorAll('#pvrSeg button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.s===seg));
     b.onclick=()=>{ if(GSEG!==b.dataset.s){ GSEG=b.dataset.s; STMORE=false; renderGrowthAll(current); } }; });
   document.querySelectorAll('#pvrFilt button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.f===PVRF));
-    b.onclick=()=>{ PVRF=b.dataset.f; renderPVR(); }; });
-  const t=document.getElementById('pvrTitle'); if(t) t.textContent=current;
+    b.onclick=()=>{ PVRF=b.dataset.f; PVRALL=false; renderPVR(); }; });
+  const t=document.getElementById('pvrTitle'); if(t) t.textContent=pvrNm(current)+' — full price and rent history';
 }
 /* ---- Shortlist: stagnated 3+ years, rent up across it ---- */
 function stagRows(seg){
