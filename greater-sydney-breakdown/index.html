@@ -648,6 +648,8 @@ body.presenting .exitfs{display:grid}
 [data-shell=light] #pg-lights .phh{color:var(--teal-text)}
 [data-shell=light] #pg-lights .phe{color:#8A97A3}
 #pg-lights .mapwrap.sm{max-width:72%;margin:0 auto .25cqw}
+#pg-lights .hsg3 b{width:1.18cqw;text-align:center;font-size:.44cqw;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#8FA9B4}
+[data-shell=light] #pg-lights .hsg3 b{color:#5B6E7A}
 #pg-lights .howl{font-size:.66cqw;line-height:1.45;color:#8FA1AE;padding:.16cqw 0;display:flex;gap:.45cqw;align-items:baseline}
 #pg-lights .howl b{color:#7FB7C4;flex:none;width:5.4cqw;font-size:.6cqw;letter-spacing:.11em;text-transform:uppercase}
 #pg-lights .hsg{display:inline-block;width:4.86cqw;text-align:center;font-size:.56cqw;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#8FA9B4}
@@ -1964,20 +1966,20 @@ function pLights(){
  const prow=(label,get)=>'<div class="pgl">'+label+'</div>'+VIS.map(d=>dcell(d,get(d))).join('');
  put('l-pil','<div class="pgrid" style="grid-template-columns:minmax(9cqw,auto) repeat('+VIS.length+',1fr)">'
   +'<div></div>'+VIS.map(d=>'<div class="ph" style="background:'+HDL[d]+'">'+d+'</div>').join('')
-  +'<div class="pgrp2">S&amp;D · demand score</div>'
-  +prow('Houses',d=>dsSig(MOCK.divisions[d].seg.house.dscore))
-  +prow('Units',d=>dsSig(MOCK.divisions[d].seg.unit.dscore))
   +'<div class="pgrp2">Value · effective runway</div>'
   +prow('Houses',d=>vSig(vEff(MOCK.divisions[d].seg.house)))
   +prow('Units',d=>vSig(vEff(MOCK.divisions[d].seg.unit)))
+  +'<div class="pgrp2">S&amp;D · demand score</div>'
+  +prow('Houses',d=>dsSig(MOCK.divisions[d].seg.house.dscore))
+  +prow('Units',d=>dsSig(MOCK.divisions[d].seg.unit.dscore))
   +'<div class="pgrp2">Confidence · economic + days on market</div>'
   +prow('Houses',d=>cSig(cScore(d,'house')))
   +prow('Units',d=>cSig(cScore(d,'unit')))
   +'</div>');
  /* district summary: the same six signals per district, houses then units - the
     three medallions are the pillars (S&D, Value, Confidence), no blending */
- const m=(sig,ch)=>'<span class="m" style="background:'+SIGC[sig]+'">'+ch+'</span>';
- const trio=(d,s)=>m(dsSig(MOCK.divisions[d].seg[s].dscore),'S')+m(vSig(vEff(MOCK.divisions[d].seg[s])),'V')+m(cSig(cScore(d,s)),'C');
+ const m=sig=>'<span class="m" style="background:'+SIGC[sig]+'"></span>';
+ const trio=(d,s)=>m(vSig(vEff(MOCK.divisions[d].seg[s])))+m(dsSig(MOCK.divisions[d].seg[s].dscore))+m(cSig(cScore(d,s)));
  /* clock phase per market: the ranked tool's signature table applied to the
     market's own three lights. The sig->phase map below was extracted from the
     live traffic-lights-ranked build (28 Sep 2026) and is one-to-one across
@@ -1986,14 +1988,14 @@ function pLights(){
  const PHASE={GGG:'Momentum',GGO:'Buy Value',GOO:'Correction',GRR:'Correction',OGG:'Momentum',OGO:'Momentum',OOG:'Momentum',OOO:'Selling',ORO:'Selling',RGG:'Selling',RGO:'Selling',ROG:'Selling',ROO:'Selling'};
  const phase=(d,s)=>PHASE[vSig(vEff(MOCK.divisions[d].seg[s]))[0]+dsSig(MOCK.divisions[d].seg[s].dscore)[0]+cSig(cScore(d,s))[0]]||'Unmapped';
  const MKTS=VIS.flatMap(d=>['house','unit'].map(s=>({d:d,s:s,ph:phase(d,s)})));
- put('l-tbl','<div class="tlth"><span class="nm">Market</span><span class="hsg" style="width:auto">S&amp;D · Value · Confidence</span></div>'
+ put('l-tbl','<div class="tlth"><span class="nm">Market</span><span class="tlmini hsg3"><b>Val</b><b>S&amp;D</b><b>Conf</b></span></div>'
   +['Buy Value','Momentum','Selling','Correction'].map(ph=>{const g=MKTS.filter(x=>x.ph===ph);
    return '<div class="phh">'+ph+'</div>'+(g.length?g.map(x=>'<div class="tlrow" data-d="'+x.d+'">'
     +'<span class="nm"><i style="background:'+C(x.d)+'"></i>'+x.d+'<span class="sgt">'+(x.s==='house'?'Houses':'Units')+'</span></span>'
     +'<span class="tlmini">'+trio(x.d,x.s)+'</span></div>').join(''):'<div class="phe">none</div>')}).join(''));
  $$('#l-tbl .tlrow').forEach(el=>{el.onclick=()=>toggle(el.dataset.d)});
- put('l-how','<div class="howl"><b>S&amp;D</b>straight off the demand score · green ≥30 · orange ≥10 · red &lt;10</div>'
-  +'<div class="howl"><b>Value</b>runway + 2.5 × price-rank drift (±25) · green ≥65% · red &lt;25%</div>'
+ put('l-how','<div class="howl"><b>Value</b>runway + 2.5 × price-rank drift (±25) · green ≥65% · red &lt;25%</div>'
+  +'<div class="howl"><b>S&amp;D</b>straight off the demand score · green ≥30 · orange ≥10 · red &lt;10</div>'
   +'<div class="howl"><b>Confidence</b>½ days on market (16d→2 · 45d→0) + ½ the six indicators · green ≥1.5 · red &lt;0.7</div>'
   +'<div class="howl"><b>Phase</b>the ranked clock&rsquo;s signature table applied to these three lights · one-to-one across its 72 live readings</div>');
  put('l-map','<svg viewBox="0 0 '+MAPD.w+' '+MAPD.h+'" xmlns="http://www.w3.org/2000/svg" role="img">'
