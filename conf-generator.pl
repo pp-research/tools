@@ -327,17 +327,18 @@ my @TABLE = map { my @p=split /\|/; {ph=>$p[0],t=>$p[1],h=>$p[2],pat=>[@p[3..5]]
 sub acc { index($_[0],$_[1]) >= 0 }
 
 sub assignClock {
-  my ($confOf,$noRedSDinSelling) = @_;      # ->($region,$seg) => GREEN|ORANGE|RED
-  # $noRedSDinSelling switches on Shaene's third rule (2026-09-28). It is OFF
-  # for the Phase A2 replay, because that rule deliberately MOVES positions —
-  # the replay has to reproduce the build as it was, or it proves nothing.
+  my $confOf = shift;      # ->($region,$seg) => GREEN|ORANGE|RED
+  # Rule 3 below was briefly behind a flag, so the Phase A2 replay could
+  # reproduce a build made before it existed. That transition is done: the live
+  # build now HAS it, so the flag is retired and the rule is unconditional. If a
+  # future rule moves positions, bridge it the same way and retire it the same way.
   #
   # Part of that rule is a TABLE EDIT: 12:30's S&D cell goes R -> O, matching
   # 11:30 and 12:00. With the gate on, no reading can match an R there anyway,
   # and she said Selling S&D is orange or green. Taken as a per-call copy so
   # the base table is never mutated between the replay and the live run.
   my @T = map { {ph=>$_->{ph}, t=>$_->{t}, h=>$_->{h}, pat=>[@{$_->{pat}}]} } @TABLE;
-  if($noRedSDinSelling){ for my $t (@T){ $t->{pat}[1]='O' if $t->{t} eq '12:30' } }
+  for my $t (@T){ $t->{pat}[1]="O" if $t->{t} eq "12:30" }
   my @rows;
   for my $r (@REG){ for my $s (qw(h u)){
     push @rows, { r=>$r, s=>$s, p36=>$DATA->{$r}{"clock_p36_$s"},
@@ -357,7 +358,7 @@ sub assignClock {
   # red-S&D reading is excluded from it once Selling is shut to it
   my @red = sort { $b->{eff} <=> $a->{eff} }
             grep { $_->{sig}[0] eq 'R'
-                && !($noRedSDinSelling && $_->{sig}[1] eq 'R')
+                && $_->{sig}[1] ne "R"
                 && $bestFit->($_) < 2 } @rows;
   for my $k (0..$#red){
     my $g = @red>1 ? int($k*scalar(@SLOTS)/scalar(@red)) : 0;
@@ -384,7 +385,7 @@ sub assignClock {
     my $sigStr = join '/', @{$x->{sig}};
     my $ggo = $sigStr eq 'G/G/O';
     my $gR  = $x->{sig}[0] eq 'G' && $x->{sig}[1] eq 'R';
-    my $rSD = $noRedSDinSelling && $x->{sig}[1] eq 'R';
+    my $rSD = $x->{sig}[1] eq "R";
     my @ok = grep { acc($T[$_]{pat}[0],$x->{sig}[0])
                  && ($T[$_]{ph} ne 'Buy Value' || $ggo)
                  && (!$gR  || $T[$_]{ph} eq 'Correction')
@@ -439,7 +440,7 @@ if(@cfail){
 }
 print "\nPHASE A2 — clock table reproduces all 72 live positions.\n";
 
-my $newClock = assignClock(sub { $DATA->{$_[0]}{"confidence_$_[1]"} }, 1);
+my $newClock = assignClock(sub { $DATA->{$_[0]}{"confidence_$_[1]"} });
 my (%phMove,%hrMove);
 for my $r (@REG){ for my $s (qw(h u)){
   my $g=$newClock->{"$r|$s"};

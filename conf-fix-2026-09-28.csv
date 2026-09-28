@@ -1,0 +1,61 @@
+# Corrected Unemployment and Underemployment inputs for traffic-lights-ranked.html
+#
+# WHY: the build took `latest` as the mean of 12 data points. rdp_raw_series
+# stores these two metrics ANNUALLY (freq 'A'), so that was a 12-YEAR average
+# scored against a current-rate band. The method archive specifies a 12-MONTH
+# rolling window; the unit was lost between the spec and the code.
+#
+# SOURCE: rdp_raw_series, source='abs', freq='A', read-only pull 2026-09-28.
+# `latest` = the 2026 row, which the ingest defines as the average of the
+# latest 3 available months. `prior` = the 2025 row, a full-year average.
+# Values are decimal fractions, as stored.
+#
+# Unemployment is per region (35 slugs; Canberra takes st-act, which is what
+# its conf_row already carried). Underemployment is published state-level only,
+# so each region takes its own state's row — which is how the build already
+# treats it.
+scope,key,metric,latest,prior
+region,Adelaide,Unemployment,0.0406,0.0381
+region,Albury,Unemployment,0.0451,0.0401
+region,Ballarat,Unemployment,0.0397,0.0364
+region,Bendigo,Unemployment,0.0370,0.0337
+region,Brisbane,Unemployment,0.0520,0.0415
+region,Bunbury,Unemployment,0.0341,0.0322
+region,Bundaberg,Unemployment,0.0591,0.0549
+region,Cairns,Unemployment,0.0492,0.0463
+region,Canberra,Unemployment,0.0376,0.0382
+region,Central Coast,Unemployment,0.0476,0.0429
+region,Coffs Harbour,Unemployment,0.0487,0.0460
+region,Darwin,Unemployment,0.0400,0.0332
+region,Geelong,Unemployment,0.0373,0.0347
+region,Gladstone,Unemployment,0.0510,0.0446
+region,Gold Coast,Unemployment,0.0313,0.0305
+region,Hobart,Unemployment,0.0546,0.0403
+region,Ipswich,Unemployment,0.0592,0.0550
+region,Launceston,Unemployment,0.0447,0.0369
+region,Mackay,Unemployment,0.0333,0.0291
+region,Mandurah,Unemployment,0.0510,0.0487
+region,Melbourne,Unemployment,0.0520,0.0476
+region,Mildura,Unemployment,0.0367,0.0337
+region,Newcastle,Unemployment,0.0457,0.0425
+region,Orange,Unemployment,0.0374,0.0351
+region,Perth,Unemployment,0.0420,0.0410
+region,Port Macquarie,Unemployment,0.0456,0.0423
+region,Rockhampton,Unemployment,0.0510,0.0446
+region,Rockingham,Unemployment,0.0452,0.0429
+region,Sunshine Coast,Unemployment,0.0343,0.0321
+region,Sydney,Unemployment,0.0444,0.0417
+region,Tamworth,Unemployment,0.0485,0.0447
+region,Toowoomba,Unemployment,0.0421,0.0381
+region,Townsville,Unemployment,0.0546,0.0493
+region,Wagga Wagga,Unemployment,0.0382,0.0356
+region,Wodonga,Unemployment,0.0350,0.0312
+region,Wollongong,Unemployment,0.0494,0.0467
+state,ACT,Underemployment,0.0565,0.0503
+state,NSW,Underemployment,0.0584,0.0544
+state,NT,Underemployment,0.0476,0.0358
+state,QLD,Underemployment,0.0653,0.0603
+state,SA,Underemployment,0.0671,0.0619
+state,TAS,Underemployment,0.0701,0.0727
+state,VIC,Underemployment,0.0699,0.0632
+state,WA,Underemployment,0.0568,0.0544
