@@ -418,8 +418,7 @@ table.calc.pvr .na{color:var(--text-faint)}
 .pvr-tt .ttg{font-weight:800;color:var(--teal);border-top:1px solid var(--border);padding-top:5px}
 #pvrSet[hidden]{display:none}
 table.calc.pvr td.pvr-now{white-space:nowrap}
-table.calc.pvr td.nm{min-width:150px}
-table.calc.pvr td.nm .sub{white-space:nowrap}
+table.calc.pvr td.nm{min-width:150px;max-width:210px;white-space:normal}
 table.calc.pvr td.pvr-now .sub{display:block}
 .pvr-ph-buyvalue{color:var(--teal)!important;font-weight:800}
 .pvr-ph-momentum{color:var(--green,#71B357)!important;font-weight:800}
@@ -1621,7 +1620,7 @@ function renderPVR(){
       '<td class="pvr-now">'+(r.stag?'<b>'+r.pk+'</b><span class="sub">'+(r.pPk!=null?pvrMoney(r.pPk):'&ndash;')+' &middot; '+(r.rPk!=null?'$'+r.rPk+'/wk':'&ndash;')+'</span>':na)+'</td>'+
       '<td class="pvr-now">'+(r.pNow!=null?'<b>'+pvrMoney(r.pNow)+'</b>':na)+'<span class="sub">'+(r.rNow!=null?'$'+r.rNow+'/wk':'&nbsp;')+'</span></td>'+
       '<td>'+(r.stag?'<b>'+r.stag+'y</b>':na)+'</td>'+
-      '<td class="pvr-now">'+(r.yNow!=null?'<b>'+r.yNow.toFixed(1)+'%</b>':na)+'<span class="sub">'+(r.yPk!=null&&r.stag?'from '+r.yPk.toFixed(1)+'% at the peak':'&nbsp;')+'</span></td>'+
+      '<td class="pvr-now">'+(r.yNow!=null?'<b>'+r.yNow.toFixed(1)+'%</b>':na)+'<span class="sub">'+(r.yPk!=null&&r.stag?'was '+r.yPk.toFixed(1)+'% at peak':'&nbsp;')+'</span></td>'+
       '<td>'+bar+'</td><td class="gap">'+num(r.gap)+'</td><td>'+num(r.gpy,'%')+'</td></tr>'; }).join('');
   document.getElementById('pvrTable').innerHTML=list.length
     ?('<table class="calc pvr"><thead><tr>'+th+'</tr></thead><tbody>'+body+'</tbody></table>')
