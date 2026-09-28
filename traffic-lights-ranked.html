@@ -638,10 +638,16 @@ function buildSummary(){
     // Buckets are the calculated clock phase for whichever segment is showing,
     // so the summary can never disagree with the dial above it.
     const byPhase={'Momentum':[],'Buy Value':[],'Correction':[],'Selling':[]};
+    /* Order inside a phase by CLOCK TIME. The key is distance travelled from
+       1:00, not the raw hour: Selling runs 10:00 -> 12:30 and 12:30 is stored
+       as 0.5, so a raw sort would put the latest reading in the phase first.
+       Rank breaks ties, since several regions share an hour. */
+    const ck=h=>(h-1+12)%12;
     regions.forEach(r=>{const d=DATA[r];
       const ph=d[seg==='h'?'clock_phase_h':'clock_phase_u'];
-      (byPhase[ph]||byPhase['Selling']).push({r,rank:rankOf(r)});});
-    Object.values(byPhase).forEach(a=>a.sort((x,y)=>x.rank-y.rank));
+      const hr=d[seg==='h'?'clock_hour_h':'clock_hour_u'];
+      (byPhase[ph]||byPhase['Selling']).push({r,rank:rankOf(r),ck:ck(hr)});});
+    Object.values(byPhase).forEach(a=>a.sort((x,y)=>x.ck-y.ck||x.rank-y.rank));
     const put=(id,arr)=>{document.getElementById(id).innerHTML=arr.map(o=>item(o.r)).join('');
       const sec=document.getElementById(id).closest('.slist');
       if(sec){ sec.style.display=arr.length?'':'none';
