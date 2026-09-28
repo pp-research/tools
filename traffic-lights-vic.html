@@ -419,6 +419,7 @@ table.calc.pvr .na{color:var(--text-faint)}
 #pvrSet[hidden]{display:none}
 table.calc.pvr td.pvr-now{white-space:nowrap}
 table.calc.pvr td.nm{min-width:150px}
+table.calc.pvr td.nm .sub{white-space:nowrap}
 table.calc.pvr td.pvr-now .sub{display:block}
 .pvr-ph-buyvalue{color:var(--teal)!important;font-weight:800}
 .pvr-ph-momentum{color:var(--green,#71B357)!important;font-weight:800}
@@ -1605,7 +1606,7 @@ function renderPVR(){
   const qOnly=sorted.filter(r=>r.q), shown=PVRALL?sorted:(qOnly.length?qOnly:sorted.slice(0,PVRCAP));
   const mr=sorted.find(r=>r.l===cur); if(!PVRALL && mr && !shown.includes(mr)) shown.push(mr);   // the selected market stays visible   // the selected market stays visible
   const scale=60/Math.max(1,...list.map(r=>Math.max(r.price!=null?-r.price:0,r.rent!=null?Math.abs(r.rent):0)));
-  const cols=[['#',null],['Market','l'],['Drive','dm'],['Peak','pk'],['Stalled','stag'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy'],['Median now','pNow'],['Gross yield','yNow'],['Clock','ck']];
+  const cols=[['#',null],['Market','l'],['Drive','dm'],['Stalled','stag'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy'],['Median now','pNow'],['Gross yield','yNow'],['Clock','ck']];
   const th=cols.map(([t,kk])=>kk?('<th data-k="'+kk+'" class="sortable'+(kk===key?' on':'')+'">'+t+(kk===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
   const num=(v,suf)=>v==null?'<span class="na">&ndash;</span>':('<b>'+(v>0?'+':'')+v.toFixed(1)+(suf||'')+'</b>');
   const body=shown.map(r=>{ const i=sorted.indexOf(r)+1;
@@ -1614,7 +1615,7 @@ function renderPVR(){
        (r.rent!=null&&r.rent>0?'<i style="width:'+(r.rent*scale).toFixed(1)+'px"></i>':'')+'</span><span class="rv">'+(r.rent!=null?((r.rent>0?'+':'')+r.rent.toFixed(1).replace('-','−')):'&ndash;')+'</span></div>');
     return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
       '<span class="sub'+(r.area==='near'?' n':'')+'">'+AREA[r.area]+(r.town&&r.area!=='metro'?' &middot; '+r.town:'')+' &middot; '+(r.q?'<b class="qok">Qualifies</b>':r.why)+'</span></td>'+
-      '<td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?pvrHM(r.dm):'&ndash;')+'</td><td>'+r.pk+'</td><td>'+(r.stag?r.stag+'y':'&ndash;')+'</td>'+
+      '<td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?pvrHM(r.dm):'&ndash;')+'</td><td class="pvr-now">'+(r.stag?'<b>'+r.stag+'y</b><span class="sub">since '+r.pk+'</span>':'<span class="na">&ndash;</span>')+'</td>'+
       '<td>'+bar+'</td><td class="gap">'+num(r.gap)+'</td><td>'+num(r.gpy,'%')+'</td>'+
       '<td class="pvr-now">'+(r.pNow!=null?'<b>'+pvrMoney(r.pNow)+'</b>':'<span class="na">&ndash;</span>')+'<span class="sub">'+(r.rNow!=null?'$'+r.rNow+'/wk':'&nbsp;')+'</span></td>'+
       '<td class="pvr-now">'+(r.yNow!=null?'<b>'+r.yNow.toFixed(1)+'%</b>':'<span class="na">&ndash;</span>')+'<span class="sub">'+(r.yPk!=null?r.yPk.toFixed(1)+'% at the '+r.pk+' peak':'&nbsp;')+'</span></td>'+
