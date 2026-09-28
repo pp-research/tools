@@ -350,7 +350,7 @@ table.calc.pvr tr.pvr-row:hover td{background:var(--surface-2)}
 table.calc.pvr tr.pvr-row.active td{background:var(--track-active-green);color:var(--teal);font-weight:700}
 table.calc.pvr td:last-child b{color:#00A1B4}
 /* Price v Rent tab (2026-09-28 redesign, direction A): hero, headline figures, since-peak chart, map, ranking */
-.pvr{display:flex;flex-direction:column;gap:22px}
+#pane-pvr > .pvr{display:flex;flex-direction:column;gap:22px}   /* the wrapper only: the ranking table also carries .pvr */
 .pvr-hero{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap;padding:6px 0 4px}
 .pvr-hero-txt{flex:1 1 520px;display:flex;flex-direction:column;gap:10px}
 .pvr-eyebrow{font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
