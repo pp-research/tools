@@ -416,6 +416,7 @@ table.calc.pvr .na{color:var(--text-faint)}
 .pvr-tt .ttr b{font-weight:800}
 .pvr-tt .ttr span{margin-left:auto;padding-left:12px;color:var(--text-faint);font-weight:700}
 .pvr-tt .ttg{font-weight:800;color:var(--teal);border-top:1px solid var(--border);padding-top:5px}
+#pvrSet[hidden]{display:none}
 .pvr-idxtools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pvr-zhint{font-size:12px;font-weight:700;color:var(--text-faint)}
 .pvr-zreset{font:inherit;font-size:12px;font-weight:800;padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer}
@@ -719,7 +720,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-ctls">
           <div class="pvr-seg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">Houses</button><button data-s="unit" aria-pressed="false">Units</button></div>
           <div class="pvr-chips" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All Victoria</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Within 2h drive</button><button data-f="far" aria-pressed="false">Beyond 2h drive</button></div>
-          <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show"><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
+          <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show" hidden><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
         </div>
       </section>
       <section class="pvr-card" aria-label="Where every market sits">
@@ -1401,7 +1402,7 @@ function pvrZoomWire(idx, zk){
     tt.innerHTML='<div class="tty">'+y+(cur?' <span>(to Jun)</span>':'')+'</div>'+
       '<div class="ttr"><i style="background:var(--text)"></i>Price <b>'+money(pr)+'</b><span>index '+(pi!=null?Math.round(pi):'&ndash;')+'</span></div>'+
       '<div class="ttr"><i style="background:var(--teal)"></i>Rent <b>'+(rt!=null?'$'+rt+'/wk':'&ndash;')+'</b><span>index '+(ri!=null?Math.round(ri):'&ndash;')+'</span></div>'+
-      (pi!=null&&ri!=null?'<div class="ttg">Gap '+((ri-pi)>0?'+':'')+Math.round(ri-pi)+' pts</div>':'');
+      (pi!=null&&ri!=null?'<div class="ttg">Rent vs price '+((ri-pi)>0?'+':'&minus;')+Math.abs(Math.round(ri-pi))+' index pts</div>':'');
     const box=svg.getBoundingClientRect(), host=idx.getBoundingClientRect(), sc=box.width/W, px=box.left-host.left+jx(j)*sc;
     tt.hidden=false; const tw=tt.offsetWidth; tt.style.left=Math.max(4,Math.min(host.width-tw-4, px+(px+14+tw>host.width?-tw-14:14)))+'px'; tt.style.top=(box.top-host.top+18)+'px';
     gl.setAttribute('x1',jx(j)); gl.setAttribute('x2',jx(j)); gl.setAttribute('visibility','visible'); };
