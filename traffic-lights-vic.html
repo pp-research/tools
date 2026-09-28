@@ -466,7 +466,7 @@ table.calc.pvr td .sub{display:block;font-size:11.5px;font-weight:600;color:var(
 table.calc.pvr td .sub.n{color:var(--orange)}
 table.calc.pvr td.gap b{font-size:14.5px;font-weight:800;color:var(--text)}
 .pvr-div{display:flex;align-items:center;justify-content:center;gap:0}
-.pvr-div .l,.pvr-div .r{width:90px;display:flex}
+.pvr-div .l,.pvr-div .r{width:60px;display:flex}
 .pvr-div .l{justify-content:flex-end}
 .pvr-div .l i{height:9px;background:var(--red);opacity:.75;border-radius:5px 0 0 5px;display:block}
 .pvr-div .r i{height:9px;background:var(--teal);border-radius:0 5px 5px 0;display:block}
@@ -1609,7 +1609,7 @@ function renderPVR(){
   const th=cols.map(([t,kk])=>kk?('<th data-k="'+kk+'" class="sortable'+(kk===key?' on':'')+'">'+t+(kk===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
   const num=(v,suf)=>v==null?'<span class="na">&ndash;</span>':('<b>'+(v>0?'+':'')+v.toFixed(1)+(suf||'')+'</b>');
   const na='<span class="na">&ndash;</span>';
-  const body=shown.map(r=>{ const i=sorted.indexOf(r)+1;
+  const body=shown.map(r=>{ const i=r.q?(qOnly.indexOf(r)+1):'&ndash;';   // numbered among the qualifiers; others get a dash
     const bar=r.price==null?'<span class="pvr-atpeak">At its price peak</span>':
       ('<div class="pvr-div"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'</span><span class="l"><i style="width:'+(Math.max(0,-r.price)*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r">'+
        (r.rent!=null&&r.rent>0?'<i style="width:'+(r.rent*scale).toFixed(1)+'px"></i>':'')+'</span><span class="rv">'+(r.rent!=null?((r.rent>0?'+':'')+r.rent.toFixed(1).replace('-','−')):'&ndash;')+'</span></div>');
