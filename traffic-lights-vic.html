@@ -688,8 +688,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
       </div>
       <section class="pvr-hero">
         <div class="pvr-hero-txt">
-          <div class="pvr-eyebrow">Price v Rent</div>
-          <h2 class="pvr-h1">Where rent has outrun a stalled price</h2>
+          <h2 class="pvr-h1">Price vs. Rent</h2>
           <p class="pvr-lede">Every Victorian LGA measured from its own price peak, so markets with different histories compare fairly. The wider the gap, the more the yield has lifted while the price has not.</p>
         </div>
         <div class="pvr-ctls">
@@ -1385,6 +1384,7 @@ function renderPVR(){
   const head=t=>'<div class="pvr-cardhead"><h3>'+t+'</h3>'+modeBtns+'</div>';
   if(!G){ idx.innerHTML=head(pvrNm(cur))+'<div class="pvr-empty">No '+segW+' price history for this market.</div>'; }
   else if(PVRIDX==='peak'&&!G.stag){ idx.innerHTML=head(pvrNm(cur)+' '+segW+'s since the price peak')+'<div class="pvr-empty">The '+segW+' price is at its peak now, so there is no stall to show. Switch to the whole history, or pick another market.</div>'; }
+  else if(PVRIDX==='all'&&!G.r.some(v=>v!=null)){ idx.innerHTML=head(pvrNm(cur)+' '+segW+'s &mdash; price and rent')+'<div class="pvr-empty">No '+segW+' rent history for this market, so there is nothing to set price against.</div>'; }
   else {
     const CY=G.y0+G.p.length-1; let yrs=[], P=[], R=[], base;
     if(PVRIDX==='peak'){
@@ -1392,16 +1392,13 @@ function renderPVR(){
       for(let y=G.pk;y<=CY;y++){ const i=y-G.y0; if(y>G.pk){ pi*=1+(G.p[i]||0)/100; if(G.r[i]==null) rOK=false; else ri*=1+G.r[i]/100; } yrs.push(y); P.push(pi); R.push(rOK?ri:null); }
       if(G.rwin!=null) R[R.length-1]=100+G.rwin; P[P.length-1]=100+G.pwin;   // endpoints = the page's since-peak figures
     } else {
-      // both indexed to 100 at the start of the LATEST UNBROKEN run of rent readings (a missing rent year breaks the
-      // chain, so earlier stretches cannot be joined on); price runs back before it on the same base
-      const fp=G.p.findIndex(v=>v!=null);
+      // ONLY THE YEARS WITH RENT (Shaene: "only show history with rent in it"): both indexed to 100 at the start of the
+      // latest unbroken run of rent readings -- a missing rent year breaks the chain, so earlier stretches cannot be joined on
       let lr=G.r.length-1; while(lr>=0&&G.r[lr]==null) lr--;
       let fr=lr; while(fr>0&&G.r[fr-1]!=null) fr--;
-      const bi=fr>0?fr-1:(fr===0?0:fp); base=G.y0+bi;
-      const lvP=[], lvR=[]; lvP[bi]=100; lvR[bi]=fr>=0?100:null;
-      for(let i=bi+1;i<G.p.length;i++){ lvP[i]=lvP[i-1]*(1+(G.p[i]||0)/100); lvR[i]=(lvR[i-1]!=null&&G.r[i]!=null)?lvR[i-1]*(1+G.r[i]/100):null; }
-      for(let i=bi-1;i>=fp&&i>=0;i--){ lvP[i]=lvP[i+1]/(1+(G.p[i+1]||0)/100); lvR[i]=null; }   // price before rent begins
-      for(let i=Math.max(fp,0);i<G.p.length;i++){ if(lvP[i]==null) continue; yrs.push(G.y0+i); P.push(lvP[i]); R.push(lvR[i]); }
+      const bi=fr>0?fr-1:0; base=G.y0+bi;
+      let lp=100, lrv=100;
+      for(let i=bi;i<=lr;i++){ if(i>bi){ lp*=1+(G.p[i]||0)/100; lrv*=1+G.r[i]/100; } yrs.push(G.y0+i); P.push(lp); R.push(lrv); }
     }
     const n=yrs.length, vals=P.concat(R.filter(v=>v!=null));
     const span=Math.max(...vals)-Math.min(...vals), step=span>400?100:span>160?50:span>60?20:10;
@@ -1411,7 +1408,7 @@ function renderPVR(){
     let grid='', ticks='';
     for(let v=lo; v<=hi+1e-9; v+=step){ grid+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)'+(v===100?';stroke:var(--text-faint);stroke-dasharray:4 4':'')+'"></line>'; ticks+='<text x="'+(X0-10)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'; }
     const every=n<=12?1:n<=25?5:10;
-    yrs.forEach((y,j)=>{ if(j===n-1||y%every===0&&(n-1-j)*(X1-X0)/(n-1)>34) ticks+='<text x="'+X(j)+'" y="'+(H-12)+'" text-anchor="middle">'+(j===n-1?'Now':y)+'</text>'; });
+    yrs.forEach((y,j)=>{ if(j===n-1||y%every===0&&(n-1-j)*(X1-X0)/(n-1)>34) ticks+='<text x="'+X(j)+'" y="'+(H-12)+'" text-anchor="middle">'+(j===n-1&&y===CY?'Now':y)+'</text>'; });
     // the stall since the last peak, shaded and marked
     let stall='';
     if(G.stag&&PVRIDX==='all'){ const jp=yrs.indexOf(G.pk); if(jp>=0){ stall='<rect x="'+X(jp)+'" y="'+YT+'" width="'+(X(n-1)-X(jp))+'" height="'+(YB-YT)+'" style="fill:var(--text);opacity:.05"></rect>'+
