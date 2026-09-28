@@ -638,7 +638,11 @@ body.presenting .exitfs{display:grid}
 [data-shell=light] #pg-lights .tlrow{border-bottom-color:#17202C12}
 [data-shell=light] #pg-lights .tlrow .nm{color:#22303B}
 /* ---- traffic lights indicators: dark-luxe to match ---- */
-#pg-lights #l-how{flex:none;margin-top:.4cqw;border-top:1px solid #FFFFFF14;padding-top:.3cqw}
+#pg-lights #l-how{flex:none;margin-top:.55cqw;border-top:1px solid #FFFFFF14;padding-top:.35cqw}
+#pg-lights .sgt{color:#8FA9B4;font-weight:600;font-size:.7cqw;margin-left:.35cqw}
+#pg-lights .tlrow{padding:.13cqw .5cqw}
+#pg-lights .tlmini .m{width:1.18cqw;height:1.18cqw;font-size:.5cqw}
+[data-shell=light] #pg-lights .sgt{color:#5B6E7A}
 #pg-lights .howl{font-size:.66cqw;line-height:1.45;color:#8FA1AE;padding:.16cqw 0;display:flex;gap:.45cqw;align-items:baseline}
 #pg-lights .howl b{color:#7FB7C4;flex:none;width:5.4cqw;font-size:.6cqw;letter-spacing:.11em;text-transform:uppercase}
 #pg-lights .hsg{display:inline-block;width:4.86cqw;text-align:center;font-size:.56cqw;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#8FA9B4}
@@ -775,7 +779,7 @@ body.presenting .exitfs{display:grid}
   <div class="pad">
    <img class="plogo" src="https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-white.png" alt="Performance Property">
    <h2>Traffic lights</h2>
-   <div class="body"><div class="tl2n"><div class="pnl"><div id="l-pil"></div></div><div class="pnl"><div class="mapwrap sm" id="l-map"></div><h3>District summary</h3><div id="l-tbl"></div><div id="l-how"></div></div></div></div>
+   <div class="body"><div class="tl2n"><div class="pnl"><div id="l-pil"></div><div id="l-how"></div></div><div class="pnl"><div class="mapwrap sm" id="l-map"></div><h3>District summary</h3><div id="l-tbl"></div></div></div></div>
   </div>
   <div class="pnum">4 / 46</div>
  </div>
@@ -1969,10 +1973,10 @@ function pLights(){
     three medallions are the pillars (S&D, Value, Confidence), no blending */
  const m=(sig,ch)=>'<span class="m" style="background:'+SIGC[sig]+'">'+ch+'</span>';
  const trio=(d,s)=>m(dsSig(MOCK.divisions[d].seg[s].dscore),'S')+m(vSig(vEff(MOCK.divisions[d].seg[s])),'V')+m(cSig(cScore(d,s)),'C');
- put('l-tbl','<div class="tlth"><span class="nm">District</span><span class="tlr2"><span class="hsg">Houses</span><span class="hsg">Units</span></span></div>'
-  +VIS.map(d=>'<div class="tlrow" data-d="'+d+'">'
-   +'<span class="nm"><i style="background:'+C(d)+'"></i>'+d+'</span>'
-   +'<span class="tlr2"><span class="tlmini">'+trio(d,'house')+'</span><span class="tlmini">'+trio(d,'unit')+'</span></span></div>').join(''));
+ put('l-tbl','<div class="tlth"><span class="nm">Market</span><span class="hsg" style="width:auto">S&amp;D · Value · Confidence</span></div>'
+  +VIS.flatMap(d=>['house','unit'].map(s=>'<div class="tlrow" data-d="'+d+'">'
+   +'<span class="nm"><i style="background:'+C(d)+'"></i>'+d+'<span class="sgt">'+(s==='house'?'Houses':'Units')+'</span></span>'
+   +'<span class="tlmini">'+trio(d,s)+'</span></div>')).join(''));
  $$('#l-tbl .tlrow').forEach(el=>{el.onclick=()=>toggle(el.dataset.d)});
  put('l-how','<div class="howl"><b>S&amp;D</b>straight off the demand score · green ≥30 · orange ≥10 · red &lt;10</div>'
   +'<div class="howl"><b>Value</b>runway + 2.5 × price-rank drift (±25) · green ≥65% · red &lt;25%</div>'
