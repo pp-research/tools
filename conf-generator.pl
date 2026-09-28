@@ -88,17 +88,23 @@ sub deltaOf {
   ($r->{typ}//'') eq 'RATIO' ? ($r->{prior} ? $r->{latest}/$r->{prior}-1 : 0)
                              : $r->{latest}-$r->{prior};
 }
+# DIRECTION COMES FROM THE THRESHOLDS, NOT FROM `typ`. If green sits below red
+# the indicator is lower-is-better, and vice versa. Verified: deriving it this
+# way reproduces all 216 stored norms and signals. `typ` only says WHICH
+# quantity to read (growth or level), which is a separate question — and
+# keeping the two apart is what lets an indicator's polarity be changed by
+# swapping its thresholds, with nothing else to keep in step.
+sub lowerBetter { my $r=shift; $r->{green} < $r->{red} }
 sub normOf {
   my $r=shift; my $q=quantity($r); return undef unless defined $q;
-  ($r->{typ}//'') eq 'INVERSE'
+  lowerBetter($r)
     ? clamp01( ($r->{red}-$q)/($r->{red}-$r->{green}) )
     : clamp01( ($q-$r->{red})/($r->{green}-$r->{red}) );
 }
 sub sigOf {
   my $r=shift; my $q=quantity($r); return undef unless defined $q;
-  if(($r->{typ}//'') eq 'INVERSE'){
-    return $q <= $r->{green} ? 'GREEN' : ($q >= $r->{red} ? 'RED' : 'ORANGE');
-  }
+  return $q <= $r->{green} ? 'GREEN' : ($q >= $r->{red} ? 'RED' : 'ORANGE')
+    if lowerBetter($r);
   return $q >= $r->{green} ? 'GREEN' : ($q <= $r->{red} ? 'RED' : 'ORANGE');
 }
 
@@ -120,7 +126,7 @@ for my $r (@REG){ for my $row (@{rowsOf($r)}){
 # s10 needs the whole field for one indicator at once
 sub s10map {
   my $name=shift; my $set=$byInd{$name} or return {};
-  my $inv = (($set->[0]{row}{typ}//'') eq 'INVERSE');
+  my $inv = lowerBetter($set->[0]{row});   # same rule as normOf/sigOf
   my %out;
   for my $sig (keys %BAND){
     my @g = grep { ($_->{row}{sig}//'') eq $sig } @$set;
@@ -233,6 +239,44 @@ for my $r (@REG){
 die "phase B: nothing matched the fix file\n" unless @applied;
 printf "\nPHASE B — applying corrected inputs\n  rows updated: %d\n", scalar @applied;
 
+# ---- PHASE B3 — Business Confidence is read PLAINLY, not cycle-inverted ----
+# Shaene, 2026-09-29. It was scored cycle-inverted — green at or below -10, so
+# weak sentiment read GREEN and "marked the value phase". That encodes "low
+# confidence is the time to buy" on the CARD, but it does the opposite on the
+# CLOCK: a green indicator lifts the pillar, and Buy Value takes only G/G/O, so
+# greening the pillar pushes a market OUT of Buy Value into Momentum. Measured:
+# un-inverted gives Buy Value 9 against 6, and Townsville units moves
+# 9:30 Momentum -> 7:00 Buy Value on Queensland sentiment of -10.
+#
+# Expressed by SWAPPING THE THRESHOLDS and nothing else, which works because
+# direction is derived from green vs red (see lowerBetter). `typ` stays as it
+# is: it selects the level rather than the growth, which is unchanged, and it
+# is not rendered anywhere.
+{
+  my $touchedBC=0;
+  for my $r (@REG){
+    my ($row) = grep { $_->{name} eq 'Business Confidence' } @{rowsOf($r)};
+    next unless $row;
+    next unless $row->{green} < $row->{red};      # already swapped? leave it
+    ($row->{green},$row->{red}) = ($row->{red},$row->{green});   # -10/0 -> 0/-10
+    $row->{dir}  = 'Higher is better';
+    $row->{inv}  = '';
+    # built with chr() ON PURPOSE. A literal ≥ in this source would be bytes,
+    # not characters, without `use utf8` — and JSON::PP->ascii would then escape
+    # each byte separately and produce the double-encoded mojibake that had to
+    # be cleaned out of the summary tooltips on 2026-09-28.
+    $row->{note} = sprintf('Green %s 0, Red %s %s10',
+                           chr(0x2265), chr(0x2264), chr(0x2212));
+    $row->{norm} = normOf($row)+0;
+    $row->{sig}  = sigOf($row);
+    $touchedBC++;
+  }
+  if($touchedBC){
+    printf "  Business Confidence un-inverted in %d regions\n", $touchedBC;
+    push @applied, map { "$_/Business Confidence" } @REG;
+  }
+}
+
 # s10 is a position among the regions sharing a signal, so it is redone for the
 # indicators that were EDITED — and only those. An indicator whose inputs did
 # not move cannot have moved in its own field, so rewriting it can only inject
@@ -261,20 +305,34 @@ for my $r (@REG){
   my %src = map { $_->{name} => $_ } @{rowsOf($r)};
   for my $card (@{ $DATA->{$r}{indicators} || [] }){
     my $row = $src{ $card->{name} } or next;
-    next unless $byRegion{$r}{$card->{name}}
-             || ($row->{state} && $byState{ $row->{state} }{$card->{name}});
-    my $pc = sub { sprintf('%.2f%%', $_[0]*100) };
-    $card->{latest} = $pc->($row->{latest});
-    $card->{head}   = $pc->($row->{latest});
-    my $chg = sprintf('%+.2f pts', ($row->{latest}-$row->{prior})*100);
-    $card->{change} = $chg;
-    for my $l (@{ $card->{lines} || [] }){
-      $l->{v} = $pc->($row->{prior}) if $l->{k} eq 'Previous';
-      $l->{v} = $chg                 if $l->{k} eq 'Change';
+    # gate on what actually CHANGED, not on what was in the fix file — a
+    # polarity change touches rows the CSV never mentions
+    next unless $touched{ $card->{name} };
+    # The displayed VALUE strings are rewritten only where the reading itself
+    # moved. Business Confidence keeps its numbers — only its polarity changed —
+    # and its card is formatted plainly ("-16.00"), so running it through the
+    # percentage formatter below would print -1600.00%.
+    my $valueMoved = $byRegion{$r}{$card->{name}}
+                  || ($row->{state} && $byState{ $row->{state} }{$card->{name}});
+    if($valueMoved){
+      my $pc = sub { sprintf('%.2f%%', $_[0]*100) };
+      $card->{latest} = $pc->($row->{latest});
+      $card->{head}   = $pc->($row->{latest});
+      my $chg = sprintf('%+.2f pts', ($row->{latest}-$row->{prior})*100);
+      $card->{change} = $chg;
+      for my $l (@{ $card->{lines} || [] }){
+        $l->{v} = $pc->($row->{prior}) if $l->{k} eq 'Previous';
+        $l->{v} = $chg                 if $l->{k} eq 'Change';
+      }
     }
     $card->{norm}   = $row->{norm};
     $card->{signal} = $row->{sig};
     $card->{s10}    = $row->{s10};   # the chip, and its colour via bandOf(s10)
+    # `dir` picks the card's rule strip (lo/hi) and `note` is the band text
+    # printed on it, so both must follow a polarity change or the card would
+    # state the old rule under the new signal
+    $card->{dir}    = $row->{dir}  if defined $row->{dir};
+    $card->{note}   = $row->{note} if defined $row->{note};
     $mirrored++;
   }
 }
