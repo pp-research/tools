@@ -894,7 +894,7 @@ function assignClock(G){   // G: growth by LGA and segment; defaults to P36 (a p
     if(x.sig[0]==='R'&&!redSD&&redPick[x.l+'|'+x.s]!=null){ pick=redPick[x.l+'|'+x.s];
       best=(acc(CLOCK_T[pick].pat[1],x.sig[1])?1:0)+(acc(CLOCK_T[pick].pat[2],x.sig[2])?1:0); }
     const t=CLOCK_T[pick];
-    SEG[x.l][x.s].clock={t:t.t, ph:t.ph, fit:best, sig:x.sig.join('/'), p36:x.p36};
+    SEG[x.l][x.s].clock={t:t.t, ph:t.ph, ix:pick, fit:best, sig:x.sig.join('/'), p36:x.p36};   // ix: position in the table = order around the dial
   });
 }
 function computeSDRanks(){ SDRANKED=LGAS.filter(l=>DEMAND[l]&&DEMAND[l].demand&&DEMAND[l].demand.score!=null).sort((a,b)=>DEMAND[b].demand.score-DEMAND[a].demand.score); SDRANK={}; SDRANKED.forEach((l,i)=>SDRANK[l]=i+1); computeSeg(); }
@@ -948,8 +948,9 @@ function buildSummary(){
   if(sortKey==='overall'){
     // Buckets are the calculated clock phase for whichever segment is showing
     const byPhase={'Buy Value':[],'Momentum':[],'Selling':[],'Correction':[]};
-    LGAS.forEach(l=>{const c=S2(l).clock; if(c) byPhase[c.ph].push({l,rank:rankOf(l)});});
-    Object.values(byPhase).forEach(a=>a.sort((x,y)=>x.rank-y.rank));
+    // inside each phase, in clock order around the dial (Shaene: "arrange ... according to time"); same time -> rank
+    LGAS.forEach(l=>{const c=S2(l).clock; if(c) byPhase[c.ph].push({l,ix:c.ix,rank:rankOf(l)});});
+    Object.values(byPhase).forEach(a=>a.sort((x,y)=>(x.ix-y.ix)||(x.rank-y.rank)));
     const put=(id,arr)=>{fill(id,arr.map(o=>o.l),null);
       const sec=document.getElementById(id).closest('.slist');
       if(sec) sec.style.display=arr.length?'':'none';};
