@@ -405,6 +405,10 @@ table.calc.pvr .na{color:var(--text-faint)}
 .pvr-tiles4 .pvr-tile .v{font-size:24px}
 .pvr-qcount{color:var(--text);font-weight:800}
 @media(max-width:760px){.pvr-tiles.pvr-tiles4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pvr-idxtools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pvr-zhint{font-size:12px;font-weight:700;color:var(--text-faint)}
+.pvr-zreset{font:inherit;font-size:12px;font-weight:800;padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer}
+.pvr-zreset:hover,.pvr-zreset:focus-visible{background:var(--teal);color:#fff}
 .dd-opt .dd-gap{margin-left:auto;margin-right:10px;font-size:12px;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums}
 .pvr-svg{width:100%;height:auto;display:block}
 .pvr-empty{padding:40px 10px;text-align:center;color:var(--text-dim);font-size:14px}
@@ -1352,6 +1356,7 @@ let pvrCur=null;   // the Price v Rent selection, independent of the Dashboard's
 function pvrLGA(){ if(!pvrCur||!LGAS.includes(pvrCur)){ const o=pvrRows(GSEG).out.sort((a,b)=>b.gap-a.gap); pvrCur=o.length?o[0].l:current; } return pvrCur; }
 function pvrPick(l){ pvrCur=l; pvrDdInput.placeholder=pvrNm(l); renderGrowthAll(); }
 // Every LGA, qualifying or not: the qualifying ones as pvrRows gives them, the rest with the reason they miss.
+let PVRZOOM=null;   // drag-zoom on the top chart: {k: market|segment|mode it belongs to, a: first year, b: last year}
 let PVRSET='all', PVRIDX='all';   // ranking + map show all LGAs or qualifying only; the top chart shows whole history or since the last peak
 function pvrAllRows(seg){
   const Q={}; pvrRows(seg).out.forEach(r=>{ Q[r.l]=r; }); const all=[];
@@ -1364,6 +1369,20 @@ function pvrAllRows(seg){
       price:g.stag?g.pwin:null,rent:has?g.rwin:null,gap:has?g.rwin-g.pwin:null,
       gpy:has?(Math.pow((1+g.rwin/100)/(1+g.pwin/100),1/g.stag)-1)*100:null}); });
   return all;
+}
+// drag across the top chart's years to zoom; the chart stores its year axis on the svg (data-x0/x1/y0/y1)
+function pvrZoomWire(idx, zk){
+  const svg=idx.querySelector('svg.pvr-svg'), sel=document.getElementById('pvrZSel'); if(!svg||!sel) return;
+  const x0=+svg.dataset.x0, x1=+svg.dataset.x1, ya=+svg.dataset.ya, yb=+svg.dataset.yb, n=yb-ya+1; if(n<3) return;
+  const toX=e=>{ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()).x; };
+  const toJ=x=>Math.max(0,Math.min(n-1,Math.round((x-x0)/(x1-x0)*(n-1)))), jx=j=>x0+(x1-x0)*j/(n-1);
+  let start=null;
+  svg.style.cursor='crosshair'; svg.style.touchAction='pan-y';
+  svg.onpointerdown=e=>{ if(e.button) return; start=toJ(toX(e)); svg.setPointerCapture(e.pointerId); sel.setAttribute('x',jx(start)); sel.setAttribute('width',0); };
+  svg.onpointermove=e=>{ if(start==null) return; const j=toJ(toX(e)), a=Math.min(start,j), b=Math.max(start,j); sel.setAttribute('x',jx(a)); sel.setAttribute('width',jx(b)-jx(a)); };
+  svg.onpointerup=e=>{ if(start==null) return; const j=toJ(toX(e)), a=Math.min(start,j), b=Math.max(start,j); start=null; sel.setAttribute('width',0);
+    if(b-a>=2){ PVRZOOM={k:zk, a:ya+a, b:ya+b}; renderPVR(); } };   // 3+ years, so a stray click does not zoom
+  svg.onpointercancel=()=>{ start=null; sel.setAttribute('width',0); };
 }
 function renderPVR(){
   const cur=pvrLGA();   // Price v Rent keeps its OWN selection, independent of the Dashboard's
@@ -1388,7 +1407,8 @@ function renderPVR(){
   // ---- price and rent for the selected market: whole history, or since the last peak
   const G=GROWTH[cur]&&GROWTH[cur][seg], idx=document.getElementById('pvrIdx');
   const modeBtns='<div class="pvr-seg pvr-seg-sm" id="pvrIdxMode" role="group" aria-label="Chart range"><button data-m="all" aria-pressed="'+(PVRIDX==='all')+'">Whole history</button><button data-m="peak" aria-pressed="'+(PVRIDX==='peak')+'">Since last peak</button></div>';
-  const head=t=>'<div class="pvr-cardhead"><h3>'+t+'</h3>'+modeBtns+'</div>';
+  const zk=cur+'|'+seg+'|'+PVRIDX; if(PVRZOOM&&PVRZOOM.k!==zk) PVRZOOM=null;
+  const head=t=>'<div class="pvr-cardhead"><h3>'+t+'</h3><div class="pvr-idxtools">'+(PVRZOOM?'<button type="button" class="pvr-zreset" id="pvrZReset">Reset zoom</button>':'<span class="pvr-zhint">Drag across the chart to zoom</span>')+modeBtns+'</div></div>';
   if(!G){ idx.innerHTML=head(pvrNm(cur))+'<div class="pvr-empty">No '+segW+' price history for this market.</div>'; }
   else if(PVRIDX==='peak'&&!G.stag){ idx.innerHTML=head(pvrNm(cur)+' '+segW+'s since the price peak')+'<div class="pvr-empty">The '+segW+' price is at its peak now, so there is no stall to show. Switch to the whole history, or pick another market.</div>'; }
   else if(PVRIDX==='all'&&!G.r.some(v=>v!=null)){ idx.innerHTML=head(pvrNm(cur)+' '+segW+'s &mdash; price and rent')+'<div class="pvr-empty">No '+segW+' rent history for this market, so there is nothing to set price against.</div>'; }
@@ -1407,6 +1427,9 @@ function renderPVR(){
       let lp=100, lrv=100;
       for(let i=bi;i<=lr;i++){ if(i>bi){ lp*=1+(G.p[i]||0)/100; lrv*=1+G.r[i]/100; } yrs.push(G.y0+i); P.push(lp); R.push(lrv); }
     }
+    // drag-zoom: crop to the chosen years; values keep their index base, so the gap reads the same
+    if(PVRZOOM){ const ia=yrs.indexOf(PVRZOOM.a), ib=yrs.indexOf(PVRZOOM.b);
+      if(ia>=0&&ib>ia){ yrs=yrs.slice(ia,ib+1); P=P.slice(ia,ib+1); R=R.slice(ia,ib+1); } else PVRZOOM=null; }
     const n=yrs.length, vals=P.concat(R.filter(v=>v!=null));
     const span=Math.max(...vals)-Math.min(...vals), step=span>400?100:span>160?50:span>60?20:10;
     const lo=Math.floor(Math.min(...vals,100)/step)*step, hi=Math.ceil(Math.max(...vals,100)/step)*step;
@@ -1436,16 +1459,19 @@ function renderPVR(){
     const lastR=R[n-1], lastP=P[n-1], hasR=R.some(v=>v!=null);
     const rAbove=lastR!=null&&lastR>=lastP;
     const lab=(v,c,t,up)=>'<circle cx="'+X(n-1)+'" cy="'+Y(v)+'" r="5.5" style="fill:'+c+'"></circle><text x="'+(X(n-1)-10)+'" y="'+(Y(v)+(up?-12:22))+'" text-anchor="end" style="fill:'+c+';font-size:13px;font-weight:800">'+t+' '+Math.round(v)+'</text>';
-    const title=PVRIDX==='peak'?(pvrNm(cur)+' '+segW+'s since the '+G.pk+' peak'):(pvrNm(cur)+' '+segW+'s &mdash; price and rent, whole history');
+    const title=(PVRIDX==='peak'?(pvrNm(cur)+' '+segW+'s since the '+G.pk+' peak'):(pvrNm(cur)+' '+segW+'s &mdash; price and rent, '+(PVRZOOM?'':'whole history')))+(PVRZOOM?(PVRIDX==='peak'?', ':'')+yrs[0]+'&ndash;'+yrs[n-1]:'');
     idx.innerHTML=head(title)+
       '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.14"></i>Stagnation periods</span>':'')+'</div>'+
-      '<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+title.replace(/&[a-z]+;/g,'-')+': indexed to 100 in '+base+'">'+
+      '<svg class="pvr-svg" data-x0="'+X0+'" data-x1="'+X1+'" data-ya="'+yrs[0]+'" data-yb="'+yrs[n-1]+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+title.replace(/&[a-z]+;/g,'-')+': indexed to 100 in '+base+'">'+
       stall+'<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+gapPoly+line(R,'var(--teal)')+line(P,'var(--text)')+
-      (lastR!=null?lab(lastR,'var(--teal)','Rent',rAbove):'')+lab(lastP,'var(--text)','Price',!rAbove)+'</svg>'+
+      (lastR!=null?lab(lastR,'var(--teal)','Rent',rAbove):'')+lab(lastP,'var(--text)','Price',!rAbove)+
+      '<rect id="pvrZSel" x="0" y="'+YT+'" width="0" height="'+(YB-YT)+'" style="fill:var(--teal);opacity:.18;pointer-events:none"></rect></svg>'+
       '<p class="pvr-note">'+(PVRIDX==='peak'?('Indexed to 100 in the '+G.pk+' peak year.'):('Both indexed to 100 in '+base+(hasR?', where the unbroken rent record begins, so the gap opens from a common start':'')+'. Grey bands: stagnation periods, each from a price peak to the year price next passed it (3+ years); the last runs to now if price has not recovered.'))+
       (hasR?'':' No rent history for this market.')+' Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
   }
   idx.querySelectorAll('#pvrIdxMode button').forEach(b=>{ b.onclick=()=>{ if(PVRIDX!==b.dataset.m){ PVRIDX=b.dataset.m; renderPVR(); } }; });
+  const zr=document.getElementById('pvrZReset'); if(zr) zr.onclick=()=>{ PVRZOOM=null; renderPVR(); };
+  pvrZoomWire(idx, zk);
 
   // ---- selected market
   const me=out.find(r=>r.l===cur), sel=document.getElementById('pvrSel');
@@ -1493,15 +1519,15 @@ function renderPVR(){
     const mp=pts.find(r=>r.l===cur);
     if(mp) s+='<circle cx="'+X(mp.price).toFixed(1)+'" cy="'+Y(mp.rent).toFixed(1)+'" r="'+(rad(mp.stag)+6)+'" style="fill:none;stroke:var(--text);stroke-width:2"></circle>';
     const inPts=r=>pts.includes(r);
-    // every qualifying dot is labelled (Shaene, 2026-09-28); the selected one too even if it does not qualify.
+    // every qualifying dot is labelled (Shaene, 2026-09-28); no "selected" tag, the ring marks it.
     // Each label tries right, left, above, below, then further out, and takes the first spot clear of other labels
     // and dots; a label pushed away from its dot gets a thin leader line.
-    const want=[...new Set([...(mp?[mp]:[]), ...pts.filter(r=>r.q).sort((a,b)=>b.gap-a.gap)])];
+    const want=[...new Set([...(mp&&mp.q?[mp]:[]), ...pts.filter(r=>r.q).sort((a,b)=>b.gap-a.gap)])];
     const dots=pts.map(r=>({x:X(r.price),y:Y(r.rent),r:rad(r.stag)})), placed=[];
     const hit=(b)=>b.x0<X0-2||b.x1>X1-2||b.y0<YT-4||b.y1>YB+2||placed.some(p=>b.x0<p.x1&&p.x0<b.x1&&b.y0<p.y1&&p.y0<b.y1)||
       dots.some(d=>d.x+d.r>b.x0&&d.x-d.r<b.x1&&d.y+d.r>b.y0&&d.y-d.r<b.y1);
     want.forEach(r=>{ const cx=X(r.price), cy=Y(r.rent), rr=rad(r.stag);
-      const txt=pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):'')+(r===mp?' · selected':''), w=txt.length*6.9, h=14;
+      const txt=pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):''), w=txt.length*6.9, h=14;
       const spots=[[cx+rr+5,cy+4,0],[cx-rr-5-w,cy+4,0],[cx-w/2,cy-rr-5,0],[cx-w/2,cy+rr+14,0]];
       [18,32,48].forEach(dd=>spots.push([cx+rr+5,cy-dd+4,1],[cx+rr+5,cy+dd+4,1],[cx-rr-5-w,cy-dd+4,1],[cx-rr-5-w,cy+dd+4,1]));
       let sp=spots.find(([x,y])=>!hit({x0:x,x1:x+w,y0:y-11,y1:y+3})); if(!sp) sp=spots[0];
