@@ -434,7 +434,7 @@ table.calc.pvr .na{color:var(--text-faint)}
 .pvr-tile .v.dn{color:var(--red)}.pvr-tile .v.up{color:var(--teal)}
 .pvr-sel p{font-size:13px;line-height:1.6;color:var(--text-dim);margin:0;padding-top:12px;border-top:1px solid var(--border)}
 .pvr-mapgrid{display:flex;flex-direction:column;gap:22px}
-.pvr-mapside{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
+.pvr-mapside{display:block;max-width:880px}
 @media(max-width:900px){.pvr-mapside{grid-template-columns:1fr}}
 .pvr-mapside .eb{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint)}
 .pvr-mapside p{font-size:13.5px;line-height:1.6;color:var(--text);margin:0}
@@ -1577,13 +1577,10 @@ function renderPVR(){
     mapEl.innerHTML=s+'</svg>';
     mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrPick(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrPick(c.dataset.l); } }; });
   }
-  const b40=rows.filter(r=>r.gap>=40), topReg=near[0], notPlot=list.length-pts.length;
+  const notPlot=list.length-pts.length;
   document.getElementById('pvrMapSide').innerHTML=
     '<div style="display:flex;flex-direction:column;gap:8px"><div class="eb">How to read it</div><p>Each dot is one market, placed by how far price has moved and rent has risen since its own last price peak. Up and to the left is the most extreme case.</p>'+
-    '<p class="dim">Filled dots qualify (stalled 3+ years, rent up); hollow ones do not yet. Markets on the same dashed line share a gap. Hover a dot for its figures; click to select it.'+(notPlot?(' '+notPlot+' market'+(notPlot===1?' is':'s are')+' at a price peak or lack rent history, so '+(notPlot===1?'it has':'they have')+' no dot.'):'')+'</p></div>'+
-    '<div class="pvr-callout"><div class="k">Beyond the 40-point line</div><div class="v">'+b40.length+' market'+(b40.length===1?'':'s')+'</div><div class="s">'+(b40.length?b40.sort((a,b)=>b.gap-a.gap).map(r=>pvrNm(r.l)).join(', '):'None '+FILT)+'</div></div>'+
-    '<div class="pvr-callout reg"><div class="k">Within 2h drive</div><div class="v">'+near.length+' qualif'+(near.length===1?'ies':'y')+'</div><div class="s">'+
-      (topReg?('Led by <b>'+pvrNm(topReg.l)+'</b>: price '+pvrPC(topReg.price)+', rent '+pvrPC(topReg.rent)+' since '+topReg.pk+' &middot; '+pvrHM(topReg.dm)+' to '+topReg.town+'. Filter the page to Within 2h drive to see them all.'):('No regional '+segW+' market within 2 hours qualifies right now.'))+'</div></div>';
+    '<p class="dim">Filled dots qualify (stalled 3+ years, rent up); hollow ones do not yet. Markets on the same dashed line share a gap. Hover a dot for its figures; click to select it.'+(notPlot?(' '+notPlot+' market'+(notPlot===1?' is':'s are')+' at a price peak or lack rent history, so '+(notPlot===1?'it has':'they have')+' no dot.'):'')+'</p></div>';
 
   // ---- ranking: every LGA (or qualifying only); blanks sort last whichever way
   const key=PVRSORT, dir=PVRDIR;
