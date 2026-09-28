@@ -649,7 +649,7 @@ body.presenting .exitfs{display:grid}
 [data-shell=light] #pg-lights .phe{color:#8A97A3}
 #pg-lights .mapwrap.sm{max-width:72%;margin:0 auto .25cqw}
 #pg-lights .tlth{padding-left:.5cqw;padding-right:.5cqw}
-#pg-lights .hsg3 b{width:1.18cqw;text-align:center;font-size:.44cqw;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#8FA9B4}
+#pg-lights .hsg3 b{width:1.18cqw;text-align:center;font-size:.62cqw;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#8FA9B4}
 [data-shell=light] #pg-lights .hsg3 b{color:#5B6E7A}
 #pg-lights .howl{font-size:.66cqw;line-height:1.45;color:#8FA1AE;padding:.16cqw 0;display:flex;gap:.45cqw;align-items:baseline}
 #pg-lights .howl b{color:#7FB7C4;flex:none;width:5.4cqw;font-size:.6cqw;letter-spacing:.11em;text-transform:uppercase}
@@ -1989,7 +1989,7 @@ function pLights(){
  const PHASE={GGG:'Momentum',GGO:'Buy Value',GOO:'Correction',GRR:'Correction',OGG:'Momentum',OGO:'Momentum',OOG:'Momentum',OOO:'Selling',ORO:'Selling',RGG:'Selling',RGO:'Selling',ROG:'Selling',ROO:'Selling'};
  const phase=(d,s)=>PHASE[vSig(vEff(MOCK.divisions[d].seg[s]))[0]+dsSig(MOCK.divisions[d].seg[s].dscore)[0]+cSig(cScore(d,s))[0]]||'Unmapped';
  const MKTS=VIS.flatMap(d=>['house','unit'].map(s=>({d:d,s:s,ph:phase(d,s)})));
- put('l-tbl','<div class="tlth"><span class="nm">Market</span><span class="tlmini hsg3"><b>Val</b><b>S&amp;D</b><b>Conf</b></span></div>'
+ put('l-tbl','<div class="tlth"><span class="nm">Market</span><span class="tlmini hsg3"><b>V</b><b>S</b><b>C</b></span></div>'
   +['Buy Value','Momentum','Selling','Correction'].map(ph=>{const g=MKTS.filter(x=>x.ph===ph);
    return '<div class="phh">'+ph+'</div>'+(g.length?g.map(x=>'<div class="tlrow" data-d="'+x.d+'">'
     +'<span class="nm"><i style="background:'+C(x.d)+'"></i>'+x.d+'<span class="sgt">'+(x.s==='house'?'Houses':'Units')+'</span></span>'
