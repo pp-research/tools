@@ -1393,7 +1393,7 @@ function renderPVR(){
   const mapEl=document.getElementById('pvrMap');
   if(!rows.length){ mapEl.innerHTML='<div class="pvr-empty">No '+segW+' market '+FILT+' meets the test.</div>'; }
   else {
-    const W=904,H=620,X0=80,X1=880,YT=40,YB=560;
+    const W=904,H=620,X0=80,X1=842,YT=40,YB=560;   // X1 leaves room for the right-hand % labels
     const xmin=Math.min(-5,Math.floor(Math.min(...rows.map(r=>r.price))/5)*5), xmax=0;
     const ymax=Math.max(10,Math.ceil(Math.max(...rows.map(r=>r.rent))/10)*10), ymin=0;
     const X=v=>X0+(X1-X0)*(v-xmin)/(xmax-xmin), Y=v=>YB-(YB-YT)*(v-ymin)/(ymax-ymin);
