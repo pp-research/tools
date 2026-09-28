@@ -1596,7 +1596,7 @@ function renderPVR(){
   const sK=seg==='house'?'h':'u';
   list.forEach(r=>{ const d=PVRD[r.l]&&PVRD[r.l][seg], g=GROWTH[r.l]&&GROWTH[r.l][seg], last=d?d.p.length-1:-1;
     r.pNow=d?d.p[last]:null; r.rNow=d?d.r[last]:null; r.yNow=(r.pNow&&r.rNow)?r.rNow*52/r.pNow*100:null;
-    const k=(d&&g&&r.pk)?r.pk-g.y0-d.o:-1; r.yPk=(k>=0&&k<=last&&d.p[k]&&d.r[k])?d.r[k]*52/d.p[k]*100:null;
+    const k=(d&&g&&r.pk)?r.pk-g.y0-d.o:-1; r.yPk=(k>=0&&k<=last&&d.p[k]&&d.r[k])?d.r[k]*52/d.p[k]*100:null; r.pPk=(k>=0&&k<=last)?d.p[k]:null; r.rPk=(k>=0&&k<=last)?d.r[k]:null;
     const c=SEG[r.l]&&SEG[r.l][sK]&&SEG[r.l][sK].clock; r.ck=c?c.ix:null; r.ckT=c?c.t:null; r.ckPh=c?c.ph:null; });
   const key=PVRSORT, dir=PVRDIR;
   const sorted=list.slice().sort((a,b)=>{ let x=a[key], y=b[key]; if(key==='dm'){ x=x==null?-1:x; y=y==null?-1:y; }
@@ -1606,20 +1606,23 @@ function renderPVR(){
   const qOnly=sorted.filter(r=>r.q), shown=PVRALL?sorted:(qOnly.length?qOnly:sorted.slice(0,PVRCAP));
   const mr=sorted.find(r=>r.l===cur); if(!PVRALL && mr && !shown.includes(mr)) shown.push(mr);   // the selected market stays visible   // the selected market stays visible
   const scale=60/Math.max(1,...list.map(r=>Math.max(r.price!=null?-r.price:0,r.rent!=null?Math.abs(r.rent):0)));
-  const cols=[['#',null],['Market','l'],['Drive','dm'],['Stalled','stag'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy'],['Median now','pNow'],['Gross yield','yNow'],['Clock','ck']];
+  const cols=[['#',null],['Market','l'],['Last peak','pk'],['Median now','pNow'],['Stalled','stag'],['Gross yield','yNow'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy']];
   const th=cols.map(([t,kk])=>kk?('<th data-k="'+kk+'" class="sortable'+(kk===key?' on':'')+'">'+t+(kk===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
   const num=(v,suf)=>v==null?'<span class="na">&ndash;</span>':('<b>'+(v>0?'+':'')+v.toFixed(1)+(suf||'')+'</b>');
+  const na='<span class="na">&ndash;</span>';
   const body=shown.map(r=>{ const i=sorted.indexOf(r)+1;
     const bar=r.price==null?'<span class="pvr-atpeak">At its price peak</span>':
       ('<div class="pvr-div"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'</span><span class="l"><i style="width:'+(Math.max(0,-r.price)*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r">'+
        (r.rent!=null&&r.rent>0?'<i style="width:'+(r.rent*scale).toFixed(1)+'px"></i>':'')+'</span><span class="rv">'+(r.rent!=null?((r.rent>0?'+':'')+r.rent.toFixed(1).replace('-','−')):'&ndash;')+'</span></div>');
+    // under the name: Metro, or Regional with the road time to its main town (the drive-time filter's measure)
+    const where=r.area==='metro'?'Metro':('Regional'+(r.dm!=null?' &middot; '+pvrHM(r.dm)+' drive'+(r.town?' to '+r.town:''):''));
     return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
-      '<span class="sub'+(r.area==='near'?' n':'')+'">'+AREA[r.area]+(r.town&&r.area!=='metro'?' &middot; '+r.town:'')+' &middot; '+(r.q?'<b class="qok">Qualifies</b>':r.why)+'</span></td>'+
-      '<td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?pvrHM(r.dm):'&ndash;')+'</td><td class="pvr-now">'+(r.stag?'<b>'+r.stag+'y</b><span class="sub">since '+r.pk+'</span>':'<span class="na">&ndash;</span>')+'</td>'+
-      '<td>'+bar+'</td><td class="gap">'+num(r.gap)+'</td><td>'+num(r.gpy,'%')+'</td>'+
-      '<td class="pvr-now">'+(r.pNow!=null?'<b>'+pvrMoney(r.pNow)+'</b>':'<span class="na">&ndash;</span>')+'<span class="sub">'+(r.rNow!=null?'$'+r.rNow+'/wk':'&nbsp;')+'</span></td>'+
-      '<td class="pvr-now">'+(r.yNow!=null?'<b>'+r.yNow.toFixed(1)+'%</b>':'<span class="na">&ndash;</span>')+'<span class="sub">'+(r.yPk!=null?r.yPk.toFixed(1)+'% at the '+r.pk+' peak':'&nbsp;')+'</span></td>'+
-      '<td class="pvr-now">'+(r.ckT?'<b>'+r.ckT+'</b><span class="sub pvr-ph pvr-ph-'+r.ckPh.replace(/\s+/g,'').toLowerCase()+'">'+r.ckPh+'</span>':'<span class="na">&ndash;</span>')+'</td></tr>'; }).join('');
+      '<span class="sub'+(r.area==='near'?' n':'')+'"'+(r.town?(' title="Road time from the Melbourne GPO to '+r.town+'"'):'')+'>'+where+'</span>'+(r.q?'':'<span class="sub">'+r.why+'</span>')+'</td>'+
+      '<td class="pvr-now">'+(r.stag?'<b>'+r.pk+'</b><span class="sub">'+(r.pPk!=null?pvrMoney(r.pPk):'&ndash;')+' &middot; '+(r.rPk!=null?'$'+r.rPk+'/wk':'&ndash;')+'</span>':na)+'</td>'+
+      '<td class="pvr-now">'+(r.pNow!=null?'<b>'+pvrMoney(r.pNow)+'</b>':na)+'<span class="sub">'+(r.rNow!=null?'$'+r.rNow+'/wk':'&nbsp;')+'</span></td>'+
+      '<td>'+(r.stag?'<b>'+r.stag+'y</b>':na)+'</td>'+
+      '<td class="pvr-now">'+(r.yNow!=null?'<b>'+r.yNow.toFixed(1)+'%</b>':na)+'<span class="sub">'+(r.yPk!=null&&r.stag?'from '+r.yPk.toFixed(1)+'% at the peak':'&nbsp;')+'</span></td>'+
+      '<td>'+bar+'</td><td class="gap">'+num(r.gap)+'</td><td>'+num(r.gpy,'%')+'</td></tr>'; }).join('');
   document.getElementById('pvrTable').innerHTML=list.length
     ?('<table class="calc pvr"><thead><tr>'+th+'</tr></thead><tbody>'+body+'</tbody></table>')
     :'<div class="pvr-empty">No '+segW+' market '+FILT+(PVRSET==='q'?' meets the test.':'.')+'</div>';
@@ -1627,13 +1630,13 @@ function renderPVR(){
   document.getElementById('pvrShowing').innerHTML=list.length?('<b class="pvr-qcount">'+rows.length+' of '+tot+' '+segW+' markets qualify'+(PVRF==='all'?'':' '+FILT)+'</b> &middot; showing '+Math.min(shown.length,list.length)+' of '+list.length+(PVRSET==='all'?' LGAs':' qualifying')+' &middot; sort by any column'):'';
   document.getElementById('pvrSub').innerHTML='Ranked by the <b>gap</b>: rent growth minus price change since each market&rsquo;s last price peak, in percentage points. '+
     '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price (the rise in gross yield each year). '+
-    '<b>Median now</b> is the latest 3-month median price (Jun 2026) and weekly asking rent; <b>gross yield</b> = weekly rent &times; 52 &divide; price, now and in the peak year. <b>Clock</b> is the market&rsquo;s position on the Dashboard. '+
+    '<b>Median now</b> is the latest 3-month median price (Jun 2026) and weekly asking rent; <b>gross yield</b> = weekly rent &times; 52 &divide; price, now and in the peak year. <b>Last peak</b> is the year price last peaked, with the median price and weekly rent that year. '+
     (PVRSET==='all'?'Markets that do not qualify are shown with the reason, faded.':'');
   const more=document.getElementById('pvrMore'); more.hidden=list.length<=(qOnly.length||PVRCAP); more.textContent=PVRALL?(qOnly.length?'Qualifying only':'Show fewer'):('Show all '+list.length+(PVRSET==='all'?' LGAs':' markets')); more.onclick=()=>{ PVRALL=!PVRALL; renderPVR(); };
   document.getElementById('pvrNote').innerHTML='A market qualifies when its price peaked 3+ years ago, has not been passed since, and rent is higher than at that peak. On '+segW+'s: '+out.length+' qualify &middot; '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '+
-    'Nominal medians; rent to the 12 months to Jun 2026. Drive: road time from the Melbourne GPO to the main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
+    'Nominal medians; rent to the 12 months to Jun 2026. Drive (under regional names): road time from the Melbourne GPO to the LGA&rsquo;s main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
   document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const kk=h.dataset.k;
-    if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='dm'||kk==='pk'||kk==='pNow'||kk==='ck')?1:-1; } renderPVR(); });
+    if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='pk'||kk==='pNow')?1:-1; } renderPVR(); });
   document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrPick(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrPick(tr.dataset.l); } }; });
   document.querySelectorAll('#pvrSeg button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.s===seg));
     b.onclick=()=>{ if(GSEG!==b.dataset.s){ GSEG=b.dataset.s; STMORE=false; renderGrowthAll(); } }; });
