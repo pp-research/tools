@@ -1432,7 +1432,7 @@ function pvrZoomWire(idx, zk){
   svg.onpointercancel=()=>{ start=null; sel.setAttribute('width',0); };
   svg.onpointerleave=e=>{ if(start==null&&e.pointerType==='mouse') hideTT(); };
 }
-const pvrMoney=v=>v>=1e6?('$'+(v/1e6).toFixed(2)+'m'):('$'+Math.round(v/1000)+'k');
+const pvrMoney=v=>v>=999500?('$'+(v/1e6).toFixed(2)+'m'):('$'+Math.round(v/1000)+'k');
 function renderPVR(){
   const cur=pvrLGA();   // Price v Rent keeps its OWN selection, independent of the Dashboard's
   const seg=GSEG, segW=seg==='house'?'house':'unit', {out,skip}=pvrRows(seg);
@@ -1623,8 +1623,8 @@ function renderPVR(){
     const where=r.area==='metro'?'Metro':('Regional'+(r.dm!=null?' &middot; '+pvrHM(r.dm)+' drive'+(r.town?' to '+r.town:''):''));
     return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
       '<span class="sub'+(r.area==='near'?' n':'')+'"'+(r.town?(' title="Road time from the Melbourne GPO to '+r.town+'"'):'')+'>'+where+'</span>'+(r.q?'':'<span class="sub">'+r.why+'</span>')+'</td>'+
-      '<td class="pvr-now">'+(r.stag?'<b>'+r.pk+'</b><span class="sub">'+(r.pPk!=null?pvrMoney(r.pPk):'&ndash;')+' &middot; '+(r.rPk!=null?'$'+r.rPk+'/wk':'&ndash;')+'</span>':na)+'</td>'+
-      '<td class="pvr-now">'+(r.pNow!=null?'<b>'+pvrMoney(r.pNow)+'</b>':na)+'<span class="sub">'+(r.rNow!=null?'$'+r.rNow+'/wk':'&nbsp;')+'</span></td>'+
+      '<td class="pvr-now">'+(r.stag?'<b>'+r.pk+'</b><span class="sub">'+(r.pPk!=null?pvrMoney(r.pPk):'&ndash;')+' &middot; '+(r.rPk!=null?'$'+r.rPk.toLocaleString('en-AU')+'/wk':'&ndash;')+'</span>':na)+'</td>'+
+      '<td class="pvr-now">'+(r.pNow!=null?'<b>'+pvrMoney(r.pNow)+'</b>':na)+'<span class="sub">'+(r.rNow!=null?'$'+r.rNow.toLocaleString('en-AU')+'/wk':'&nbsp;')+'</span></td>'+
       '<td>'+(r.stag?'<b>'+r.stag+'y</b>':na)+'</td>'+
       '<td class="pvr-now">'+(r.yNow!=null?'<b>'+r.yNow.toFixed(1)+'%</b>':na)+'<span class="sub">'+(r.yPk!=null&&r.stag?'was '+r.yPk.toFixed(1)+'% at peak':'&nbsp;')+'</span></td>'+
       '<td>'+bar+'</td><td class="gap">'+num(r.gap)+'</td><td>'+num(r.gpy,'%')+'</td></tr>'; }).join('');
