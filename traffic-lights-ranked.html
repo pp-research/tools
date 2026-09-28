@@ -192,8 +192,19 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
 .slist.rank .sl-head{color:var(--text)}
 .slist.rank .sl-head .dot{background:var(--text-faint)}
 .slist.rank .sl-item.active{background:var(--track-active-green);color:var(--teal)}
-.sl-item .pos{display:inline-block;min-width:20px;font-size:11px;font-weight:800;color:var(--text-faint);font-variant-numeric:tabular-nums;margin-right:2px}
-.sl-item .mini .m{width:26px;height:26px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:600;color:var(--text);letter-spacing:-.01em;flex-shrink:0;font-variant-numeric:tabular-nums lining-nums}.sl-item .mini .m.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border);color:var(--text-faint)}.sl-item>span:first-child{padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-item .pos{display:inline-block;min-width:14px;font-size:11px;font-weight:800;color:var(--text-faint);font-variant-numeric:tabular-nums;margin-right:2px}
+/* The clock time leads the row. Fixed min-width and tabular figures so the
+   names still line up whether the time reads 9:00 or 12:30.
+   THE WIDTHS HERE ARE MEASURED, NOT CHOSEN. The summary column is about 292px,
+   and a sorted row carries the rank number as well, so the prefix competes with
+   the name: at 38px + 7px the six longest (Port Macquarie worst, 19px over)
+   ellipsised. 28px + 5px, with .pos down from 20 to 14 and the name's own
+   padding from 6 to 4, clears all 36 in every sort. Re-measure before widening
+   any of them. */
+.sl-item .sl-t{display:inline-block;min-width:28px;font-size:10.5px;font-weight:700;
+  color:var(--text-faint);font-variant-numeric:tabular-nums;margin-right:5px}
+.sl-item.active .sl-t{color:inherit;opacity:.72}
+.sl-item .mini .m{width:26px;height:26px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:600;color:var(--text);letter-spacing:-.01em;flex-shrink:0;font-variant-numeric:tabular-nums lining-nums}.sl-item .mini .m.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border);color:var(--text-faint)}.sl-item>span:first-child{padding-right:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-item .mini .m.g{background:var(--tint-g);box-shadow:inset 0 0 0 1.5px var(--green)}.sl-item .mini .m.o{background:var(--tint-o);box-shadow:inset 0 0 0 1.5px var(--orange)}.sl-item .mini .m.r{background:var(--tint-r);box-shadow:inset 0 0 0 1.5px var(--red)}
 .slist .sl-head .ct{margin-left:auto;font-size:11px;font-weight:700;color:var(--text-faint);font-variant-numeric:tabular-nums}
 @media(max-width:860px){.top-row{grid-template-columns:1fr}}
@@ -269,7 +280,7 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
   box-shadow:var(--shadow);padding:20px 18px 16px}
 [data-theme="dark"] .clockdial{background:linear-gradient(160deg,#242E49,#1A2134)}
 .cd-head{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
-  color:var(--text-faint);display:flex;justify-content:space-between;align-items:baseline;
+  color:var(--text-faint);display:flex;align-items:baseline;gap:.55em;
   margin-bottom:10px}
 .cd-head span{color:var(--teal);font-size:10px;letter-spacing:.1em}
 .cd-svg{display:block;width:100%;height:auto;flex:1 1 auto;min-height:0}
@@ -302,48 +313,6 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
 .slist.selling .sl-head{color:#F47C20}
 .slist.selling .sl-head .dot{background:#F47C20}
 .slist.selling .sl-item.active{background:rgba(244,124,32,.12);color:#D2691A}
-.cd-exp{all:unset;cursor:pointer;width:22px;height:22px;display:grid;place-items:center;
-  border-radius:6px;color:var(--text-faint);flex:none;margin-left:auto}
-.cd-exp svg{width:13px;height:13px;display:block}
-.cd-exp:hover{background:var(--surface-2);color:var(--teal)}
-.cd-exp:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-[data-theme="dark"] .clockdial .cd-exp{color:rgba(255,255,255,.45)}
-[data-theme="dark"] .clockdial .cd-exp:hover{background:rgba(255,255,255,.08);color:#4ECDE0}
-.cd-modal[hidden]{display:none}
-.cd-modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px}
-.cd-back{position:absolute;inset:0;background:rgba(15,20,34,.55);backdrop-filter:blur(3px)}
-.cd-panel{position:relative;width:min(1280px,100%);max-height:calc(100vh - 48px);
-  overflow:auto;background:#fff;border:1px solid var(--border);
-  border-radius:22px;box-shadow:0 30px 80px rgba(15,20,34,.35);padding:22px 24px 26px}
-[data-theme="dark"] .cd-panel{background:linear-gradient(160deg,#242E49,#1A2134)}
-.cd-ptop{display:flex;align-items:flex-start;gap:16px;margin-bottom:6px}
-.cd-ptop h3{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--text)}
-.cd-ptop p{margin:4px 0 0;font-size:13px;color:var(--text-dim)}
-.cd-x{all:unset;cursor:pointer;margin-left:auto;font-size:26px;line-height:1;
-  color:var(--text-faint);padding:0 6px;border-radius:8px}
-.cd-x:hover{color:var(--text)}
-.cd-x:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-.cd-pbody{display:block}
-.cd-big{display:block;width:100%;height:auto}
-.cd-nm{cursor:pointer}
-.cd-nm:hover{text-decoration:underline}
-.cd-grp{font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
-  margin:14px 0 6px;display:flex;align-items:center;gap:7px}
-.cd-grp:first-child{margin-top:0}
-.cd-grp i{width:9px;height:9px;border-radius:50%}
-.cd-grp b{margin-left:auto;font-weight:700;color:var(--text-faint);font-size:11px}
-.cd-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;
-  font-size:13px;cursor:pointer;color:var(--text)}
-.cd-row:hover{background:var(--surface-2)}
-.cd-row.on{background:var(--track-active-green);font-weight:700}
-.cd-row span{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--text-dim);font-size:12px}
-.cd-row em{font-style:normal;font-size:10px;letter-spacing:.06em;color:var(--text-faint);
-  text-transform:uppercase}
-[data-theme="dark"] .cd-panel .cd-ptop h3,[data-theme="dark"] .cd-panel .cd-row{color:#fff}
-[data-theme="dark"] .cd-panel .cd-row:hover{background:rgba(255,255,255,.07)}
-.cd-dot{cursor:pointer}
-.cd-dot:hover{stroke:var(--text);stroke-width:2}
-@media (max-width:820px){ .cd-panel{padding:16px} }
 </style>
 
 
@@ -392,52 +361,32 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
     </div>
     <div class="right-col">
     <div class="clockdial" id="clockDial">
-      <div class="cd-head">Property Clock <span>Calculated</span>
-        <button type="button" id="cdExpand" class="cd-exp"
-                aria-label="Open the full clock" title="View all regions">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1H1v5M10 15h5v-5M1 1l5 5M15 15l-5-5"
-            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button></div>
+      <div class="cd-head">Property Clock <span>Calculated</span></div>
       <svg class="cd-svg" viewBox="0 0 300 300" id="cdSvg" role="img"
            aria-label="Calculated property clock position"></svg>
       <div class="cd-read" id="cdRead"></div>
       <div class="cd-foot" id="cdFoot"></div>
     </div>
-    <div class="cd-modal" id="cdModal" role="dialog" aria-modal="true"
-         aria-labelledby="cdModalTitle" hidden>
-      <div class="cd-back" data-close></div>
-      <div class="cd-panel">
-        <div class="cd-ptop">
-          <div><h3 id="cdModalTitle">Property Clock</h3>
-            <p>All 36 regions, houses and units. Click a name to select it.</p></div>
-          <button type="button" class="cd-x" data-close aria-label="Close">&times;</button>
-        </div>
-        <div class="cd-pbody">
-          <svg class="cd-big" viewBox="0 0 1200 620" id="cdBig" role="img"
-               aria-label="All regions on the property clock"></svg>
-        </div>
-      </div>
-    </div>
     <div class="summary">
       <h3>Region Summary</h3>
-      <div class="sub">Rank of 36 within each pillar, for <b id="segNote">houses</b>. Confidence ranks on median days on market &mdash; hover for the days.</div>
+      <div class="sub">Clock position, then rank of 36 within each pillar, for <b id="segNote">houses</b>. Confidence ranks on median days on market &mdash; hover for the days.</div>
       <div class="sseg" id="sseg" role="group" aria-label="Show houses or units"><button data-s="h" aria-pressed="true">Houses</button><button data-s="u">Units</button></div>
       <div class="ssort" id="ssort" role="group" aria-label="Sort regions by column"><button data-k="overall" data-label="Region" aria-pressed="true">Region</button><button data-k="value" data-label="Val">Val</button><button data-k="sd" data-label="S&amp;D">S&amp;D</button><button data-k="conf" data-label="Conf">Conf</button></div>
-      <div class="slist momentum">
-        <div class="sl-head"><span class="dot"></span>Momentum<span class="ct"></span></div>
-        <div id="momentumList"></div>
-      </div>
       <div class="slist buyvalue">
         <div class="sl-head"><span class="dot"></span>Buy Value<span class="ct"></span></div>
         <div id="buyValueList"></div>
       </div>
-      <div class="slist correction">
-        <div class="sl-head"><span class="dot"></span>Correction<span class="ct"></span></div>
-        <div id="correctionList"></div>
+      <div class="slist momentum">
+        <div class="sl-head"><span class="dot"></span>Momentum<span class="ct"></span></div>
+        <div id="momentumList"></div>
       </div>
       <div class="slist selling">
         <div class="sl-head"><span class="dot"></span>Selling<span class="ct"></span></div>
         <div id="sellingList"></div>
+      </div>
+      <div class="slist correction">
+        <div class="sl-head"><span class="dot"></span>Correction<span class="ct"></span></div>
+        <div id="correctionList"></div>
       </div>
       <div class="slist rank" id="rankSec" style="display:none">
         <div class="sl-head"><span class="dot"></span><span id="rankHead"></span></div>
@@ -557,136 +506,6 @@ function cdName(n,cx,cy,ink){
        + `<text x="${cx}" y="${cy+17}" text-anchor="middle" font-size="16" font-weight="800"
             fill="${ink}">${n.slice(b+1)}</text>`;
 }
-/* ---- expanded clock -----------------------------------------------------
-   Every reading on one dial. Markets bunch hard -- nine share 5:30 -- so each
-   slot's occupants are spread along the RADIUS and fanned slightly in angle,
-   which turns a stack into a readable cluster. */
-/* ---- expanded clock ------------------------------------------------------
-   Two dials, houses and units, with the region names set around the outside,
-   as tools/property-clock.html does it. MAIN places each label by hand through
-   a dx/dy in clock_state; that cannot be reproduced for calculated hours, so
-   the markets sharing a slot are stacked on that slot's radial line instead --
-   which is what the hand placement amounts to. */
-function cdDial(cx,cy,R,seg,dark){
-  const W=26, rL=R+W/2+15;
-  const dim=dark?'rgba(255,255,255,.45)':'#95A0B5';
-  const idp=seg+(dark?'d':'l');
-  let s=`<defs>${Object.entries(CD_PHASE).map(([n,p],i)=>{const m=cdMid(p);
-    return `<path id="cdA${idp}${i}" fill="none" d="${cdArc(p.a[0],p.a[1],rL,cx,cy,m>3&&m<9)}"/>`;
-  }).join('')}</defs>`;
-  Object.entries(CD_PHASE).forEach(([n,p])=>{
-    s+=`<path d="${cdRing(p.a[0]+0.05,p.a[1]-0.05,R+W/2,R-W/2,cx,cy)}" fill="${p.c}"
-          opacity="${dark?.5:.85}"/>`; });
-  Object.entries(CD_PHASE).forEach(([n,p],i)=>{
-    s+=`<text font-size="10.5" font-weight="800" letter-spacing="1.5" fill="#fff">
-          <textPath href="#cdA${idp}${i}" startOffset="50%" text-anchor="middle"
-          >${p.lab.toUpperCase()}</textPath></text>`; });
-  for(let h=1;h<=12;h++){ const maj=h%3===0;
-    const [x0,y0]=cdPt(h,R-W/2-6,cx,cy),[x1,y1]=cdPt(h,R-W/2-(maj?15:10),cx,cy);
-    s+=`<line x1="${cdF(x0)}" y1="${cdF(y0)}" x2="${cdF(x1)}" y2="${cdF(y1)}"
-          stroke="${dark?`rgba(255,255,255,${maj?.5:.22})`:(maj?'#95A0B5':'#C6CDD9')}"
-          stroke-width="${maj?1.6:1}"/>`;
-    const [lx,ly]=cdPt(h,R-W/2-30,cx,cy);
-    s+=`<text x="${cdF(lx)}" y="${cdF(ly+4)}" text-anchor="middle" font-size="11"
-          font-weight="700" fill="${dim}">${h}</text>`; }
-  s+=`<text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="13" font-weight="800"
-        letter-spacing="2.4" fill="${dim}">${seg==='h'?'HOUSES':'UNITS'}</text>`;
-  s+=`<text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="11" font-weight="600"
-        fill="${dim}">Calculated</text>`;
-
-  /* gather the markets at each slot, then stack their names on its radial line */
-  const bySlot={};
-  Object.keys(DATA).sort().forEach(r=>{const d=DATA[r];
-    const h=d['clock_hour_'+seg]; if(h==null) return;
-    const k=d['clock_label_'+seg];
-    (bySlot[k]=bySlot[k]||{hour:h,ph:d['clock_phase_'+seg],names:[]}).names.push(r); });
-  const cur=document.getElementById('cardTitle')
-    ? document.getElementById('cardTitle').textContent : '';
-  /* the dots stay on the rim at the true angle */
-  Object.values(bySlot).forEach(o=>{
-    const col=CD_PHASE[o.ph].c;
-    o.names.forEach((r,i)=>{
-      const n=o.names.length, off=n>1?(i-(n-1)/2)*0.13:0;
-      const [dx,dy]=cdPt(o.hour+off,R,cx,cy);
-      s+=`<circle cx="${cdF(dx)}" cy="${cdF(dy)}" r="4" fill="#fff"
-            stroke="${col}" stroke-width="1.6"/>`; });
-  });
-
-  /* Name blocks collide badly where the field bunches -- nine markets share a
-     slot and the slot next door has nine more, so their stacks overlap. Resolve
-     it the way radial charts do: split into a left and a right column, order
-     each by height on the dial, then walk down pushing any block clear of the
-     one above. The x stays on the block's own radial line, so the names still
-     fan out from their hour rather than forming a rigid column. */
-  const LH=14;
-  const blocks=Object.values(bySlot).map(o=>{
-    const [ax,ay]=cdPt(o.hour,R+W/2+30,cx,cy);
-    const h=o.names.length*LH;
-    /* 12:00 and 6:00 sit on the centre line; send the top one right and the
-       bottom one left so neither straddles both columns */
-    const side = ax<cx-2 ? -1 : (ax>cx+2 ? 1 : (o.hour<6||o.hour===12 ? 1 : -1));
-    return {o,ax,ay,h,side};
-  });
-  [-1,1].forEach(side=>{
-    const g=blocks.filter(b=>b.side===side).sort((a,b)=>a.ay-b.ay);
-    for(let i=1;i<g.length;i++){
-      const prevBottom=g[i-1].ay+g[i-1].h/2;
-      if(g[i].ay-g[i].h/2 < prevBottom+3) g[i].ay=prevBottom+3+g[i].h/2;
-    }
-    /* if the run overflows the bottom, lift the whole column back up */
-    if(g.length){
-      const over=(g[g.length-1].ay+g[g.length-1].h/2)-(cy+R+96);
-      if(over>0) g.forEach(b=>b.ay-=over);
-    }
-  });
-  /* A block at 12:00 or 6:00 sits on the centre line, so the left column's
-     names run right up to it and the right column's start there -- they meet.
-     Hold every block clear of the centre by a fixed margin. */
-  const MINX=36;
-  blocks.forEach(b=>{
-    if(b.side<0 && b.ax>cx-MINX) b.ax=cx-MINX;
-    if(b.side>0 && b.ax<cx+MINX) b.ax=cx+MINX;
-  });
-  blocks.forEach(b=>{
-    const col=CD_PHASE[b.o.ph].c;
-    const anchor = b.side<0 ? 'end' : 'start';
-    const top=b.ay-(b.o.names.length-1)*LH/2;
-    b.o.names.forEach((r,i)=>{
-      const on=r===cur;
-      s+=`<text class="cd-nm" x="${cdF(b.ax)}" y="${cdF(top+i*LH)}" text-anchor="${anchor}"
-            font-size="11.5" font-weight="${on?800:600}"
-            fill="${on?col:(dark?'#E8ECF4':'#1F283F')}" data-r="${r}"
-            >${r.toUpperCase()}<title>${r} ${seg==='h'?'houses':'units'} — ${
-              DATA[r]['clock_label_'+seg]} ${b.o.ph}</title></text>`; });
-  });
-  return s;
-}
-function cdBuildBig(){
-  const svg=document.getElementById('cdBig'); if(!svg) return;
-  const dark=document.documentElement.getAttribute('data-theme')==='dark';
-  svg.innerHTML = cdDial(300,310,150,'h',dark) + cdDial(900,310,150,'u',dark);
-  svg.querySelectorAll('.cd-nm').forEach(e=>
-    e.addEventListener('click',()=>{ cdCloseModal(); render(e.dataset.r); }));
-}
-let cdLastFocus=null;
-function cdOpenModal(){
-  const m=document.getElementById('cdModal'); if(!m) return;
-  cdLastFocus=document.activeElement;
-  cdBuildBig(); m.hidden=false;
-  const x=m.querySelector('.cd-x'); if(x) x.focus();
-  document.addEventListener('keydown',cdEsc);
-}
-function cdCloseModal(){
-  const m=document.getElementById('cdModal'); if(!m||m.hidden) return;
-  m.hidden=true;
-  document.removeEventListener('keydown',cdEsc);
-  if(cdLastFocus&&cdLastFocus.focus) cdLastFocus.focus();
-}
-function cdEsc(e){ if(e.key==='Escape') cdCloseModal(); }
-document.addEventListener('click',e=>{
-  if(e.target.closest('#cdExpand')) cdOpenModal();
-  else if(e.target.closest('[data-close]')) cdCloseModal();
-});
 
 function renderClockDial(region,d){
   const svg=document.getElementById('cdSvg'); if(!svg) return;
@@ -786,8 +605,16 @@ function buildSummary(){
   const rankOf=r=>{const d=DATA[r];
     return {overall:segR(d,'sd')+segR(d,'value')+(segR(d,'conf')||99),
             sd:segR(d,'sd'), value:segR(d,'value'), conf:segR(d,'conf')||99}[sortKey];};
-  const item=(r,pos)=>`<div class="sl-item ${r===current?'active':''}" data-r="${r}">`+
-    `<span>${pos?`<span class="pos">${pos}</span>`:''}${r}</span>${mini(DATA[r])}</div>`;
+  /* The clock time leads each row, so the summary IS the all-regions clock --
+     it already groups by clock phase, it just never showed the hour. Follows
+     the houses/units toggle like everything else here. */
+  const item=(r,pos)=>{ const d=DATA[r];
+    const t=d[seg==='h'?'clock_label_h':'clock_label_u'];
+    const ph=d[seg==='h'?'clock_phase_h':'clock_phase_u'];
+    return `<div class="sl-item ${r===current?'active':''}" data-r="${r}">`+
+      `<span>${pos?`<span class="pos">${pos}</span>`:''}`+
+      `<span class="sl-t" title="${r} ${seg==='h'?'houses':'units'} &middot; ${t} ${ph}">${t}</span>`+
+      `${r}</span>${mini(DATA[r])}</div>`; };
   const cats=['momentumList','buyValueList','correctionList','sellingList'];
   const rankSec=document.getElementById('rankSec');
 
@@ -863,8 +690,6 @@ const sgn=s=>`<span class="sgn ${s}">${s}</span>`;
 const cdThemeWatch = new MutationObserver(()=>{
   const t=document.getElementById('cardTitle');
   if(t && t.textContent && DATA[t.textContent]) renderClockDial(t.textContent, DATA[t.textContent]);
-  const m=document.getElementById('cdModal');
-  if(m && !m.hidden && typeof cdBuildBig==='function') cdBuildBig();
 });
 cdThemeWatch.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 </script>
