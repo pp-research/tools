@@ -1408,17 +1408,23 @@ function renderPVR(){
     const n=yrs.length, vals=P.concat(R.filter(v=>v!=null));
     const span=Math.max(...vals)-Math.min(...vals), step=span>400?100:span>160?50:span>60?20:10;
     const lo=Math.floor(Math.min(...vals,100)/step)*step, hi=Math.ceil(Math.max(...vals,100)/step)*step;
-    const W=1180,H=360,X0=64,X1=1124,YT=24,YB=318;   // full-width card
+    const W=1180,H=420,X0=64,X1=1124,YT=24,YB=356;   // full-width card; room under the plot for the rotated year labels
     const X=j=>n>1?X0+(X1-X0)*j/(n-1):(X0+X1)/2, Y=v=>YB-(YB-YT)*(v-lo)/(hi-lo);
     let grid='', ticks='';
     for(let v=lo; v<=hi+1e-9; v+=step){ grid+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)'+(v===100?';stroke:var(--text-faint);stroke-dasharray:4 4':'')+'"></line>'; ticks+='<text x="'+(X0-10)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'; }
-    const every=n<=12?1:n<=25?5:10;
-    yrs.forEach((y,j)=>{ if(j===n-1||y%every===0&&(n-1-j)*(X1-X0)/(n-1)>34) ticks+='<text x="'+X(j)+'" y="'+(H-12)+'" text-anchor="middle">'+(j===n-1&&y===CY?'Now':y)+'</text>'; });
-    // the stall since the last peak, shaded and marked
-    let stall='';
-    if(G.stag&&PVRIDX==='all'){ const jp=yrs.indexOf(G.pk); if(jp>=0){ stall='<rect x="'+X(jp)+'" y="'+YT+'" width="'+(X(n-1)-X(jp))+'" height="'+(YB-YT)+'" style="fill:var(--text);opacity:.05"></rect>'+
-      '<line x1="'+X(jp)+'" y1="'+YT+'" x2="'+X(jp)+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1.2;stroke-dasharray:4 4"></line>'+
-      '<text x="'+(X(jp)-6)+'" y="'+(YB-8)+'" text-anchor="end" style="fill:var(--text-dim);font-size:11.5px;font-weight:800">Peak '+G.pk+' &middot; stalled '+G.stag+'y</text>'; } }
+    // every year labelled, rotated 90 degrees (Shaene, 2026-09-28)
+    yrs.forEach((y,j)=>{ const tx=X(j).toFixed(1), ty=YB+10; ticks+='<text x="'+tx+'" y="'+ty+'" text-anchor="end" transform="rotate(-90 '+tx+' '+ty+')" dy="4">'+y+'</text>'; });
+    // every stagnation period (EPIS: a price peak through to the year price next passed it, 3+ years), shaded and
+    // labelled "N years (start–end)"; the open one runs to now. Labels drop to a second row when they would collide.
+    let stall=''; const eps=((EPIS[cur]&&EPIS[cur][seg])||[]).slice().sort((a,b)=>a.s-b.s), y0c=yrs[0], y1c=yrs[n-1], lastEnd=[-1e9,-1e9];
+    eps.forEach(ep=>{ const e=ep.open?y1c:ep.e; if(e<y0c||ep.s>y1c) return;
+      const a=yrs.indexOf(Math.max(ep.s,y0c)), b=yrs.indexOf(Math.min(e,y1c)); if(a<0||b<0||b<=a) return;
+      const xa=X(a), xb=X(b), txt=ep.d+' year'+(ep.d===1?'':'s')+' ('+ep.s+'–'+(ep.open?'now':ep.e)+')', w=txt.length*6.6;
+      const row=(xa+4<lastEnd[0])?((xa+4<lastEnd[1])?2:1):0;
+      if(row<2) lastEnd[row]=xa+4+w;
+      stall+='<rect x="'+xa.toFixed(1)+'" y="'+YT+'" width="'+(xb-xa).toFixed(1)+'" height="'+(YB-YT)+'" style="fill:var(--text);opacity:'+(ep.open?'.08':'.05')+'"></rect>'+
+        '<line x1="'+xa.toFixed(1)+'" y1="'+YT+'" x2="'+xa.toFixed(1)+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1;stroke-dasharray:3 4"></line>'+
+        (row<2?'<text x="'+(xa+4).toFixed(1)+'" y="'+(YT+13+row*15)+'" style="fill:var(--text-dim);font-size:11.5px;font-weight:800">'+txt+'</text>':''); });
     // the gap: shaded wherever both series run, as one band per unbroken stretch
     let gapPoly=''; for(let a=0;a<n;a++){ if(R[a]==null) continue; let b=a; while(b+1<n&&R[b+1]!=null) b++;
       if(b>a){ const top=[], bot=[]; for(let j=a;j<=b;j++){ top.push(X(j).toFixed(1)+','+Y(R[j]).toFixed(1)); bot.push(X(j).toFixed(1)+','+Y(P[j]).toFixed(1)); }
@@ -1430,11 +1436,11 @@ function renderPVR(){
     const lab=(v,c,t,up)=>'<circle cx="'+X(n-1)+'" cy="'+Y(v)+'" r="5.5" style="fill:'+c+'"></circle><text x="'+(X(n-1)-10)+'" y="'+(Y(v)+(up?-12:22))+'" text-anchor="end" style="fill:'+c+';font-size:13px;font-weight:800">'+t+' '+Math.round(v)+'</text>';
     const title=PVRIDX==='peak'?(pvrNm(cur)+' '+segW+'s since the '+G.pk+' peak'):(pvrNm(cur)+' '+segW+'s &mdash; price and rent, whole history');
     idx.innerHTML=head(title)+
-      '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.12"></i>Since the last peak</span>':'')+'</div>'+
+      '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.14"></i>Stagnation periods</span>':'')+'</div>'+
       '<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+title.replace(/&[a-z]+;/g,'-')+': indexed to 100 in '+base+'">'+
       stall+'<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+gapPoly+line(R,'var(--teal)')+line(P,'var(--text)')+
       (lastR!=null?lab(lastR,'var(--teal)','Rent',rAbove):'')+lab(lastP,'var(--text)','Price',!rAbove)+'</svg>'+
-      '<p class="pvr-note">'+(PVRIDX==='peak'?('Indexed to 100 in the '+G.pk+' peak year.'):('Both indexed to 100 in '+base+(hasR?', where the unbroken rent record begins, so the gap opens from a common start':'')+'. Shaded: the stretch since the last price peak.'))+
+      '<p class="pvr-note">'+(PVRIDX==='peak'?('Indexed to 100 in the '+G.pk+' peak year.'):('Both indexed to 100 in '+base+(hasR?', where the unbroken rent record begins, so the gap opens from a common start':'')+'. Grey bands: stagnation periods, each from a price peak to the year price next passed it (3+ years); the last runs to now if price has not recovered.'))+
       (hasR?'':' No rent history for this market.')+' Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
   }
   idx.querySelectorAll('#pvrIdxMode button').forEach(b=>{ b.onclick=()=>{ if(PVRIDX!==b.dataset.m){ PVRIDX=b.dataset.m; renderPVR(); } }; });
