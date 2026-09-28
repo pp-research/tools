@@ -861,6 +861,15 @@ function ppCard(seg,pp){
       {k:'Change',v:(pp.gap>0?'+':'')+pp.gap},
       {k:'Projected',v:(pp.projRank!=null?pp.projRank:'—')+' &middot; '+titleSig(pp.projSignal)}]};
 }
+// Price Position card, as the 36 Regions tool: rank by median (1 = dearest) against its long-run average. Light on the
+// runway points it adds: GREEN >= +7.5, RED <= -7.5 (the main tool's +/-3 places in 36, scaled to this field).
+function posCard(seg,rw){
+  const T=seg[0].toUpperCase()+seg.slice(1), g=rw.rank-rw.longrun, sg=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1);
+  return {signal:rw.adj>=7.5?'GREEN':rw.adj<=-7.5?'RED':'ORANGE', name:T+' Price Position', head:'#'+rw.rank, dir:'Higher is better',
+    note:'A rising price rank means the market has cheapened vs the field',
+    lines:[{k:'Of',v:rw.N+' LGAs (1 = dearest)'},{k:'Long-term average',v:rw.longrun.toFixed(1)},{k:'Change',v:sg(g)},
+      {k:'Adds to runway',v:sg(rw.adj)+' pts'}]};
+}
 // Value card: effective runway = runway to the 3-peak ceiling + the price-rank adjustment (36 Regions method)
 function valCard(seg,rw){
   const T=seg[0].toUpperCase()+seg.slice(1), sg=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1);
@@ -868,7 +877,6 @@ function valCard(seg,rw){
     note:'Effective runway &middot; Green &ge; 65%, Red &lt; 25%',
     lines:[{k:'Runway to ceiling',v:rw.runway.toFixed(1)+'%'+(rw.runway>=130?' (cap)':'')},
       {k:'Rank adjustment',v:rw.adj!=null?sg(rw.adj)+' pts':'&mdash;'},
-      {k:'Price rank',v:rw.rank!=null?('#'+rw.rank+' of '+rw.N+' &middot; long-run '+rw.longrun):'not ranked'},
       {k:'Ceiling peaks',v:(rw.peaks||[]).join(', ')}]};
 }
 function rwCard(seg,rw){
@@ -906,6 +914,7 @@ function render(lga){
   document.getElementById('vtBody').innerHTML=prow('Value','value')+prow('Supply &amp; Demand','sd')+prow('Confidence','conf');
 
   const cards=[];
+  ['house','unit'].forEach(sg=>{ const r=d[sg]&&d[sg].rw; if(r&&r.ceilSrc==='3peak'&&r.rank!=null) cards.push(posCard(sg,r)); });
   ['house','unit'].forEach(sg=>{ const r=d[sg]&&d[sg].rw; if(r&&r.ceilSrc==='3peak') cards.push(valCard(sg,r)); });
   document.getElementById('valInds').innerHTML=cards.length?cards.map(tile).join(''):'<p class="wsub">No Value reading for this LGA: too little price history.</p>';
 
