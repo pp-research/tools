@@ -619,6 +619,8 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
 <div class="wrap">
   <h1>TRAFFIC <span class="p2">LIGHTS</span></h1>
   <p class="subtitle">Victoria LGAs &mdash; graded across <b>Confidence</b>, <b>Value</b>, and <b>Supply &amp; Demand</b>.</p>
+  <div class="tabs" role="tablist"><button role="tab" id="tab-dash" aria-selected="true">Dashboard</button><button role="tab" id="tab-pvr" aria-selected="false">Price v Rent</button><button role="tab" id="tab-runway" aria-selected="false" hidden>Runway</button><button role="tab" id="tab-demand" aria-selected="false" hidden>Demand score</button><button role="tab" id="tab-vacancy" aria-selected="false" hidden>Vacancy rate</button><button role="tab" id="tab-rent" aria-selected="false" hidden>Rent</button><button role="tab" id="tab-work" aria-selected="false" hidden>Working</button><button role="tab" id="tab-sources" aria-selected="false" hidden>Sources</button><div class="vrmode" id="vrMode" role="group" aria-label="VR basis"><span class="lbl">VR basis</span><button data-m="house" aria-pressed="true" title="Projection seeded on the house vacancy rate (falls back to unit where houses are missing)">House</button><button data-m="avg" aria-pressed="false" title="Projection seeded on the average of house &amp; unit vacancy rates (whichever exist)">H/U avg</button></div></div>
+  <div class="pane" id="pane-dash" role="tabpanel">
   <div class="region-select">
     <label>SELECT LGA</label>
     <div class="dd" id="dd">
@@ -629,8 +631,6 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
       <div class="dd-panel" id="ddPanel" role="listbox"></div>
     </div>
   </div>
-  <div class="tabs" role="tablist"><button role="tab" id="tab-dash" aria-selected="true">Dashboard</button><button role="tab" id="tab-pvr" aria-selected="false">Price v Rent</button><button role="tab" id="tab-runway" aria-selected="false" hidden>Runway</button><button role="tab" id="tab-demand" aria-selected="false" hidden>Demand score</button><button role="tab" id="tab-vacancy" aria-selected="false" hidden>Vacancy rate</button><button role="tab" id="tab-rent" aria-selected="false" hidden>Rent</button><button role="tab" id="tab-work" aria-selected="false" hidden>Working</button><button role="tab" id="tab-sources" aria-selected="false" hidden>Sources</button><div class="vrmode" id="vrMode" role="group" aria-label="VR basis"><span class="lbl">VR basis</span><button data-m="house" aria-pressed="true" title="Projection seeded on the house vacancy rate (falls back to unit where houses are missing)">House</button><button data-m="avg" aria-pressed="false" title="Projection seeded on the average of house &amp; unit vacancy rates (whichever exist)">H/U avg</button></div></div>
-  <div class="pane" id="pane-dash" role="tabpanel">
     <div class="top-row">
       <div class="left-col">
         <div class="card">
