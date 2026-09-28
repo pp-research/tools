@@ -1049,7 +1049,8 @@ function assignClock(G){   // G: growth by LGA and segment; defaults to P36 (a p
   // this page its own runway (the ranked tool's validation run passes effective runway in the same slot).
   const slotIx={}; CLOCK_T.forEach((t,i)=>slotIx[t.t]=i);
   // (red Value with red S&D is excluded here: it is not Selling at all, see the gate below)
-  const red=rows.filter(x=>x.sig[0]==='R'&&x.sig[1]!=='R'&&bestFit(x)<2).sort((a,b)=>b.eff-a.eff), redPick={};
+  // (R/G/R is excluded too: it has its own fixed position, see below)
+  const red=rows.filter(x=>x.sig[0]==='R'&&x.sig[1]!=='R'&&x.sig.join('')!=='RGR'&&bestFit(x)<2).sort((a,b)=>b.eff-a.eff), redPick={};
   red.forEach((x,k)=>{ let g=red.length>1?Math.floor(k*RED_SLOTS.length/red.length):0; if(g>RED_SLOTS.length-1) g=RED_SLOTS.length-1;
     redPick[x.l+'|'+x.s]=slotIx[RED_SLOTS[g]]; });
   rows.forEach(x=>{
@@ -1076,6 +1077,10 @@ function assignClock(G){   // G: growth by LGA and segment; defaults to P36 (a p
     let pick=cand[Math.floor(gr[x.l+'|'+x.s]*(cand.length-1)+0.5)], best=phFit;
     if(x.sig[0]==='R'&&!redSD&&redPick[x.l+'|'+x.s]!=null){ pick=redPick[x.l+'|'+x.s];
       best=(acc(CLOCK_T[pick].pat[1],x.sig[1])?1:0)+(acc(CLOCK_T[pick].pat[2],x.sig[2])?1:0); }
+    // R/G/R IS LATE SELLING, 11:30 (Shaene, 2026-09-29, VIC only): expensive, buyers gone (Confidence red) but supply still
+    // tight (S&D green, the lagging light) -- one step on from 10:30 R/G/O, before S&D turns at R/O/O. No cell accepts
+    // red Confidence with green S&D, so without this it fell into the runway spread and could land as deep as 12:30.
+    if(x.sig.join('')==='RGR'){ pick=slotIx['11:30']; best=0; }
     const t=CLOCK_T[pick];
     SEG[x.l][x.s].clock={t:t.t, ph:t.ph, ix:pick, fit:best, sig:x.sig.join('/'), p36:x.p36};   // ix: position in the table = order around the dial
   });
