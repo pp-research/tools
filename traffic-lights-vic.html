@@ -388,6 +388,14 @@ table.calc.pvr td:last-child b{color:#00A1B4}
 .pvr-note{font-size:12px;line-height:1.6;color:var(--text-faint);margin:0}
 .pvr-foot .pvr-note{flex:1 1 400px}
 .pvr-select{margin-bottom:0}
+.pvr-seg-sm button{padding:8px 14px;min-height:40px;font-size:12px}
+.pvr-idxhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pvr-legend .dot.h{background:transparent;border:2px solid var(--text-dim);box-sizing:border-box}
+table.calc.pvr tr.nq td{opacity:.62}
+table.calc.pvr tr.nq.active td,table.calc.pvr tr.nq:hover td{opacity:1}
+table.calc.pvr td .sub b.qok{color:var(--teal);font-weight:800}
+table.calc.pvr .na{color:var(--text-faint)}
+.pvr-atpeak{font-size:12px;font-weight:700;color:var(--text-faint)}
 .dd-opt .dd-gap{margin-left:auto;margin-right:10px;font-size:12px;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums}
 .pvr-svg{width:100%;height:auto;display:block}
 .pvr-empty{padding:40px 10px;text-align:center;color:var(--text-dim);font-size:14px}
@@ -687,6 +695,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-ctls">
           <div class="pvr-seg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">Houses</button><button data-s="unit" aria-pressed="false">Units</button></div>
           <div class="pvr-chips" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All Victoria</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Within 2h drive</button><button data-f="far" aria-pressed="false">Beyond 2h drive</button></div>
+          <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show"><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
         </div>
       </section>
       <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
@@ -696,7 +705,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
       </section>
       <section class="pvr-card" aria-label="Where every market sits">
         <div class="pvr-cardhead"><h3>Where every market sits</h3>
-          <div class="pvr-legend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span>Dot size = years stalled</span></div>
+          <div class="pvr-legend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span><span>Dot size = years stalled</span></div>
         </div>
         <div class="pvr-mapgrid">
           <div id="pvrMap"></div>
@@ -1335,17 +1344,33 @@ const pvrNm=l=>l==='Melbourne'?'City of Melbourne':l;
 let pvrCur=null;   // the Price v Rent selection, independent of the Dashboard's; null = start on the widest gap
 function pvrLGA(){ if(!pvrCur||!LGAS.includes(pvrCur)){ const o=pvrRows(GSEG).out.sort((a,b)=>b.gap-a.gap); pvrCur=o.length?o[0].l:current; } return pvrCur; }
 function pvrPick(l){ pvrCur=l; pvrDdInput.placeholder=pvrNm(l); renderGrowthAll(); }
+// Every LGA, qualifying or not: the qualifying ones as pvrRows gives them, the rest with the reason they miss.
+let PVRSET='all', PVRIDX='all';   // ranking + map show all LGAs or qualifying only; the top chart shows whole history or since the last peak
+function pvrAllRows(seg){
+  const Q={}; pvrRows(seg).out.forEach(r=>{ Q[r.l]=r; }); const all=[];
+  LGAS.forEach(l=>{ const g=GROWTH[l]&&GROWTH[l][seg]; if(!g) return;
+    if(Q[l]){ all.push(Object.assign({q:true,why:'Qualifies'},Q[l])); return; }
+    const pp=(((DATA[l]||{})[seg])||{}).pp, dv=DRIVE[l], metro=METRO.has(l);
+    const why=(!pp||pp.rank==null)?'Not graded':g.thin?'Too thin to rank':!g.stag?'At its price peak':g.stag<3?('Stalled '+g.stag+'y, under 3'):g.rwin==null?'No rent history to the peak':'Rent not above the peak';
+    const has=g.stag>0&&g.rwin!=null;
+    all.push({l,q:false,why,area:pvrArea(l),dm:metro?null:(dv?dv.m:null),town:dv?dv.t:null,pk:g.pk,stag:g.stag||0,
+      price:g.stag?g.pwin:null,rent:has?g.rwin:null,gap:has?g.rwin-g.pwin:null,
+      gpy:has?(Math.pow((1+g.rwin/100)/(1+g.pwin/100),1/g.stag)-1)*100:null}); });
+  return all;
+}
 function renderPVR(){
   const cur=pvrLGA();   // Price v Rent keeps its OWN selection, independent of the Dashboard's
   const seg=GSEG, segW=seg==='house'?'house':'unit', {out,skip}=pvrRows(seg);
-  const rows=out.filter(r=>PVRF==='all'||r.area===PVRF);
+  const inArea=r=>PVRF==='all'||r.area===PVRF;
+  const rows=out.filter(inArea);                                   // qualifying, in the chosen area
+  const list=(PVRSET==='q'?out:pvrAllRows(seg)).filter(inArea);    // what the map and the ranking show
   const FILT={all:'across Victoria',metro:'in metro Melbourne',near:'within 2 hours of Melbourne',far:'beyond 2 hours of Melbourne'}[PVRF];
   const AREA={metro:'Metro',near:'Regional',far:'Regional'};
   const tot=out.length+skip.flat+skip.norent+skip.thin+skip.rentdown;
   const byGap=rows.slice().sort((a,b)=>b.gap-a.gap), byGpy=rows.slice().sort((a,b)=>b.gpy-a.gpy);
   const near=out.filter(r=>r.area==='near').sort((a,b)=>b.gap-a.gap);
 
-  // ---- headline figures
+  // ---- headline figures (qualifying markets)
   const kv=(label,value,sub,teal,dark)=>'<div class="pvr-kpi'+(dark?' dark':'')+'"><div class="k">'+label+'</div><div class="v'+(teal?' t':'')+'">'+value+'</div><div class="s">'+sub+'</div></div>';
   const g0=byGap[0], y0=byGpy[0];
   document.getElementById('pvrKpis').innerHTML=
@@ -1354,38 +1379,60 @@ function renderPVR(){
     kv('Fastest yield lift', y0?((y0.gpy>0?'+':'')+y0.gpy.toFixed(1)+'% a yr'):'&ndash;', y0?(pvrNm(y0.l)+' &middot; over '+y0.stag+' years'):'none '+FILT, true)+
     kv('Within about 2 hours', near.length+' regional', near.length?('led by '+pvrNm(near[0].l)+' &middot; '+(near[0].gap>0?'+':'')+near[0].gap.toFixed(1)+' pts'):'none qualify on '+segW+'s', false, true);
 
-  // ---- since-the-peak chart for the selected market
+  // ---- price and rent for the selected market: whole history, or since the last peak
   const G=GROWTH[cur]&&GROWTH[cur][seg], idx=document.getElementById('pvrIdx');
-  const CY=G?G.y0+G.p.length-1:null;
-  if(!G){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(cur)+'</h3></div><div class="pvr-empty">No '+segW+' price history for this market.</div>'; }
-  else if(!G.stag){ idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(cur)+' '+segW+'s since the price peak</h3></div><div class="pvr-empty">The '+segW+' price is at its peak now, so there is no stall to chart. Pick a market from the map or the ranking below.</div>'; }
+  const modeBtns='<div class="pvr-seg pvr-seg-sm" id="pvrIdxMode" role="group" aria-label="Chart range"><button data-m="all" aria-pressed="'+(PVRIDX==='all')+'">Whole history</button><button data-m="peak" aria-pressed="'+(PVRIDX==='peak')+'">Since last peak</button></div>';
+  const head=t=>'<div class="pvr-cardhead"><h3>'+t+'</h3>'+modeBtns+'</div>';
+  if(!G){ idx.innerHTML=head(pvrNm(cur))+'<div class="pvr-empty">No '+segW+' price history for this market.</div>'; }
+  else if(PVRIDX==='peak'&&!G.stag){ idx.innerHTML=head(pvrNm(cur)+' '+segW+'s since the price peak')+'<div class="pvr-empty">The '+segW+' price is at its peak now, so there is no stall to show. Switch to the whole history, or pick another market.</div>'; }
   else {
-    const yrs=[], P=[], R=[]; let pi=100, ri=100, rOK=true;
-    for(let y=G.pk;y<=CY;y++){ const i=y-G.y0;
-      if(y>G.pk){ pi*=1+(G.p[i]||0)/100; if(G.r[i]==null) rOK=false; else ri*=1+G.r[i]/100; }
-      yrs.push(y); P.push(pi); R.push(rOK?ri:null); }
-    if(G.rwin!=null) R[R.length-1]=100+G.rwin;           // the endpoint is the page's rent-since-peak figure
-    P[P.length-1]=100+G.pwin;
-    const vals=P.concat(R.filter(v=>v!=null)), lo=Math.floor(Math.min(...vals,95)/10)*10, hi=Math.ceil(Math.max(...vals,105)/10)*10;
-    const W=860,H=320,X0=64,X1=820,YT=24,YB=280, n=yrs.length;
+    const CY=G.y0+G.p.length-1; let yrs=[], P=[], R=[], base;
+    if(PVRIDX==='peak'){
+      base=G.pk; let pi=100, ri=100, rOK=true;
+      for(let y=G.pk;y<=CY;y++){ const i=y-G.y0; if(y>G.pk){ pi*=1+(G.p[i]||0)/100; if(G.r[i]==null) rOK=false; else ri*=1+G.r[i]/100; } yrs.push(y); P.push(pi); R.push(rOK?ri:null); }
+      if(G.rwin!=null) R[R.length-1]=100+G.rwin; P[P.length-1]=100+G.pwin;   // endpoints = the page's since-peak figures
+    } else {
+      // both indexed to 100 in the year before the first rent reading, so the gap opens from a common start
+      const fr=G.r.findIndex(v=>v!=null), fp=G.p.findIndex(v=>v!=null);
+      const bi=fr>0?fr-1:(fr===0?0:fp); base=G.y0+bi;
+      const lvP=[], lvR=[]; lvP[bi]=100; lvR[bi]=fr>=0?100:null;
+      for(let i=bi+1;i<G.p.length;i++){ lvP[i]=lvP[i-1]*(1+(G.p[i]||0)/100); lvR[i]=(lvR[i-1]!=null&&G.r[i]!=null)?lvR[i-1]*(1+G.r[i]/100):null; }
+      for(let i=bi-1;i>=fp&&i>=0;i--){ lvP[i]=lvP[i+1]/(1+(G.p[i+1]||0)/100); lvR[i]=null; }   // price before rent begins
+      for(let i=Math.max(fp,0);i<G.p.length;i++){ if(lvP[i]==null) continue; yrs.push(G.y0+i); P.push(lvP[i]); R.push(lvR[i]); }
+    }
+    const n=yrs.length, vals=P.concat(R.filter(v=>v!=null));
+    const span=Math.max(...vals)-Math.min(...vals), step=span>400?100:span>160?50:span>60?20:10;
+    const lo=Math.floor(Math.min(...vals,100)/step)*step, hi=Math.ceil(Math.max(...vals,100)/step)*step;
+    const W=860,H=320,X0=64,X1=806,YT=24,YB=280;
     const X=j=>n>1?X0+(X1-X0)*j/(n-1):(X0+X1)/2, Y=v=>YB-(YB-YT)*(v-lo)/(hi-lo);
     let grid='', ticks='';
-    for(let v=lo; v<=hi; v+=10){ grid+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)'+(v===100?';stroke:var(--text-faint);stroke-dasharray:4 4':'')+'"></line>'; ticks+='<text x="'+(X0-10)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'; }
-    yrs.forEach((y,j)=>{ ticks+='<text x="'+X(j)+'" y="'+(H-12)+'" text-anchor="middle">'+(j===n-1?'Now':y)+'</text>'; });
-    const pts=a=>a.map((v,j)=>v==null?null:X(j).toFixed(1)+','+Y(v).toFixed(1)).filter(Boolean).join(' ');
-    const both=R.every(v=>v!=null);
-    const poly=both?'<polygon points="'+pts(R)+' '+P.map((v,j)=>X(j).toFixed(1)+','+Y(v).toFixed(1)).reverse().join(' ')+'" style="fill:var(--teal);opacity:.14"></polygon>':'';
-    const lastR=R[n-1], lastP=P[n-1];
-    idx.innerHTML='<div class="pvr-cardhead"><h3>'+pvrNm(cur)+' '+segW+'s since the '+G.pk+' peak</h3>'+
-      '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(both?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+'</div></div>'+
-      '<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Indexed to 100 at the '+G.pk+' peak: price '+lastP.toFixed(1)+(lastR!=null?', rent '+lastR.toFixed(1):'')+'">'+
-      '<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+poly+
-      (R.some(v=>v!=null)?'<polyline points="'+pts(R)+'" style="fill:none;stroke:var(--teal);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round"></polyline>':'')+
-      '<polyline points="'+pts(P)+'" style="fill:none;stroke:var(--text);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round"></polyline>'+
-      (lastR!=null?'<circle cx="'+X(n-1)+'" cy="'+Y(lastR)+'" r="6" style="fill:var(--teal)"></circle><text x="'+(X(n-1)-12)+'" y="'+(Y(lastR)-12)+'" text-anchor="end" style="fill:var(--teal);font-size:13px;font-weight:800">Rent '+lastR.toFixed(1)+'</text>':'')+
-      '<circle cx="'+X(n-1)+'" cy="'+Y(lastP)+'" r="6" style="fill:var(--text)"></circle><text x="'+(X(n-1)-12)+'" y="'+(Y(lastP)+22)+'" text-anchor="end" style="fill:var(--text);font-size:13px;font-weight:800">Price '+lastP.toFixed(1)+'</text>'+
-      '</svg><p class="pvr-note">Indexed to 100 in the peak year. Price: December 12-month median, the cur year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
+    for(let v=lo; v<=hi+1e-9; v+=step){ grid+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)'+(v===100?';stroke:var(--text-faint);stroke-dasharray:4 4':'')+'"></line>'; ticks+='<text x="'+(X0-10)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'; }
+    const every=n<=12?1:n<=25?5:10;
+    yrs.forEach((y,j)=>{ if(j===n-1||y%every===0&&(n-1-j)*(X1-X0)/(n-1)>34) ticks+='<text x="'+X(j)+'" y="'+(H-12)+'" text-anchor="middle">'+(j===n-1?'Now':y)+'</text>'; });
+    // the stall since the last peak, shaded and marked
+    let stall='';
+    if(G.stag&&PVRIDX==='all'){ const jp=yrs.indexOf(G.pk); if(jp>=0){ stall='<rect x="'+X(jp)+'" y="'+YT+'" width="'+(X(n-1)-X(jp))+'" height="'+(YB-YT)+'" style="fill:var(--text);opacity:.05"></rect>'+
+      '<line x1="'+X(jp)+'" y1="'+YT+'" x2="'+X(jp)+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1.2;stroke-dasharray:4 4"></line>'+
+      '<text x="'+(X(jp)+6)+'" y="'+(YT+14)+'" style="fill:var(--text-dim);font-size:11.5px;font-weight:800">Peak '+G.pk+' &middot; stalled '+G.stag+'y</text>'; } }
+    // the gap: shaded wherever both series run, as one band per unbroken stretch
+    let gapPoly=''; for(let a=0;a<n;a++){ if(R[a]==null) continue; let b=a; while(b+1<n&&R[b+1]!=null) b++;
+      if(b>a){ const top=[], bot=[]; for(let j=a;j<=b;j++){ top.push(X(j).toFixed(1)+','+Y(R[j]).toFixed(1)); bot.push(X(j).toFixed(1)+','+Y(P[j]).toFixed(1)); }
+        gapPoly+='<polygon points="'+top.join(' ')+' '+bot.reverse().join(' ')+'" style="fill:var(--teal);opacity:.14"></polygon>'; } a=b; }
+    const line=(a,c)=>{ let s='', segp=[]; const flush=()=>{ if(segp.length>1) s+='<polyline points="'+segp.join(' ')+'" style="fill:none;stroke:'+c+';stroke-width:3;stroke-linejoin:round;stroke-linecap:round"></polyline>'; segp=[]; };
+      a.forEach((v,j)=>{ if(v==null) flush(); else segp.push(X(j).toFixed(1)+','+Y(v).toFixed(1)); }); flush(); return s; };
+    const lastR=R[n-1], lastP=P[n-1], hasR=R.some(v=>v!=null);
+    const rAbove=lastR!=null&&lastR>=lastP;
+    const lab=(v,c,t,up)=>'<circle cx="'+X(n-1)+'" cy="'+Y(v)+'" r="5.5" style="fill:'+c+'"></circle><text x="'+(X(n-1)-10)+'" y="'+(Y(v)+(up?-12:22))+'" text-anchor="end" style="fill:'+c+';font-size:13px;font-weight:800">'+t+' '+Math.round(v)+'</text>';
+    const title=PVRIDX==='peak'?(pvrNm(cur)+' '+segW+'s since the '+G.pk+' peak'):(pvrNm(cur)+' '+segW+'s &mdash; price and rent, whole history');
+    idx.innerHTML=head(title)+
+      '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.12"></i>Since the last peak</span>':'')+'</div>'+
+      '<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+title.replace(/&[a-z]+;/g,'-')+': indexed to 100 in '+base+'">'+
+      stall+'<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+gapPoly+line(R,'var(--teal)')+line(P,'var(--text)')+
+      (lastR!=null?lab(lastR,'var(--teal)','Rent',rAbove):'')+lab(lastP,'var(--text)','Price',!rAbove)+'</svg>'+
+      '<p class="pvr-note">'+(PVRIDX==='peak'?('Indexed to 100 in the '+G.pk+' peak year.'):('Both indexed to 100 in '+base+(hasR?', the year before rent records begin, so the gap opens from a common start':'')+'. Shaded: the stretch since the last price peak.'))+
+      (hasR?'':' No rent history for this market.')+' Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
   }
+  idx.querySelectorAll('#pvrIdxMode button').forEach(b=>{ b.onclick=()=>{ if(PVRIDX!==b.dataset.m){ PVRIDX=b.dataset.m; renderPVR(); } }; });
 
   // ---- selected market
   const me=out.find(r=>r.l===cur), sel=document.getElementById('pvrSel');
@@ -1397,88 +1444,99 @@ function renderPVR(){
     const why=me?('Price peaked in '+G.pk+' and has not been passed since. Rent has kept rising through the stall'+(gpy!=null?', lifting the gross yield about '+Math.round(gpy)+'% a year.':'.'))
       :(G.stag<3?('Price has been below its '+G.pk+' peak for '+G.stag+' year'+(G.stag>1?'s':'')+'; a market qualifies at 3.'):(G.rwin==null?'No rent history reaching back to the '+G.pk+' peak, so it cannot be ranked.':'Rent is no higher than at the '+G.pk+' peak.'));
     sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:16px"><div><div class="eb">Selected market</div><div class="nm">'+pvrNm(cur)+'</div>'+
-      '<div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+(me?(' &middot; ranked '+rankGap+' of '+out.length+' by gap'):' &middot; not in the ranking')+'</div></div>'+
+      '<div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+(me?(' &middot; ranked '+rankGap+' of '+out.length+' qualifying by gap'):' &middot; does not qualify')+'</div></div>'+
       '<div class="pvr-tiles"><div class="pvr-tile"><div class="k">Price since peak</div><div class="v dn">'+pvrPC(G.pwin)+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Rent since peak</div><div class="v up">'+(G.rwin!=null?pvrPC(G.rwin):'&ndash;')+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Stalled</div><div class="v">'+G.stag+' year'+(G.stag>1?'s':'')+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Gap a year</div><div class="v">'+(gpy!=null?pvrPC(gpy):'&ndash;')+'</div></div></div>'+
       '<p>'+why+'</p></div>';
-  } else sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:12px"><div class="eb">Selected market</div><div class="nm">'+pvrNm(cur)+'</div><div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+'</div><p>'+(G?'At its price peak now.':'No '+segW+' price history.')+' Pick a market from the map or the ranking below.</p></div>';
+  } else sel.innerHTML='<div class="pvr-sel" style="display:flex;flex-direction:column;gap:12px"><div class="eb">Selected market</div><div class="nm">'+pvrNm(cur)+'</div><div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+'</div><p>'+(G?('At its price peak now: the '+segW+' price has not stalled. The chart shows its whole history.'):'No '+segW+' price history.')+'</p></div>';
 
-  // ---- map: every qualifying market by price since the peak (x) against rent since the peak (y)
-  const mapEl=document.getElementById('pvrMap');
-  if(!rows.length){ mapEl.innerHTML='<div class="pvr-empty">No '+segW+' market '+FILT+' meets the test.</div>'; }
+  // ---- map: every market with a stall, by price since the peak (x) against rent since the peak (y); hollow = does not qualify
+  const mapEl=document.getElementById('pvrMap'), pts=list.filter(r=>r.price!=null&&r.rent!=null);
+  if(!pts.length){ mapEl.innerHTML='<div class="pvr-empty">No '+segW+' market '+FILT+' has a stall to plot.</div>'; }
   else {
     const W=904,H=620,X0=80,X1=842,YT=40,YB=560;   // X1 leaves room for the right-hand % labels
-    const xmin=Math.min(-5,Math.floor(Math.min(...rows.map(r=>r.price))/5)*5), xmax=0;
-    const ymax=Math.max(10,Math.ceil(Math.max(...rows.map(r=>r.rent))/10)*10), ymin=0;
+    const xmin=Math.min(-5,Math.floor(Math.min(...pts.map(r=>r.price))/5)*5), xmax=0;
+    const ymax=Math.max(10,Math.ceil(Math.max(...pts.map(r=>r.rent))/10)*10), ymin=Math.min(0,Math.floor(Math.min(...pts.map(r=>r.rent))/5)*5);
     const X=v=>X0+(X1-X0)*(v-xmin)/(xmax-xmin), Y=v=>YB-(YB-YT)*(v-ymin)/(ymax-ymin);
-    let s='<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+rows.length+' '+segW+' markets plotted by price change against rent change since each one\'s price peak">';
-    s+='<rect x="'+X0+'" y="'+YT+'" width="'+((X1-X0)/2)+'" height="'+((YB-YT)/2)+'" style="fill:var(--teal);opacity:.07"></rect>';
+    let s='<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+pts.length+' '+segW+' markets plotted by price change against rent change since each one\'s price peak">';
+    s+='<rect x="'+X0+'" y="'+YT+'" width="'+((X1-X0)/2)+'" height="'+((Y(ymax/2)-YT))+'" style="fill:var(--teal);opacity:.07"></rect>';
     s+='<text x="'+(X0+12)+'" y="'+(YT+22)+'" style="fill:var(--teal);font-size:12px;font-weight:800">Price down most, rent up most</text>';
     for(let v=xmin; v<=xmax; v+=5) s+='<line x1="'+X(v)+'" y1="'+YT+'" x2="'+X(v)+'" y2="'+YB+'" style="stroke:var(--border)"></line><text x="'+X(v)+'" y="'+(YB+22)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:12px">'+(v<0?'−'+(-v):v)+'%</text>';
-    const ystep=ymax>40?10:5;
-    for(let v=ymin; v<=ymax; v+=ystep) s+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)"></line><text x="'+(X1+10)+'" y="'+(Y(v)+4)+'" style="fill:var(--text-faint);font-size:12px">'+(v>0?'+':'')+v+'%</text>';
+    const ystep=(ymax-ymin)>40?10:5;
+    for(let v=ymin; v<=ymax; v+=ystep) s+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:'+(v===0?'var(--text-faint)':'var(--border)')+'"></line><text x="'+(X1+10)+'" y="'+(Y(v)+4)+'" style="fill:var(--text-faint);font-size:12px">'+(v>0?'+':'')+(v<0?'−'+(-v):v)+'%</text>';
     s+='<text x="'+((X0+X1)/2)+'" y="'+(H-10)+'" text-anchor="middle" style="fill:var(--text);font-size:12.5px;font-weight:800">Price since the peak</text>';
     s+='<text x="40" y="'+((YT+YB)/2)+'" text-anchor="middle" transform="rotate(-90 40 '+((YT+YB)/2)+')" style="fill:var(--text);font-size:12.5px;font-weight:800">Rent since the peak</text>';
-    // equal-gap lines: rent = gap + price
-    [20,40,60].forEach(gp=>{ const pts=[]; for(let px=xmin; px<=xmax+1e-9; px+=0.25){ const ry=gp+px; if(ry>=ymin&&ry<=ymax) pts.push([px,ry]); }
-      if(pts.length<2) return; const p0=pts[0], p1=pts[pts.length-1];
+    [20,40,60].forEach(gp=>{ const ln=[]; for(let px=xmin; px<=xmax+1e-9; px+=0.25){ const ry=gp+px; if(ry>=ymin&&ry<=ymax) ln.push([px,ry]); }
+      if(ln.length<2) return; const p0=ln[0], p1=ln[ln.length-1];
       s+='<line x1="'+X(p0[0])+'" y1="'+Y(p0[1])+'" x2="'+X(p1[0])+'" y2="'+Y(p1[1])+'" style="stroke:var(--text-dim);stroke-width:1.2;stroke-dasharray:6 5;opacity:.6"></line>';
       const ang=Math.atan2(Y(p1[1])-Y(p0[1]),X(p1[0])-X(p0[0]))*180/Math.PI, tx=X(p0[0])+22, ty=Y(p0[1]+(p1[1]-p0[1])*22/(X(p1[0])-X(p0[0])))-6;
       s+='<text x="'+tx+'" y="'+ty+'" transform="rotate('+ang.toFixed(1)+' '+tx+' '+ty+')" style="fill:var(--text-dim);font-size:11px;font-weight:800">Gap '+gp+' pts</text>'; });
     const col={metro:'var(--teal)',near:'var(--orange)',far:'var(--text-faint)'};
-    const rad=st=>st>=5?11:st===4?9:7;
-    rows.slice().sort((a,b)=>rad(b.stag)-rad(a.stag)).forEach(r=>{
-      s+='<circle class="pvr-map-dot" data-l="'+r.l+'" tabindex="0" cx="'+X(r.price).toFixed(1)+'" cy="'+Y(r.rent).toFixed(1)+'" r="'+rad(r.stag)+'" style="fill:'+col[r.area]+';stroke:var(--bg-1);stroke-width:1.5"><title>'+pvrNm(r.l)+': price '+pvrPC(r.price)+', rent '+pvrPC(r.rent)+' since '+r.pk+' ('+r.stag+'y) · gap '+r.gap.toFixed(1)+' pts'+(r.dm!=null?' · '+pvrHM(r.dm)+' drive':'')+'</title></circle>'; });
-    if(me && rows.includes(me)) s+='<circle cx="'+X(me.price).toFixed(1)+'" cy="'+Y(me.rent).toFixed(1)+'" r="'+(rad(me.stag)+6)+'" style="fill:none;stroke:var(--text);stroke-width:2"></circle>';
-    // labels: the five widest gaps, the top three regional within reach, and the selected market -- skipping any that would collide
-    const want=[...new Set([...byGap.slice(0,5), ...rows.filter(r=>r.area==='near').sort((a,b)=>b.gap-a.gap).slice(0,3), ...(me&&rows.includes(me)?[me]:[])])];
+    const rad=st=>st>=5?11:st===4?9:st===3?7:st===2?5.5:4.5;
+    pts.slice().sort((a,b)=>(a.q-b.q)||(rad(b.stag)-rad(a.stag))).forEach(r=>{
+      const sty=r.q?('fill:'+col[r.area]+';stroke:var(--bg-1);stroke-width:1.5'):('fill:var(--bg-1);stroke:'+col[r.area]+';stroke-width:2');
+      s+='<circle class="pvr-map-dot" data-l="'+r.l+'" tabindex="0" cx="'+X(r.price).toFixed(1)+'" cy="'+Y(r.rent).toFixed(1)+'" r="'+rad(r.stag)+'" style="'+sty+'"><title>'+pvrNm(r.l)+': price '+pvrPC(r.price)+', rent '+pvrPC(r.rent)+' since '+r.pk+' ('+r.stag+'y) · gap '+r.gap.toFixed(1)+' pts'+(r.dm!=null?' · '+pvrHM(r.dm)+' drive':'')+(r.q?'':' · '+r.why)+'</title></circle>'; });
+    const mp=pts.find(r=>r.l===cur);
+    if(mp) s+='<circle cx="'+X(mp.price).toFixed(1)+'" cy="'+Y(mp.rent).toFixed(1)+'" r="'+(rad(mp.stag)+6)+'" style="fill:none;stroke:var(--text);stroke-width:2"></circle>';
+    const inPts=r=>pts.includes(r);
+    const want=[...new Set([...byGap.filter(inPts).slice(0,5), ...rows.filter(r=>r.area==='near'&&inPts(r)).sort((a,b)=>b.gap-a.gap).slice(0,3), ...(mp?[mp]:[])])];
     const placed=[];
     want.forEach(r=>{ const x=X(r.price)+rad(r.stag)+6, y=Y(r.rent)+4, w=(pvrNm(r.l).length+(r.area==='near'?8:0))*7.2;
       if(placed.some(p=>Math.abs(p.y-y)<15&&x<p.x+p.w&&p.x<x+w)) return; placed.push({x,y,w});
       const flip=x+w>X1-4; const tx=flip?X(r.price)-rad(r.stag)-6:x;
-      s+='<text x="'+tx.toFixed(1)+'" y="'+y.toFixed(1)+'"'+(flip?' text-anchor="end"':'')+' style="fill:'+(r.area==='near'?'var(--orange)':'var(--text)')+';font-size:12px;font-weight:800;pointer-events:none">'+pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):'')+(r===me?' · selected':'')+'</text>'; });
+      s+='<text x="'+tx.toFixed(1)+'" y="'+y.toFixed(1)+'"'+(flip?' text-anchor="end"':'')+' style="fill:'+(r.area==='near'?'var(--orange)':'var(--text)')+';font-size:12px;font-weight:800;pointer-events:none">'+pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):'')+(r===mp?' · selected':'')+'</text>'; });
     mapEl.innerHTML=s+'</svg>';
     mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrPick(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrPick(c.dataset.l); } }; });
   }
-  const b40=rows.filter(r=>r.gap>=40), topReg=near[0];
+  const b40=rows.filter(r=>r.gap>=40), topReg=near[0], notPlot=list.length-pts.length;
   document.getElementById('pvrMapSide').innerHTML=
-    '<div style="display:flex;flex-direction:column;gap:8px"><div class="eb">How to read it</div><p>Each dot is one market, placed by how far price has fallen and rent has risen since its own peak. Up and to the left is the most extreme case.</p><p class="dim">Markets on the same dashed line share a gap. Hover a dot for its figures; click it to select it across the page.</p></div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px"><div class="eb">How to read it</div><p>Each dot is one market, placed by how far price has moved and rent has risen since its own last price peak. Up and to the left is the most extreme case.</p>'+
+    '<p class="dim">Filled dots qualify (stalled 3+ years, rent up); hollow ones do not yet. Markets on the same dashed line share a gap. Hover a dot for its figures; click to select it.'+(notPlot?(' '+notPlot+' market'+(notPlot===1?' is':'s are')+' at a price peak or lack rent history, so '+(notPlot===1?'it has':'they have')+' no dot.'):'')+'</p></div>'+
     '<div class="pvr-callout"><div class="k">Beyond the 40-point line</div><div class="v">'+b40.length+' market'+(b40.length===1?'':'s')+'</div><div class="s">'+(b40.length?b40.sort((a,b)=>b.gap-a.gap).map(r=>pvrNm(r.l)).join(', '):'None '+FILT)+'</div></div>'+
     (topReg?'<div class="pvr-callout reg"><div class="k">Closest regional case</div><div class="v">'+pvrNm(topReg.l)+'</div><div class="s">Price '+pvrPC(topReg.price)+', rent '+pvrPC(topReg.rent)+' since '+topReg.pk+' &middot; '+pvrHM(topReg.dm)+' to '+topReg.town+'</div></div>':'');
 
-  // ---- ranking
+  // ---- ranking: every LGA (or qualifying only); blanks sort last whichever way
   const key=PVRSORT, dir=PVRDIR;
-  const sorted=rows.slice().sort((a,b)=>{ let x=a[key], y=b[key]; if(key==='dm'){ x=x==null?-1:x; y=y==null?-1:y; }   // metro (no drive time) sorts as nearest
-    const c=(typeof x==='string')?x.localeCompare(y):(x-y); return (c*dir)||(b.gap-a.gap); });
+  const sorted=list.slice().sort((a,b)=>{ let x=a[key], y=b[key]; if(key==='dm'){ x=x==null?-1:x; y=y==null?-1:y; }
+    if(x==null&&y==null) return (b.q-a.q)||((b.gap??-1e9)-(a.gap??-1e9)); if(x==null) return 1; if(y==null) return -1;
+    const c=(typeof x==='string')?x.localeCompare(y):(x-y); return (c*dir)||((b.gap??-1e9)-(a.gap??-1e9)); });
   const shown=PVRALL?sorted:sorted.slice(0,PVRCAP);
-  if(!PVRALL && me && sorted.indexOf(me)>=PVRCAP) shown.push(me);   // the selected market stays visible
-  const scale=90/Math.max(1,...rows.map(r=>Math.max(-r.price,r.rent)));
+  const mr=sorted.find(r=>r.l===cur); if(!PVRALL && mr && sorted.indexOf(mr)>=PVRCAP) shown.push(mr);   // the selected market stays visible
+  const scale=90/Math.max(1,...list.map(r=>Math.max(r.price!=null?-r.price:0,r.rent!=null?Math.abs(r.rent):0)));
   const cols=[['#',null],['Market','l'],['Drive','dm'],['Peak','pk'],['Stalled','stag'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy']];
   const th=cols.map(([t,kk])=>kk?('<th data-k="'+kk+'" class="sortable'+(kk===key?' on':'')+'">'+t+(kk===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
+  const num=(v,suf)=>v==null?'<span class="na">&ndash;</span>':('<b>'+(v>0?'+':'')+v.toFixed(1)+(suf||'')+'</b>');
   const body=shown.map(r=>{ const i=sorted.indexOf(r)+1;
-    return '<tr class="pvr-row'+(r.l===cur?' active':'')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+'<span class="sub'+(r.area==='near'?' n':'')+'">'+AREA[r.area]+(r.town&&r.area!=='metro'?' &middot; '+r.town:'')+'</span></td>'+
-      '<td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?pvrHM(r.dm):'&ndash;')+'</td><td>'+r.pk+'</td><td>'+r.stag+'y</td>'+
-      '<td><div class="pvr-div"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'</span><span class="l"><i style="width:'+(-r.price*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r"><i style="width:'+(r.rent*scale).toFixed(1)+'px"></i></span><span class="rv">+'+r.rent.toFixed(1)+'</span></div></td>'+
-      '<td class="gap"><b>'+(r.gap>0?'+':'')+r.gap.toFixed(1)+'</b></td><td><b>'+(r.gpy>0?'+':'')+r.gpy.toFixed(1)+'%</b></td></tr>'; }).join('');
-  document.getElementById('pvrTable').innerHTML=rows.length
+    const bar=r.price==null?'<span class="pvr-atpeak">At its price peak</span>':
+      ('<div class="pvr-div"><span class="lv">'+r.price.toFixed(1).replace('-','−')+'</span><span class="l"><i style="width:'+(Math.max(0,-r.price)*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r">'+
+       (r.rent!=null&&r.rent>0?'<i style="width:'+(r.rent*scale).toFixed(1)+'px"></i>':'')+'</span><span class="rv">'+(r.rent!=null?((r.rent>0?'+':'')+r.rent.toFixed(1).replace('-','−')):'&ndash;')+'</span></div>');
+    return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
+      '<span class="sub'+(r.area==='near'?' n':'')+'">'+AREA[r.area]+(r.town&&r.area!=='metro'?' &middot; '+r.town:'')+' &middot; '+(r.q?'<b class="qok">Qualifies</b>':r.why)+'</span></td>'+
+      '<td'+(r.town?(' title="'+r.town+', by road from the Melbourne GPO"'):'')+'>'+(r.dm!=null?pvrHM(r.dm):'&ndash;')+'</td><td>'+r.pk+'</td><td>'+(r.stag?r.stag+'y':'&ndash;')+'</td>'+
+      '<td>'+bar+'</td><td class="gap">'+num(r.gap)+'</td><td>'+num(r.gpy,'%')+'</td></tr>'; }).join('');
+  document.getElementById('pvrTable').innerHTML=list.length
     ?('<table class="calc pvr"><thead><tr>'+th+'</tr></thead><tbody>'+body+'</tbody></table>')
-    :'<div class="pvr-empty">No '+segW+' market '+FILT+' meets the test.</div>';
-  document.getElementById('pvrShowing').textContent=rows.length?('Showing '+Math.min(shown.length,rows.length)+' of '+rows.length+' · sort by any column'):'';
-  document.getElementById('pvrSub').innerHTML='Ranked by the <b>gap</b>: rent growth minus price change since the peak, in percentage points. '+
-    '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price (the rise in gross yield each year).';
-  const more=document.getElementById('pvrMore'); more.hidden=rows.length<=PVRCAP; more.textContent=PVRALL?'Show fewer':('Show all '+rows.length+' markets'); more.onclick=()=>{ PVRALL=!PVRALL; renderPVR(); };
-  document.getElementById('pvrNote').innerHTML='Left out on '+segW+'s: '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '+
+    :'<div class="pvr-empty">No '+segW+' market '+FILT+(PVRSET==='q'?' meets the test.':'.')+'</div>';
+  const nq=list.filter(r=>r.q).length;
+  document.getElementById('pvrShowing').textContent=list.length?('Showing '+Math.min(shown.length,list.length)+' of '+list.length+(PVRSET==='all'?' LGAs ('+nq+' qualify)':' qualifying')+' · sort by any column'):'';
+  document.getElementById('pvrSub').innerHTML='Ranked by the <b>gap</b>: rent growth minus price change since each market&rsquo;s last price peak, in percentage points. '+
+    '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price (the rise in gross yield each year). '+
+    (PVRSET==='all'?'Markets that do not qualify are shown with the reason, faded.':'');
+  const more=document.getElementById('pvrMore'); more.hidden=list.length<=PVRCAP; more.textContent=PVRALL?'Show fewer':('Show all '+list.length+(PVRSET==='all'?' LGAs':' markets')); more.onclick=()=>{ PVRALL=!PVRALL; renderPVR(); };
+  document.getElementById('pvrNote').innerHTML='A market qualifies when its price peaked 3+ years ago, has not been passed since, and rent is higher than at that peak. On '+segW+'s: '+out.length+' qualify &middot; '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '+
     'Nominal medians; rent to the 12 months to Jun 2026. Drive: road time from the Melbourne GPO to the main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
   document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const kk=h.dataset.k;
     if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='dm'||kk==='pk')?1:-1; } renderPVR(); });
   document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrPick(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrPick(tr.dataset.l); } }; });
   document.querySelectorAll('#pvrSeg button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.s===seg));
-    b.onclick=()=>{ if(GSEG!==b.dataset.s){ GSEG=b.dataset.s; STMORE=false; renderGrowthAll(cur); } }; });
+    b.onclick=()=>{ if(GSEG!==b.dataset.s){ GSEG=b.dataset.s; STMORE=false; renderGrowthAll(); } }; });
   document.querySelectorAll('#pvrFilt button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.f===PVRF));
     b.onclick=()=>{ PVRF=b.dataset.f; PVRALL=false; renderPVR(); }; });
-  const t=document.getElementById('pvrTitle'); if(t) t.textContent=pvrNm(cur)+' — full price and rent history';
+  document.querySelectorAll('#pvrSet button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.v===PVRSET));
+    b.onclick=()=>{ if(PVRSET!==b.dataset.v){ PVRSET=b.dataset.v; PVRALL=false; renderPVR(); } }; });
+  const t=document.getElementById('pvrTitle'); if(t) t.textContent=pvrNm(cur)+' — year-on-year price and rent growth';
 }
 /* ---- Shortlist: stagnated 3+ years, rent up across it ---- */
 function stagRows(seg){
