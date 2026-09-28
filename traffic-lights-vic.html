@@ -1496,7 +1496,7 @@ function renderPVR(){
     const lastR=R[n-1], lastP=P[n-1], hasR=R.some(v=>v!=null);
     const rAbove=lastR!=null&&lastR>=lastP;
     const lab=(v,c,t,up)=>'<circle cx="'+X(n-1)+'" cy="'+Y(v)+'" r="5.5" style="fill:'+c+'"></circle><text x="'+(X(n-1)-10)+'" y="'+(Y(v)+(up?-12:22))+'" text-anchor="end" style="fill:'+c+';font-size:13px;font-weight:800">'+t+' '+Math.round(v)+'</text>';
-    const title='Price vs. Rent: the gap &mdash; '+pvrNm(cur)+' '+segW+'s'+(PVRIDX==='peak'?' since the '+G.pk+' peak':'')+(PVRZOOM?', '+yrs[0]+'&ndash;'+yrs[n-1]:'');
+    const title='The gap: '+pvrNm(cur)+' '+segW+'s'+(PVRIDX==='peak'?' since the '+G.pk+' peak':'')+(PVRZOOM?', '+yrs[0]+'&ndash;'+yrs[n-1]:'');
     PVRTT={yrs:ttY, P:ttP, R:ttR};
     idx.innerHTML=head(title)+
       '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.14"></i>Stagnation periods</span>':'')+'</div>'+
