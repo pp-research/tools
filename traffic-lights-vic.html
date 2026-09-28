@@ -1392,8 +1392,11 @@ function renderPVR(){
       for(let y=G.pk;y<=CY;y++){ const i=y-G.y0; if(y>G.pk){ pi*=1+(G.p[i]||0)/100; if(G.r[i]==null) rOK=false; else ri*=1+G.r[i]/100; } yrs.push(y); P.push(pi); R.push(rOK?ri:null); }
       if(G.rwin!=null) R[R.length-1]=100+G.rwin; P[P.length-1]=100+G.pwin;   // endpoints = the page's since-peak figures
     } else {
-      // both indexed to 100 in the year before the first rent reading, so the gap opens from a common start
-      const fr=G.r.findIndex(v=>v!=null), fp=G.p.findIndex(v=>v!=null);
+      // both indexed to 100 at the start of the LATEST UNBROKEN run of rent readings (a missing rent year breaks the
+      // chain, so earlier stretches cannot be joined on); price runs back before it on the same base
+      const fp=G.p.findIndex(v=>v!=null);
+      let lr=G.r.length-1; while(lr>=0&&G.r[lr]==null) lr--;
+      let fr=lr; while(fr>0&&G.r[fr-1]!=null) fr--;
       const bi=fr>0?fr-1:(fr===0?0:fp); base=G.y0+bi;
       const lvP=[], lvR=[]; lvP[bi]=100; lvR[bi]=fr>=0?100:null;
       for(let i=bi+1;i<G.p.length;i++){ lvP[i]=lvP[i-1]*(1+(G.p[i]||0)/100); lvR[i]=(lvR[i-1]!=null&&G.r[i]!=null)?lvR[i-1]*(1+G.r[i]/100):null; }
@@ -1413,7 +1416,7 @@ function renderPVR(){
     let stall='';
     if(G.stag&&PVRIDX==='all'){ const jp=yrs.indexOf(G.pk); if(jp>=0){ stall='<rect x="'+X(jp)+'" y="'+YT+'" width="'+(X(n-1)-X(jp))+'" height="'+(YB-YT)+'" style="fill:var(--text);opacity:.05"></rect>'+
       '<line x1="'+X(jp)+'" y1="'+YT+'" x2="'+X(jp)+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1.2;stroke-dasharray:4 4"></line>'+
-      '<text x="'+(X(jp)+6)+'" y="'+(YT+14)+'" style="fill:var(--text-dim);font-size:11.5px;font-weight:800">Peak '+G.pk+' &middot; stalled '+G.stag+'y</text>'; } }
+      '<text x="'+(X(jp)-6)+'" y="'+(YB-8)+'" text-anchor="end" style="fill:var(--text-dim);font-size:11.5px;font-weight:800">Peak '+G.pk+' &middot; stalled '+G.stag+'y</text>'; } }
     // the gap: shaded wherever both series run, as one band per unbroken stretch
     let gapPoly=''; for(let a=0;a<n;a++){ if(R[a]==null) continue; let b=a; while(b+1<n&&R[b+1]!=null) b++;
       if(b>a){ const top=[], bot=[]; for(let j=a;j<=b;j++){ top.push(X(j).toFixed(1)+','+Y(R[j]).toFixed(1)); bot.push(X(j).toFixed(1)+','+Y(P[j]).toFixed(1)); }
@@ -1429,7 +1432,7 @@ function renderPVR(){
       '<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+title.replace(/&[a-z]+;/g,'-')+': indexed to 100 in '+base+'">'+
       stall+'<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+gapPoly+line(R,'var(--teal)')+line(P,'var(--text)')+
       (lastR!=null?lab(lastR,'var(--teal)','Rent',rAbove):'')+lab(lastP,'var(--text)','Price',!rAbove)+'</svg>'+
-      '<p class="pvr-note">'+(PVRIDX==='peak'?('Indexed to 100 in the '+G.pk+' peak year.'):('Both indexed to 100 in '+base+(hasR?', the year before rent records begin, so the gap opens from a common start':'')+'. Shaded: the stretch since the last price peak.'))+
+      '<p class="pvr-note">'+(PVRIDX==='peak'?('Indexed to 100 in the '+G.pk+' peak year.'):('Both indexed to 100 in '+base+(hasR?', where the unbroken rent record begins, so the gap opens from a common start':'')+'. Shaded: the stretch since the last price peak.'))+
       (hasR?'':' No rent history for this market.')+' Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
   }
   idx.querySelectorAll('#pvrIdxMode button').forEach(b=>{ b.onclick=()=>{ if(PVRIDX!==b.dataset.m){ PVRIDX=b.dataset.m; renderPVR(); } }; });
