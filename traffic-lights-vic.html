@@ -1307,10 +1307,10 @@ function gwClose(){
    segment, not thin, price peak 3+ years ago and not passed, rent verifiably higher than at the peak. Nominal medians.
    Layout (2026-09-28, direction A): headline figures, since-the-peak chart + selected market, map, ranking, history. */
 let PVRSORT='gap', PVRDIR=-1, PVRF='all', PVRALL=false;
-// The "about 2 hours from Melbourne" ring: regional LGAs whose main town is within 2h15 by road (Shaene, 2026-09-28,
-// option a). OSRM free-flow times run a little slow on Victorian highways, so 2h15 keeps the markets that are ~2 hours
-// in practice (Colac, Alexandra, Euroa, Beaufort, Traralgon) and drops Mansfield (2h39) and Maryborough (2h17).
-const PVRDRIVE=135;   // minutes
+// The 2-hour ring: regional LGAs whose main town is within 2 hours by road (OSRM, from the Melbourne GPO). STRICT 2h00
+// (Shaene, 2026-09-28: "move the lgas beyond 2h to where they should be"), replacing the earlier 2h15 line -- so Pyrenees
+// 2h03, Strathbogie 2h03, Colac Otway 2h04, Murrindindi 2h05 and Latrobe 2h09 sit in "Beyond 2h drive". 14 LGAs are inside.
+const PVRDRIVE=120;   // minutes
 const PVRCAP=8;       // rows shown before "Show all"
 function pvrArea(l){ const dv=DRIVE[l]; return METRO.has(l)?'metro':(dv&&dv.m<=PVRDRIVE?'near':'far'); }
 function pvrRows(seg){
@@ -1470,7 +1470,7 @@ function renderPVR(){
     '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price (the rise in gross yield each year).';
   const more=document.getElementById('pvrMore'); more.hidden=rows.length<=PVRCAP; more.textContent=PVRALL?'Show fewer':('Show all '+rows.length+' markets'); more.onclick=()=>{ PVRALL=!PVRALL; renderPVR(); };
   document.getElementById('pvrNote').innerHTML='Left out on '+segW+'s: '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '+
-    'Nominal medians; rent to the 12 months to Jun 2026. Drive: road time from the Melbourne GPO to the main town (OpenStreetMap routing, no traffic); &ldquo;about 2 hours&rdquo; is 2h15 or less.';
+    'Nominal medians; rent to the 12 months to Jun 2026. Drive: road time from the Melbourne GPO to the main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
   document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const kk=h.dataset.k;
     if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='dm'||kk==='pk')?1:-1; } renderPVR(); });
   document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrPick(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrPick(tr.dataset.l); } }; });
