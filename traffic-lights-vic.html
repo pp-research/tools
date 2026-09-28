@@ -1493,12 +1493,21 @@ function renderPVR(){
     const mp=pts.find(r=>r.l===cur);
     if(mp) s+='<circle cx="'+X(mp.price).toFixed(1)+'" cy="'+Y(mp.rent).toFixed(1)+'" r="'+(rad(mp.stag)+6)+'" style="fill:none;stroke:var(--text);stroke-width:2"></circle>';
     const inPts=r=>pts.includes(r);
-    const want=[...new Set([...byGap.filter(inPts).slice(0,5), ...rows.filter(r=>r.area==='near'&&inPts(r)).sort((a,b)=>b.gap-a.gap).slice(0,3), ...(mp?[mp]:[])])];
-    const placed=[];
-    want.forEach(r=>{ const x=X(r.price)+rad(r.stag)+6, y=Y(r.rent)+4, w=(pvrNm(r.l).length+(r.area==='near'?8:0))*7.2;
-      if(placed.some(p=>Math.abs(p.y-y)<15&&x<p.x+p.w&&p.x<x+w)) return; placed.push({x,y,w});
-      const flip=x+w>X1-4; const tx=flip?X(r.price)-rad(r.stag)-6:x;
-      s+='<text x="'+tx.toFixed(1)+'" y="'+y.toFixed(1)+'"'+(flip?' text-anchor="end"':'')+' style="fill:'+(r.area==='near'?'var(--orange)':'var(--text)')+';font-size:12px;font-weight:800;pointer-events:none">'+pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):'')+(r===mp?' · selected':'')+'</text>'; });
+    // every qualifying dot is labelled (Shaene, 2026-09-28); the selected one too even if it does not qualify.
+    // Each label tries right, left, above, below, then further out, and takes the first spot clear of other labels
+    // and dots; a label pushed away from its dot gets a thin leader line.
+    const want=[...new Set([...(mp?[mp]:[]), ...pts.filter(r=>r.q).sort((a,b)=>b.gap-a.gap)])];
+    const dots=pts.map(r=>({x:X(r.price),y:Y(r.rent),r:rad(r.stag)})), placed=[];
+    const hit=(b)=>b.x0<X0-2||b.x1>X1-2||b.y0<YT-4||b.y1>YB+2||placed.some(p=>b.x0<p.x1&&p.x0<b.x1&&b.y0<p.y1&&p.y0<b.y1)||
+      dots.some(d=>d.x+d.r>b.x0&&d.x-d.r<b.x1&&d.y+d.r>b.y0&&d.y-d.r<b.y1);
+    want.forEach(r=>{ const cx=X(r.price), cy=Y(r.rent), rr=rad(r.stag);
+      const txt=pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):'')+(r===mp?' · selected':''), w=txt.length*6.9, h=14;
+      const spots=[[cx+rr+5,cy+4,0],[cx-rr-5-w,cy+4,0],[cx-w/2,cy-rr-5,0],[cx-w/2,cy+rr+14,0]];
+      [18,32,48].forEach(dd=>spots.push([cx+rr+5,cy-dd+4,1],[cx+rr+5,cy+dd+4,1],[cx-rr-5-w,cy-dd+4,1],[cx-rr-5-w,cy+dd+4,1]));
+      let sp=spots.find(([x,y])=>!hit({x0:x,x1:x+w,y0:y-11,y1:y+3})); if(!sp) sp=spots[0];
+      const [x,y,lead]=sp; placed.push({x0:x,x1:x+w,y0:y-11,y1:y+3});
+      if(lead) s+='<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(x<cx?x+w:x).toFixed(1)+'" y2="'+(y-4).toFixed(1)+'" style="stroke:var(--text-faint);stroke-width:1;pointer-events:none"></line>';
+      s+='<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'"'+' style="fill:'+(r.area==='near'?'var(--orange)':'var(--text)')+';font-size:11.5px;font-weight:800;pointer-events:none">'+txt+'</text>'; });
     mapEl.innerHTML=s+'</svg>';
     mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrPick(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrPick(c.dataset.l); } }; });
   }
