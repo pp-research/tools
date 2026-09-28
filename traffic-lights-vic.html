@@ -400,8 +400,9 @@ table.calc.pvr .na{color:var(--text-faint)}
 .pvr-selid{flex:1 1 280px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .pvr-sel .pvr-selid p{border-top:0;padding-top:4px}
 .pvr-tiles.pvr-tiles4{flex:3 1 560px;grid-template-columns:repeat(4,minmax(0,1fr))}
-.pvr-tiles4 .pvr-tile{justify-content:center;padding:16px 18px}
-.pvr-tiles4 .pvr-tile .v{font-size:26px}
+.pvr-tiles4 .pvr-tile{justify-content:center;padding:12px 16px}
+.pvr-sel p.pvr-why{flex:1 1 100%;margin-top:-6px}
+.pvr-tiles4 .pvr-tile .v{font-size:24px}
 .pvr-qcount{color:var(--text);font-weight:800}
 @media(max-width:760px){.pvr-tiles.pvr-tiles4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .dd-opt .dd-gap{margin-left:auto;margin-right:10px;font-size:12px;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums}
@@ -1455,11 +1456,11 @@ function renderPVR(){
     const why=me?('Price peaked in '+G.pk+' and has not been passed since. Rent has kept rising through the stall'+(gpy!=null?', lifting the gross yield about '+Math.round(gpy)+'% a year.':'.'))
       :(G.stag<3?('Price has been below its '+G.pk+' peak for '+G.stag+' year'+(G.stag>1?'s':'')+'; a market qualifies at 3.'):(G.rwin==null?'No rent history reaching back to the '+G.pk+' peak, so it cannot be ranked.':'Rent is no higher than at the '+G.pk+' peak.'));
     sel.innerHTML='<div class="pvr-sel pvr-strip"><div class="pvr-selid"><div class="eb">Selected market</div><div class="nm">'+pvrNm(cur)+'</div>'+
-      '<div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+(me?(' &middot; ranked '+rankGap+' of '+out.length+' qualifying by gap'):' &middot; does not qualify')+'</div><p>'+why+'</p></div>'+
+      '<div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+(me?(' &middot; ranked '+rankGap+' of '+out.length+' qualifying by gap'):' &middot; does not qualify')+'</div></div>'+
       '<div class="pvr-tiles pvr-tiles4"><div class="pvr-tile"><div class="k">Price since peak</div><div class="v dn">'+pvrPC(G.pwin)+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Rent since peak</div><div class="v up">'+(G.rwin!=null?pvrPC(G.rwin):'&ndash;')+'</div></div>'+
       '<div class="pvr-tile"><div class="k">Stalled</div><div class="v">'+G.stag+' year'+(G.stag>1?'s':'')+'</div></div>'+
-      '<div class="pvr-tile"><div class="k">Gap a year</div><div class="v">'+(gpy!=null?pvrPC(gpy):'&ndash;')+'</div></div></div></div>';
+      '<div class="pvr-tile"><div class="k">Gap a year</div><div class="v">'+(gpy!=null?pvrPC(gpy):'&ndash;')+'</div></div></div><p class="pvr-why">'+why+'</p></div>';
   } else sel.innerHTML='<div class="pvr-sel pvr-strip"><div class="pvr-selid"><div class="eb">Selected market</div><div class="nm">'+pvrNm(cur)+'</div><div class="meta">'+(seg==='house'?'Houses':'Units')+' &middot; '+where+'</div><p>'+(G?('At its price peak now: the '+segW+' price has not stalled. The chart shows its whole history.'):'No '+segW+' price history.')+'</p></div></div>';
 
   // ---- map: every market with a stall, by price since the peak (x) against rent since the peak (y); hollow = does not qualify
