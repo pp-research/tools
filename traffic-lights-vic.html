@@ -1362,7 +1362,8 @@ function renderPVR(){
   const seg=GSEG, segW=seg==='house'?'house':'unit', {out,skip}=pvrRows(seg);
   const inArea=r=>PVRF==='all'||r.area===PVRF;
   const rows=out.filter(inArea);                                   // qualifying, in the chosen area
-  const list=(PVRSET==='q'?out:pvrAllRows(seg)).filter(inArea);    // what the map and the ranking show
+  // what the map and the ranking show; qualifying-only rows carry q:true too, or the map draws them hollow
+  const list=(PVRSET==='q'?out.map(r=>Object.assign({q:true,why:'Qualifies'},r)):pvrAllRows(seg)).filter(inArea);
   const FILT={all:'across Victoria',metro:'in metro Melbourne',near:'within 2 hours of Melbourne',far:'beyond 2 hours of Melbourne'}[PVRF];
   const AREA={metro:'Metro',near:'Regional',far:'Regional'};
   const tot=out.length+skip.flat+skip.norent+skip.thin+skip.rentdown;
