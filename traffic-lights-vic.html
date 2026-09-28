@@ -840,7 +840,7 @@ function computeSeg(){ SEG={};
 // tolerance (the "hold" band), a solid cell a requirement. Columns: Value | S&D | Confidence.
 const CLOCK_T=[
  ['Selling','10:00','R','G','G'],['Selling','10:30','R','G','O'],['Selling','11:00','R','O','G'],['Selling','11:30','OR','O','O'],
- ['Selling','12:00','OR','O','O'],['Selling','12:30','OR','R','O'],['Correction','1:00','O','R','R'],['Correction','1:30','O','R','R'],
+ ['Selling','12:00','OR','O','O'],['Selling','12:30','OR','O','O'],['Correction','1:00','O','R','R'],['Correction','1:30','O','R','R'],
  ['Correction','2:00','O','R','R'],['Correction','2:30','O','R','R'],['Correction','3:00','OG','O','OR'],['Correction','3:30','OG','O','OR'],
  ['Correction','4:00','OG','OG','R'],['Buy Value','4:30','OG','OG','R'],['Buy Value','5:00','OG','OG','R'],['Buy Value','5:30','G','G','O'],
  ['Buy Value','6:00','G','G','O'],['Buy Value','6:30','G','G','OG'],['Buy Value','7:00','G','G','OG'],['Momentum','7:30','G','G','OG'],
@@ -865,7 +865,8 @@ function assignClock(G){   // G: growth by LGA and segment; defaults to P36 (a p
   // Depth is the segment's runway ("depending on how low the runway is"): the 36 Regions tool uses its effective runway,
   // this page its own runway (the ranked tool's validation run passes effective runway in the same slot).
   const slotIx={}; CLOCK_T.forEach((t,i)=>slotIx[t.t]=i);
-  const red=rows.filter(x=>x.sig[0]==='R'&&bestFit(x)<2).sort((a,b)=>b.eff-a.eff), redPick={};
+  // (red Value with red S&D is excluded here: it is not Selling at all, see the gate below)
+  const red=rows.filter(x=>x.sig[0]==='R'&&x.sig[1]!=='R'&&bestFit(x)<2).sort((a,b)=>b.eff-a.eff), redPick={};
   red.forEach((x,k)=>{ let g=red.length>1?Math.floor(k*RED_SLOTS.length/red.length):0; if(g>RED_SLOTS.length-1) g=RED_SLOTS.length-1;
     redPick[x.l+'|'+x.s]=slotIx[RED_SLOTS[g]]; });
   rows.forEach(x=>{
@@ -875,7 +876,12 @@ function assignClock(G){   // G: growth by LGA and segment; defaults to P36 (a p
     // GREEN VALUE WITH RED DEMAND IS CORRECTION (Shaene, 2026-09-28): cheap, but demand has not returned. The table has no
     // position for it, and scoring alone split it between Correction and Momentum on growth, so it is confined to Correction.
     const gr_=x.sig[0]==='G'&&x.sig[1]==='R';
-    const ok=CLOCK_T.map((t,i)=>i).filter(i=>acc(CLOCK_T[i].pat[0],x.sig[0])&&(CLOCK_T[i].ph!=='Buy Value'||ggo)&&(!gr_||CLOCK_T[i].ph==='Correction'));
+    // NO RED S&D IN SELLING (Shaene, 2026-09-28: "selling phase should have orange/green S&D ... no red S&D").
+    // Red demand past the peak is Correction. Red Value + red S&D has no position the Value gate allows once
+    // Selling is shut, so it falls to Correction: the one exception to the Value gate.
+    const redSD=x.sig[1]==='R';
+    let ok=CLOCK_T.map((t,i)=>i).filter(i=>acc(CLOCK_T[i].pat[0],x.sig[0])&&(CLOCK_T[i].ph!=='Buy Value'||ggo)&&(!gr_||CLOCK_T[i].ph==='Correction')&&(!redSD||CLOCK_T[i].ph!=='Selling'));
+    if(!ok.length&&redSD) ok=CLOCK_T.map((t,i)=>i).filter(i=>CLOCK_T[i].ph==='Correction');
     const tot={}, fit={};
     ok.forEach(i=>{ tot[i]=0; fit[i]=0; [1,2].forEach(p=>{ const cell=CLOCK_T[i].pat[p];
       if(acc(cell,x.sig[p])){ tot[i]+=cell.length===1?2:1; fit[i]++; } }); });   // exact 2, tolerated 1
@@ -885,7 +891,7 @@ function assignClock(G){   // G: growth by LGA and segment; defaults to P36 (a p
     const pool=winners.length===1?ok.filter(i=>CLOCK_T[i].ph===winners[0]):ok;   // one phase strictly owns it -> confined
     const phFit=Math.max(...pool.map(i=>fit[i])), cand=pool.filter(i=>fit[i]===phFit);
     let pick=cand[Math.floor(gr[x.l+'|'+x.s]*(cand.length-1)+0.5)], best=phFit;
-    if(x.sig[0]==='R'&&redPick[x.l+'|'+x.s]!=null){ pick=redPick[x.l+'|'+x.s];
+    if(x.sig[0]==='R'&&!redSD&&redPick[x.l+'|'+x.s]!=null){ pick=redPick[x.l+'|'+x.s];
       best=(acc(CLOCK_T[pick].pat[1],x.sig[1])?1:0)+(acc(CLOCK_T[pick].pat[2],x.sig[2])?1:0); }
     const t=CLOCK_T[pick];
     SEG[x.l][x.s].clock={t:t.t, ph:t.ph, fit:best, sig:x.sig.join('/'), p36:x.p36};
