@@ -1551,8 +1551,9 @@ function renderPVR(){
   const sorted=list.slice().sort((a,b)=>{ let x=a[key], y=b[key]; if(key==='dm'){ x=x==null?-1:x; y=y==null?-1:y; }
     if(x==null&&y==null) return (b.q-a.q)||((b.gap??-1e9)-(a.gap??-1e9)); if(x==null) return 1; if(y==null) return -1;
     const c=(typeof x==='string')?x.localeCompare(y):(x-y); return (c*dir)||((b.gap??-1e9)-(a.gap??-1e9)); });
-  const shown=PVRALL?sorted:sorted.slice(0,PVRCAP);
-  const mr=sorted.find(r=>r.l===cur); if(!PVRALL && mr && sorted.indexOf(mr)>=PVRCAP) shown.push(mr);   // the selected market stays visible
+  // collapsed = every qualifying market in the current sort (Shaene: "show all 22 that qualifies"); PVRCAP only if none qualify
+  const qOnly=sorted.filter(r=>r.q), shown=PVRALL?sorted:(qOnly.length?qOnly:sorted.slice(0,PVRCAP));
+  const mr=sorted.find(r=>r.l===cur); if(!PVRALL && mr && !shown.includes(mr)) shown.push(mr);   // the selected market stays visible   // the selected market stays visible
   const scale=90/Math.max(1,...list.map(r=>Math.max(r.price!=null?-r.price:0,r.rent!=null?Math.abs(r.rent):0)));
   const cols=[['#',null],['Market','l'],['Drive','dm'],['Peak','pk'],['Stalled','stag'],['Price since · rent since',null],['Gap','gap'],['Gap / yr','gpy']];
   const th=cols.map(([t,kk])=>kk?('<th data-k="'+kk+'" class="sortable'+(kk===key?' on':'')+'">'+t+(kk===key?(dir===-1?' ↓':' ↑'):'')+'</th>'):'<th>'+t+'</th>').join('');
@@ -1573,7 +1574,7 @@ function renderPVR(){
   document.getElementById('pvrSub').innerHTML='Ranked by the <b>gap</b>: rent growth minus price change since each market&rsquo;s last price peak, in percentage points. '+
     '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price (the rise in gross yield each year). '+
     (PVRSET==='all'?'Markets that do not qualify are shown with the reason, faded.':'');
-  const more=document.getElementById('pvrMore'); more.hidden=list.length<=PVRCAP; more.textContent=PVRALL?'Show fewer':('Show all '+list.length+(PVRSET==='all'?' LGAs':' markets')); more.onclick=()=>{ PVRALL=!PVRALL; renderPVR(); };
+  const more=document.getElementById('pvrMore'); more.hidden=list.length<=(qOnly.length||PVRCAP); more.textContent=PVRALL?(qOnly.length?'Qualifying only':'Show fewer'):('Show all '+list.length+(PVRSET==='all'?' LGAs':' markets')); more.onclick=()=>{ PVRALL=!PVRALL; renderPVR(); };
   document.getElementById('pvrNote').innerHTML='A market qualifies when its price peaked 3+ years ago, has not been passed since, and rent is higher than at that peak. On '+segW+'s: '+out.length+' qualify &middot; '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '+
     'Nominal medians; rent to the 12 months to Jun 2026. Drive: road time from the Melbourne GPO to the main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
   document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const kk=h.dataset.k;
