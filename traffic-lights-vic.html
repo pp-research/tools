@@ -988,7 +988,7 @@ function render(lga){
       domTile('h','House'), domTile('u','Unit'),
       tBF, tHF, tUE, tUN, tBC, tJA,
       /* Stock on Market hidden 2026-09-29 (not scored): bg('Stock on Market',C2.som,...) */
-      bg('Sales Volume',C2.sales,'Higher is better','Rolling 12-month sales, house + unit, Cotality '+CONF2.asof.dom)
+      /* Sales Volume hidden 2026-09-29 (not scored): bg('Sales Volume',C2.sales,...) */''
     ].join('');
     const segTxt=(s,lbl)=>{const x=C2[s]; return x?(lbl+' '+x.dom+' days → clearance <b>'+n2(x.clr)+'</b>, blend <b>'+n2(x.score)+'</b> → <b>'+x.sig+'</b> (ranked '+x.rank+' of '+CONF2.n[s]+')')
       :(lbl+' not scored (too few listings)');};
