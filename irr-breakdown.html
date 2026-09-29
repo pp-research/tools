@@ -596,8 +596,12 @@ details .body strong{color:var(--text)}
               <div class="field"><label for="aMargin">Bank margin</label><div class="suffix"><input id="aMargin" type="number" step="0.05" value="1.75"><span>%</span></div></div>
               <div class="field"><label for="aApra">APRA buffer</label><div class="suffix"><input id="aApra" type="number" step="0.05" value="0.5"><span>%</span></div></div>
             </div>
-            <p style="font-size:12px;color:var(--faint);margin:0 0 var(--sp-3)">Bank margin and the APRA buffer are added to <strong>actual</strong> cash rates only — the normalised rate already includes them. Changes are kept in this browser.</p>
-            <button type="button" class="btn-ghost btn-sm" id="btnResetAssump">Reset to defaults</button>
+            <p style="font-size:12px;color:var(--faint);margin:0 0 var(--sp-3)">Bank margin and the APRA buffer are added to <strong>actual</strong> cash rates only — the normalised rate already includes them. Nothing here takes effect until you <strong>Save</strong>; the three toggles above apply straight away.</p>
+            <div class="btns" style="margin:0">
+              <button type="button" class="btn-primary btn-sm" id="btnSaveAssump" disabled>Save assumptions</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnDiscardAssump" hidden>Discard</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnResetAssump">Reset to defaults</button>
+            </div>
           </div>
         </details>
       </section>
@@ -1002,12 +1006,17 @@ details .body strong{color:var(--text)}
     if (el) el.checked = true;
   }
 
+  /* readOpts answers "what is in force", which since the Save button is not
+     the same as "what is in the fields". The ten numbers come from the
+     committed set; the three toggles are one click each and still apply on the
+     spot, so they come from the radios. */
   function readOpts(){
-    var p = function(id){ return Number($(id).value) / 100; };
+    var src = committedOpts || fieldOpts();
+    var p = function(id){ return Number(src[id]) / 100; };
     return {
       depositAndFee: p('aDep'), lvr: p('aLvr'), runningCostPa: p('aRun'),
       rentalYield: p('aYield'), normalisedRate: p('aNorm'), marginalTaxRate: p('aTax'),
-      sellingCommission: p('aComm'), sellingMarketSpend: Number($('aSpend').value),
+      sellingCommission: p('aComm'), sellingMarketSpend: Number(src.aSpend),
       bankMargin: p('aMargin'), apraBuffer: p('aApra'),
       cashRateBasis: radioVal('tRate'), negativeGearing: radioVal('tNg'),
       rentBasis: radioVal('tRent')
@@ -1274,9 +1283,17 @@ details .body strong{color:var(--text)}
   /* The ten numbers can be edited and now persist, so a figure can quietly be
      computed on last week's settings. The toggles are named in the scope line
      and the numbers get a flag when any of them is off default. */
+  /* Two different facts, one chip. "unsaved" means the fields have moved away
+     from what is in force; "edited" means what is in force has moved away from
+     the workbook. Unsaved wins while it lasts, because it is the one that
+     makes the number on screen not match the panel. */
   function assumptionsEdited(){
-    if (!DEFAULT_OPTS) return false;
-    return OPT_IDS.some(function(id){ return String($(id).value) !== String(DEFAULT_OPTS[id]); });
+    if (!DEFAULT_OPTS || !committedOpts) return false;
+    return OPT_IDS.some(function(id){ return String(committedOpts[id]) !== String(DEFAULT_OPTS[id]); });
+  }
+  function assumptionsDirty(){
+    if (!committedOpts) return false;
+    return OPT_IDS.some(function(id){ return String($(id).value) !== String(committedOpts[id]); });
   }
   function basisText(){
     return [radioVal('tRate') + ' rate',
@@ -1285,8 +1302,13 @@ details .body strong{color:var(--text)}
            .join(' · ') + (assumptionsEdited() ? ' · assumptions edited' : '');
   }
   function syncAssumpFlag(){
-    var chip = $('assumpEdited');
-    if (chip) chip.hidden = !assumptionsEdited();
+    var dirty = assumptionsDirty(), chip = $('assumpEdited');
+    if (chip) {
+      chip.hidden = !(dirty || assumptionsEdited());
+      chip.textContent = dirty ? 'unsaved' : 'edited';
+    }
+    var save = $('btnSaveAssump'); if (save) save.disabled = !dirty;
+    var undo = $('btnDiscardAssump'); if (undo) undo.hidden = !dirty;
   }
 
   /* A scenario is a whole assumption set, stored as the raw field values so
@@ -1298,7 +1320,7 @@ details .body strong{color:var(--text)}
   }
   function storeScenario(k){
     var o = {};
-    OPT_IDS.forEach(function(id){ o[id] = $(id).value; });
+    OPT_IDS.forEach(function(id){ o[id] = (committedOpts || fieldOpts())[id]; });
     o.tRate = radioVal('tRate'); o.tNg = radioVal('tNg'); o.tRent = radioVal('tRent');
     try { localStorage.setItem(SCN_KEY + k, JSON.stringify(o)); } catch (e) {}
     renderProps();
@@ -1309,7 +1331,7 @@ details .body strong{color:var(--text)}
     if (o.tRate) setRadio('tRate', o.tRate);
     if (o.tNg)   setRadio('tNg',   o.tNg);
     if (o.tRent) setRadio('tRent', o.tRent);
-    saveAssumptions(); syncAssumpFlag(); calc(); renderProps();
+    commitAssumptions(); syncAssumpFlag(); calc(); renderProps();
     $('messages').innerHTML = msg('ok','Loaded scenario ' + k + ' into the settings panel.');
   }
   /* Only what differs from the workbook default is worth naming — a slot that
@@ -2185,44 +2207,77 @@ details .body strong{color:var(--text)}
   };
   var DEFAULT_TOGGLES = { tRate:'Normalised', tNg:'Off', tRent:'Growing' };
 
-  /* ── assumptions persist ──
-     They used to reset on every reload, which made a considered set of numbers
-     a thing you retyped. Stored as the raw field values so the inputs restore
+  /* ── assumptions: edit, then Save ──
+     They used to apply and store themselves the moment a field lost focus,
+     which made every keystroke-plus-tab a full re-render of 314 rows and left
+     nothing to press when you had finished. Now the ten numbers are a draft
+     until Save commits them, so a considered set of changes lands at once and
+     says it landed. Stored as the raw field values so the inputs restore
      exactly as left, not as a round-trip through the engine's units. */
   var OPTS_KEY = 'pp-irr-assumptions-v1';
   var OPT_IDS = ['aDep','aLvr','aRun','aYield','aNorm','aTax','aComm','aSpend','aMargin','aApra'];
-  var DEFAULT_OPTS = null;   // captured from the markup before anything overwrites it
+  var DEFAULT_OPTS = null;    // captured from the markup before anything overwrites it
+  var committedOpts = null;   // the ten numbers actually in force
+
   function captureDefaultOpts(){
     if (DEFAULT_OPTS) return;
     DEFAULT_OPTS = {};
     OPT_IDS.forEach(function(id){ DEFAULT_OPTS[id] = $(id).value; });
   }
+  function fieldOpts(){
+    var o = {}; OPT_IDS.forEach(function(id){ o[id] = $(id).value; }); return o;
+  }
+  function putOpts(o){
+    OPT_IDS.forEach(function(id){ if (o[id] !== undefined) $(id).value = o[id]; });
+  }
   function saveAssumptions(){
     var o = {};
-    OPT_IDS.forEach(function(id){ o[id] = $(id).value; });
+    OPT_IDS.forEach(function(id){ o[id] = (committedOpts || fieldOpts())[id]; });
     o.tRate = radioVal('tRate'); o.tNg = radioVal('tNg'); o.tRent = radioVal('tRent');
     try { localStorage.setItem(OPTS_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  /* take what is in the fields, make it what is in force, and write it down */
+  function commitAssumptions(){
+    committedOpts = fieldOpts();
+    saveAssumptions();
   }
   function restoreAssumptions(){
     try {
       var o = JSON.parse(localStorage.getItem(OPTS_KEY) || 'null');
-      if (!o) return false;
-      OPT_IDS.forEach(function(id){
-        if (o[id] !== undefined && o[id] !== '' && isFinite(o[id])) $(id).value = o[id];
-      });
-      if (o.tRate) setRadio('tRate', o.tRate);
-      if (o.tNg)   setRadio('tNg',   o.tNg);
-      if (o.tRent) setRadio('tRent', o.tRent);
-      return true;
-    } catch (e) { return false; }
+      if (o) {
+        OPT_IDS.forEach(function(id){
+          if (o[id] !== undefined && o[id] !== '' && isFinite(o[id])) $(id).value = o[id];
+        });
+        if (o.tRate) setRadio('tRate', o.tRate);
+        if (o.tNg)   setRadio('tNg',   o.tNg);
+        if (o.tRent) setRadio('tRent', o.tRent);
+      }
+    } catch (e) {}
+    committedOpts = fieldOpts();   // whatever the fields hold now is what is in force
+  }
+  function discardAssumptions(){
+    if (!committedOpts) return;
+    putOpts(committedOpts);
+    syncAssumpFlag();
+    $('messages').innerHTML = msg('ok','Unsaved changes discarded — back to the assumptions in force.');
   }
   function resetAssumptions(){
     captureDefaultOpts();
-    OPT_IDS.forEach(function(id){ $(id).value = DEFAULT_OPTS[id]; });
+    putOpts(DEFAULT_OPTS);
     Object.keys(DEFAULT_TOGGLES).forEach(function(k){ setRadio(k, DEFAULT_TOGGLES[k]); });
+    committedOpts = fieldOpts();
     try { localStorage.removeItem(OPTS_KEY); } catch (e) {}
     calc(); syncAssumpFlag(); renderProps();
     $('messages').innerHTML = msg('ok','Assumptions are back to the workbook defaults.');
+  }
+  function applyAssumptions(){
+    if (!assumptionsDirty()) return;
+    var was = committedOpts;
+    commitAssumptions();
+    var n = OPT_IDS.filter(function(id){ return String(was[id]) !== String(committedOpts[id]); }).length;
+    calc(); syncAssumpFlag(); renderProps();
+    $('messages').innerHTML = msg('ok', n + ' assumption' + (n===1?'':'s') +
+      ' saved and applied to all ' + loadProps().length + ' properties.');
   }
 
   function openAdd(){
@@ -2417,24 +2472,36 @@ details .body strong{color:var(--text)}
     }
   });
 
-  /* The ten assumptions and the three toggles drive the saved-property list as
-     well as the deal on the left; the deal fields drive only the deal. */
+  /* The ten numbers wait for Save; the three toggles are one click and apply on
+     the spot, so they commit themselves. The deal fields on the left are not
+     assumptions at all and only ever recompute the one deal. */
   var ASSUMPTION_IDS = { aDep:1, aLvr:1, aRun:1, aYield:1, aNorm:1, aTax:1,
                          aComm:1, aSpend:1, aMargin:1, aApra:1 };
-  function isAssumption(el){
-    return ASSUMPTION_IDS[el.id] === 1 || el.name === 'tRate' || el.name === 'tNg' || el.name === 'tRent';
-  }
+  function isAssumptionNumber(el){ return ASSUMPTION_IDS[el.id] === 1; }
+  function isToggle(el){ return el.name === 'tRate' || el.name === 'tNg' || el.name === 'tRent'; }
+
   document.querySelectorAll('input,select').forEach(function(el){
     if (el.id === 'impCat' || el.id === 'pasteBox') return;
     var recompute = function(){
       // renaming or recategorising only relabels — no need to recompute
       if (el.id === 'pName') { relabel(); return; }
       if (el.id === 'pCat') return;
+      if (isAssumptionNumber(el)) { syncAssumpFlag(); return; }   // draft until Save
       calc();
-      if (isAssumption(el)) { saveAssumptions(); syncAssumpFlag(); renderProps(); }
+      if (isToggle(el)) { saveAssumptions(); syncAssumpFlag(); renderProps(); }
     };
     el.addEventListener('change', recompute);
-    el.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ ev.preventDefault(); recompute(); } });
+    /* typing is a draft too, so Save lights up as you go rather than only once
+       the field loses focus */
+    if (isAssumptionNumber(el)) el.addEventListener('input', syncAssumpFlag);
+    el.addEventListener('keydown', function(ev){
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      /* Enter in an assumption field is Save — it is the obvious meaning of
+         "I have finished typing this number" */
+      if (isAssumptionNumber(el)) { applyAssumptions(); return; }
+      recompute();
+    });
   });
   /* No auto-import on paste. It used to fire the moment anything was pasted,
      which meant the category typed afterwards never applied and the modal shut
@@ -2758,6 +2825,8 @@ details .body strong{color:var(--text)}
      nothing is computed on numbers that are about to change. */
   captureDefaultOpts();
   restoreAssumptions();
+  $('btnSaveAssump').addEventListener('click', applyAssumptions);
+  $('btnDiscardAssump').addEventListener('click', discardAssumptions);
   $('btnResetAssump').addEventListener('click', resetAssumptions);
   syncAssumpFlag();
 
