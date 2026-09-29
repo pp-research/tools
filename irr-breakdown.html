@@ -1724,10 +1724,29 @@ details .body strong{color:var(--text)}
      forty to re-file them and selecting three to compare them are the same
      gesture. */
   var picked = [];
+  /* A tick changes which rows are marked and nothing else — not one IRR, not
+     one row's contents. Going through renderProps meant 314 breakdowns and a
+     rebuilt table per click, which is what made ticking feel slow. Repaint the
+     marks instead; a full render still runs for anything that really does
+     change the rows, like a filter or a sort. */
+  function paintPicks(){
+    var on = {}; picked.forEach(function(id){ on[id] = 1; });
+    var shown = 0, hit = 0;
+    [].forEach.call(document.querySelectorAll('input[data-pick]'), function(b){
+      var is = !!on[b.dataset.pick];
+      if (b.checked !== is) b.checked = is;
+      var tr = b.closest('tr');
+      if (tr) tr.classList.toggle('is-picked', is);
+      shown++; if (is) hit++;
+    });
+    var sa = $('selAll');
+    if (sa) { sa.checked = hit > 0 && hit === shown; sa.indeterminate = hit > 0 && hit < shown; }
+    syncSelBar();
+  }
   function togglePick(id){
     var i = picked.indexOf(id);
     if (i >= 0) picked.splice(i, 1); else picked.push(id);
-    renderProps();
+    paintPicks();
   }
   function pickedEntries(){
     var by = {}; loadProps().forEach(function(e){ by[e.id] = e; });
@@ -2430,7 +2449,7 @@ details .body strong{color:var(--text)}
                               function(b){ return b.dataset.pick; });
       if (t.checked) shown.forEach(function(id){ if (picked.indexOf(id) < 0) picked.push(id); });
       else           picked = picked.filter(function(id){ return shown.indexOf(id) < 0; });
-      renderProps();
+      paintPicks();
       return;
     }
     if (t && t.dataset && t.dataset.pick) togglePick(t.dataset.pick);
@@ -2732,7 +2751,7 @@ details .body strong{color:var(--text)}
     showTab('result');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  function clearPicks(){ picked = []; renderProps(); }
+  function clearPicks(){ picked = []; paintPicks(); }
   $('btnCompare').addEventListener('click', showCompare);
   $('btnSelClear').addEventListener('click', clearPicks);
 
