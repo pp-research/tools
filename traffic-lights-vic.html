@@ -429,6 +429,13 @@ table.calc.pvr td.pvr-now .sub{display:block}
 .pvr-ph-momentum{color:var(--green,#71B357)!important;font-weight:800}
 .pvr-ph-selling{color:var(--orange)!important;font-weight:800}
 .pvr-ph-correction{color:var(--red)!important;font-weight:800}
+.irule .bnd{font-weight:800;white-space:nowrap}
+.irule .bnd.g{color:#3E8E2F}
+.irule .bnd.o{color:#C77800}
+.irule .bnd.r{color:var(--red)}
+:root[data-theme="dark"] .irule .bnd.g{color:#8FD17A}
+:root[data-theme="dark"] .irule .bnd.o{color:#FFB547}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .irule .bnd.g{color:#8FD17A}:root:not([data-theme="light"]) .irule .bnd.o{color:#FFB547}}
 .pvr-idxtools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pvr-zhint{font-size:12px;font-weight:700;color:var(--text-faint)}
 .pvr-zreset{font:inherit;font-size:12px;font-weight:800;padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer}
@@ -849,13 +856,16 @@ function tile(i){ return '<div class="ind"><div class="itop"><div class="idot '+
   (i.geo?'<span class="gtag'+(i.geoAccent?' rg':'')+'" title="'+(i.geoTitle||'')+'">'+i.geo+'</span>':'')+'</div>'+
   i.lines.map(l=>'<div class="iline"><span>'+l.k+'</span><b>'+l.v+'</b></div>').join('')+'</div>'+
   '<div class="ihead rk">'+i.head+'</div></div>'+
-  '<div class="irule '+(i.lo?'lo':'hi')+'"><b>'+i.dir+'</b><span>'+i.note+'</span></div></div>'; }
+  '<div class="irule '+(i.lo?'lo':'hi')+'"><b>'+(i.band||i.dir)+'</b><span>'+i.note+'</span></div></div>'; }
+// the card's own light bands, shown in place of "Higher / Lower is better"
+function bands(g,o,r){ return '<span class="bnd g">Green '+g+'</span> &middot; <span class="bnd o">Orange '+o+'</span> &middot; <span class="bnd r">Red '+r+'</span>'; }
 
 // Price Position card, as the 36 Regions tool: rank by median (1 = dearest) against its long-run average. Light on the
 // runway points it adds: GREEN >= +7.5, RED <= -7.5 (the main tool's +/-3 places in 36, scaled to this field).
 function posCard(seg,rw){
   const T=seg[0].toUpperCase()+seg.slice(1), g=rw.rank-rw.longrun, sg=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1);
   return {signal:rw.adj>=7.5?'GREEN':rw.adj<=-7.5?'RED':'ORANGE', name:T+' Price Position', head:'#'+rw.rank, dir:'Higher is better',
+    band:bands('&ge; +7.5 pts','&minus;7.5 to +7.5','&le; &minus;7.5 pts'),
     note:'A rising price rank means the market has cheapened vs the field',
     lines:[{k:'Of',v:rw.N+' LGAs (1 = dearest)'},{k:'Long-term average',v:rw.longrun.toFixed(1)},{k:'Change',v:sg(g)},
       {k:'Adds to runway',v:sg(rw.adj)+' pts'}]};
@@ -864,7 +874,8 @@ function posCard(seg,rw){
 function valCard(seg,rw){
   const T=seg[0].toUpperCase()+seg.slice(1), sg=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1);
   return {signal:rw.signal, name:T+' Value', head:rw.eff.toFixed(1)+'%', dir:'Higher is better',
-    note:'Effective runway &middot; Green &ge; 65%, Red &lt; 25%',
+    band:bands('&ge; 65%','25&ndash;65%','&lt; 25%'),
+    note:'Effective runway = runway to the ceiling + price-position points',
     lines:[{k:'Runway to ceiling',v:rw.runway.toFixed(1)+'%'+(rw.runway>=130?' (cap)':'')},
       {k:'Rank adjustment',v:rw.adj!=null?sg(rw.adj)+' pts':'&mdash;'},
       {k:'Ceiling peaks',v:(rw.peaks||[]).join(', ')}]};
@@ -872,7 +883,7 @@ function valCard(seg,rw){
 function dmCard(seg,x,adjvr){
   const T=seg[0].toUpperCase()+seg.slice(1);
   return {signal:x.signal, name:T+' Demand', head:x.score.toFixed(1), dir:'Higher is better',
-    note:'Green &ge; 30, Red &lt; 10 vs the balanced benchmark',
+    band:bands('&ge; 30','10&ndash;29','&lt; 10'), note:'Demand score vs the balanced benchmark (3% vacancy, 45 days, rents +10% over 3 years)',
     lines:[{k:'Days on market',v:Math.round(x.dom)+' days'},
       {k:'Rent growth 36mo',v:(x.rg*100).toFixed(1)+'%'},
       {k:'Proj. vacancy',v:(adjvr*100).toFixed(2)+'%'},
@@ -944,35 +955,35 @@ function render(lga){
     const money=x=>'$'+Math.round(x).toLocaleString()+'m';
     const STATEGEO='State-wide series — identical for every VIC LGA';
     const econTile=(o)=>tile({signal:lineSig(o.norm),name:o.name,head:o.head,
-      dir:o.lo?'Lower is better':'Higher is better',lo:!!o.lo,note:o.note,geo:o.geo||'VIC-wide',geoAccent:!!o.geo,geoTitle:o.geoTitle||STATEGEO,
+      dir:o.lo?'Lower is better':'Higher is better',band:o.band,lo:!!o.lo,note:o.note,geo:o.geo||'VIC-wide',geoAccent:!!o.geo,geoTitle:o.geoTitle||STATEGEO,
       lines:(o.prev!=null?[{k:'Previous',v:o.prev},{k:'Change',v:o.chg}]:[]).concat([{k:'Score',v:n2(o.norm)+' of 1'}])});
     const ue=C2.ue, ja=C2.ja, jyoy=ja[0]/ja[1]-1, udiff=(S.under.latest-S.under.prior)*100;
     const tBF=econTile({name:'Business Finance',head:money(S.bf.latest),norm:S.bf.norm,prev:money(S.bf.prior),chg:sgnPc(S.bf.latest/S.bf.prior-1),
-      note:'Year-on-year growth, Green ≥ +3%, Red ≤ −3% · ABS Lending Indicators, '+S.bf.month});
+      band:bands('&ge; +3% a year','&minus;3% to +3%','&le; &minus;3%'), note:'Year-on-year growth · ABS Lending Indicators, '+S.bf.month});
     const tHF=econTile({name:'Housing Finance',head:money(S.hf.latest),norm:S.hf.norm,prev:money(S.hf.prior),chg:sgnPc(S.hf.latest/S.hf.prior-1),
-      note:'Year-on-year growth, Green ≥ +3%, Red ≤ −3% · ABS Lending Indicators, '+S.hf.month});
+      band:bands('&ge; +3% a year','&minus;3% to +3%','&le; &minus;3%'), note:'Year-on-year growth · ABS Lending Indicators, '+S.hf.month});
     const tBC=econTile({name:'Business Confidence',head:String(S.bc.latest).replace('-','−'),norm:S.bc.norm,prev:String(S.bc.prior),chg:String(S.bc.latest-S.bc.prior).replace('-','−')+' pts',
-      note:'Green ≥ 0, Red ≤ −10 · NAB, '+S.bc.month});
+      band:bands('&ge; 0','&minus;10 to 0','&le; &minus;10'), note:'NAB Monthly Business Survey, VIC, '+S.bc.month});
     const tUN=econTile({name:'Underemployment',head:pc(S.under.latest),norm:S.under.norm,prev:pc(S.under.prior),chg:(udiff>=0?'+':'')+udiff.toFixed(2)+'pp',lo:true,
-      note:'Green ≤ 6.0%, Red ≥ 7.5% · ABS Labour Force, VIC, 3-month average '+S.under.month});
+      band:bands('&le; 6.0%','6.0&ndash;7.5%','&ge; 7.5%'), note:'ABS Labour Force, VIC, 3-month average '+S.under.month});
     const tUE=econTile({name:'Unemployment',head:pc(ue[0]),norm:ue[1],lo:true,geo:'SA4 · '+C2.sa4,geoTitle:'ABS SA4 — shared by every LGA in '+C2.sa4,
-      note:'Green ≤ 4.0%, Red ≥ 5.5% · ABS modelled SA4 rate, 3-month average '+CONF2.asof.ue});
+      band:bands('&le; 4.0%','4.0&ndash;5.5%','&ge; 5.5%'), note:'ABS modelled SA4 rate, 3-month average '+CONF2.asof.ue});
     const tJA=econTile({name:'Job Ads',head:ja[0].toFixed(1),norm:ja[2],prev:ja[1].toFixed(1),chg:sgnPc(jyoy),geo:'IVI · '+C2.ivi,
       geoTitle:'JSA IVI region — shared by every LGA mapped to '+C2.ivi,
-      note:'Year-on-year growth, Green ≥ +3%, Red ≤ −3% · JSA IVI (indexed, 3-mo avg), '+CONF2.asof.ja});
+      band:bands('&ge; +3% a year','&minus;3% to +3%','&le; &minus;3%'), note:'Year-on-year growth · JSA IVI (indexed, 3-mo avg), '+CONF2.asof.ja});
     const domSig=d=>d<=16?'GREEN':d>=45?'RED':'ORANGE';
     const domTile=(s,lbl)=>{const x=C2[s];
-      if(!x) return tile({signal:'',name:'Days on Market ('+lbl+')',head:'—',dir:'Lower is better',lo:true,
+      if(!x) return tile({signal:'',name:'Days on Market ('+lbl+')',head:'—',dir:'Not scored',lo:true,
         note:'Not scored — too few '+lbl.toLowerCase()+' listings for a reliable reading',lines:[]});
       const ch=x.ya!=null?(x.dom-x.ya):null;
-      return tile({signal:domSig(x.dom),name:'Days on Market ('+lbl+')',head:x.dom+' days',dir:'Lower is better',lo:true,
+      return tile({signal:domSig(x.dom),name:'Days on Market ('+lbl+')',head:x.dom+' days',dir:'Lower is better',lo:true,band:bands('&le; 16 days','17&ndash;44 days','&ge; 45 days'),
         note:'Clearance: 16 days → 2 (full credit), 45 days → 0 · Cotality median days on market, sold in the last 12 months, '+CONF2.asof.dom,
         lines:[{k:'Year ago',v:(x.ya!=null?x.ya+' days':'—')},{k:'Change',v:(ch!=null?((ch>=0?'+':'')+(+ch.toFixed(1))+' days'):'—')},
                {k:'Clearance',v:n2(x.clr)+' of 2'},{k:'Projected',v:Math.round(x.fdom)+' days · '+cap(domSig(x.fdom))}]});};
     // Stock on market and sales volume are context only: the 36-region tool has no equivalent, so they do not score
     const bg=(name,v,dir,note)=>{if(!v||!v[1]) return '';
-      return tile({signal:'',name:name,head:Math.round(v[0]).toLocaleString(),dir:dir,lo:/^Lower/.test(dir),
-        note:note+' · <b>context only — not in the score</b>',lines:[{k:'Year ago',v:Math.round(v[1]).toLocaleString()},{k:'Change',v:sgnPc(v[0]/v[1]-1)}]});};
+      return tile({signal:'',name:name,head:Math.round(v[0]).toLocaleString(),dir:'Context only &middot; no light',lo:/^Lower/.test(dir),
+        note:note+' &middot; '+dir.toLowerCase()+', not in the score',lines:[{k:'Year ago',v:Math.round(v[1]).toLocaleString()},{k:'Change',v:sgnPc(v[0]/v[1]-1)}]});};
     document.getElementById('confInds').innerHTML=[
       domTile('h','House'), domTile('u','Unit'),
       tBF, tHF, tUE, tUN, tBC, tJA,
