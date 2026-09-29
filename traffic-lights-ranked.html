@@ -243,6 +243,10 @@ table.gr tr.tot td:first-child{background:var(--surface-2)}
 .irule b{display:block;font-size:11px;font-weight:800;letter-spacing:.01em;color:var(--text-dim);margin-bottom:1px}
 .irule span{display:block;font-size:10.5px;font-weight:600;line-height:1.35;color:var(--text-faint)}
 .irule.lo{background:rgba(122,90,240,.12)}
+.irule b .bnd{display:block;font-size:11px;font-weight:800;line-height:1.5}
+.irule .bnd.g{color:#3E8E2F}
+.irule .bnd.o{color:#C77800}
+.irule .bnd.r{color:var(--red)}
 .fdot.GREEN{background:var(--green)}.fdot.ORANGE{background:var(--orange)}.fdot.RED{background:var(--red)}
 .ind .ibody{flex:1;min-width:0}
 .ind .inrow{display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap}
@@ -453,10 +457,44 @@ function pill(sig){
 }
 function chCls(t){if(t==='--')return'flat';if(t.startsWith('+')&&t!=='+0.0%'&&t!=='+0.0')return'up';if(t.startsWith('-'))return'down';return'flat';}
 const bandOf=s=>s>=7?'g':s>=4?'o':'r';
+/* Thresholds shown on each indicator card, replacing "Higher/Lower is better".
+   ONE table for all 36 regions — the bands do not vary by region. The six
+   economic entries are asserted against AUDIT.conf_rows' own green/red at bake
+   time, so this cannot drift from the thresholds the scoring uses. The other
+   four were derived from the 72 readings; see scratchpad/card-bands.pl. */
+const IBANDS={
+ 'Price Position':     {g:'Green &ge; +3 pts',o:'Orange &minus;3 to +3',r:'Red &le; &minus;3 pts',
+                        d:'A rising price rank means the market has cheapened vs the field'},
+ 'Runway':             {g:'Green &ge; 65%',o:'Orange 25&ndash;65%',r:'Red &lt; 25%',
+                        d:'Affordability runway on the three-peak ceiling'},
+ 'Demand Score':       {g:'Green &ge; 30',o:'Orange 10&ndash;29',r:'Red &lt; 10',
+                        d:'30 is rent growth at CPI, 10 is flat rents'},
+ 'Days on Market':     {g:'Green &le; 16 days',o:'Orange 17&ndash;44',r:'Red &ge; 45 days',
+                        d:'Median days to sell'},
+ 'Job Ads':            {g:'Green &ge; +3%',o:'Orange &minus;3% to +3%',r:'Red &le; &minus;3%',d:'Year-on-year growth'},
+ 'Business Finance':   {g:'Green &ge; +3%',o:'Orange &minus;3% to +3%',r:'Red &le; &minus;3%',d:'Year-on-year growth'},
+ 'Housing Finance':    {g:'Green &ge; +3%',o:'Orange &minus;3% to +3%',r:'Red &le; &minus;3%',d:'Year-on-year growth'},
+ 'Business Confidence':{g:'Green &ge; 0',o:'Orange &minus;10 to 0',r:'Red &le; &minus;10',
+                        d:'NAB state business confidence index'},
+ 'Unemployment':       {g:'Green &le; 4.0%',o:'Orange 4.0&ndash;5.5%',r:'Red &ge; 5.5%',d:''},
+ 'Underemployment':    {g:'Green &le; 6.0%',o:'Orange 6.0&ndash;7.5%',r:'Red &ge; 7.5%',d:''}
+};
+/* one card name per pair: "Days on Market &mdash; House", "House Price
+   Position" and "Runway Unit" all reduce to their shared entry */
+const inorm=n=>String(n||'').replace(/\s*\u2014\s*(House|Unit)$/,'')
+  .replace(/^(House|Unit)\s+/,'').replace(/\s+(House|Unit)$/,'');
+function irule(i){
+  const b=IBANDS[inorm(i.name)];
+  /* an unknown card keeps the old strip rather than losing its rule entirely */
+  if(!b) return `<b>${i.dir}</b><span>${i.note}</span>`;
+  return `<b><span class="bnd g">${b.g}</span><span class="bnd o">${b.o}</span>`
+       + `<span class="bnd r">${b.r}</span></b>`
+       + (b.d?`<span>${b.d}</span>`:'');
+}
 function tile(i){return `<div class="ind"><div class="itop"><div class="idot ${i.signal}"></div>
   <div class="ibody"><div class="inrow"><span class="iname">${i.name}</span>${i.s10!=null?`<span class="chip ${bandOf(i.s10)}" title="Score ${i.s10.toFixed(1)} of 10">${i.s10.toFixed(1)}</span>`:""}</div>
   ${(i.lines||[]).filter(l=>!/^Projected/.test(l.k)).map(l=>`<div class="iline"><span>${l.k}</span><b>${l.v}</b></div>`).join("")}</div>
-  <div class="ihead">${i.head!=null?i.head:(i.right||i.latest||"")}</div></div>${i.dir?`<div class="irule ${/^Lower/.test(i.dir)?'lo':'hi'}"><b>${i.dir}</b><span>${i.note}</span></div>`:""}</div>`;}
+  <div class="ihead">${i.head!=null?i.head:(i.right||i.latest||"")}</div></div>${i.dir?`<div class="irule ${/^Lower/.test(i.dir)?'lo':'hi'}">${irule(i)}</div>`:""}</div>`;}
 const indCard=tile, confCard=tile;
 
 
