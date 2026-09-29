@@ -429,7 +429,7 @@ table.calc.pvr td.pvr-now .sub{display:block}
 .pvr-ph-momentum{color:var(--green,#71B357)!important;font-weight:800}
 .pvr-ph-selling{color:var(--orange)!important;font-weight:800}
 .pvr-ph-correction{color:var(--red)!important;font-weight:800}
-.irule b .bnd{display:inline;font-size:11px;font-weight:800;white-space:nowrap;line-height:1.5}
+.irule b .bnd{display:block;font-size:11px;font-weight:800;line-height:1.5}
 .irule .bnd.g{color:#3E8E2F}
 .irule .bnd.o{color:#C77800}
 .irule .bnd.r{color:var(--red)}
@@ -858,7 +858,7 @@ function tile(i){ return '<div class="ind"><div class="itop"><div class="idot '+
   '<div class="ihead rk">'+i.head+'</div></div>'+
   '<div class="irule '+(i.lo?'lo':'hi')+'"><b>'+(i.band||i.dir)+'</b><span>'+i.note+'</span></div></div>'; }
 // the card's own light bands, shown in place of "Higher / Lower is better"
-function bands(g,o,r){ return '<span class="bnd g">Green '+g+'</span> &middot; <span class="bnd o">Orange '+o+'</span> &middot; <span class="bnd r">Red '+r+'</span>'; }
+function bands(g,o,r){ return '<span class="bnd g">Green '+g+'</span><span class="bnd o">Orange '+o+'</span><span class="bnd r">Red '+r+'</span>'; }
 
 // Price Position card, as the 36 Regions tool: rank by median (1 = dearest) against its long-run average. Light on the
 // runway points it adds: GREEN >= +7.5, RED <= -7.5 (the main tool's +/-3 places in 36, scaled to this field).
