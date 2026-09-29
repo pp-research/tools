@@ -987,7 +987,7 @@ function render(lga){
     document.getElementById('confInds').innerHTML=[
       domTile('h','House'), domTile('u','Unit'),
       tBF, tHF, tUE, tUN, tBC, tJA,
-      bg('Stock on Market',C2.som,'Lower is better','Rolling 12-month listings, house + unit, Cotality '+CONF2.asof.dom),
+      /* Stock on Market hidden 2026-09-29 (not scored): bg('Stock on Market',C2.som,...) */
       bg('Sales Volume',C2.sales,'Higher is better','Rolling 12-month sales, house + unit, Cotality '+CONF2.asof.dom)
     ].join('');
     const segTxt=(s,lbl)=>{const x=C2[s]; return x?(lbl+' '+x.dom+' days → clearance <b>'+n2(x.clr)+'</b>, blend <b>'+n2(x.score)+'</b> → <b>'+x.sig+'</b> (ranked '+x.rank+' of '+CONF2.n[s]+')')
