@@ -922,7 +922,7 @@ details .body strong{color:var(--text)}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="supabase-config.js?v=2"></script>
+<script src="supabase-config.js?v=3"></script>
 <script src="irr-breakdown-engine.js"></script>
 <!-- versioned so a browser holding the previous set fetches this one rather than
      serving its cached copy — Pages sends max-age=600 and the filename alone
@@ -3050,21 +3050,33 @@ details .body strong{color:var(--text)}
     b.hidden = false;
     b.textContent = (share.canWrite === false) ? 'Sign in to edit' : 'Sign out';
   }
+  /* Email then password, because that is what the team was given: one shared
+     password, and their own address so a change has a name against it. The
+     password is never stored anywhere in this page — Supabase swaps it for a
+     session token and that is what the browser keeps. */
   function shareSignIn(){
     askPrompt('Sign in to edit',
-      'Enter the email address you have been given access with. Supabase sends a '+
-      'one-time link — open it and you come back here able to edit. There is no '+
-      'password to remember or to share.',
-      'Email', '', 'Send me a link',
-      function(value){
-        var email = String(value||'').trim();
+      'Your email address, then the shared password on the next step.',
+      'Email', localStorage.getItem('pp-irr-email') || '', 'Next',
+      function(email){
+        email = String(email||'').trim();
         if (!email) return;
-        share.sb.auth.signInWithOtp({ email: email,
-          options: { shouldCreateUser: false, emailRedirectTo: location.href.split('#')[0] } })
-          .then(function(r){
-            $('messages').innerHTML = (r && r.error)
-              ? msg('err','Could not send the link: '+esc(r.error.message)+'.')
-              : msg('ok','Link sent. Open it on this device and you will come back able to edit.');
+        askPrompt('Sign in to edit',
+          'The shared editing password for <strong>'+esc(email)+'</strong>.',
+          'Password', '', 'Sign in',
+          function(pw){
+            pw = String(pw||'');
+            if (!pw) return;
+            share.sb.auth.signInWithPassword({ email: email, password: pw }).then(function(r){
+              if (r && r.error) {
+                $('messages').innerHTML = msg('err','Could not sign in: '+esc(r.error.message)+'.');
+                return;
+              }
+              try { localStorage.setItem('pp-irr-email', email); } catch (e) {}
+              share.canWrite = true; applyShareMode(); authLabel();
+              $('messages').innerHTML = msg('ok','Signed in. Your changes now save for everyone.');
+              pushShared();      /* whatever is in this browser becomes the shared list */
+            });
           });
       });
   }
