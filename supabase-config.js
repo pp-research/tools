@@ -24,7 +24,7 @@
    mistake, treat it as compromised and roll it in the dashboard.           */
 
 window.PP_SUPABASE = {
-  url: 'YOUR_PROJECT_URL',
+  url: 'https://gzhseazcmsbwvsdfvpuv.supabase.co',
   key: 'YOUR_PUBLISHABLE_KEY',
 
   /* The row that holds the book. Leave this alone unless you want a second,
