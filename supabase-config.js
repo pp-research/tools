@@ -25,7 +25,7 @@
 
 window.PP_SUPABASE = {
   url: 'https://gzhseazcmsbwvsdfvpuv.supabase.co',
-  key: 'YOUR_PUBLISHABLE_KEY',
+  key: 'sb_publishable_MfrN-NZuC7CoLOlMbvSVCQ_oVEgLpTw',
 
   /* The row that holds the book. Leave this alone unless you want a second,
      separate shared list — a different name here is a different list. */
