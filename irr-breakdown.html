@@ -421,7 +421,13 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
    stays enabled, wears the disabled look, and says so on click. */
 .btn-off{opacity:.45;cursor:not-allowed}
 .list-foot{margin-top:var(--sp-3);display:flex}
-.cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted)}
+.share-note{margin-bottom:var(--sp-3);padding:8px 13px;border-radius:var(--r-md);
+  background:rgba(var(--accent-rgb),.10);border:1px solid rgba(var(--accent-rgb),.4);
+  color:var(--text);font-size:12px;font-weight:600}
+/* the base chip is nowrap because a category is two words; a reason is a
+   sentence, so this one wraps and keeps the column from stretching */
+.cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted);
+  white-space:normal;max-width:100%}
 td.pick input{margin:0}
 th.pick-all input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
 table.cmp td:first-child{color:var(--muted);white-space:nowrap}
@@ -536,7 +542,7 @@ details .body strong{color:var(--text)}
       <button type="button" class="btn-ghost icon-btn theme-btn" id="btnTheme"
               aria-label="Switch to dark mode" title="Switch to dark mode"></button>
       <img id="ppLogo" alt="Performance Property"
-           src="https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-inverted.png">
+           src="pp-logo-inverted.png">
     </div>
   </header>
 
@@ -672,6 +678,8 @@ details .body strong{color:var(--text)}
 
     <!-- ══════════ RIGHT: RESULT / PROPERTIES ══════════ -->
     <div>
+      <!-- only ever shown on the published shared copy; silent on a plain page -->
+      <p class="share-note" id="shareNote" hidden></p>
       <div id="messages" role="status" aria-live="polite"></div>
 
       <div class="tabs" role="tablist" aria-label="Properties and result">
@@ -884,6 +892,9 @@ details .body strong{color:var(--text)}
             <div class="field" style="margin-top:var(--sp-4)">
               <label for="prInput" id="prLabel">New name</label>
               <input id="prInput" type="text" list="catList" autocomplete="off">
+              <!-- a reason is a sentence, not a name, so it gets room to be one -->
+              <textarea id="prArea" rows="3" hidden
+                        style="width:100%;resize:vertical;min-height:72px"></textarea>
             </div>
           </div>
           <div class="modal-foot">
@@ -923,6 +934,10 @@ details .body strong{color:var(--text)}
   var last = null;                    // last computed result
   /* what the Result card is currently showing: 'empty', 'single' or 'compare' */
   var resultMode = 'empty';
+  /* Declared up here because renderProps reads share.canWrite on the very first
+     render, which happens before the shared-state block further down runs. */
+  var SHARE_DOC = 'state/book';
+  var share = { db:null, canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
   /* Bumping this re-seeds every browser once. Gating on STORE alone was wrong:
      anyone who had already used the tool never received the bundled set. */
@@ -938,8 +953,8 @@ details .body strong{color:var(--text)}
      One stylesheet, two token sets. The logo swaps variant because the brand
      files are fixed artwork — the inverted lockup is for dark surfaces only. */
   var LOGO = {
-    dark:  'https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-inverted.png',
-    light: 'https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-standard.png'
+    dark:  'pp-logo-inverted.png',
+    light: 'pp-logo-standard.png'
   };
   /* Lucide moon / sun. The button shows the mode it will switch TO, which is
      the usual convention, so the label and the icon have to agree. */
@@ -1086,7 +1101,11 @@ details .body strong{color:var(--text)}
     catch (e) { return []; }
   }
   function putProps(list){
-    try { localStorage.setItem(STORE, JSON.stringify(list)); return true; }
+    try {
+      localStorage.setItem(STORE, JSON.stringify(list));
+      pushShared();      /* the one funnel every property change goes through */
+      return true;
+    }
     catch (e) {
       $('messages').innerHTML = msg('err','Could not save — either this browser is blocking local storage, or the list has outgrown it.');
       return false;
@@ -1123,7 +1142,7 @@ details .body strong{color:var(--text)}
            outlives an import; an entry with no category still gets one. */
         if ((list[dup].category||'').trim()) e.category = list[dup].category;
         if (!(e.note||'').trim() && (list[dup].note||'').trim()) e.note = list[dup].note;
-        if (list[dup].outside) e.outside = true;   /* set aside outlives an import, like a rename */
+        if (list[dup].outside) { e.outside = true; e.outsideReason = list[dup].outsideReason; }   /* set aside outlives an import, like a rename */
         list[dup] = e; updated++;
       } else { list.push(e); added++; }
     });
@@ -1610,16 +1629,21 @@ details .body strong{color:var(--text)}
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
           (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +
           ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +
-          (e.outside ? '<br><span class="cat aside-chip">outside of advice</span>' : '') +'</td>'+
+          (e.outside
+            ? '<br><span class="cat aside-chip">outside of advice'+
+              ((e.outsideReason||'').trim() ? ' — '+esc(e.outsideReason) : '')+'</span>'
+            : '') +'</td>'+
         pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
         '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-open="'+e.id+'">Open</button>'+
-          '<button type="button" class="btn-danger btn-sm icon-btn" data-del="'+e.id+'" '+
-          'aria-label="Delete '+esc(e.name)+'" title="Delete">'+TRASH+'</button>'+
-          '<button type="button" class="btn-ghost btn-sm icon-btn" data-aside="'+e.id+'" '+
-          'aria-label="'+(e.outside ? 'Return '+esc(e.name)+' to advice' : 'Set '+esc(e.name)+' outside of advice')+'" '+
-          'title="'+(e.outside ? 'Return to advice' : 'Outside of advice')+'">'+(e.outside ? UNDO_ASIDE : ASIDE)+'</button></td>'+
+          (share.canWrite === false ? '' :
+           '<button type="button" class="btn-danger btn-sm icon-btn" data-del="'+e.id+'" '+
+           'aria-label="Delete '+esc(e.name)+'" title="Delete">'+TRASH+'</button>'+
+           '<button type="button" class="btn-ghost btn-sm icon-btn" data-aside="'+e.id+'" '+
+           'aria-label="'+(e.outside ? 'Return '+esc(e.name)+' to advice' : 'Set '+esc(e.name)+' outside of advice')+'" '+
+           'title="'+(e.outside ? 'Return to advice' : 'Outside of advice')+'">'+(e.outside ? UNDO_ASIDE : ASIDE)+'</button>')+
+          '</td>'+
       '</tr>';
     }).join('');
 
@@ -2097,12 +2121,35 @@ details .body strong{color:var(--text)}
       }).join(',');
     }).join('\n');
   }
+  /* A blob link downloads a file on a web page and does nothing at all inside
+     the artifact viewer, which mediates saves through its own confirmation. So
+     ask for that route when it exists and fall back to the link when it does
+     not — the same button, the same file, either way. */
+  var saver = null, saverAsked = false;
   function download(csv, filename){
-    var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    var text = '﻿' + csv;
+    var viaLink = function(){
+      var blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    };
+    if (saver) {
+      saver.save({ filename: filename, data: text }).catch(function(err){
+        if (err && err.code === 'declined') return;            // they said no
+        $('messages').innerHTML = msg('warn','Could not save '+esc(filename)+
+          (err && err.message ? ' — '+esc(err.message) : '')+'.');
+      });
+      return;
+    }
+    if (!saverAsked && window.claude && typeof window.claude.use === 'function') {
+      /* first export on a view that has not resolved the capability yet:
+         write the file the old way now, and use the saver from then on */
+      saverAsked = true;
+      window.claude.use('downloads').then(function(d){ saver = d || null; }).catch(function(){});
+    }
+    viaLink();
   }
 
   function exportDetail(){
@@ -2158,13 +2205,14 @@ details .body strong{color:var(--text)}
     });
     var list = derived.filter(function(d){ return passDerived(d, f, false) && passDerived(d, f, true); });
     if (!list.length) { $('messages').innerHTML = msg('warn','Nothing matches the current filters, so there is nothing to export.'); return; }
-    var L = [['Property','Category','Scope','Purchase price','Purchase date','Sold price','Sold date',
+    var L = [['Property','Category','Scope','Reason outside advice','Purchase price','Purchase date','Sold price','Sold date',
               'Hold period (yrs)','Gross profit','Net profit','IRR']];
     list.forEach(function(d){
       var e = d.e, s = d.s, scope = e.outside ? 'Outside of advice' : 'In advice';
-      if (s) L.push([e.name, e.category||'', scope, s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
+      var why = e.outsideReason || '';
+      if (s) L.push([e.name, e.category||'', scope, why, s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
                      s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]);
-      else   L.push([e.name, e.category||'', scope, e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate, '', '', '', '']);
+      else   L.push([e.name, e.category||'', scope, why, e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate, '', '', '', '']);
     });
     download(toCsvText(L), 'irr-calculator-properties.csv');
   }
@@ -2205,6 +2253,7 @@ details .body strong{color:var(--text)}
     OPT_IDS.forEach(function(id){ o[id] = (committedOpts || fieldOpts())[id]; });
     o.tRate = radioVal('tRate'); o.tNg = radioVal('tNg'); o.tRent = radioVal('tRent');
     try { localStorage.setItem(OPTS_KEY, JSON.stringify(o)); } catch (e) {}
+    pushShared();
   }
   /* take what is in the fields, make it what is in force, and write it down */
   function commitAssumptions(){
@@ -2271,18 +2320,22 @@ details .body strong{color:var(--text)}
   function closeConfirm(){ pendingConfirm = null; var d = $('confirmDialog'); if (d.open) d.close(); }
 
   /* Same pattern as the confirm, with a text field. */
-  var pendingPrompt = null;
-  function askPrompt(title, bodyHtml, label, initial, okLabel, onOk){
+  var pendingPrompt = null, promptArea = false;
+  function askPrompt(title, bodyHtml, label, initial, okLabel, onOk, area){
     pendingPrompt = onOk;
+    promptArea = !!area;
     $('pr-h').textContent = title;
     $('prBody').innerHTML = bodyHtml;
     $('prLabel').textContent = label;
-    $('prInput').value = initial || '';
+    $('prLabel').setAttribute('for', promptArea ? 'prArea' : 'prInput');
+    $('prInput').hidden = promptArea; $('prArea').hidden = !promptArea;
+    var f = promptArea ? $('prArea') : $('prInput');
+    f.value = initial || '';
     $('prYes').textContent = okLabel;
     var d = $('promptDialog');
     if (!d.open) d.showModal();
-    $('prInput').focus();
-    $('prInput').select();
+    f.focus();
+    if (!promptArea) f.select();
   }
   function closePrompt(){ pendingPrompt = null; var d = $('promptDialog'); if (d.open) d.close(); }
 
@@ -2365,7 +2418,8 @@ details .body strong{color:var(--text)}
   });
   $('btnRenameCat').addEventListener('click', renameCategory);
   $('prYes').addEventListener('click', function(){
-    var fn = pendingPrompt, v = $('prInput').value; closePrompt(); if (fn) fn(v);
+    var fn = pendingPrompt, v = (promptArea ? $('prArea') : $('prInput')).value;
+    closePrompt(); if (fn) fn(v);
   });
   $('prNo').addEventListener('click', closePrompt);
   $('prClose').addEventListener('click', closePrompt);
@@ -2716,8 +2770,30 @@ details .body strong{color:var(--text)}
     if (!hits.length) return;
     /* mixed selection goes out — bringing back is only ever deliberate */
     var to = (force === undefined) ? !hits.every(function(e){ return !!e.outside; }) : !!force;
-    var n = 0;
-    list.forEach(function(e){ if (want[e.id] && !!e.outside !== to) { e.outside = to || undefined; n++; } });
+    if (!to) { commitAside(want, false, ''); return; }
+    /* Why a property is outside the advice is the part worth keeping. Six
+       months on, "outside of advice" alone tells you nothing; asking once, at
+       the moment the decision is made, is the only time anyone knows. */
+    var one = hits.length === 1;
+    askPrompt('Outside of advice',
+      'Why '+(one ? '<strong>'+esc(hits[0].name||'this property')+'</strong> is'
+                  : 'these <strong>'+hits.length+'</strong> properties are')+
+      ' outside the advice. It shows on the row and travels with the export; '+
+      'leave it blank if there is nothing to say.',
+      'Reason', (one ? (hits[0].outsideReason || '') : ''), 'Set outside of advice',
+      function(value){ commitAside(want, true, String(value || '').trim()); },
+      true);
+  }
+  function commitAside(want, to, reason){
+    var list = loadProps(), n = 0;
+    list.forEach(function(e){
+      if (!want[e.id]) return;
+      var changed = (!!e.outside !== to) || (to && (e.outsideReason || '') !== reason);
+      if (!changed) return;
+      e.outside = to || undefined;
+      e.outsideReason = to ? (reason || undefined) : undefined;
+      n++;
+    });
     if (!n) return;
     if (!putProps(list)) return;
     if (resultMode === 'compare') showEmpty();
@@ -2845,6 +2921,125 @@ details .body strong{color:var(--text)}
   showTab('props');
   // deliberately no auto-open: a modal appearing unprompted on load is jarring,
   // and the empty state already points at the button
+
+  /* ══════════ SHARED LIST (published artifact only) ══════════
+     On a plain web page this whole block does nothing: claude.use() is absent
+     or answers null, and the tool stays exactly what it was — one browser's
+     own list in its own localStorage.
+
+     Published as an artifact it becomes one list for everyone. The whole book
+     lives in a single document, because a property list is read as a whole and
+     one document is the only shape where every viewer is guaranteed to be
+     looking at the same 314. Writes are last-writer-wins: two people archiving
+     at the same moment means the later write carries the earlier one away, so
+     the page subscribes rather than polls and everyone sees a change within a
+     second or two, which is what keeps that window small.
+
+     What is shared is the list and the assumptions — the things that change
+     what the numbers say. Filters, the theme and which tab you are on stay
+     local, because they are where YOU are looking, not what the book says. */
+
+  /* opts is a record of the assumptions in force at import and nothing
+     computes from it, so it does not travel; neither does savedAt. Stripping
+     both keeps the document well inside its 256 KiB ceiling with 314
+     properties and room for the notes she types. */
+  function shareBody(){
+    var list = loadProps().map(function(e){
+      var o = { id:e.id, name:e.name, purchasePrice:e.purchasePrice,
+                purchaseDate:e.purchaseDate, soldPrice:e.soldPrice, soldDate:e.soldDate };
+      if ((e.category||'').trim()) o.category = e.category;
+      if ((e.note||'').trim()) o.note = e.note;
+      if (e.outside) { o.outside = 1; if ((e.outsideReason||'').trim()) o.outsideReason = e.outsideReason; }
+      return o;
+    });
+    var a = {};
+    OPT_IDS.forEach(function(id){ a[id] = (committedOpts || fieldOpts())[id]; });
+    a.tRate = radioVal('tRate'); a.tNg = radioVal('tNg'); a.tRent = radioVal('tRent');
+    return { properties: list, assumptions: a, rev: Date.now() };
+  }
+  function pushShared(){
+    if (!share.db || !share.ready || share.applying || share.canWrite === false) return;
+    var body = shareBody(), json = JSON.stringify(body);
+    if (json === share.sent) return;                 // nothing actually changed
+    if (json.length > 200000) {                      // 256 KiB is the hard cap
+      $('messages').innerHTML = msg('warn','This list has grown too large to share '+
+        '('+Math.round(json.length/1024)+' KB). It is still saved in this browser, '+
+        'but the shared copy has not been updated.');
+      return;
+    }
+    share.sent = json;
+    share.db.doc(SHARE_DOC).set(body).catch(function(err){
+      share.sent = null;
+      if (err && err.code === 'invalid_argument') {   // not allowed to write
+        share.canWrite = false; applyShareMode();
+      }
+    });
+  }
+  function applyShared(body){
+    if (!body || !Array.isArray(body.properties)) return;
+    share.applying = true;
+    try {
+      putProps(body.properties);
+      if (body.assumptions) {
+        OPT_IDS.forEach(function(id){
+          var v = body.assumptions[id];
+          if (v !== undefined && v !== '' && isFinite(v)) $(id).value = v;
+        });
+        if (body.assumptions.tRate) setRadio('tRate', body.assumptions.tRate);
+        if (body.assumptions.tNg)   setRadio('tNg',   body.assumptions.tNg);
+        if (body.assumptions.tRent) setRadio('tRent', body.assumptions.tRent);
+        committedOpts = fieldOpts();
+        saveAssumptions();
+      }
+      share.sent = JSON.stringify(shareBody());
+      syncAssumpFlag(); renderProps(); calc();
+    } finally { share.applying = false; }
+  }
+  /* A viewer who cannot write should not be shown buttons that will fail.
+     Everything that only reads — filters, compare, both exports, the whole
+     Overview — stays exactly as it is. */
+  var WRITE_CONTROLS = ['btnAddOpen','btnPropsClear','btnMoveCat','btnDelSel',
+                        'btnAside','btnSaveAssump','btnDiscardAssump','btnResetAssump',
+                        'btnRenameCat'];
+  function applyShareMode(){
+    var ro = (share.canWrite === false);
+    WRITE_CONTROLS.forEach(function(id){ var el = $(id); if (el) el.hidden = ro; });
+    document.body.classList.toggle('read-only', ro);
+    var b = $('shareNote');
+    if (b) {
+      b.hidden = !share.db;
+      b.textContent = !share.db ? '' : ro
+        ? 'Shared list — you can read it and work with it, but only the people Shaene has given edit access can change it.'
+        : 'Shared list — your changes are saved for everyone who opens this link.';
+    }
+    if (ro) renderProps();   // drops the per-row delete and archive buttons
+  }
+  (function connectShare(){
+    if (!(window.claude && typeof window.claude.use === 'function')) return;
+    /* Resolved up front, not on first use: an export that falls back to a blob
+       link inside the viewer writes nothing and says nothing, and the person
+       who pressed it has no way to tell. */
+    saverAsked = true;
+    window.claude.use('downloads').then(function(d){ saver = d || null; }).catch(function(){});
+    window.claude.use('db').then(function(db){
+      if (!db) return;
+      share.db = db;
+      return window.claude.use('user').then(function(u){
+        if (u && typeof u.can === 'function') {
+          return Promise.resolve(u.can('data.write')).then(function(w){ share.canWrite = w; });
+        }
+      }).catch(function(){}).then(function(){
+        applyShareMode();
+        db.doc(SHARE_DOC).onSnapshot(function(snap){
+          if (snap.exists) { applyShared(snap.data()); share.ready = true; return; }
+          /* Nothing shared yet: the first person who can write seeds it from
+             what they have, which is the bundled 314 on a fresh browser. */
+          share.ready = true;
+          if (share.canWrite !== false) pushShared();
+        }, function(){ /* terminal: keep working locally */ });
+      });
+    }).catch(function(){});
+  })();
 
   window.runSelfTest = function(){
     var t = window.IRRBreakdown.selfTest();
