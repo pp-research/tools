@@ -420,7 +420,6 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
    appears — and "why is this grey?" is exactly the question here. The button
    stays enabled, wears the disabled look, and says so on click. */
 .btn-off{opacity:.45;cursor:not-allowed}
-.list-foot{margin-top:var(--sp-3);display:flex}
 .share-note{margin-bottom:var(--sp-3)}
 /* the base chip is nowrap because a category is two words; a reason is a
    sentence, so this one wraps and keeps the column from stretching */
@@ -638,11 +637,11 @@ details .body strong{color:var(--text)}
           <input id="fSearch" type="search" placeholder="name or address" autocomplete="off">
         </div>
         <div class="field">
-          <label for="fCat">Category</label>
+          <label for="fCat">Capital city</label>
           <div class="cat-cell">
-            <select id="fCat"><option value="">All categories</option></select>
+            <select id="fCat"><option value="">All capital cities</option></select>
             <button type="button" class="btn-ghost btn-sm" id="btnRenameCat"
-                    title="Rename the selected category">Rename</button>
+                    title="Rename the selected capital city">Rename</button>
           </div>
         </div>
         <div class="field">
@@ -737,6 +736,7 @@ details .body strong{color:var(--text)}
             <h2 id="props-h">Properties</h2>
             <div class="btns" style="margin:0">
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnArchiveView"></button>
               <button type="button" class="btn-ghost btn-sm" id="btnQuickOpen">Quick IRR</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
@@ -755,7 +755,7 @@ details .body strong{color:var(--text)}
           <div class="sel-bar" id="selBar" hidden>
             <span id="selCount"></span>
             <button type="button" class="btn-primary btn-sm" id="btnCompare">Compare</button>
-            <button type="button" class="btn-ghost btn-sm" id="btnMoveCat">Move category</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnMoveCat">Move city</button>
             <button type="button" class="btn-ghost btn-sm" id="btnAside">Outside of advice</button>
             <button type="button" class="btn-ghost btn-sm btn-danger" id="btnDelSel">Delete</button>
             <button type="button" class="btn-ghost btn-sm" id="btnSelClear" style="margin-left:auto">Clear</button>
@@ -764,11 +764,6 @@ details .body strong{color:var(--text)}
 
           <div id="propsBody"></div>
 
-          <!-- Under the list, because that is where you are when you notice a
-               property does not belong in it. One button, both directions. -->
-          <div class="list-foot">
-            <button type="button" class="btn-ghost btn-sm" id="btnArchiveView" hidden></button>
-          </div>
         </section>
       </div>
 
@@ -824,7 +819,7 @@ details .body strong{color:var(--text)}
               <input id="pName" type="text" value="" autocomplete="off">
             </div>
             <div class="field">
-              <label for="pCat">Category</label>
+              <label for="pCat">Capital city</label>
               <input id="pCat" type="text" value="" autocomplete="off" list="catList">
             </div>
             <div class="pair">
@@ -908,7 +903,7 @@ details .body strong{color:var(--text)}
       <dialog class="modal modal-sm" id="promptDialog" aria-labelledby="pr-h">
         <div class="modal-inner">
           <div class="modal-head">
-            <h2 id="pr-h">Rename category</h2>
+            <h2 id="pr-h">Rename capital city</h2>
             <button type="button" class="modal-x" id="prClose" aria-label="Close">&times;</button>
           </div>
           <div class="modal-body">
@@ -962,7 +957,7 @@ details .body strong{color:var(--text)}
   var resultMode = 'empty';
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
-  var BUILD = '2026-09-30-a';
+  var BUILD = '2026-09-30-b';
   var SHARE_DOC = 'state/book';
   var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
@@ -1194,9 +1189,9 @@ details .body strong{color:var(--text)}
     var hasUncat = list.some(function(e){ return !(e.category||'').trim(); });
 
     var sel = $('fCat'), keep = sel.value;
-    sel.innerHTML = '<option value="">All categories</option>' +
+    sel.innerHTML = '<option value="">All capital cities</option>' +
       cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('') +
-      (hasUncat ? '<option value="'+NO_CAT+'">Uncategorised</option>' : '');
+      (hasUncat ? '<option value="'+NO_CAT+'">Not set</option>' : '');
     // keep the current choice unless it no longer exists
     sel.value = [].some.call(sel.options, function(o){ return o.value === keep; }) ? keep : '';
 
@@ -1328,8 +1323,8 @@ details .body strong{color:var(--text)}
      and how long it was held — neither of which the old category-only table
      could show. Sold year and hold sort by their own order; the rest by size. */
   var OV_GROUPS = {
-    category: { label:'Category',    byCount:true,
-      of:function(d){ return (d.e.category||'').trim() || 'Uncategorised'; } },
+    category: { label:'Capital city',    byCount:true,
+      of:function(d){ return (d.e.category||'').trim() || 'Not set'; } },
     suburb:   { label:'Suburb',      byCount:true,
       of:function(d){ return suburbOf(d.e) || '—'; } },
     soldYear: { label:'Sold year',   byCount:false,
@@ -2184,7 +2179,7 @@ details .body strong{color:var(--text)}
     var s = last.summary, a = last.assumptions, L = [];
     L.push(['Performance Property — IRR Calculator']);
     L.push(['Property', $('pName').value.trim() || autoName(s)]);
-    L.push(['Category', $('pCat').value.trim()]);
+    L.push(['Capital city', $('pCat').value.trim()]);
     L.push([]);
     L.push(['Purchase price', s.purchasePrice], ['Purchase date', iso(s.purchaseDate)],
            ['Sold price', s.soldPrice], ['Sold date', iso(s.soldDate)],
@@ -2232,7 +2227,7 @@ details .body strong{color:var(--text)}
     });
     var list = derived.filter(function(d){ return passDerived(d, f, false) && passDerived(d, f, true); });
     if (!list.length) { $('messages').innerHTML = msg('warn','Nothing matches the current filters, so there is nothing to export.'); return; }
-    var L = [['Property','Category','Scope','Reason outside advice','Purchase price','Purchase date','Sold price','Sold date',
+    var L = [['Property','Capital city','Scope','Reason outside advice','Purchase price','Purchase date','Sold price','Sold date',
               'Hold period (yrs)','Gross profit','Net profit','IRR']];
     list.forEach(function(d){
       var e = d.e, s = d.s, scope = e.outside ? 'Outside of advice' : 'In advice';
@@ -2373,17 +2368,17 @@ details .body strong{color:var(--text)}
 
     var sel = $('fCat').value;
     if (!sel) {
-      $('messages').innerHTML = msg('warn','Pick a category in the dropdown first — that is the one that gets renamed.');
+      $('messages').innerHTML = msg('warn','Pick a capital city in the dropdown first — that is the one that gets renamed.');
       return;
     }
     var uncat = (sel === NO_CAT);
     var from = uncat ? '' : sel;
     var hits = all.filter(function(e){ return (e.category||'').trim() === from; });
-    if (!hits.length) { $('messages').innerHTML = msg('warn','Nothing is filed under that category.'); return; }
+    if (!hits.length) { $('messages').innerHTML = msg('warn','Nothing is filed under that capital city.'); return; }
 
-    askPrompt(uncat ? 'Name these properties' : 'Rename category',
+    askPrompt(uncat ? 'Name these properties' : 'Rename capital city',
       (uncat
-        ? 'Give a category to the <strong>' + hits.length + '</strong> uncategorised propert' + (hits.length===1?'y':'ies') + '.'
+        ? 'Give a capital city to the <strong>' + hits.length + '</strong> unfiled propert' + (hits.length===1?'y':'ies') + '.'
         : 'Rename <strong>' + esc(from) + '</strong> across <strong>' + hits.length + '</strong> propert' +
           (hits.length===1?'y':'ies') + '. Reusing an existing name merges the two; leaving it blank clears the category.'),
       'Category', uncat ? '' : from, uncat ? 'Apply' : 'Rename',
@@ -2619,7 +2614,7 @@ details .body strong{color:var(--text)}
     L.push(['Exported', new Date().toISOString().slice(0,10)]);
     L.push(['Scope', data.length + ' of ' + all.length + ' properties']);
     L.push(['Basis', basisText()]);
-    if (f.cat) L.push(['Category filter', f.cat === NO_CAT ? 'Uncategorised' : f.cat]);
+    if (f.cat) L.push(['Capital city filter', f.cat === NO_CAT ? 'Not set' : f.cat]);
     if (f.suburb) L.push(['Suburb filter', f.suburb]);
     if (f.q) L.push(['Search', f.q]);
     if (f.soldFrom || f.soldTo) L.push(['Sold between', (f.soldFrom||'any') + ' and ' + (f.soldTo||'any')]);
@@ -2833,24 +2828,26 @@ details .body strong{color:var(--text)}
   /* The list you cannot see is the one you forget, so the count is stated under
      the list and the same button walks back. Hidden only when there is nothing
      set aside and nothing to walk back from. */
+  /* Beside "+ Add properties" and always on screen, because the old one only
+     appeared once something was already archived — so the first time you went
+     looking for the archive there was nothing to find. */
   function syncArchiveView(n, f){
     var btn = $('btnArchiveView'); if (!btn) return;
     if (f.advice === 'in') {
-      btn.hidden = !n;
-      btn.textContent = 'View ' + n + ' outside of advice';
-      btn.title = 'Show the properties set aside from the advice';
+      btn.textContent = n ? 'View Archive (' + n + ')' : 'View Archive';
+      btn.title = n ? 'Show the ' + n + ' properties set aside from the advice'
+                    : 'Nothing is set aside yet';
     } else {
-      btn.hidden = false;
-      btn.textContent = 'Back to the advice list';
+      btn.textContent = 'Back to list';
       btn.title = 'Show only the properties counted in the advice';
     }
   }
   function moveSelected(){
     var hits = pickedEntries();
     if (!hits.length) return;
-    askPrompt('Move category',
+    askPrompt('Move city',
       'File <strong>' + hits.length + '</strong> selected propert' + (hits.length===1?'y':'ies') +
-      ' under a category. An existing name moves them into it; a new one creates it; ' +
+      ' under a capital city. An existing name moves them into it; a new one creates it; ' +
       'leaving it blank clears the category.',
       'Category', (hits[0].category || '').trim(), 'Move',
       function(value){
@@ -2861,7 +2858,7 @@ details .body strong{color:var(--text)}
         if (!putProps(list)) return;
         renderProps();
         $('parseMsg').innerHTML = msg('ok', n
-          ? n + ' propert' + (n===1?'y':'ies') + ' moved to <strong>' + (to ? esc(to) : 'no category') + '</strong>.'
+          ? n + ' propert' + (n===1?'y':'ies') + ' moved to <strong>' + (to ? esc(to) : 'no capital city') + '</strong>.'
           : 'Nothing to change — they were already filed there.');
       });
   }
