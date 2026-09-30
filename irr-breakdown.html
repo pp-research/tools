@@ -420,6 +420,11 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
    appears — and "why is this grey?" is exactly the question here. The button
    stays enabled, wears the disabled look, and says so on click. */
 .btn-off{opacity:.45;cursor:not-allowed}
+/* a count line you can press: the outside list is easy to forget is there */
+.linkish{background:none;border:0;padding:0;font:inherit;color:var(--accent-text);
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.linkish:hover{color:var(--text)}
+.cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted)}
 td.pick input{margin:0}
 th.pick-all input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
 table.cmp td:first-child{color:var(--muted);white-space:nowrap}
@@ -608,6 +613,17 @@ details .body strong{color:var(--text)}
           <button type="button" class="btn-ghost btn-sm" id="btnClearFilters" hidden>Clear</button>
         </div>
 
+        <!-- The broadest cut, so it sits above the rest: a property set aside
+             as outside of advice stays in the store and keeps its details, but
+             leaves the working list and every figure struck from it. -->
+        <div class="field">
+          <label for="fAdvice">Scope</label>
+          <select id="fAdvice">
+            <option value="in" selected>In advice</option>
+            <option value="out">Outside of advice</option>
+            <option value="all">Both</option>
+          </select>
+        </div>
         <div class="field">
           <label for="fSearch">Search</label>
           <input id="fSearch" type="search" placeholder="name or address" autocomplete="off">
@@ -646,6 +662,8 @@ details .body strong{color:var(--text)}
         </div>
 
         <p class="count-line" id="filtCount" style="margin:var(--sp-4) 0 0"></p>
+        <p class="count-line" id="outsideLine" hidden style="margin:var(--sp-2) 0 0">
+          <button type="button" class="linkish" id="btnShowOutside"></button></p>
       </section>
     </div>
 
@@ -728,6 +746,7 @@ details .body strong{color:var(--text)}
             <span id="selCount"></span>
             <button type="button" class="btn-primary btn-sm" id="btnCompare">Compare</button>
             <button type="button" class="btn-ghost btn-sm" id="btnMoveCat">Move category</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnAside">Outside of advice</button>
             <button type="button" class="btn-ghost btn-sm btn-danger" id="btnDelSel">Delete</button>
             <button type="button" class="btn-ghost btn-sm" id="btnSelClear" style="margin-left:auto">Clear</button>
           </div>
@@ -947,6 +966,17 @@ details .body strong{color:var(--text)}
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
     '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6"/>'+
     '<path d="M10 11v6M14 11v6"/></svg>';
+  /* Lucide "archive" and "archive-restore" — the pair reads as put away / take
+     back out, which is what setting a property outside of advice actually is. */
+  var ASIDE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '+
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
+    '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"/>'+
+    '<path d="M10 12h4"/></svg>';
+  var UNDO_ASIDE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '+
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
+    '<rect x="2" y="3" width="20" height="5" rx="1"/>'+
+    '<path d="M4 8v11a1 1 0 0 0 1 1h4"/><path d="M20 8v11a1 1 0 0 1-1 1h-4"/>'+
+    '<path d="M12 20v-8"/><path d="M9 15l3-3 3 3"/></svg>';
   var XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
   /* ── formatting ── */
@@ -1084,6 +1114,7 @@ details .body strong{color:var(--text)}
            outlives an import; an entry with no category still gets one. */
         if ((list[dup].category||'').trim()) e.category = list[dup].category;
         if (!(e.note||'').trim() && (list[dup].note||'').trim()) e.note = list[dup].note;
+        if (list[dup].outside) e.outside = true;   /* set aside outlives an import, like a rename */
         list[dup] = e; updated++;
       } else { list.push(e); added++; }
     });
@@ -1131,7 +1162,7 @@ details .body strong{color:var(--text)}
   }
   function clearFilters(){
     ['fSearch','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){ $(id).value = ''; });
-    $('fCat').value = ''; $('fSuburb').value = '';
+    $('fCat').value = ''; $('fSuburb').value = ''; $('fAdvice').value = 'in';
     irrBand = null;
     renderProps();
   }
@@ -1167,11 +1198,12 @@ details .body strong{color:var(--text)}
       soldTo: $('fSoldTo').value,
       holdMin: numOrNull($('fHoldMin').value),
       holdMax: numOrNull($('fHoldMax').value),
+      advice: ($('fAdvice') || {value:'in'}).value,
       band: irrBand
     };
   }
   function anyFilterOn(f){
-    return !!(f.q || f.cat || f.suburb || f.soldFrom || f.soldTo ||
+    return !!(f.advice !== 'in' || f.q || f.cat || f.suburb || f.soldFrom || f.soldTo ||
               f.holdMin !== null || f.holdMax !== null ||
               f.band !== null);
   }
@@ -1182,6 +1214,9 @@ details .body strong{color:var(--text)}
     // only treat the sentinel as "uncategorised" if nothing is actually named that
     var sentinel = (cats.indexOf(NO_CAT) < 0);
     return list.filter(function(e){
+      var aside = !!e.outside;
+      if (f.advice === 'in' && aside) return false;
+      if (f.advice === 'out' && !aside) return false;
       if (sentinel && f.cat === NO_CAT) { if ((e.category||'').trim()) return false; }
       else if (f.cat && (e.category||'').trim() !== f.cat) return false;
       if (f.suburb && suburbOf(e) !== f.suburb) return false;
@@ -1315,7 +1350,7 @@ details .body strong{color:var(--text)}
       return;
     }
     scope.textContent = (data.length === totalSaved
-      ? 'All ' + totalSaved + ' properties'
+      ? 'All ' + totalSaved + ' propert' + (totalSaved===1?'y':'ies')
       : data.length + ' of ' + totalSaved + ' properties') + ' · ' + basisText();
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
@@ -1465,10 +1500,20 @@ details .body strong{color:var(--text)}
   function renderProps(){
     prunePicks();
     var all = loadProps();
-    $('badgeProps').textContent = all.length;
-    syncCategoryControls(all);
-
+    /* "of how many" has to mean of how many are in scope, or setting a property
+       aside would leave every denominator counting it anyway. The dropdowns
+       still read the whole store, so a category that only exists outside of
+       advice is still selectable. */
     var f = readFilters();
+    var scoped = all.filter(function(e){
+      var aside = !!e.outside;
+      return f.advice === 'all' ? true : (f.advice === 'out' ? aside : !aside);
+    });
+    var asideCount = all.filter(function(e){ return !!e.outside; }).length;
+    $('badgeProps').textContent = scoped.length;
+    syncCategoryControls(all);
+    syncOutsideLine(asideCount, f);
+
     syncFilterChrome(f);
 
     if (!all.length) {
@@ -1498,23 +1543,23 @@ details .body strong{color:var(--text)}
     var spread = derived.filter(function(d){ return passDerived(d, f, false); });
     var data   = spread.filter(function(d){ return passDerived(d, f, true); });
 
-    var countTxt = data.length === all.length
-      ? all.length + ' propert' + (all.length===1?'y':'ies')
-      : 'Showing ' + data.length + ' of ' + all.length;
+    var countTxt = data.length === scoped.length
+      ? scoped.length + ' propert' + (scoped.length===1?'y':'ies') + (f.advice==='out' ? ' outside of advice' : '')
+      : 'Showing ' + data.length + ' of ' + scoped.length;
     $('propCount').textContent = countTxt;
     $('filtCount').textContent = countTxt;
 
     if (!data.length) {
       $('propsBody').innerHTML = '<div class="empty"><h3>Nothing matches</h3>'+
-        '<p>No property matches the filters on the left. Choose <strong>Clear</strong> to see all '+all.length+'.</p></div>';
+        '<p>No property matches the filters on the left. Choose <strong>Clear</strong> to see all '+scoped.length+'.</p></div>';
       syncSelBar();
-      renderOverview([], spread, all.length);
+      renderOverview([], spread, scoped.length);
       return;
     }
 
     /* Same derived rows drive the Overview, so the breakdowns run once, not
        twice — the table sorts a copy below. */
-    renderOverview(data, spread, all.length);
+    renderOverview(data, spread, scoped.length);
 
     if (sortKey) {
       var get = {
@@ -1549,13 +1594,17 @@ details .body strong{color:var(--text)}
           ' aria-label="Select '+esc(e.name||'this property')+'"></td>'+
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
           (cat ? '<br><span class="cat">'+esc(cat)+'</span>' : '') +
-          ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +'</td>'+
+          ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +
+          (e.outside ? '<br><span class="cat aside-chip">outside of advice</span>' : '') +'</td>'+
         pdCell(e.purchasePrice, new Date(e.purchaseDate))+ pdCell(e.soldPrice, new Date(e.soldDate))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
         '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-open="'+e.id+'">Open</button>'+
           '<button type="button" class="btn-danger btn-sm icon-btn" data-del="'+e.id+'" '+
-          'aria-label="Delete '+esc(e.name)+'" title="Delete">'+TRASH+'</button></td>'+
+          'aria-label="Delete '+esc(e.name)+'" title="Delete">'+TRASH+'</button>'+
+          '<button type="button" class="btn-ghost btn-sm icon-btn" data-aside="'+e.id+'" '+
+          'aria-label="'+(e.outside ? 'Return '+esc(e.name)+' to advice' : 'Set '+esc(e.name)+' outside of advice')+'" '+
+          'title="'+(e.outside ? 'Return to advice' : 'Outside of advice')+'">'+(e.outside ? UNDO_ASIDE : ASIDE)+'</button></td>'+
       '</tr>';
     }).join('');
 
@@ -1647,6 +1696,10 @@ details .body strong{color:var(--text)}
     btn.classList.toggle('btn-off', !!why);
     btn.setAttribute('aria-disabled', why ? 'true' : 'false');
     btn.title = why || 'Put the ' + n + ' selected side by side on the Result tab';
+    var av = $('btnAside');
+    if (av) { var store = {}; loadProps().forEach(function(e){ store[e.id] = e; });
+      var allOut = n > 0 && picked.every(function(id){ return store[id] && store[id].outside; });
+      av.textContent = allOut ? 'Return to advice' : 'Outside of advice'; }
     /* the compare view is live: change an assumption or a pick while it is up
        and it restates itself rather than going stale */
     if (resultMode === 'compare') { if (why) showEmpty(); else drawCompare(); }
@@ -2072,22 +2125,31 @@ details .body strong{color:var(--text)}
   }
 
   /** Exports what the filters are currently showing, not the whole list. */
+  /* This used to call filterProps(), which has not existed since the filters
+     were split into a stored pass and a derived pass — so Export CSV on the
+     Properties tab threw instead of writing a file. It now runs the same two
+     passes the table does, which is the only way "what you are looking at" and
+     "what you exported" can be the same set. */
   function exportProps(){
     var all = loadProps();
     if (!all.length) { $('messages').innerHTML = msg('warn','No properties to export yet.'); return; }
-    var list = filterProps(all);
+    var f = readFilters(), xOpts = readOpts();
+    var derived = filterEntries(all, f).map(function(e){
+      var d = { e:e, irr:null, net:null, hold:null, s:null };
+      try { var r = window.IRRBreakdown.computeBreakdown(e, xOpts);
+            d.s = r.summary; d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears; }
+      catch (err) {}
+      return d;
+    });
+    var list = derived.filter(function(d){ return passDerived(d, f, false) && passDerived(d, f, true); });
     if (!list.length) { $('messages').innerHTML = msg('warn','Nothing matches the current filters, so there is nothing to export.'); return; }
-    var L = [['Property','Category','Purchase price','Purchase date','Sold price','Sold date',
+    var L = [['Property','Category','Scope','Purchase price','Purchase date','Sold price','Sold date',
               'Hold period (yrs)','Gross profit','Net profit','IRR']];
-    var xOpts = readOpts();
-    list.forEach(function(e){
-      try {
-        var s = window.IRRBreakdown.computeBreakdown(e, xOpts).summary;
-        L.push([e.name, e.category||'', s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
-                s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]);
-      } catch (err) {
-        L.push([e.name, e.category||'', e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate, '', '', '', '']);
-      }
+    list.forEach(function(d){
+      var e = d.e, s = d.s, scope = e.outside ? 'Outside of advice' : 'In advice';
+      if (s) L.push([e.name, e.category||'', scope, s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate),
+                     s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]);
+      else   L.push([e.name, e.category||'', scope, e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate, '', '', '', '']);
     });
     download(toCsvText(L), 'irr-calculator-properties.csv');
   }
@@ -2307,7 +2369,7 @@ details .body strong{color:var(--text)}
   $('confirmDialog').addEventListener('close', function(){ pendingConfirm = null; });
 
   // filters
-  ['fSearch','fCat','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
+  ['fAdvice','fSearch','fCat','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
     var el = $(id);
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', renderProps);
   });
@@ -2348,6 +2410,7 @@ details .body strong{color:var(--text)}
       // the note belongs in the Result panel, not as a banner over everything
       if (e) { loadIntoForm(e.name, e, e.category); showTab('result'); }
     }
+    if (b.dataset.aside) { setAside([b.dataset.aside]); return; }
     if (b.dataset.del) {
       var id = b.dataset.del;
       var victim = loadProps().filter(function(x){ return x.id === id; })[0];
@@ -2626,6 +2689,37 @@ details .body strong{color:var(--text)}
   $('btnSelClear').addEventListener('click', clearPicks);
 
   /* ── the other two things you can do to a selection ── */
+  /* ── outside of advice ──
+     Not a delete and not a category: the property keeps every detail and stays
+     in the store, but leaves the working list and every figure struck from it.
+     One flag on the entry, one scope on the filter panel — so "put it back" is
+     the same gesture as "set it aside", and nothing has to be retyped. */
+  function setAside(ids, force){
+    var want = ids.reduce(function(m,id){ m[id]=1; return m; }, {});
+    var list = loadProps();
+    var hits = list.filter(function(e){ return want[e.id]; });
+    if (!hits.length) return;
+    /* mixed selection goes out — bringing back is only ever deliberate */
+    var to = (force === undefined) ? !hits.every(function(e){ return !!e.outside; }) : !!force;
+    var n = 0;
+    list.forEach(function(e){ if (want[e.id] && !!e.outside !== to) { e.outside = to || undefined; n++; } });
+    if (!n) return;
+    if (!putProps(list)) return;
+    if (resultMode === 'compare') showEmpty();
+    renderProps();
+    $('parseMsg').innerHTML = msg('ok', n + ' propert' + (n===1?'y':'ies') +
+      (to ? ' set outside of advice. They keep every detail — <strong>Scope</strong> on the left brings them back into view.'
+          : ' returned to advice.'));
+  }
+  function asideSelected(){ if (picked.length) setAside(picked.slice()); }
+  /* The list you cannot see is the one you forget, so the count is always
+     stated and always one press away. */
+  function syncOutsideLine(n, f){
+    var line = $('outsideLine'), btn = $('btnShowOutside');
+    if (!line || !btn) return;
+    line.hidden = !n || f.advice !== 'in';
+    btn.textContent = n + ' propert' + (n===1?'y':'ies') + ' outside of advice — show';
+  }
   function moveSelected(){
     var hits = pickedEntries();
     if (!hits.length) return;
@@ -2668,6 +2762,8 @@ details .body strong{color:var(--text)}
       });
   }
   $('btnMoveCat').addEventListener('click', moveSelected);
+  $('btnAside').addEventListener('click', asideSelected);
+  $('btnShowOutside').addEventListener('click', function(){ $('fAdvice').value = 'out'; renderProps(); });
   $('btnDelSel').addEventListener('click', deleteSelected);
 
   /* ── Quick IRR: a deal you want to check, not keep ── */
