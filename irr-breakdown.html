@@ -122,6 +122,8 @@ body{
 header{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)}
 header img{height:40px;width:auto;display:block}
 .head-right{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap}
+.titles{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap}
+.head-sep{width:1px;height:28px;background:var(--border-strong);display:inline-block}
 .titles h1{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em}
 .titles p{font-size:14px;line-height:20px;color:var(--muted);margin-top:2px}
 
@@ -420,7 +422,6 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
    appears — and "why is this grey?" is exactly the question here. The button
    stays enabled, wears the disabled look, and says so on click. */
 .btn-off{opacity:.45;cursor:not-allowed}
-.share-note{margin-bottom:var(--sp-3)}
 /* the base chip is nowrap because a category is two words; a reason is a
    sentence, so this one wraps and keeps the column from stretching */
 .cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted);
@@ -532,15 +533,18 @@ details .body strong{color:var(--text)}
 <div class="wrap">
 
   <header>
+    <!-- brand first, then a rule, then what the page is -->
     <div class="titles">
+      <img id="ppLogo" alt="Performance Property" src="pp-logo-inverted.png">
+      <span class="head-sep" aria-hidden="true"></span>
       <h1>IRR Calculator</h1>
     </div>
     <div class="head-right">
+      <button type="button" class="btn-primary" id="btnShareAuth" hidden></button>
       <button type="button" class="btn-ghost icon-btn theme-btn" id="btnTheme"
               aria-label="Switch to dark mode" title="Switch to dark mode"></button>
-      <img id="ppLogo" alt="Performance Property"
-           src="pp-logo-inverted.png">
     </div>
+  </header>
   </header>
 
   <datalist id="catList"></datalist>
@@ -621,17 +625,6 @@ details .body strong{color:var(--text)}
           <button type="button" class="btn-ghost btn-sm" id="btnClearFilters" hidden>Clear</button>
         </div>
 
-        <!-- The broadest cut, so it sits above the rest: a property set aside
-             as outside of advice stays in the store and keeps its details, but
-             leaves the working list and every figure struck from it. -->
-        <div class="field">
-          <label for="fAdvice">Scope</label>
-          <select id="fAdvice">
-            <option value="in" selected>In advice</option>
-            <option value="out">Outside of advice</option>
-            <option value="all">Both</option>
-          </select>
-        </div>
         <div class="field">
           <label for="fSearch">Search</label>
           <input id="fSearch" type="search" placeholder="name or address" autocomplete="off">
@@ -675,9 +668,6 @@ details .body strong{color:var(--text)}
 
     <!-- ══════════ RIGHT: RESULT / PROPERTIES ══════════ -->
     <div>
-      <!-- only ever shown on the published shared copy; silent on a plain page -->
-      <p class="share-note" id="shareNote" hidden>
-  <button type="button" class="btn-primary" id="btnShareAuth" hidden></button></p>
       <div id="messages" role="status" aria-live="polite"></div>
 
       <div class="tabs" role="tablist" aria-label="Properties and result">
@@ -957,7 +947,7 @@ details .body strong{color:var(--text)}
   var resultMode = 'empty';
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
-  var BUILD = '2026-09-30-b';
+  var BUILD = '2026-09-30-c';
   var SHARE_DOC = 'state/book';
   var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
@@ -1212,7 +1202,7 @@ details .body strong{color:var(--text)}
   }
   function clearFilters(){
     ['fSearch','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){ $(id).value = ''; });
-    $('fCat').value = ''; $('fSuburb').value = ''; $('fAdvice').value = 'in';
+    $('fCat').value = ''; $('fSuburb').value = ''; adviceScope = 'in';
     irrBand = null;
     renderProps();
   }
@@ -1237,6 +1227,10 @@ details .body strong{color:var(--text)}
     return out.sort(function(a,b){ return a.localeCompare(b); });
   }
   var irrBand = null;        // index into IRR_BINS, set by clicking a bar
+  /* Which side of the advice you are looking at. It stopped being a filter the
+     moment View Archive took it over — two controls for one state is one too
+     many, and the button is the one you can find. */
+  var adviceScope = 'in';
 
   function numOrNull(v){ var s = String(v).trim(); return s === '' || !isFinite(s) ? null : Number(s); }
   function readFilters(){
@@ -1248,7 +1242,7 @@ details .body strong{color:var(--text)}
       soldTo: $('fSoldTo').value,
       holdMin: numOrNull($('fHoldMin').value),
       holdMax: numOrNull($('fHoldMax').value),
-      advice: ($('fAdvice') || {value:'in'}).value,
+      advice: adviceScope,
       band: irrBand
     };
   }
@@ -2460,7 +2454,7 @@ details .body strong{color:var(--text)}
   $('confirmDialog').addEventListener('close', function(){ pendingConfirm = null; });
 
   // filters
-  ['fAdvice','fSearch','fCat','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
+  ['fSearch','fCat','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
     var el = $(id);
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', renderProps);
   });
@@ -2886,7 +2880,7 @@ details .body strong{color:var(--text)}
   $('btnMoveCat').addEventListener('click', moveSelected);
   $('btnAside').addEventListener('click', asideSelected);
   $('btnArchiveView').addEventListener('click', function(){
-    $('fAdvice').value = ($('fAdvice').value === 'in') ? 'out' : 'in';
+    adviceScope = (adviceScope === 'in') ? 'out' : 'in';
     renderProps();
   });
   $('btnDelSel').addEventListener('click', deleteSelected);
@@ -3053,7 +3047,7 @@ details .body strong{color:var(--text)}
     document.body.classList.toggle('read-only', ro);
     /* The button says everything the sentence did: if it offers you a sign-in,
        you cannot edit yet. */
-    $('shareNote').hidden = !(share.db || share.sb);
+    var ab = $('btnShareAuth'); if (ab) ab.hidden = !(share.db || share.sb);
     if (ro) renderProps();   // drops the per-row delete and archive buttons
   }
   /* ── the shared list on a published web page ──
