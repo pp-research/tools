@@ -679,7 +679,8 @@ details .body strong{color:var(--text)}
     <!-- ══════════ RIGHT: RESULT / PROPERTIES ══════════ -->
     <div>
       <!-- only ever shown on the published shared copy; silent on a plain page -->
-      <p class="share-note" id="shareNote" hidden></p>
+      <p class="share-note" id="shareNote" hidden><span id="shareNoteText"></span>
+        <button type="button" class="btn-ghost btn-sm" id="btnShareAuth" hidden style="margin-left:8px"></button></p>
       <div id="messages" role="status" aria-live="polite"></div>
 
       <div class="tabs" role="tablist" aria-label="Properties and result">
@@ -922,6 +923,8 @@ details .body strong{color:var(--text)}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="supabase-config.js?v=1"></script>
 <script src="irr-breakdown-engine.js"></script>
 <!-- versioned so a browser holding the previous set fetches this one rather than
      serving its cached copy — Pages sends max-age=600 and the filename alone
@@ -937,7 +940,7 @@ details .body strong{color:var(--text)}
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
   var SHARE_DOC = 'state/book';
-  var share = { db:null, canWrite:null, applying:false, sent:null, ready:false };
+  var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
   /* Bumping this re-seeds every browser once. Gating on STORE alone was wrong:
      anyone who had already used the tool never received the bundled set. */
@@ -2957,23 +2960,45 @@ details .body strong{color:var(--text)}
     a.tRate = radioVal('tRate'); a.tNg = radioVal('tNg'); a.tRent = radioVal('tRent');
     return { properties: list, assumptions: a, rev: Date.now() };
   }
+  /* One body, two possible homes. The artifact keeps it in its own store; a
+     published web page keeps it in Supabase. Neither is present on a plain
+     local copy, and then this does nothing at all. */
   function pushShared(){
-    if (!share.db || !share.ready || share.applying || share.canWrite === false) return;
+    if (share.applying || share.canWrite === false) return;
+    if (!share.ready || (!share.db && !share.sb)) return;
     var body = shareBody(), json = JSON.stringify(body);
     if (json === share.sent) return;                 // nothing actually changed
-    if (json.length > 200000) {                      // 256 KiB is the hard cap
+    if (json.length > 200000) {
       $('messages').innerHTML = msg('warn','This list has grown too large to share '+
         '('+Math.round(json.length/1024)+' KB). It is still saved in this browser, '+
         'but the shared copy has not been updated.');
       return;
     }
     share.sent = json;
-    share.db.doc(SHARE_DOC).set(body).catch(function(err){
-      share.sent = null;
-      if (err && err.code === 'invalid_argument') {   // not allowed to write
-        share.canWrite = false; applyShareMode();
-      }
-    });
+    var failed = function(){ share.sent = null; };
+    if (share.db) {
+      share.db.doc(SHARE_DOC).set(body).catch(function(err){
+        failed();
+        if (err && err.code === 'invalid_argument') { share.canWrite = false; applyShareMode(); }
+      });
+    } else {
+      share.sb.from('irr_book')
+        .upsert({ id: share.row, body: body, updated_at: new Date().toISOString() })
+        .then(function(r){
+          if (!r || !r.error) return;
+          failed();
+          /* 42501 is the row-level security refusal — it means this viewer is
+             not signed in, or their sign-in has lapsed */
+          if (String(r.error.code) === '42501' || r.error.status === 401) {
+            share.canWrite = false; applyShareMode();
+            $('messages').innerHTML = msg('warn','That change was not saved to the shared '+
+              'list — you are signed out. Sign in and make it again.');
+          } else {
+            $('messages').innerHTML = msg('err','Could not save to the shared list: '+
+              esc(r.error.message || 'unknown error')+'.');
+          }
+        });
+    }
   }
   function applyShared(body){
     if (!body || !Array.isArray(body.properties)) return;
@@ -3005,15 +3030,103 @@ details .body strong{color:var(--text)}
     var ro = (share.canWrite === false);
     WRITE_CONTROLS.forEach(function(id){ var el = $(id); if (el) el.hidden = ro; });
     document.body.classList.toggle('read-only', ro);
-    var b = $('shareNote');
+    var b = $('shareNoteText');
     if (b) {
-      b.hidden = !share.db;
-      b.textContent = !share.db ? '' : ro
+      $('shareNote').hidden = !(share.db || share.sb);
+      b.textContent = !(share.db || share.sb) ? '' : ro
         ? 'Shared list — you can read it and work with it, but only the people Shaene has given edit access can change it.'
         : 'Shared list — your changes are saved for everyone who opens this link.';
     }
     if (ro) renderProps();   // drops the per-row delete and archive buttons
   }
+  /* ── the shared list on a published web page ──
+     Reading needs nothing: the publishable key allows SELECT on this one table
+     and the database refuses every write it is offered. Writing needs a sign-in,
+     and who can sign in is decided in the Supabase dashboard, not here. If the
+     config file still holds its placeholders, or the library did not load, none
+     of this runs and the tool is what it always was. */
+  function supaCfg(){
+    var c = window.PP_SUPABASE;
+    if (!c || !c.url || !c.key) return null;
+    if (/^YOUR_/.test(c.url) || /^YOUR_/.test(c.key)) return null;   // not filled in yet
+    return c;
+  }
+  function authLabel(){
+    var b = $('btnShareAuth'); if (!b || !share.sb) return;
+    b.hidden = false;
+    b.textContent = (share.canWrite === false) ? 'Sign in to edit' : 'Sign out';
+  }
+  function shareSignIn(){
+    askPrompt('Sign in to edit',
+      'Enter the email address you have been given access with. Supabase sends a '+
+      'one-time link — open it and you come back here able to edit. There is no '+
+      'password to remember or to share.',
+      'Email', '', 'Send me a link',
+      function(value){
+        var email = String(value||'').trim();
+        if (!email) return;
+        share.sb.auth.signInWithOtp({ email: email,
+          options: { emailRedirectTo: location.href.split('#')[0] } })
+          .then(function(r){
+            $('messages').innerHTML = (r && r.error)
+              ? msg('err','Could not send the link: '+esc(r.error.message)+'.')
+              : msg('ok','Link sent. Open it on this device and you will come back able to edit.');
+          });
+      });
+  }
+  function shareSignOut(){
+    share.sb.auth.signOut().then(function(){
+      share.canWrite = false; applyShareMode(); authLabel();
+      $('messages').innerHTML = msg('ok','Signed out. You can still read the shared list.');
+    });
+  }
+  (function connectSupabase(){
+    var cfg = supaCfg();
+    if (!cfg || !window.supabase || !window.supabase.createClient) return;
+    share.sb = window.supabase.createClient(cfg.url, cfg.key);
+    share.row = cfg.row || 'adelaide';
+
+    var load = function(){
+      return share.sb.from('irr_book').select('body').eq('id', share.row).maybeSingle()
+        .then(function(r){
+          share.ready = true;
+          if (r && r.data && r.data.body) { applyShared(r.data.body); return true; }
+          /* nothing shared yet — the first person who can write seeds it */
+          if (share.canWrite !== false) pushShared();
+          return false;
+        });
+    };
+
+    share.sb.auth.getSession().then(function(r){
+      share.canWrite = !!(r && r.data && r.data.session);
+      applyShareMode(); authLabel();
+      return load();
+    }).then(function(){
+      /* other people's changes arrive without anyone reloading */
+      share.sb.channel('irr_book_live')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'irr_book', filter: 'id=eq.' + share.row },
+            function(p){
+              if (p && p.new && p.new.body) {
+                var json = JSON.stringify(p.new.body);
+                if (json !== share.sent) applyShared(p.new.body);
+              }
+            })
+        .subscribe();
+    });
+
+    /* returning from the emailed link signs you in without a reload */
+    share.sb.auth.onAuthStateChange(function(evt, session){
+      var was = share.canWrite;
+      share.canWrite = !!session;
+      if (was !== share.canWrite) { applyShareMode(); authLabel(); }
+    });
+
+    $('btnShareAuth').addEventListener('click', function(){
+      if (share.canWrite === false) shareSignIn(); else shareSignOut();
+    });
+  })();
+
   (function connectShare(){
     if (!(window.claude && typeof window.claude.use === 'function')) return;
     /* Resolved up front, not on first use: an export that falls back to a blob
