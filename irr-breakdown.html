@@ -593,7 +593,7 @@ details .body strong{color:var(--text)}
             <input type="radio" name="tRent" id="tRent-a" value="Growing" checked>
             <label for="tRent-a">Growing</label>
             <input type="radio" name="tRent" id="tRent-b" value="Flat">
-            <label for="tRent-b">Flat</label>
+            <label for="tRent-b">Midpoint</label>
           </div>
         </div>
 
@@ -960,7 +960,7 @@ details .body strong{color:var(--text)}
   var resultMode = 'empty';
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
-  var BUILD = '2026-09-30-d';
+  var BUILD = '2026-09-30-e';
   var SHARE_DOC = 'state/book';
   var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
@@ -1384,7 +1384,7 @@ details .body strong{color:var(--text)}
   function basisText(){
     return [radioVal('tRate') + ' rate',
             radioVal('tNg') === 'On' ? 'gearing on' : 'gearing off',
-            radioVal('tRent') === 'Flat' ? 'flat rent' : 'growing rent']
+            radioVal('tRent') === 'Flat' ? 'midpoint rent' : 'growing rent']
            .join(' · ') + (assumptionsEdited() ? ' · assumptions edited' : '');
   }
   function syncAssumpFlag(){
