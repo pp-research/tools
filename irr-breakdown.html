@@ -678,7 +678,7 @@ details .body strong{color:var(--text)}
     <div>
       <!-- only ever shown on the published shared copy; silent on a plain page -->
       <p class="share-note" id="shareNote" hidden>
-  <button type="button" class="btn-ghost btn-sm" id="btnShareAuth" hidden></button></p>
+  <button type="button" class="btn-primary" id="btnShareAuth" hidden></button></p>
       <div id="messages" role="status" aria-live="polite"></div>
 
       <div class="tabs" role="tablist" aria-label="Properties and result">
@@ -783,6 +783,31 @@ details .body strong{color:var(--text)}
           <div id="ovBody"></div>
         </section>
       </div>
+
+      <!-- one screen: email and the shared password together -->
+      <dialog class="modal modal-sm" id="authDialog" aria-labelledby="auth-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="auth-h">Sign in to edit</h2>
+            <button type="button" class="modal-x" id="authClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="field">
+              <label for="authEmail">Email</label>
+              <input id="authEmail" type="email" autocomplete="username" autocapitalize="off" spellcheck="false">
+            </div>
+            <div class="field" style="margin-top:var(--sp-4)">
+              <label for="authPw">Password</label>
+              <input id="authPw" type="password" autocomplete="current-password">
+            </div>
+            <p class="count-line" id="authMsg" style="margin-top:var(--sp-3)"></p>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn-primary" id="authGo">Sign in</button>
+            <button type="button" class="btn-ghost" id="authCancel">Cancel</button>
+          </div>
+        </div>
+      </dialog>
 
       <!-- ══════════ QUICK IRR — work out a deal without saving it ══════════ -->
       <dialog class="modal" id="quickDialog" aria-labelledby="quick-h">
@@ -922,7 +947,7 @@ details .body strong{color:var(--text)}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="supabase-config.js?v=3"></script>
+<script src="supabase-config.js?v=2"></script>
 <script src="irr-breakdown-engine.js"></script>
 <!-- versioned so a browser holding the previous set fetches this one rather than
      serving its cached copy — Pages sends max-age=600 and the filename alone
@@ -937,6 +962,7 @@ details .body strong{color:var(--text)}
   var resultMode = 'empty';
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
+  var BUILD = '2026-09-30-a';
   var SHARE_DOC = 'state/book';
   var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
@@ -3054,31 +3080,34 @@ details .body strong{color:var(--text)}
      password, and their own address so a change has a name against it. The
      password is never stored anywhere in this page — Supabase swaps it for a
      session token and that is what the browser keeps. */
+  /* One screen. Two prompts made you finish a step before you could see what
+     the next one wanted, and there is nothing to decide between them. */
   function shareSignIn(){
-    askPrompt('Sign in to edit',
-      'Your email address, then the shared password on the next step.',
-      'Email', localStorage.getItem('pp-irr-email') || '', 'Next',
-      function(email){
-        email = String(email||'').trim();
-        if (!email) return;
-        askPrompt('Sign in to edit',
-          'The shared editing password for <strong>'+esc(email)+'</strong>.',
-          'Password', '', 'Sign in',
-          function(pw){
-            pw = String(pw||'');
-            if (!pw) return;
-            share.sb.auth.signInWithPassword({ email: email, password: pw }).then(function(r){
-              if (r && r.error) {
-                $('messages').innerHTML = msg('err','Could not sign in: '+esc(r.error.message)+'.');
-                return;
-              }
-              try { localStorage.setItem('pp-irr-email', email); } catch (e) {}
-              share.canWrite = true; applyShareMode(); authLabel();
-              $('messages').innerHTML = msg('ok','Signed in. Your changes now save for everyone.');
-              pushShared();      /* whatever is in this browser becomes the shared list */
-            });
-          });
-      });
+    var d = $('authDialog');
+    $('authEmail').value = localStorage.getItem('pp-irr-email') || '';
+    $('authPw').value = '';
+    $('authMsg').textContent = '';
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
+    ($('authEmail').value ? $('authPw') : $('authEmail')).focus();
+  }
+  function shareSignInGo(){
+    var email = $('authEmail').value.trim(), pw = $('authPw').value;
+    if (!email || !pw) { $('authMsg').textContent = 'Both the email and the password are needed.'; return; }
+    $('authMsg').textContent = 'Signing in…';
+    $('authGo').disabled = true;
+    share.sb.auth.signInWithPassword({ email: email, password: pw }).then(function(r){
+      $('authGo').disabled = false;
+      if (r && r.error) { $('authMsg').textContent = r.error.message; return; }
+      try { localStorage.setItem('pp-irr-email', email); } catch (e) {}
+      var d = $('authDialog'); if (d.open) d.close();
+      share.canWrite = true; applyShareMode(); authLabel();
+      $('messages').innerHTML = msg('ok','Signed in as '+esc(email)+'. Saving this list for everyone…');
+      share.sent = null;          /* force the first push even if nothing has changed */
+      pushShared();
+    }).catch(function(e){
+      $('authGo').disabled = false;
+      $('authMsg').textContent = String((e && e.message) || e);
+    });
   }
   function shareSignOut(){
     share.sb.auth.signOut().then(function(){
@@ -3128,6 +3157,10 @@ details .body strong{color:var(--text)}
       if (was !== share.canWrite) { applyShareMode(); authLabel(); }
     });
 
+    $('authGo').addEventListener('click', shareSignInGo);
+    $('authCancel').addEventListener('click', function(){ var d=$('authDialog'); if(d.open) d.close(); });
+    $('authClose').addEventListener('click', function(){ var d=$('authDialog'); if(d.open) d.close(); });
+    $('authPw').addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); shareSignInGo(); } });
     $('btnShareAuth').addEventListener('click', function(){
       if (share.canWrite === false) shareSignIn(); else shareSignOut();
     });
