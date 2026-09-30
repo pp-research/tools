@@ -420,10 +420,7 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
    appears — and "why is this grey?" is exactly the question here. The button
    stays enabled, wears the disabled look, and says so on click. */
 .btn-off{opacity:.45;cursor:not-allowed}
-/* a count line you can press: the outside list is easy to forget is there */
-.linkish{background:none;border:0;padding:0;font:inherit;color:var(--accent-text);
-  text-decoration:underline;text-underline-offset:2px;cursor:pointer}
-.linkish:hover{color:var(--text)}
+.list-foot{margin-top:var(--sp-3);display:flex}
 .cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted)}
 td.pick input{margin:0}
 th.pick-all input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
@@ -662,8 +659,6 @@ details .body strong{color:var(--text)}
         </div>
 
         <p class="count-line" id="filtCount" style="margin:var(--sp-4) 0 0"></p>
-        <p class="count-line" id="outsideLine" hidden style="margin:var(--sp-2) 0 0">
-          <button type="button" class="linkish" id="btnShowOutside"></button></p>
       </section>
     </div>
 
@@ -753,6 +748,12 @@ details .body strong{color:var(--text)}
           <p class="count-line" id="propCount"></p>
 
           <div id="propsBody"></div>
+
+          <!-- Under the list, because that is where you are when you notice a
+               property does not belong in it. One button, both directions. -->
+          <div class="list-foot">
+            <button type="button" class="btn-ghost btn-sm" id="btnArchiveView" hidden></button>
+          </div>
         </section>
       </div>
 
@@ -1512,7 +1513,7 @@ details .body strong{color:var(--text)}
     var asideCount = all.filter(function(e){ return !!e.outside; }).length;
     $('badgeProps').textContent = scoped.length;
     syncCategoryControls(all);
-    syncOutsideLine(asideCount, f);
+    syncArchiveView(asideCount, f);
 
     syncFilterChrome(f);
 
@@ -1550,8 +1551,14 @@ details .body strong{color:var(--text)}
     $('filtCount').textContent = countTxt;
 
     if (!data.length) {
-      $('propsBody').innerHTML = '<div class="empty"><h3>Nothing matches</h3>'+
-        '<p>No property matches the filters on the left. Choose <strong>Clear</strong> to see all '+scoped.length+'.</p></div>';
+      /* "Choose Clear to see all 0" is what the generic wording produces when
+         you open an empty archived list, so that case answers for itself. */
+      $('propsBody').innerHTML = (f.advice === 'out' && !scoped.length)
+        ? '<div class="empty"><h3>Nothing is set aside</h3>'+
+          '<p>Use the archive button on a row, or tick a few and choose '+
+          '<strong>Outside of advice</strong>, to keep a property without counting it.</p></div>'
+        : '<div class="empty"><h3>Nothing matches</h3>'+
+          '<p>No property matches the filters on the left. Choose <strong>Clear</strong> to see all '+scoped.length+'.</p></div>';
       syncSelBar();
       renderOverview([], spread, scoped.length);
       return;
@@ -2712,13 +2719,20 @@ details .body strong{color:var(--text)}
           : ' returned to advice.'));
   }
   function asideSelected(){ if (picked.length) setAside(picked.slice()); }
-  /* The list you cannot see is the one you forget, so the count is always
-     stated and always one press away. */
-  function syncOutsideLine(n, f){
-    var line = $('outsideLine'), btn = $('btnShowOutside');
-    if (!line || !btn) return;
-    line.hidden = !n || f.advice !== 'in';
-    btn.textContent = n + ' propert' + (n===1?'y':'ies') + ' outside of advice — show';
+  /* The list you cannot see is the one you forget, so the count is stated under
+     the list and the same button walks back. Hidden only when there is nothing
+     set aside and nothing to walk back from. */
+  function syncArchiveView(n, f){
+    var btn = $('btnArchiveView'); if (!btn) return;
+    if (f.advice === 'in') {
+      btn.hidden = !n;
+      btn.textContent = 'View ' + n + ' outside of advice';
+      btn.title = 'Show the properties set aside from the advice';
+    } else {
+      btn.hidden = false;
+      btn.textContent = 'Back to the advice list';
+      btn.title = 'Show only the properties counted in the advice';
+    }
   }
   function moveSelected(){
     var hits = pickedEntries();
@@ -2763,7 +2777,10 @@ details .body strong{color:var(--text)}
   }
   $('btnMoveCat').addEventListener('click', moveSelected);
   $('btnAside').addEventListener('click', asideSelected);
-  $('btnShowOutside').addEventListener('click', function(){ $('fAdvice').value = 'out'; renderProps(); });
+  $('btnArchiveView').addEventListener('click', function(){
+    $('fAdvice').value = ($('fAdvice').value === 'in') ? 'out' : 'in';
+    renderProps();
+  });
   $('btnDelSel').addEventListener('click', deleteSelected);
 
   /* ── Quick IRR: a deal you want to check, not keep ── */
