@@ -422,6 +422,19 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
    appears — and "why is this grey?" is exactly the question here. The button
    stays enabled, wears the disabled look, and says so on click. */
 .btn-off{opacity:.45;cursor:not-allowed}
+/* The archive is a different place, not another action, so its button does not
+   look like the ones beside it. Outlined while you are in the list, filled once
+   you are standing in the archive — the fill is the "you are here". */
+.btn-archive{background-color:var(--note-bg);background-image:none;
+  border-color:var(--note-line);color:var(--note-ink)}
+.btn-archive:hover{background-color:var(--note-line);border-color:var(--note-ink)}
+/* The filled "you are here" state is written out per theme rather than built
+   from tokens: var(--bg) as the text colour looked fine in dark and put light
+   text on light amber in the other one. */
+.btn-archive.is-on{background-color:#FFD79A;background-image:none;border-color:#FFD79A;color:#3A2600}
+.btn-archive.is-on:hover{background-color:#FFE3B8;border-color:#FFE3B8}
+:root[data-theme="light"] .btn-archive.is-on{background-color:#7A4E00;border-color:#7A4E00;color:#fff}
+:root[data-theme="light"] .btn-archive.is-on:hover{background-color:#603D00;border-color:#603D00}
 /* the base chip is nowrap because a category is two words; a reason is a
    sentence, so this one wraps and keeps the column from stretching */
 .cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted);
@@ -726,7 +739,7 @@ details .body strong{color:var(--text)}
             <h2 id="props-h">Properties</h2>
             <div class="btns" style="margin:0">
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
-              <button type="button" class="btn-ghost btn-sm" id="btnArchiveView"></button>
+              <button type="button" class="btn-ghost btn-sm btn-archive" id="btnArchiveView"></button>
               <button type="button" class="btn-ghost btn-sm" id="btnQuickOpen">Quick IRR</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
@@ -947,7 +960,7 @@ details .body strong{color:var(--text)}
   var resultMode = 'empty';
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
-  var BUILD = '2026-09-30-c';
+  var BUILD = '2026-09-30-d';
   var SHARE_DOC = 'state/book';
   var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
@@ -2829,9 +2842,11 @@ details .body strong{color:var(--text)}
     var btn = $('btnArchiveView'); if (!btn) return;
     if (f.advice === 'in') {
       btn.textContent = n ? 'View Archive (' + n + ')' : 'View Archive';
+      btn.classList.remove('is-on');
       btn.title = n ? 'Show the ' + n + ' properties set aside from the advice'
                     : 'Nothing is set aside yet';
     } else {
+      btn.classList.add('is-on');
       btn.textContent = 'Back to list';
       btn.title = 'Show only the properties counted in the advice';
     }
