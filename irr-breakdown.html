@@ -3066,7 +3066,7 @@ details .body strong{color:var(--text)}
         var email = String(value||'').trim();
         if (!email) return;
         share.sb.auth.signInWithOtp({ email: email,
-          options: { emailRedirectTo: location.href.split('#')[0] } })
+          options: { shouldCreateUser: false, emailRedirectTo: location.href.split('#')[0] } })
           .then(function(r){
             $('messages').innerHTML = (r && r.error)
               ? msg('err','Could not send the link: '+esc(r.error.message)+'.')
