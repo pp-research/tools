@@ -464,6 +464,14 @@ td.pd span{display:block;font-size:11px;line-height:15px;color:var(--muted)}
    to two lines so a long label stops dictating the column width */
 #bdTable th,#bdTable td{padding:8px 10px}
 #bdTable thead th{white-space:normal;line-height:14px}
+/* The properties table has to fit its panel without scrolling sideways: the
+   third row action was the 18px that pushed it over, and a table you have to
+   scroll to see the IRR of is a table you misread. Tighter gutters here only —
+   the monthly breakdown and the compare table keep the roomier default. */
+#propsBody th,#propsBody td{padding-left:8px;padding-right:8px}
+#propsBody td.acts button{margin-right:3px}
+#propsBody .acts .btn-sm{padding:6px 10px}
+#propsBody .acts .icon-btn{width:28px;padding:6px 4px}
 td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
