@@ -421,9 +421,7 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
    stays enabled, wears the disabled look, and says so on click. */
 .btn-off{opacity:.45;cursor:not-allowed}
 .list-foot{margin-top:var(--sp-3);display:flex}
-.share-note{margin-bottom:var(--sp-3);padding:8px 13px;border-radius:var(--r-md);
-  background:rgba(var(--accent-rgb),.10);border:1px solid rgba(var(--accent-rgb),.4);
-  color:var(--text);font-size:12px;font-weight:600}
+.share-note{margin-bottom:var(--sp-3)}
 /* the base chip is nowrap because a category is two words; a reason is a
    sentence, so this one wraps and keeps the column from stretching */
 .cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted);
@@ -679,8 +677,8 @@ details .body strong{color:var(--text)}
     <!-- ══════════ RIGHT: RESULT / PROPERTIES ══════════ -->
     <div>
       <!-- only ever shown on the published shared copy; silent on a plain page -->
-      <p class="share-note" id="shareNote" hidden><span id="shareNoteText"></span>
-        <button type="button" class="btn-ghost btn-sm" id="btnShareAuth" hidden style="margin-left:8px"></button></p>
+      <p class="share-note" id="shareNote" hidden>
+  <button type="button" class="btn-ghost btn-sm" id="btnShareAuth" hidden></button></p>
       <div id="messages" role="status" aria-live="polite"></div>
 
       <div class="tabs" role="tablist" aria-label="Properties and result">
@@ -3030,13 +3028,9 @@ details .body strong{color:var(--text)}
     var ro = (share.canWrite === false);
     WRITE_CONTROLS.forEach(function(id){ var el = $(id); if (el) el.hidden = ro; });
     document.body.classList.toggle('read-only', ro);
-    var b = $('shareNoteText');
-    if (b) {
-      $('shareNote').hidden = !(share.db || share.sb);
-      b.textContent = !(share.db || share.sb) ? '' : ro
-        ? 'Shared list — you can read it and work with it, but only the people Shaene has given edit access can change it.'
-        : 'Shared list — your changes are saved for everyone who opens this link.';
-    }
+    /* The button says everything the sentence did: if it offers you a sign-in,
+       you cannot edit yet. */
+    $('shareNote').hidden = !(share.db || share.sb);
     if (ro) renderProps();   // drops the per-row delete and archive buttons
   }
   /* ── the shared list on a published web page ──
