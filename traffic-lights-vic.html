@@ -442,13 +442,14 @@ table.calc.pvr td.pvr-now .sub{display:block}
 .pvr-winhead b{font-size:19px;font-weight:800;color:var(--text)}
 .pvr-winhead b span{font-size:13px;font-weight:600;color:var(--text-dim);margin-left:6px}
 #pvrWin{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:4px 0 0;cursor:pointer}
-#pvrWin::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--teal) var(--pct,0%),var(--border) var(--pct,0%))}
+#pvrWin::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--teal) calc(12px + (100% - 24px) * var(--f,0)),var(--border) calc(12px + (100% - 24px) * var(--f,0)))}
 #pvrWin::-moz-range-track{height:6px;border-radius:3px;background:var(--border)}
 #pvrWin::-moz-range-progress{height:6px;border-radius:3px;background:var(--teal)}
 #pvrWin::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--bg-1);border:3px solid var(--teal);box-shadow:0 2px 6px rgba(0,0,0,.18)}
 #pvrWin::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--bg-1);border:3px solid var(--teal)}
 #pvrWin:focus-visible{outline:2px solid var(--teal);outline-offset:4px;border-radius:6px}
-.pvr-winticks{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));margin:0 -4px}
+.pvr-winticks{position:relative;height:38px}
+.pvr-winticks button{position:absolute;top:0}
 .pvr-winticks button{font:inherit;font-size:12px;font-weight:700;color:var(--text-dim);background:none;border:0;padding:8px 2px;min-height:36px;cursor:pointer;border-radius:8px;white-space:nowrap}
 .pvr-winticks button:hover{color:var(--text)}
 .pvr-winticks button.on{color:var(--teal);font-weight:800}
@@ -1490,10 +1491,11 @@ const pvrMoney=v=>v>=999500?('$'+(v/1e6).toFixed(2)+'m'):('$'+Math.round(v/1000)
 function pvrWinWire(){
   const inp=document.getElementById('pvrWin'), tk=document.getElementById('pvrWinTicks'), lbl=document.getElementById('pvrWinLbl'); if(!inp) return;
   const i=PVRWINS.indexOf(PVRWIN), CY=new Date().getFullYear();
-  inp.value=String(i); inp.style.setProperty('--pct',(i/(PVRWINS.length-1)*100)+'%');
+  inp.value=String(i); inp.style.setProperty('--f',String(i/(PVRWINS.length-1)));
   inp.setAttribute('aria-valuetext',PVRWIN?('Last '+PVRWIN+' years'):'Since each market’s own price peak');
   lbl.innerHTML=PVRWIN?('The last '+PVRWIN+' years <span>'+(GROWTH_CY-PVRWIN)+' to '+GROWTH_CY+'</span>'):'Since each market&rsquo;s own price peak';
-  if(!tk.childElementCount) tk.innerHTML=PVRWINS.map((w,j)=>'<button type="button" data-j="'+j+'">'+(w?w+'y':'Since peak')+'</button>').join('');
+  if(!tk.childElementCount) tk.innerHTML=PVRWINS.map((w,j)=>{ const last=PVRWINS.length-1, pos=j===0?'left:0':j===last?'right:0':'left:calc(12px + (100% - 24px) * '+j+' / '+last+');transform:translateX(-50%)';
+    return '<button type="button" data-j="'+j+'" style="'+pos+'">'+(w?w+'y':'Since peak')+'</button>'; }).join('');
   tk.querySelectorAll('button').forEach(b=>{ b.classList.toggle('on',+b.dataset.j===i); b.onclick=()=>{ PVRWIN=PVRWINS[+b.dataset.j]; PVRALL=false; renderPVR(); }; });
   inp.oninput=()=>{ PVRWIN=PVRWINS[+inp.value]; PVRALL=false; renderPVR(); };
 }
@@ -1650,7 +1652,7 @@ function renderPVR(){
       const txt=pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):''), w=txt.length*6.9, h=14;
       const spots=[[cx+rr+5,cy+4,0],[cx-rr-5-w,cy+4,0],[cx-w/2,cy-rr-5,0],[cx-w/2,cy+rr+14,0]];
       [18,32,48].forEach(dd=>spots.push([cx+rr+5,cy-dd+4,1],[cx+rr+5,cy+dd+4,1],[cx-rr-5-w,cy-dd+4,1],[cx-rr-5-w,cy+dd+4,1]));
-      let sp=spots.find(([x,y])=>!hit({x0:x,x1:x+w,y0:y-11,y1:y+3})); if(!sp) sp=spots[0];
+      let sp=spots.find(([x,y])=>!hit({x0:x,x1:x+w,y0:y-11,y1:y+3})); if(!sp){ if(r!==mp) return; sp=spots[0]; }
       const [x,y,lead]=sp; placed.push({x0:x,x1:x+w,y0:y-11,y1:y+3});
       if(lead) s+='<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(x<cx?x+w:x).toFixed(1)+'" y2="'+(y-4).toFixed(1)+'" style="stroke:var(--text-faint);stroke-width:1;pointer-events:none"></line>';
       s+='<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'"'+' style="fill:'+(r.area==='near'?'var(--orange)':'var(--text)')+';font-size:11.5px;font-weight:800;pointer-events:none">'+txt+'</text>'; });
