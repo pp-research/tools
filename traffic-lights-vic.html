@@ -782,7 +782,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-cardhead"><h3>Where every market sits</h3></div>
         <div class="pvr-winrow">
           <div class="pvr-winhead"><label for="pvrWin">Window</label><b id="pvrWinLbl">Since each market&rsquo;s own price peak</b><span class="pvr-winnote">also sets the ranking</span></div>
-          <div class="pvr-winruler"><input type="range" id="pvrWin" min="0" max="11" step="1" value="0" aria-describedby="pvrWinLbl"><div class="pvr-winticks" id="pvrWinTicks"></div></div>
+          <div class="pvr-winruler"><input type="range" id="pvrWin" min="0" max="8" step="1" value="0" aria-describedby="pvrWinLbl"><div class="pvr-winticks" id="pvrWinTicks"></div></div>
           <div class="pvr-seg pvr-seg-sm" id="pvrScale" role="group" aria-label="Chart scale"><button type="button" data-v="year" aria-pressed="true">Per year</button><button type="button" data-v="total" aria-pressed="false">Total</button></div>
         </div>
         <div class="pvr-legend pvr-maplegend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span></div>
@@ -1415,7 +1415,7 @@ const PVRDRIVE=120;   // minutes
 const PVRCAP=8;       // rows shown before "Show all"
 function pvrArea(l){ const dv=DRIVE[l]; return METRO.has(l)?'metro':(dv&&dv.m<=PVRDRIVE?'near':'far'); }
 // the window the scatter and ranking measure: 0 = since each market's own price peak, else the last N years
-const PVRWINS=[0,3,4,5,6,7,8,9,10,12,15,20]; let PVRWIN=0, PVRSCALE='year';   // scatter scale: 'year' (fixed axes, growth a year) or 'total'
+const PVRWINS=[0,3,4,5,6,7,8,9,10];   // up to 10 years (Shaene 2026-10-06) let PVRWIN=0, PVRSCALE='year';   // scatter scale: 'year' (fixed axes, growth a year) or 'total'
 const GROWTH_CY=(()=>{ for(const l in GROWTH){ for(const s in GROWTH[l]){ const g=GROWTH[l][s]; if(g&&g.p) return g.y0+g.p.length-1; } } return 2026; })();
 // price and rent change over the last N annual readings (to the current year); null when either series has a gap
 function pvrWin(g,N){ const n=g.p.length; if(n-N<1) return null; let p=1,r=1;
