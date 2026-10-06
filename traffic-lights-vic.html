@@ -484,9 +484,13 @@ table.calc.pvr td.pvr-now .sub{display:block}
 .pvr-controls .pvr-chips{justify-content:flex-start}
 .pvr-controls .pvr-chips button{min-height:38px;padding:7px 11px;font-size:12.5px}
 .pvr-controls .pvr-seg button{min-height:38px}
-.pvr-controls .pvr-winrow{flex:1 1 360px;margin:0;padding:0;border:0;gap:10px 16px}
+.pvr-controls .pvr-winrow{flex:1 1 250px;margin:0;padding:0;border:0;gap:10px 16px}
 .pvr-controls .pvr-winrow .pvr-winhead{flex:0 0 130px}
-.pvr-controls .pvr-select{margin:0;flex:0 1 210px;min-width:180px}
+.pvr-controls .pvr-select{margin:0;flex:0 0 200px;min-width:0}
+.pvr-controls .pvr-select label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pvr-controls .pvr-chips{gap:6px}
+.pvr-controls .pvr-chips button{padding:7px 9px;font-size:12px}
+.pvr-controls .pvr-seg button{padding-left:14px;padding-right:14px}
 .pvr-controls .pvr-select label{margin-bottom:4px;letter-spacing:.12em}
 .pvr-controls .dd-trigger{padding:8px 12px;font-size:13.5px}
 #pane-pvr > .pvr{width:min(1400px,calc(100vw - 64px));margin-left:calc(50% - min(700px,calc(50vw - 32px)))}
@@ -820,7 +824,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-seg pvr-seg-sm" id="pvrScale" role="group" aria-label="Chart scale"><button type="button" data-v="year" aria-pressed="false">Per year</button><button type="button" data-v="total" aria-pressed="true">Total</button></div>
         <div class="region-select pvr-select"><label for="pvrDdInput">Find an LGA</label><div class="dd" id="pvrDd">
           <div class="dd-trigger" id="pvrDdTrigger">
-            <span class="cur"><span class="pin"></span><input type="text" id="pvrDdInput" placeholder="Search LGAs&hellip;" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pvrDdPanel"></span>
+            <span class="cur"><span class="pin"></span><input type="text" id="pvrDdInput" placeholder="Find an LGA&hellip;" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pvrDdPanel"></span>
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
           </div>
           <div class="dd-panel" id="pvrDdPanel" role="listbox"></div>
