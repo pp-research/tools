@@ -1457,7 +1457,7 @@ function pvrLGA(){ if(!pvrCur||!LGAS.includes(pvrCur)){ const o=pvrRows(GSEG).ou
 // pick from the scatter or the ranking, then bring the selected market's cards and chart into view
 function pvrGo(l){ pvrPick(l); const el=document.getElementById('pvrSel'); if(!el) return;
   const still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  requestAnimationFrame(()=>el.scrollIntoView({behavior:still?'auto':'smooth',block:'start'})); }
+  setTimeout(()=>el.scrollIntoView({behavior:still?'auto':'smooth',block:'start'}),30); }
 function pvrPick(l){ pvrCur=l; pvrDdInput.placeholder=pvrNm(l); renderGrowthAll(); }
 // Every LGA, qualifying or not: the qualifying ones as pvrRows gives them, the rest with the reason they miss.
 let PVRZOOM=null, PVRTT=null;   // PVRTT: the series the top chart last drew, for its tooltip   // drag-zoom on the top chart: {k: market|segment|mode it belongs to, a: first year, b: last year}
