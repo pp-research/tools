@@ -1657,8 +1657,10 @@ function renderPVR(){
     pts.forEach(r=>{ const n=PVRWIN||r.stag||1; r.ap=TOT?r.price:ann(r.price,n); r.ar=TOT?r.rent:ann(r.rent,n); r.off=r.ap<XMIN||r.ap>XMAX||r.ar<YMIN||r.ar>YMAX; });
     const pc1=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%';
     let s='<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+pts.length+' '+segW+' markets plotted by price growth against rent growth per year, '+(PVRWIN?('over the last '+PVRWIN+' years'):'since each one\'s price peak')+'">';
-    s+='<rect x="'+X0+'" y="'+Y(YMAX)+'" width="'+(X(0)-X0)+'" height="'+(Y(0)-Y(YMAX))+'" style="fill:var(--teal);opacity:.07"></rect>';
-    s+='<text x="'+(X0+12)+'" y="'+(YT+22)+'" style="fill:var(--teal);font-size:12px;font-weight:800">Price down, rent up</text>';
+    // shading: where every price fell (the peak frame), the original top-left corner; otherwise the whole price-down, rent-up quadrant
+    const allDown=XMAX<=0, shW=allDown?(X((XMIN+XMAX)/2)-X0):(X(0)-X0), shY=allDown?YT:Y(YMAX), shH=allDown?(Y((YMIN+YMAX)/2)-YT):(Y(0)-Y(YMAX));
+    s+='<rect x="'+X0+'" y="'+shY+'" width="'+shW+'" height="'+shH+'" style="fill:var(--teal);opacity:.07"></rect>';
+    s+='<text x="'+(X0+12)+'" y="'+(YT+22)+'" style="fill:var(--teal);font-size:12px;font-weight:800">'+(allDown?'Price down most, rent up most':'Price down, rent up')+'</text>';
     for(let v=Math.ceil(XMIN/dom.xs)*dom.xs; v<=XMAX; v+=dom.xs) s+='<line x1="'+X(v)+'" y1="'+YT+'" x2="'+X(v)+'" y2="'+YB+'" style="stroke:'+(v===0?'var(--text-faint)':'var(--border)')+'"></line><text x="'+X(v)+'" y="'+(YB+22)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:12px">'+(v>0?'+':'')+(v<0?'−'+(-v):v)+'%</text>';
     for(let v=Math.ceil(YMIN/dom.ys)*dom.ys; v<=YMAX; v+=dom.ys) s+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:'+(v===0?'var(--text-faint)':'var(--border)')+'"></line><text x="'+(X1+10)+'" y="'+(Y(v)+4)+'" style="fill:var(--text-faint);font-size:12px">'+(v>0?'+':'')+(v<0?'−'+(-v):v)+'%</text>';
     s+='<text x="'+((X0+X1)/2)+'" y="'+(H-10)+'" text-anchor="middle" style="fill:var(--text);font-size:12.5px;font-weight:800">Price '+(TOT?'change ':'growth ')+WL+'</text>';
