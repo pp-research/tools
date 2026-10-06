@@ -7100,7 +7100,20 @@ function xpCharts(){
   xpSweep();
   window.addEventListener('scroll', xpOnScroll, { passive: true });
   window.addEventListener('resize', xpOnScroll);
+  /* Backstop. The scroll listener is the fast path, but it is not guaranteed
+     to reach us - programmatic scrolling, a restored scroll position and
+     embedded/automated contexts can all leave it silent, and a chart that
+     never mounts is the worst outcome here. Poll until every box has been
+     swept, then stop. One rect read per unswept box, four times a second,
+     costing nothing once the page settles. */
+  var t = setInterval(function(){
+    xpSweep();
+    var boxes = document.querySelectorAll('.xp-box');
+    for (var i = 0; i < boxes.length; i++) if (!boxes[i].__xpDone) return;
+    clearInterval(t);
+  }, 250);
 }
+
 function xpGo(){ xpFit(); xpCharts(); }
 if(document.readyState!=='loading') xpGo(); else document.addEventListener('DOMContentLoaded', xpGo);
 var xpT; window.addEventListener('resize', function(){ clearTimeout(xpT); xpT=setTimeout(xpFit,120); });
