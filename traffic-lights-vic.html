@@ -472,7 +472,12 @@ table.calc.pvr td.pvr-now .sub{display:block}
 #pvrMap.pvr-moving .pvr-lbl{animation:pvrLblIn .3s ease .5s both}
 @keyframes pvrLblIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){#pvrMap.pvr-moving .pvr-lbl{animation:none}}
-#pvrSel{scroll-margin-top:190px}
+#pvrSel,#pvrChartCard{scroll-margin-top:110px}
+.pvr-chartcard{gap:18px}
+.pvr-chartcard > .pvr-select{margin:0;max-width:340px}
+.pvr-chartcard > .pvr-select label{margin-bottom:6px}
+.pvr-chartcard .dd-trigger{padding:10px 14px;font-size:15px}
+.pvr-chartcard #pvrSel{border-top:1px solid var(--border);padding-top:16px}
 .pvr-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px 24px;flex-wrap:wrap}
 .pvr-top .pvr-hero-txt{flex:1 1 360px;gap:6px}
 .pvr-top .pvr-lede{font-size:14px;line-height:1.5}
@@ -822,13 +827,6 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show" hidden><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
         <div class="pvr-winrow"><div class="pvr-winhead"><label for="pvrWin">Window</label><b id="pvrWinLbl">Since each market&rsquo;s own price peak</b><span class="pvr-winnote">also sets the ranking</span></div><div class="pvr-winruler"><input type="range" id="pvrWin" min="0" max="8" step="1" value="0" aria-describedby="pvrWinLbl"><div class="pvr-winticks" id="pvrWinTicks"></div></div></div>
         <div class="pvr-seg pvr-seg-sm" id="pvrScale" role="group" aria-label="Chart scale"><button type="button" data-v="year" aria-pressed="false">Per year</button><button type="button" data-v="total" aria-pressed="true">Total</button></div>
-        <div class="region-select pvr-select"><label for="pvrDdInput">Find an LGA</label><div class="dd" id="pvrDd">
-          <div class="dd-trigger" id="pvrDdTrigger">
-            <span class="cur"><span class="pin"></span><input type="text" id="pvrDdInput" placeholder="Find an LGA&hellip;" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pvrDdPanel"></span>
-            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
-          </div>
-          <div class="dd-panel" id="pvrDdPanel" role="listbox"></div>
-        </div></div>
       </section>
       <div class="pvr-explore">
         <section class="pvr-card pvr-tablecard pvr-listcard" aria-label="Ranking">
@@ -844,8 +842,17 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
             <div class="pvr-legend pvr-maplegend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span></div>
             <div id="pvrMap"></div>
           </section>
-          <section class="pvr-card pvr-selcard" id="pvrSel" aria-label="Selected market"></section>
-          <section class="pvr-card" id="pvrIdx"></section>
+          <section class="pvr-card pvr-chartcard" id="pvrChartCard" aria-label="Selected market">
+            <div class="region-select pvr-select"><label for="pvrDdInput">Selected LGA</label><div class="dd" id="pvrDd">
+          <div class="dd-trigger" id="pvrDdTrigger">
+            <span class="cur"><span class="pin"></span><input type="text" id="pvrDdInput" placeholder="Find an LGA&hellip;" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pvrDdPanel"></span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div class="dd-panel" id="pvrDdPanel" role="listbox"></div>
+        </div></div>
+            <div id="pvrIdx"></div>
+            <div class="pvr-selcard" id="pvrSel"></div>
+          </section>
         </div>
       </div>
       <section class="pvr-card" hidden aria-hidden="true"><!-- year-on-year growth chart: hidden 2026-09-28, redundant with the chart above -->
@@ -1502,7 +1509,7 @@ const pvrNm=l=>l==='Melbourne'?'City of Melbourne':l;
 let pvrCur=null;   // the Price v Rent selection, independent of the Dashboard's; null = start on the widest gap
 function pvrLGA(){ if(!pvrCur||!LGAS.includes(pvrCur)){ const o=pvrRows(GSEG).out.sort((a,b)=>b.gap-a.gap); pvrCur=o.length?o[0].l:current; } return pvrCur; }
 // pick from the scatter or the ranking, then bring the selected market's cards and chart into view
-function pvrGo(l){ pvrPick(l); const el=document.getElementById('pvrSel'); if(!el) return;
+function pvrGo(l){ pvrPick(l); const el=document.getElementById('pvrChartCard'); if(!el) return;
   const r=el.getBoundingClientRect(); if(r.top>=150&&r.top<window.innerHeight*0.7) return;   // already in view
   const still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(()=>el.scrollIntoView({behavior:still?'auto':'smooth',block:'start'}),30); }
