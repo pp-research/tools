@@ -5347,7 +5347,7 @@ body{margin:0;background:#0f1420;font-family:'Montserrat',system-ui,sans-serif;-
 .xp-head h1{font:800 26px/1.2 'Montserrat',sans-serif;margin:0 0 6px}
 .xp-head p{font:400 13px/1.5 'Montserrat',sans-serif;margin:0;opacity:.6;max-width:760px}
 .xp-wrap{max-width:1280px;margin:0 auto;padding:16px 20px 60px;display:flex;flex-direction:column;gap:22px}
-.xp-box{position:relative;width:100%;aspect-ratio:16/9;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,.38)}
+.xp-box{position:relative;width:100%;aspect-ratio:16/9;content-visibility:auto;contain-intrinsic-size:auto 720px;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,.38)}
 .xp-box::after{content:attr(data-n);position:absolute;right:10px;bottom:7px;font:600 10px/1 'Montserrat',sans-serif;color:rgba(23,27,36,.3);pointer-events:none;z-index:50}
 .xp-slide{position:absolute!important;top:0;left:0;width:1280px;height:720px;transform-origin:top left;overflow:hidden;background:#fff}
 .pres-overlay{position:absolute}
@@ -7055,14 +7055,27 @@ document.querySelectorAll('[data-xp-img]').forEach(function(im){ im.src=XP_IMAGE
 document.querySelectorAll('[data-xp-bg]').forEach(function(el){ el.style.backgroundImage='url('+XP_IMAGES[+el.dataset.xpBg]+')'; });
 function xpFit(){ document.querySelectorAll('.xp-box').forEach(function(b){
   var sl=b.querySelector('.xp-slide'); if(sl) sl.style.transform='scale('+(b.clientWidth/1280)+')'; }); }
-function xpCharts(){ document.querySelectorAll('[data-xp-chart]').forEach(function(el){
+function xpMount(el){
+  if(el.__c) return;
   var sp=XP_SPECS[el.dataset.xpChart]; if(!sp||!sp.module) return;
   var fn=window.PpaCharts&&PpaCharts.registry&&PpaCharts.registry[sp.module]; if(!fn) return;
-  try{ if(el.__c&&el.__c.dispose) el.__c.dispose(); el.__c=fn(el, /^commercial-p/.test(sp.module)?XP_TABS:sp.data, {}); }catch(e){}
+  try{ el.__c=fn(el, /^commercial-p/.test(sp.module)?XP_TABS:sp.data, {}); }catch(e){}
+}
+/* Mounting all 48 ECharts canvases at once froze the renderer — the cover
+   painted and nothing after it did. Each chart now initialises only as its
+   slide comes within 600px of the viewport, so load cost is a couple of
+   charts instead of 48. Charts sit at a fixed pixel size inside a CSS-scaled
+   slide, so a window resize never changes their own box and they need no
+   re-init; only the slide transform is refitted. */
+var xpIO = ('IntersectionObserver' in window) ? new IntersectionObserver(function(es){
+  es.forEach(function(e){ if(e.isIntersecting){ xpMount(e.target); xpIO.unobserve(e.target); } });
+}, { rootMargin: '600px 0px' }) : null;
+function xpCharts(){ document.querySelectorAll('[data-xp-chart]').forEach(function(el){
+  if(xpIO) xpIO.observe(el); else xpMount(el);
 }); }
 function xpGo(){ xpFit(); xpCharts(); }
 if(document.readyState!=='loading') xpGo(); else document.addEventListener('DOMContentLoaded', xpGo);
-var xpT; window.addEventListener('resize', function(){ xpFit(); clearTimeout(xpT); xpT=setTimeout(xpCharts,160); });
+var xpT; window.addEventListener('resize', function(){ clearTimeout(xpT); xpT=setTimeout(xpFit,120); });
 
 </script>
 </body>
