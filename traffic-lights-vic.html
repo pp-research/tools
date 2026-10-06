@@ -347,7 +347,7 @@ table.calc.pvr th.sortable{cursor:pointer;white-space:nowrap}
 table.calc.pvr th.sortable:hover,table.calc.pvr th.on{color:var(--teal)}
 table.calc.pvr tr.pvr-row{cursor:pointer}
 table.calc.pvr tr.pvr-row:hover td{background:var(--surface-2)}
-table.calc.pvr tr.pvr-row.active td{background:var(--track-active-green);color:var(--teal);font-weight:700}
+table.calc.pvr tr.pvr-row.active td{background:rgba(0,160,180,.22);color:var(--text);font-weight:700}
 table.calc.pvr td:last-child b{color:#00A1B4}
 /* Price v Rent tab (2026-09-28 redesign, direction A): hero, headline figures, since-peak chart, map, ranking */
 #pane-pvr > .pvr{display:flex;flex-direction:column;gap:22px}   /* the wrapper only: the ranking table also carries .pvr */
@@ -472,10 +472,52 @@ table.calc.pvr td.pvr-now .sub{display:block}
 #pvrMap.pvr-moving .pvr-lbl{animation:pvrLblIn .3s ease .5s both}
 @keyframes pvrLblIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){#pvrMap.pvr-moving .pvr-lbl{animation:none}}
-#pvrSel{scroll-margin-top:96px}
-table.calc.pvr tr.shade td{background:rgba(0,160,180,.09)}
-table.calc.pvr tr.shade td:first-child{box-shadow:inset 3px 0 0 var(--teal)}
-table.calc.pvr tr.shade.active td{background:rgba(0,160,180,.18)}
+#pvrSel{scroll-margin-top:190px}
+.pvr-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px 24px;flex-wrap:wrap}
+.pvr-top .pvr-hero-txt{flex:1 1 360px;gap:6px}
+.pvr-top .pvr-lede{font-size:14px;line-height:1.5}
+#pane-pvr .pvr-kpis{display:flex;gap:10px;flex-wrap:wrap}
+#pane-pvr .pvr-kpi{padding:10px 16px;border-radius:12px;gap:2px;min-width:150px}
+#pane-pvr .pvr-kpi .v{font-size:20px}
+#pane-pvr .pvr-kpi .s{font-size:12px}
+.pvr-controls{flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px 18px;padding:12px 18px;position:sticky;top:81px;z-index:15}
+.pvr-controls .pvr-chips{justify-content:flex-start}
+.pvr-controls .pvr-chips button{min-height:38px;padding:7px 11px;font-size:12.5px}
+.pvr-controls .pvr-seg button{min-height:38px}
+.pvr-controls .pvr-winrow{flex:1 1 420px;margin:0;padding:0;border:0;gap:10px 16px}
+.pvr-controls .pvr-winrow .pvr-winhead{flex:0 0 130px}
+.pvr-controls .pvr-select{margin:0;flex:0 1 230px;min-width:190px}
+.pvr-controls .pvr-select label{margin-bottom:4px;letter-spacing:.12em}
+.pvr-controls .dd-trigger{padding:8px 12px;font-size:13.5px}
+.pvr-explore{display:grid;grid-template-columns:minmax(380px,440px) minmax(0,1fr);gap:18px;align-items:start}
+.pvr-right{display:flex;flex-direction:column;gap:18px;min-width:0}
+.pvr-listcard{position:sticky;top:180px;padding:18px 0 12px;gap:10px}
+.pvr-listcard > .pvr-cardhead,.pvr-listcard > .pvr-sortchips,.pvr-listcard > details,.pvr-listcard > .pvr-foot{padding:0 18px}
+.pvr-listscroll{max-height:calc(100vh - 360px);min-height:320px;overflow:auto;border-top:1px solid var(--border)}
+.pvr-listcard table.calc.pvr{font-size:13px}
+.pvr-listcard table.calc.pvr thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.pvr-listcard table.calc.pvr th:nth-child(3),.pvr-listcard table.calc.pvr td:nth-child(3),
+.pvr-listcard table.calc.pvr th:nth-child(4),.pvr-listcard table.calc.pvr td:nth-child(4),
+.pvr-listcard table.calc.pvr th:nth-child(5),.pvr-listcard table.calc.pvr td:nth-child(5),
+.pvr-listcard table.calc.pvr th:nth-child(6),.pvr-listcard table.calc.pvr td:nth-child(6),
+.pvr-listcard table.calc.pvr th:nth-child(9),.pvr-listcard table.calc.pvr td:nth-child(9){display:none}
+.pvr-listcard table.calc.pvr td.nm{min-width:0;max-width:none}
+.pvr-sortchips{display:flex;gap:6px;flex-wrap:wrap}
+.pvr-sortchips button{font:inherit;font-size:12px;font-weight:700;padding:6px 11px;min-height:32px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2,var(--surface));color:var(--text-dim);cursor:pointer}
+.pvr-sortchips button[aria-pressed=true]{background:var(--text);border-color:var(--text);color:var(--bg-1)}
+.pvr-info summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--teal);list-style:none;padding:4px 0}
+.pvr-info summary::-webkit-details-marker{display:none}
+.pvr-info[open] summary{margin-bottom:8px}
+.pvr-info .pvr-sub,.pvr-info .pvr-note{font-size:12.5px;line-height:1.55;margin:0 0 8px}
+.pvr-scattercard .pvr-cardhead{align-items:center}
+.pvr-scattercard .pvr-info[open]{flex:1 1 100%;order:3}
+.pvr-scattercard .pvr-info .pvr-mapside{display:block;max-width:none}
+.pvr-selfacts{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--text-dim);margin-top:4px}
+.pvr-selfacts b{color:var(--text)}
+@media(max-width:1100px){.pvr-explore{grid-template-columns:1fr}.pvr-listcard{position:static}.pvr-listscroll{max-height:none}.pvr-controls{position:static}}
+table.calc.pvr tr.shade td{background:rgba(0,160,180,.06)}
+table.calc.pvr tr.shade td:first-child{box-shadow:inset 3px 0 0 rgba(0,160,180,.45)}
+table.calc.pvr tr.shade.active td{background:rgba(0,160,180,.22)}
 .pvr-shadekey{display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(0,160,180,.18);box-shadow:inset 3px 0 0 var(--teal);vertical-align:-1px;margin-right:6px}
 .pvr-idxtools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pvr-zhint{font-size:12px;font-weight:700;color:var(--text-faint)}
@@ -514,7 +556,8 @@ table.calc.pvr th.sortable{cursor:pointer;white-space:nowrap}
 table.calc.pvr th.sortable:hover,table.calc.pvr th.on{color:var(--teal)}
 table.calc.pvr tr.pvr-row{cursor:pointer}
 table.calc.pvr tr.pvr-row:hover td{background:var(--surface-2)}
-table.calc.pvr tr.pvr-row.active td{background:var(--track-active-green)}
+table.calc.pvr tr.pvr-row.active td{background:rgba(0,160,180,.22)}
+table.calc.pvr tr.pvr-row.active td:first-child{box-shadow:inset 4px 0 0 var(--teal)}
 table.calc.pvr td .sub{display:block;font-size:11.5px;font-weight:600;color:var(--text-faint)}
 table.calc.pvr td .sub.n{color:var(--orange)}
 table.calc.pvr td.gap b{font-size:14.5px;font-weight:800;color:var(--text)}
@@ -762,49 +805,42 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
   </div>
   <div class="pane" id="pane-pvr" role="tabpanel" hidden>
     <div class="pvr">
-      <div class="region-select pvr-select">
-        <label for="pvrDdInput">SELECT LGA</label>
-        <div class="dd" id="pvrDd">
+      <div class="pvr-top">
+        <div class="pvr-hero-txt"><h2 class="pvr-h1">Price vs. Rent</h2><p class="pvr-lede">Every Victorian LGA measured from its own price peak, so markets with different histories compare fairly.</p></div>
+        <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
+      </div>
+      <section class="pvr-card pvr-controls" aria-label="Controls">
+        <div class="pvr-seg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">Houses</button><button data-s="unit" aria-pressed="false">Units</button></div>
+        <div class="pvr-chips" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All Victoria</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Within 2h drive</button><button data-f="far" aria-pressed="false">Beyond 2h drive</button></div>
+        <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show" hidden><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
+        <div class="pvr-winrow"><div class="pvr-winhead"><label for="pvrWin">Window</label><b id="pvrWinLbl">Since each market&rsquo;s own price peak</b><span class="pvr-winnote">also sets the ranking</span></div><div class="pvr-winruler"><input type="range" id="pvrWin" min="0" max="8" step="1" value="0" aria-describedby="pvrWinLbl"><div class="pvr-winticks" id="pvrWinTicks"></div></div></div>
+        <div class="pvr-seg pvr-seg-sm" id="pvrScale" role="group" aria-label="Chart scale"><button type="button" data-v="year" aria-pressed="false">Per year</button><button type="button" data-v="total" aria-pressed="true">Total</button></div>
+        <div class="region-select pvr-select"><label for="pvrDdInput">Find an LGA</label><div class="dd" id="pvrDd">
           <div class="dd-trigger" id="pvrDdTrigger">
             <span class="cur"><span class="pin"></span><input type="text" id="pvrDdInput" placeholder="Search LGAs&hellip;" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pvrDdPanel"></span>
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
           </div>
           <div class="dd-panel" id="pvrDdPanel" role="listbox"></div>
+        </div></div>
+      </section>
+      <div class="pvr-explore">
+        <section class="pvr-card pvr-tablecard pvr-listcard" aria-label="Ranking">
+          <div class="pvr-cardhead"><h3>Ranking</h3><span class="pvr-hint" id="pvrShowing"></span></div>
+          <div class="pvr-sortchips" id="pvrSortChips" role="group" aria-label="Sort by"></div>
+          <details class="pvr-info"><summary>How it&rsquo;s ranked &#9432;</summary><p class="pvr-sub" id="pvrSub"></p><p class="pvr-note" id="pvrNote"></p></details>
+          <div class="scroll pvr-listscroll" id="pvrTable"></div>
+          <div class="pvr-foot"><button class="pvr-btn" id="pvrMore" type="button"></button></div>
+        </section>
+        <div class="pvr-right">
+          <section class="pvr-card pvr-scattercard" aria-label="Where every market sits">
+            <div class="pvr-cardhead"><h3>Where every market sits</h3><details class="pvr-info"><summary>How to read this &#9432;</summary><div class="pvr-mapside" id="pvrMapSide"></div></details></div>
+            <div class="pvr-legend pvr-maplegend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span></div>
+            <div id="pvrMap"></div>
+          </section>
+          <section class="pvr-card pvr-selcard" id="pvrSel" aria-label="Selected market"></section>
+          <section class="pvr-card" id="pvrIdx"></section>
         </div>
       </div>
-      <section class="pvr-hero">
-        <div class="pvr-hero-txt">
-          <h2 class="pvr-h1">Price vs. Rent</h2>
-          <p class="pvr-lede">Every Victorian LGA measured from its own price peak, so markets with different histories compare fairly. The wider the gap, the more the yield has lifted while the price has not.</p>
-        </div>
-        <div class="pvr-ctls">
-          <div class="pvr-seg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">Houses</button><button data-s="unit" aria-pressed="false">Units</button></div>
-          <div class="pvr-chips" id="pvrFilt" role="group" aria-label="Area"><button data-f="all" aria-pressed="true">All Victoria</button><button data-f="metro" aria-pressed="false">Metro</button><button data-f="near" aria-pressed="false">Within 2h drive</button><button data-f="far" aria-pressed="false">Beyond 2h drive</button></div>
-          <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show" hidden><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
-        </div>
-      </section>
-      <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
-      <section class="pvr-card pvr-scattercard" aria-label="Where every market sits">
-        <div class="pvr-cardhead"><h3>Where every market sits</h3></div>
-        <div class="pvr-winrow">
-          <div class="pvr-winhead"><label for="pvrWin">Window</label><b id="pvrWinLbl">Since each market&rsquo;s own price peak</b><span class="pvr-winnote">also sets the ranking</span></div>
-          <div class="pvr-winruler"><input type="range" id="pvrWin" min="0" max="8" step="1" value="0" aria-describedby="pvrWinLbl"><div class="pvr-winticks" id="pvrWinTicks"></div></div>
-          <div class="pvr-seg pvr-seg-sm" id="pvrScale" role="group" aria-label="Chart scale"><button type="button" data-v="year" aria-pressed="false">Per year</button><button type="button" data-v="total" aria-pressed="true">Total</button></div>
-        </div>
-        <div class="pvr-legend pvr-maplegend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span></div>
-        <div class="pvr-mapgrid">
-          <div id="pvrMap"></div>
-          <div class="pvr-mapside" id="pvrMapSide"></div>
-        </div>
-      </section>
-      <section class="pvr-card pvr-tablecard">
-        <div class="pvr-cardhead"><h3>Ranking summary</h3><span class="pvr-hint" id="pvrShowing"></span></div>
-        <p class="pvr-sub" id="pvrSub"></p>
-        <div class="scroll" id="pvrTable"></div>
-        <div class="pvr-foot"><button class="pvr-btn" id="pvrMore" type="button"></button><p class="pvr-note" id="pvrNote"></p></div>
-      </section>
-      <section class="pvr-card pvr-selcard" id="pvrSel" aria-label="Selected market"></section>
-      <section class="pvr-card" id="pvrIdx"></section>
       <section class="pvr-card" hidden aria-hidden="true"><!-- year-on-year growth chart: hidden 2026-09-28, redundant with the chart above -->
         <div class="card-title pvr-title" id="pvrTitle">&nbsp;</div>
         <div class="gwrap" id="gwInline">
@@ -1460,6 +1496,7 @@ let pvrCur=null;   // the Price v Rent selection, independent of the Dashboard's
 function pvrLGA(){ if(!pvrCur||!LGAS.includes(pvrCur)){ const o=pvrRows(GSEG).out.sort((a,b)=>b.gap-a.gap); pvrCur=o.length?o[0].l:current; } return pvrCur; }
 // pick from the scatter or the ranking, then bring the selected market's cards and chart into view
 function pvrGo(l){ pvrPick(l); const el=document.getElementById('pvrSel'); if(!el) return;
+  const r=el.getBoundingClientRect(); if(r.top>=150&&r.top<window.innerHeight*0.7) return;   // already in view
   const still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(()=>el.scrollIntoView({behavior:still?'auto':'smooth',block:'start'}),30); }
 function pvrPick(l){ pvrCur=l; pvrDdInput.placeholder=pvrNm(l); renderGrowthAll(); }
@@ -1590,7 +1627,7 @@ function renderPVR(){
     const ttY=yrs, ttP=P, ttR=R;   // the tooltip reads the exact series drawn
     const span=Math.max(...vals)-Math.min(...vals), step=span>400?100:span>160?50:span>60?20:10;
     const lo=Math.floor(Math.min(...vals,100)/step)*step, hi=Math.ceil(Math.max(...vals,100)/step)*step;
-    const W=1180,H=420,X0=64,X1=1124,YT=24,YB=356;   // full-width card; room under the plot for the rotated year labels
+    const W=Math.max(520,Math.round((idx.clientWidth||900)-52)),H=Math.round(W*0.38)+90,X0=52,X1=W-52,YT=24,YB=H-64;   // fits its panel; room under the plot for the rotated year labels
     const X=j=>n>1?X0+(X1-X0)*j/(n-1):(X0+X1)/2, Y=v=>YB-(YB-YT)*(v-lo)/(hi-lo);
     let grid='', ticks='';
     for(let v=lo; v<=hi+1e-9; v+=step){ grid+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)'+(v===100?';stroke:var(--text-faint);stroke-dasharray:4 4':'')+'"></line>'; ticks+='<text x="'+(X0-10)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'; }
@@ -1659,7 +1696,7 @@ function renderPVR(){
     //  Total: total change over the window, on one frame fitted once per segment to every window (pvrTotDom).
     // The diagonal is equal growth/change; readings beyond the frame sit on its edge, dashed.
     const TOT=PVRSCALE==='total', dom=TOT?(PVRWIN?pvrTotDom(seg):pvrPeakDom(pts)):{x0:-10,x1:15,y0:-5,y1:15,xs:5,ys:5};
-    const W=1180,H=580,X0=80,X1=1118,YT=40,YB=520, XMIN=dom.x0,XMAX=dom.x1,YMIN=dom.y0,YMAX=dom.y1;
+    const W=Math.max(640,Math.round(mapEl.clientWidth||1180)),H=Math.round(W*0.52),X0=80,X1=W-62,YT=40,YB=H-60, XMIN=dom.x0,XMAX=dom.x1,YMIN=dom.y0,YMAX=dom.y1;
     const ann=(v,n)=>(Math.pow(1+v/100,1/n)-1)*100, clampX=v=>Math.max(XMIN,Math.min(XMAX,v)), clampY=v=>Math.max(YMIN,Math.min(YMAX,v));
     const X=v=>X0+(X1-X0)*(clampX(v)-XMIN)/(XMAX-XMIN), Y=v=>YB-(YB-YT)*(clampY(v)-YMIN)/(YMAX-YMIN);
     const WL=TOT?(PVRWIN?('over the last '+PVRWIN+' years'):'since the peak'):(PVRWIN?('a year, last '+PVRWIN+' years'):'a year since the peak');
@@ -1748,7 +1785,8 @@ function renderPVR(){
        '<div class="pvr-div"><span class="l"><i style="width:'+(Math.max(0,-r.dp)*scale).toFixed(1)+'px"></i></span><span class="z"></span><span class="r">'+
        (r.dr!=null&&r.dr>0?'<i style="width:'+(r.dr*scale).toFixed(1)+'px">'+(r.dp>0?'<b style="width:'+(Math.min(r.dp,r.dr)*scale).toFixed(1)+'px"></b>':'')+'</i>':'')+'</span></div></div>');
     // under the name: Metro, or Regional with the road time to its main town (the drive-time filter's measure)
-    const where=r.area==='metro'?'Metro':('Regional'+(r.dm!=null?' &middot; '+pvrHM(r.dm)+' drive'+(r.town?' to '+r.town:''):''));
+    const where=(r.area==='metro'?'Metro':('Regional'+(r.dm!=null?' &middot; '+pvrHM(r.dm)+' drive'+(r.town?' to '+r.town:''):'')))+
+      (PVRWIN?(r.fell?' &middot; price fell':''):(r.stag?' &middot; '+r.stag+'y stalled':''))+(r.yNow!=null?' &middot; yield '+r.yNow.toFixed(1)+'%':'');
     return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+(r.shade?' shade':'')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
       '<span class="sub'+(r.area==='near'?' n':'')+'"'+(r.town?(' title="Road time from the Melbourne GPO to '+r.town+'"'):'')+'>'+where+'</span>'+(r.q?'':'<span class="sub">'+r.why+'</span>')+'</td>'+
       '<td class="pvr-now">'+(r.stag?'<b>'+r.pk+'</b><span class="sub">'+(r.pPk!=null?pvrMoney(r.pPk):'&ndash;')+' &middot; '+(r.rPk!=null?'$'+r.rPk.toLocaleString('en-AU')+'/wk':'&ndash;')+'</span>':na)+'</td>'+
@@ -1773,6 +1811,16 @@ function renderPVR(){
     ?('Over a fixed window a market qualifies when its rent grew faster than its price. On '+segW+'s, last '+PVRWIN+' years: '+out.length+' qualify ('+out.filter(r=>r.fell).length+' with price down) &middot; '+skip.rentdown+' with rent behind price &middot; '+skip.norent+' without a full rent record for the window &middot; '+skip.thin+' too thin to rank. ')
     :('A market qualifies when its price peaked 3+ years ago, has not been passed since, and rent is higher than at that peak. On '+segW+'s: '+out.length+' qualify &middot; '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '))+
     'Nominal medians; rent to the 12 months to Jun 2026. Drive (under regional names): road time from the Melbourne GPO to the LGA&rsquo;s main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
+  { const SC=[['gap','Gap'],['gpy','Gap / yr'],['yNow','Gross yield'],[PVRWIN?'fell':'stag',PVRWIN?'Price fell':'Stalled'],['pNow','Median now'],['l','Name']];
+    const sc=document.getElementById('pvrSortChips');
+    if(sc){ sc.innerHTML=SC.map(([k,t])=>'<button type="button" data-k="'+k+'" aria-pressed="'+(PVRSORT===k)+'">'+t+(PVRSORT===k?(PVRDIR===-1?' ↓':' ↑'):'')+'</button>').join('');
+      sc.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const kk=b.dataset.k; if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='pNow')?1:-1; } renderPVR(); }); } }
+  // the selected market's own figures (the list hides these columns): median now, gross yield, last peak
+  { const R=list.find(r=>r.l===cur), box=document.querySelector('#pvrSel .pvr-selid');
+    if(box&&R){ const facts=[]; if(R.pNow!=null) facts.push('<span><b>'+pvrMoney(R.pNow)+'</b> median now'+(R.rNow!=null?' &middot; $'+R.rNow.toLocaleString('en-AU')+'/wk':'')+'</span>');
+      if(R.yNow!=null) facts.push('<span>Gross yield <b>'+R.yNow.toFixed(1)+'%</b>'+(R.yPk!=null&&R.stag?' (was '+R.yPk.toFixed(1)+'% '+(PVRWIN?'in '+R.pk:'at the '+R.pk+' peak')+')':'')+'</span>');
+      if(R.pPk!=null&&R.stag) facts.push('<span>'+(PVRWIN?'Window start ':'Peak ')+R.pk+': '+pvrMoney(R.pPk)+(R.rPk!=null?' &middot; $'+R.rPk.toLocaleString('en-AU')+'/wk':'')+'</span>');
+      if(facts.length) box.insertAdjacentHTML('beforeend','<div class="pvr-selfacts">'+facts.join('')+'</div>'); } }
   document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const kk=h.dataset.k;
     if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='pk'||kk==='pNow')?1:-1; if(kk==='fell') PVRDIR=-1; } renderPVR(); });
   document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrGo(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrGo(tr.dataset.l); } }; });
