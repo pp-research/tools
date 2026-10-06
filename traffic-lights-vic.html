@@ -480,16 +480,19 @@ table.calc.pvr td.pvr-now .sub{display:block}
 #pane-pvr .pvr-kpi{padding:10px 16px;border-radius:12px;gap:2px;min-width:150px}
 #pane-pvr .pvr-kpi .v{font-size:20px}
 #pane-pvr .pvr-kpi .s{font-size:12px}
-.pvr-controls{flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px 18px;padding:12px 18px;position:sticky;top:81px;z-index:15}
+.pvr-controls{flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:10px 16px;position:sticky;top:81px;z-index:15}
 .pvr-controls .pvr-chips{justify-content:flex-start}
 .pvr-controls .pvr-chips button{min-height:38px;padding:7px 11px;font-size:12.5px}
 .pvr-controls .pvr-seg button{min-height:38px}
-.pvr-controls .pvr-winrow{flex:1 1 420px;margin:0;padding:0;border:0;gap:10px 16px}
+.pvr-controls .pvr-winrow{flex:1 1 360px;margin:0;padding:0;border:0;gap:10px 16px}
 .pvr-controls .pvr-winrow .pvr-winhead{flex:0 0 130px}
-.pvr-controls .pvr-select{margin:0;flex:0 1 230px;min-width:190px}
+.pvr-controls .pvr-select{margin:0;flex:0 1 210px;min-width:180px}
 .pvr-controls .pvr-select label{margin-bottom:4px;letter-spacing:.12em}
 .pvr-controls .dd-trigger{padding:8px 12px;font-size:13.5px}
-.pvr-explore{display:grid;grid-template-columns:minmax(380px,440px) minmax(0,1fr);gap:18px;align-items:start}
+#pane-pvr > .pvr{width:min(1400px,calc(100vw - 64px));margin-left:calc(50% - min(700px,calc(50vw - 32px)))}
+.pvr-controls .pvr-winrow .pvr-winhead{flex:0 0 auto;min-width:110px}
+.pvr-controls .pvr-winnote{display:none}
+.pvr-explore{display:grid;grid-template-columns:minmax(400px,480px) minmax(0,1fr);gap:18px;align-items:start}
 .pvr-right{display:flex;flex-direction:column;gap:18px;min-width:0}
 .pvr-listcard{position:sticky;top:180px;padding:18px 0 12px;gap:10px}
 .pvr-listcard > .pvr-cardhead,.pvr-listcard > .pvr-sortchips,.pvr-listcard > details,.pvr-listcard > .pvr-foot{padding:0 18px}
