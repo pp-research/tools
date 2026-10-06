@@ -437,6 +437,9 @@ table.calc.pvr td.pvr-now .sub{display:block}
 :root[data-theme="dark"] .irule .bnd.o{color:#FFB547}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .irule .bnd.g{color:#8FD17A}:root:not([data-theme="light"]) .irule .bnd.o{color:#FFB547}}
 .pvr-wincard{display:flex;flex-direction:column;gap:10px}
+.pvr-scattercard .pvr-wincard{margin:14px 0 6px;padding:14px 0 6px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.pvr-winnote{margin:0;font-size:12px;font-weight:600;color:var(--text-faint)}
+.pvr-maplegend{margin:12px 0 4px}
 .pvr-winhead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
 .pvr-winhead label{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
 .pvr-winhead b{font-size:19px;font-weight:800;color:var(--text)}
@@ -766,15 +769,17 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
           <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show" hidden><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
         </div>
       </section>
-      <section class="pvr-card pvr-wincard" aria-label="Time window">
-        <div class="pvr-winhead"><label for="pvrWin">Measure change over</label><b id="pvrWinLbl">Since each market&rsquo;s own price peak</b></div>
-        <input type="range" id="pvrWin" min="0" max="11" step="1" value="0" aria-describedby="pvrWinLbl">
-        <div class="pvr-winticks" id="pvrWinTicks"></div>
-      </section>
-      <section class="pvr-card" aria-label="Where every market sits">
+      <section class="pvr-card pvr-scattercard" aria-label="Where every market sits">
         <div class="pvr-cardhead"><h3>Where every market sits</h3>
-          <div class="pvr-legend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span><span id="pvrDotLeg">Dot size = years stalled</span></div>
+          <div class="pvr-seg pvr-seg-sm" id="pvrScale" role="group" aria-label="Chart scale"><button type="button" data-v="year" aria-pressed="true">Per year</button><button type="button" data-v="total" aria-pressed="false">Total</button></div>
         </div>
+        <div class="pvr-wincard">
+          <div class="pvr-winhead"><label for="pvrWin">Measure change over</label><b id="pvrWinLbl">Since each market&rsquo;s own price peak</b></div>
+          <input type="range" id="pvrWin" min="0" max="11" step="1" value="0" aria-describedby="pvrWinLbl">
+          <div class="pvr-winticks" id="pvrWinTicks"></div>
+          <p class="pvr-winnote">The window also sets the ranking below.</p>
+        </div>
+        <div class="pvr-legend pvr-maplegend"><span><i class="dot m"></i>Metro</span><span><i class="dot n"></i>Regional, within 2h drive</span><span><i class="dot f"></i>Regional, beyond 2h drive</span><span><i class="dot h"></i>Hollow = does not qualify</span><span id="pvrDotLeg">Dot size = years stalled</span></div>
         <div class="pvr-mapgrid">
           <div id="pvrMap"></div>
           <div class="pvr-mapside" id="pvrMapSide"></div>
@@ -1404,7 +1409,7 @@ const PVRDRIVE=120;   // minutes
 const PVRCAP=8;       // rows shown before "Show all"
 function pvrArea(l){ const dv=DRIVE[l]; return METRO.has(l)?'metro':(dv&&dv.m<=PVRDRIVE?'near':'far'); }
 // the window the scatter and ranking measure: 0 = since each market's own price peak, else the last N years
-const PVRWINS=[0,3,4,5,6,7,8,9,10,12,15,20]; let PVRWIN=0;
+const PVRWINS=[0,3,4,5,6,7,8,9,10,12,15,20]; let PVRWIN=0, PVRSCALE='year';   // scatter scale: 'year' (fixed axes, growth a year) or 'total'
 const GROWTH_CY=(()=>{ for(const l in GROWTH){ for(const s in GROWTH[l]){ const g=GROWTH[l][s]; if(g&&g.p) return g.y0+g.p.length-1; } } return 2026; })();
 // price and rent change over the last N annual readings (to the current year); null when either series has a gap
 function pvrWin(g,N){ const n=g.p.length; if(n-N<1) return null; let p=1,r=1;
@@ -1501,6 +1506,8 @@ function pvrWinWire(){
     return '<button type="button" data-j="'+j+'" style="'+pos+'">'+(w?w+'y':'Since peak')+'</button>'; }).join('');
   tk.querySelectorAll('button').forEach(b=>{ b.classList.toggle('on',+b.dataset.j===i); b.onclick=()=>{ PVRWIN=PVRWINS[+b.dataset.j]; PVRALL=false; renderPVR(); }; });
   inp.oninput=()=>{ PVRWIN=PVRWINS[+inp.value]; PVRALL=false; renderPVR(); };
+  document.querySelectorAll('#pvrScale button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.v===PVRSCALE));
+    b.onclick=()=>{ if(PVRSCALE!==b.dataset.v){ PVRSCALE=b.dataset.v; renderPVR(); } }; });
 }
 function renderPVR(){
   pvrWinWire();
@@ -1618,6 +1625,53 @@ function renderPVR(){
   const mapEl=document.getElementById('pvrMap'), pts=list.filter(r=>r.price!=null&&r.rent!=null);
   if(!pts.length){ mapEl.innerHTML='<div class="pvr-empty">No '+segW+' market '+FILT+' has a stall to plot.</div>'; }
   else {
+    if(PVRSCALE==='total'){   // TOTAL change, axes fitted to the data (the earlier view)
+    mapEl.classList.remove('pvr-moving');
+    const W=1180,H=580,X0=80,X1=1118,YT=40,YB=520;   // full width; X1 leaves room for the right-hand % labels
+    const xmin=Math.min(-5,Math.floor(Math.min(...pts.map(r=>r.price))/5)*5), xmax=Math.max(0,Math.ceil(Math.max(...pts.map(r=>r.price))/5)*5);
+    const xstep=(xmax-xmin)>60?10:5, WL=PVRWIN?('over the last '+PVRWIN+' years'):'since the peak';
+    const ymax=Math.max(10,Math.ceil(Math.max(...pts.map(r=>r.rent))/10)*10), ymin=Math.min(0,Math.floor(Math.min(...pts.map(r=>r.rent))/5)*5);
+    const X=v=>X0+(X1-X0)*(v-xmin)/(xmax-xmin), Y=v=>YB-(YB-YT)*(v-ymin)/(ymax-ymin);
+    let s='<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+pts.length+' '+segW+' markets plotted by price change against rent change since each one\'s price peak">';
+    s+='<rect x="'+X0+'" y="'+YT+'" width="'+(X(Math.min(0,xmin/2))-X0)+'" height="'+((Y(ymax/2)-YT))+'" style="fill:var(--teal);opacity:.07"></rect>';
+    if(xmax>0) s+='<line x1="'+X(0)+'" y1="'+YT+'" x2="'+X(0)+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1.2"></line>';
+    s+='<text x="'+(X0+12)+'" y="'+(YT+22)+'" style="fill:var(--teal);font-size:12px;font-weight:800">Price down most, rent up most</text>';
+    for(let v=xmin; v<=xmax; v+=xstep) s+='<line x1="'+X(v)+'" y1="'+YT+'" x2="'+X(v)+'" y2="'+YB+'" style="stroke:var(--border)"></line><text x="'+X(v)+'" y="'+(YB+22)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:12px">'+(v<0?'−'+(-v):v)+'%</text>';
+    const ystep=(ymax-ymin)>40?10:5;
+    for(let v=ymin; v<=ymax; v+=ystep) s+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:'+(v===0?'var(--text-faint)':'var(--border)')+'"></line><text x="'+(X1+10)+'" y="'+(Y(v)+4)+'" style="fill:var(--text-faint);font-size:12px">'+(v>0?'+':'')+(v<0?'−'+(-v):v)+'%</text>';
+    s+='<text x="'+((X0+X1)/2)+'" y="'+(H-10)+'" text-anchor="middle" style="fill:var(--text);font-size:12.5px;font-weight:800">Price change '+WL+'</text>';
+    s+='<text x="40" y="'+((YT+YB)/2)+'" text-anchor="middle" transform="rotate(-90 40 '+((YT+YB)/2)+')" style="fill:var(--text);font-size:12.5px;font-weight:800">Rent change '+WL+'</text>';
+    [20,40,60].forEach(gp=>{ const ln=[]; for(let px=xmin; px<=xmax+1e-9; px+=0.25){ const ry=gp+px; if(ry>=ymin&&ry<=ymax) ln.push([px,ry]); }
+      if(ln.length<2) return; const p0=ln[0], p1=ln[ln.length-1];
+      s+='<line x1="'+X(p0[0])+'" y1="'+Y(p0[1])+'" x2="'+X(p1[0])+'" y2="'+Y(p1[1])+'" style="stroke:var(--text-dim);stroke-width:1.2;stroke-dasharray:6 5;opacity:.6"></line>';
+      const ang=Math.atan2(Y(p1[1])-Y(p0[1]),X(p1[0])-X(p0[0]))*180/Math.PI, tx=X(p0[0])+22, ty=Y(p0[1]+(p1[1]-p0[1])*22/(X(p1[0])-X(p0[0])))-6;
+      s+='<text x="'+tx+'" y="'+ty+'" transform="rotate('+ang.toFixed(1)+' '+tx+' '+ty+')" style="fill:var(--text-dim);font-size:11px;font-weight:800">Gap '+gp+' pts</text>'; });
+    const col={metro:'var(--teal)',near:'var(--orange)',far:'var(--text-faint)'};
+    const rad=st=>st>=5?11:st===4?9:st===3?7:st===2?5.5:4.5;
+    pts.slice().sort((a,b)=>(a.q-b.q)||(rad(b.stag)-rad(a.stag))).forEach(r=>{
+      const sty=r.q?('fill:'+col[r.area]+';stroke:var(--bg-1);stroke-width:1.5'):('fill:var(--bg-1);stroke:'+col[r.area]+';stroke-width:2');
+      s+='<circle class="pvr-map-dot" data-l="'+r.l+'" tabindex="0" cx="'+X(r.price).toFixed(1)+'" cy="'+Y(r.rent).toFixed(1)+'" r="'+rad(r.stag)+'" style="'+sty+'"><title>'+pvrNm(r.l)+': price '+pvrPC(r.price)+', rent '+pvrPC(r.rent)+' since '+r.pk+' ('+r.stag+'y) · gap '+r.gap.toFixed(1)+' pts'+(r.dm!=null?' · '+pvrHM(r.dm)+' drive':'')+(r.q?'':' · '+r.why)+'</title></circle>'; });
+    const mp=pts.find(r=>r.l===cur);
+    if(mp) s+='<circle cx="'+X(mp.price).toFixed(1)+'" cy="'+Y(mp.rent).toFixed(1)+'" r="'+(rad(mp.stag)+6)+'" style="fill:none;stroke:var(--text);stroke-width:2"></circle>';
+    const inPts=r=>pts.includes(r);
+    // every qualifying dot is labelled (Shaene, 2026-09-28); no "selected" tag, the ring marks it.
+    // Each label tries right, left, above, below, then further out, and takes the first spot clear of other labels
+    // and dots; a label pushed away from its dot gets a thin leader line.
+    const want=[...new Set([...(mp&&mp.q?[mp]:[]), ...pts.filter(r=>r.q).sort((a,b)=>b.gap-a.gap)])];
+    const dots=pts.map(r=>({x:X(r.price),y:Y(r.rent),r:rad(r.stag)})), placed=[];
+    const hit=(b)=>b.x0<X0-2||b.x1>X1-2||b.y0<YT-4||b.y1>YB+2||placed.some(p=>b.x0<p.x1&&p.x0<b.x1&&b.y0<p.y1&&p.y0<b.y1)||
+      dots.some(d=>d.x+d.r>b.x0&&d.x-d.r<b.x1&&d.y+d.r>b.y0&&d.y-d.r<b.y1);
+    want.forEach(r=>{ const cx=X(r.price), cy=Y(r.rent), rr=rad(r.stag);
+      const txt=pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):''), w=txt.length*6.9, h=14;
+      const spots=[[cx+rr+5,cy+4,0],[cx-rr-5-w,cy+4,0],[cx-w/2,cy-rr-5,0],[cx-w/2,cy+rr+14,0]];
+      [18,32,48].forEach(dd=>spots.push([cx+rr+5,cy-dd+4,1],[cx+rr+5,cy+dd+4,1],[cx-rr-5-w,cy-dd+4,1],[cx-rr-5-w,cy+dd+4,1]));
+      let sp=spots.find(([x,y])=>!hit({x0:x,x1:x+w,y0:y-11,y1:y+3})); if(!sp){ if(r!==mp) return; sp=spots[0]; }
+      const [x,y,lead]=sp; placed.push({x0:x,x1:x+w,y0:y-11,y1:y+3});
+      if(lead) s+='<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(x<cx?x+w:x).toFixed(1)+'" y2="'+(y-4).toFixed(1)+'" style="stroke:var(--text-faint);stroke-width:1;pointer-events:none"></line>';
+      s+='<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'"'+' style="fill:'+(r.area==='near'?'var(--orange)':'var(--text)')+';font-size:11.5px;font-weight:800;pointer-events:none">'+txt+'</text>'; });
+    mapEl.innerHTML=s+'</svg>';
+    mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrPick(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrPick(c.dataset.l); } }; });
+    } else {
     // FIXED AXES, CHANGE A YEAR (Shaene 2026-10-06): price and rent growth per year over the chosen window (since the peak:
     // over the years stalled), so every window shares one frame and the dots glide between windows instead of rescaling.
     // The diagonal is equal growth; height above it is the gap a year. Readings beyond the frame sit on its edge, dashed.
@@ -1671,10 +1725,13 @@ function renderPVR(){
       mapEl.getBoundingClientRect();
       cs.forEach(c=>{ c.style.transition='transform .6s cubic-bezier(.25,.8,.3,1)'; c.style.transform='translate(0px,0px)'; }); }
     mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrPick(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrPick(c.dataset.l); } }; });
+    }
   }
   const notPlot=list.length-pts.length;
   document.getElementById('pvrMapSide').innerHTML=
-    '<div style="display:flex;flex-direction:column;gap:8px"><div class="eb">How to read it</div><p>Each dot is one market, placed by how fast price and rent have grown each year '+(PVRWIN?('over the last '+PVRWIN+' years'):'since its own last price peak')+'. The axes stay fixed for every window, so moving the slider shows each market travel. Above the solid diagonal, rent grew faster than price; the higher, the faster yields rose. Up and to the left is the most extreme case.</p>'+
+    '<div style="display:flex;flex-direction:column;gap:8px"><div class="eb">How to read it</div><p>Each dot is one market, '+(PVRSCALE==='total'
+      ?('placed by how far price and rent have moved '+(PVRWIN?('over the last '+PVRWIN+' years'):'since its own last price peak')+'. The axes fit the window, so they change as the slider moves. Markets on the same dashed line share a gap. Up and to the left is the most extreme case.')
+      :('placed by how fast price and rent have grown each year '+(PVRWIN?('over the last '+PVRWIN+' years'):'since its own last price peak')+'. The axes stay fixed for every window, so moving the slider shows each market travel. Above the solid diagonal, rent grew faster than price; the higher, the faster yields rose. Up and to the left is the most extreme case.'))+'</p>'+
     '<p class="dim">Filled dots qualify ('+(PVRWIN?'rent grew faster than price':'stalled 3+ years, rent up')+'); hollow ones do not. Markets on the same dashed line share a gap. Hover a dot for its figures; click to select it.'+(notPlot?(' '+notPlot+' market'+(notPlot===1?' is':'s are')+' at a price peak or lack rent history, so '+(notPlot===1?'it has':'they have')+' no dot.'):'')+'</p></div>';
 
   // ---- ranking: every LGA (or qualifying only); blanks sort last whichever way
