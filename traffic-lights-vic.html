@@ -473,6 +473,10 @@ table.calc.pvr td.pvr-now .sub{display:block}
 @keyframes pvrLblIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){#pvrMap.pvr-moving .pvr-lbl{animation:none}}
 #pvrSel{scroll-margin-top:96px}
+table.calc.pvr tr.shade td{background:rgba(0,160,180,.09)}
+table.calc.pvr tr.shade td:first-child{box-shadow:inset 3px 0 0 var(--teal)}
+table.calc.pvr tr.shade.active td{background:rgba(0,160,180,.18)}
+.pvr-shadekey{display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(0,160,180,.18);box-shadow:inset 3px 0 0 var(--teal);vertical-align:-1px;margin-right:6px}
 .pvr-idxtools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pvr-zhint{font-size:12px;font-weight:700;color:var(--text-faint)}
 .pvr-zreset{font:inherit;font-size:12px;font-weight:800;padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer}
@@ -1664,6 +1668,7 @@ function renderPVR(){
     let s='<svg class="pvr-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+pts.length+' '+segW+' markets plotted by price growth against rent growth per year, '+(PVRWIN?('over the last '+PVRWIN+' years'):'since each one\'s price peak')+'">';
     // shading: where every price fell (the peak frame), the original top-left corner; otherwise the whole price-down, rent-up quadrant
     const allDown=XMAX<=0, shW=allDown?(X((XMIN+XMAX)/2)-X0):(X(0)-X0), shY=allDown?YT:Y(YMAX), shH=allDown?(Y((YMIN+YMAX)/2)-YT):(Y(0)-Y(YMAX));
+    pts.forEach(r=>{ r.shade=allDown?(r.ap<(XMIN+XMAX)/2&&r.ar>(YMIN+YMAX)/2):(r.ap<0&&r.ar>0); });   // the ranking highlights the same markets
     s+='<rect x="'+X0+'" y="'+shY+'" width="'+shW+'" height="'+shH+'" style="fill:var(--teal);opacity:.07"></rect>';
     s+='<text x="'+(X0+12)+'" y="'+(YT+22)+'" style="fill:var(--teal);font-size:12px;font-weight:800">'+(allDown?'Price down most, rent up most':'Price down, rent up')+'</text>';
     for(let v=Math.ceil(XMIN/dom.xs)*dom.xs; v<=XMAX; v+=dom.xs) s+='<line x1="'+X(v)+'" y1="'+YT+'" x2="'+X(v)+'" y2="'+YB+'" style="stroke:'+(v===0?'var(--text-faint)':'var(--border)')+'"></line><text x="'+X(v)+'" y="'+(YB+22)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:12px">'+(v>0?'+':'')+(v<0?'−'+(-v):v)+'%</text>';
@@ -1744,7 +1749,7 @@ function renderPVR(){
        (r.dr!=null&&r.dr>0?'<i style="width:'+(r.dr*scale).toFixed(1)+'px">'+(r.dp>0?'<b style="width:'+(Math.min(r.dp,r.dr)*scale).toFixed(1)+'px"></b>':'')+'</i>':'')+'</span></div></div>');
     // under the name: Metro, or Regional with the road time to its main town (the drive-time filter's measure)
     const where=r.area==='metro'?'Metro':('Regional'+(r.dm!=null?' &middot; '+pvrHM(r.dm)+' drive'+(r.town?' to '+r.town:''):''));
-    return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
+    return '<tr class="pvr-row'+(r.l===cur?' active':'')+(r.q?'':' nq')+(r.shade?' shade':'')+'" data-l="'+r.l+'" tabindex="0"><td>'+i+'</td><td class="nm">'+pvrNm(r.l)+
       '<span class="sub'+(r.area==='near'?' n':'')+'"'+(r.town?(' title="Road time from the Melbourne GPO to '+r.town+'"'):'')+'>'+where+'</span>'+(r.q?'':'<span class="sub">'+r.why+'</span>')+'</td>'+
       '<td class="pvr-now">'+(r.stag?'<b>'+r.pk+'</b><span class="sub">'+(r.pPk!=null?pvrMoney(r.pPk):'&ndash;')+' &middot; '+(r.rPk!=null?'$'+r.rPk.toLocaleString('en-AU')+'/wk':'&ndash;')+'</span>':na)+'</td>'+
       '<td class="pvr-now">'+(r.pNow!=null?'<b>'+pvrMoney(r.pNow)+'</b>':na)+'<span class="sub">'+(r.rNow!=null?'$'+r.rNow.toLocaleString('en-AU')+'/wk':'&nbsp;')+'</span></td>'+
@@ -1758,6 +1763,7 @@ function renderPVR(){
   document.getElementById('pvrShowing').innerHTML=list.length?('<b class="pvr-qcount">'+rows.length+' of '+tot+' '+segW+' markets '+(PVRWIN?('had rent outgrow price over '+PVRWIN+' years'):'qualify')+(PVRF==='all'?'':' '+FILT)+'</b> &middot; showing '+Math.min(shown.length,list.length)+' of '+list.length+(PVRSET==='all'?' LGAs':' qualifying')+' &middot; sort by any column'):'';
   document.getElementById('pvrSub').innerHTML='Ranked by the <b>gap</b>: rent growth minus price change '+(PVRWIN?('over the last '+PVRWIN+' years ('+(GROWTH_CY-PVRWIN)+' to '+GROWTH_CY+')'):'since each market&rsquo;s last price peak')+', in percentage points. '+
     (PVRWIN?'<b>Price fell</b> marks markets whose price is lower now than at the start of the window. ':'')+
+    (list.some(r=>r.shade)?'<span class="pvr-shadekey"></span><b>Shaded rows</b> sit in the chart&rsquo;s highlighted corner ('+(PVRSCALE==='total'&&!PVRWIN?'price down most, rent up most':'price down, rent up')+'). ':'')+
     'The price and rent figures follow the chart&rsquo;s <b>'+(PY?'Per year':'Total')+'</b> switch: '+(PY?'average growth a year over the span, the dots&rsquo; position':'total change over the span')+'. '+
     '<b>Gap / yr</b> puts stalls of different lengths on one footing: the compound rate a year at which rent has outrun price (the rise in gross yield each year). '+
     '<b>Median now</b> is the latest 3-month median price (Jun 2026) and weekly asking rent; <b>gross yield</b> = weekly rent &times; 52 &divide; price, now and in the peak year. <b>Last peak</b> is the year price last peaked, with the median price and weekly rent that year. '+
