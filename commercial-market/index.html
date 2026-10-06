@@ -7067,12 +7067,22 @@ function xpMount(el){
    charts instead of 48. Charts sit at a fixed pixel size inside a CSS-scaled
    slide, so a window resize never changes their own box and they need no
    re-init; only the slide transform is refitted. */
+/* Observe the SLIDE BOX, not the chart inside it. .xp-box carries
+   content-visibility:auto, which skips rendering of its subtree while
+   off-screen — and an IntersectionObserver watching an element inside a
+   skipped subtree never reports, so nothing ever mounted. The box itself is
+   always laid out, so it always reports. */
 var xpIO = ('IntersectionObserver' in window) ? new IntersectionObserver(function(es){
-  es.forEach(function(e){ if(e.isIntersecting){ xpMount(e.target); xpIO.unobserve(e.target); } });
+  es.forEach(function(e){
+    if(!e.isIntersecting) return;
+    e.target.querySelectorAll('[data-xp-chart]').forEach(xpMount);
+    xpIO.unobserve(e.target);
+  });
 }, { rootMargin: '600px 0px' }) : null;
-function xpCharts(){ document.querySelectorAll('[data-xp-chart]').forEach(function(el){
-  if(xpIO) xpIO.observe(el); else xpMount(el);
-}); }
+function xpCharts(){
+  if(!xpIO){ document.querySelectorAll('[data-xp-chart]').forEach(xpMount); return; }
+  document.querySelectorAll('.xp-box').forEach(function(b){ xpIO.observe(b); });
+}
 function xpGo(){ xpFit(); xpCharts(); }
 if(document.readyState!=='loading') xpGo(); else document.addEventListener('DOMContentLoaded', xpGo);
 var xpT; window.addEventListener('resize', function(){ clearTimeout(xpT); xpT=setTimeout(xpFit,120); });
