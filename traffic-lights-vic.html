@@ -472,6 +472,7 @@ table.calc.pvr td.pvr-now .sub{display:block}
 #pvrMap.pvr-moving .pvr-lbl{animation:pvrLblIn .3s ease .5s both}
 @keyframes pvrLblIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){#pvrMap.pvr-moving .pvr-lbl{animation:none}}
+#pvrSel{scroll-margin-top:96px}
 .pvr-idxtools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pvr-zhint{font-size:12px;font-weight:700;color:var(--text-faint)}
 .pvr-zreset{font:inherit;font-size:12px;font-weight:800;padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer}
@@ -778,6 +779,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
           <div class="pvr-seg" id="pvrSet" role="group" aria-label="Show" hidden><button data-v="all" aria-pressed="true">All LGAs</button><button data-v="q" aria-pressed="false">Qualifying only</button></div>
         </div>
       </section>
+      <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
       <section class="pvr-card pvr-scattercard" aria-label="Where every market sits">
         <div class="pvr-cardhead"><h3>Where every market sits</h3></div>
         <div class="pvr-winrow">
@@ -791,15 +793,14 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
           <div class="pvr-mapside" id="pvrMapSide"></div>
         </div>
       </section>
-      <section class="pvr-card pvr-selcard" id="pvrSel" aria-label="Selected market"></section>
-      <section class="pvr-card" id="pvrIdx"></section>
-      <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
       <section class="pvr-card pvr-tablecard">
         <div class="pvr-cardhead"><h3>Ranking summary</h3><span class="pvr-hint" id="pvrShowing"></span></div>
         <p class="pvr-sub" id="pvrSub"></p>
         <div class="scroll" id="pvrTable"></div>
         <div class="pvr-foot"><button class="pvr-btn" id="pvrMore" type="button"></button><p class="pvr-note" id="pvrNote"></p></div>
       </section>
+      <section class="pvr-card pvr-selcard" id="pvrSel" aria-label="Selected market"></section>
+      <section class="pvr-card" id="pvrIdx"></section>
       <section class="pvr-card" hidden aria-hidden="true"><!-- year-on-year growth chart: hidden 2026-09-28, redundant with the chart above -->
         <div class="card-title pvr-title" id="pvrTitle">&nbsp;</div>
         <div class="gwrap" id="gwInline">
@@ -1453,6 +1454,10 @@ const pvrPC=x=>(x>0?'+':'')+x.toFixed(1)+'%';
 const pvrNm=l=>l==='Melbourne'?'City of Melbourne':l;
 let pvrCur=null;   // the Price v Rent selection, independent of the Dashboard's; null = start on the widest gap
 function pvrLGA(){ if(!pvrCur||!LGAS.includes(pvrCur)){ const o=pvrRows(GSEG).out.sort((a,b)=>b.gap-a.gap); pvrCur=o.length?o[0].l:current; } return pvrCur; }
+// pick from the scatter or the ranking, then bring the selected market's cards and chart into view
+function pvrGo(l){ pvrPick(l); const el=document.getElementById('pvrSel'); if(!el) return;
+  const still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(()=>el.scrollIntoView({behavior:still?'auto':'smooth',block:'start'})); }
 function pvrPick(l){ pvrCur=l; pvrDdInput.placeholder=pvrNm(l); renderGrowthAll(); }
 // Every LGA, qualifying or not: the qualifying ones as pvrRows gives them, the rest with the reason they miss.
 let PVRZOOM=null, PVRTT=null;   // PVRTT: the series the top chart last drew, for its tooltip   // drag-zoom on the top chart: {k: market|segment|mode it belongs to, a: first year, b: last year}
@@ -1701,7 +1706,7 @@ function renderPVR(){
         c.style.transform=p?('translate('+(p[0]-c.getAttribute('cx'))+'px,'+(p[1]-c.getAttribute('cy'))+'px)'):'scale(0)'; if(!p) c.style.transformOrigin=c.getAttribute('cx')+'px '+c.getAttribute('cy')+'px'; });
       mapEl.getBoundingClientRect();
       cs.forEach(c=>{ c.style.transition='transform .6s cubic-bezier(.25,.8,.3,1)'; c.style.transform='translate(0px,0px)'; }); }
-    mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrPick(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrPick(c.dataset.l); } }; });
+    mapEl.querySelectorAll('.pvr-map-dot').forEach(c=>{ c.onclick=()=>pvrGo(c.dataset.l); c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pvrGo(c.dataset.l); } }; });
   }
   const notPlot=list.length-pts.length;
   document.getElementById('pvrMapSide').innerHTML=
@@ -1764,7 +1769,7 @@ function renderPVR(){
     'Nominal medians; rent to the 12 months to Jun 2026. Drive (under regional names): road time from the Melbourne GPO to the LGA&rsquo;s main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
   document.querySelectorAll('#pvrTable th.sortable').forEach(h=>h.onclick=()=>{ const kk=h.dataset.k;
     if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='pk'||kk==='pNow')?1:-1; if(kk==='fell') PVRDIR=-1; } renderPVR(); });
-  document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrPick(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrPick(tr.dataset.l); } }; });
+  document.querySelectorAll('#pvrTable tr.pvr-row').forEach(tr=>{ tr.onclick=()=>pvrGo(tr.dataset.l); tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pvrGo(tr.dataset.l); } }; });
   document.querySelectorAll('#pvrSeg button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.s===seg));
     b.onclick=()=>{ if(GSEG!==b.dataset.s){ GSEG=b.dataset.s; STMORE=false; renderGrowthAll(); } }; });
   document.querySelectorAll('#pvrFilt button').forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.f===PVRF));
