@@ -5342,6 +5342,12 @@ html[data-theme="light"]::-webkit-scrollbar-thumb:hover, html[data-theme="light"
   }
 
 
+/* The deck stylesheet is bundled whole, and the Presentation Builder is a
+   fixed full-screen app: it sets html,body with height 100% and overflow
+   hidden. That clipped this page to a single slide - 42,000px of deck
+   inside a 695px box with no scroll. These overrides undo it and MUST
+   stay after the bundle. */
+html,body{height:auto !important;min-height:100% !important;overflow:visible !important;overflow-x:hidden !important;position:static !important}
 body{margin:0;background:#0f1420;font-family:'Montserrat',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .xp-head{max-width:1280px;margin:0 auto;padding:30px 20px 10px;color:#fff}
 .xp-head h1{font:800 26px/1.2 'Montserrat',sans-serif;margin:0 0 6px}
