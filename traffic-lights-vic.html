@@ -1503,6 +1503,11 @@ function pvrZoomWire(idx, zk){
 }
 const pvrMoney=v=>v>=999500?('$'+(v/1e6).toFixed(2)+'m'):('$'+Math.round(v/1000)+'k');
 const PVRTOTDOM={};
+// Total + Peak keeps its own frame, fitted to the since-peak readings as the original chart was (Shaene 2026-10-06)
+function pvrPeakDom(pts){ const P=pts.map(r=>r.price), R=pts.map(r=>r.rent);
+  const x0=Math.min(-5,Math.floor(Math.min(...P)/5)*5), x1=Math.max(0,Math.ceil(Math.max(...P)/5)*5);
+  const y0=Math.min(0,Math.floor(Math.min(...R)/5)*5), y1=Math.max(10,Math.ceil(Math.max(...R)/10)*10);
+  return {x0,x1,xs:(x1-x0)>60?10:5,y0,y1,ys:(y1-y0)>40?10:5}; }
 function pvrTotDom(seg){ if(PVRTOTDOM[seg]) return PVRTOTDOM[seg];
   const keep=PVRWIN, P=[], R=[];
   PVRWINS.forEach(w=>{ PVRWIN=w; pvrAllRows(seg).forEach(r=>{ if(r.price!=null&&r.rent!=null){ P.push(r.price); R.push(r.rent); } }); });
@@ -1644,7 +1649,7 @@ function renderPVR(){
     //  Per year: price and rent growth a year over the window (since the peak: over the years stalled), -10..+15 / -5..+15.
     //  Total: total change over the window, on one frame fitted once per segment to every window (pvrTotDom).
     // The diagonal is equal growth/change; readings beyond the frame sit on its edge, dashed.
-    const TOT=PVRSCALE==='total', dom=TOT?pvrTotDom(seg):{x0:-10,x1:15,y0:-5,y1:15,xs:5,ys:5};
+    const TOT=PVRSCALE==='total', dom=TOT?(PVRWIN?pvrTotDom(seg):pvrPeakDom(pts)):{x0:-10,x1:15,y0:-5,y1:15,xs:5,ys:5};
     const W=1180,H=580,X0=80,X1=1118,YT=40,YB=520, XMIN=dom.x0,XMAX=dom.x1,YMIN=dom.y0,YMAX=dom.y1;
     const ann=(v,n)=>(Math.pow(1+v/100,1/n)-1)*100, clampX=v=>Math.max(XMIN,Math.min(XMAX,v)), clampY=v=>Math.max(YMIN,Math.min(YMAX,v));
     const X=v=>X0+(X1-X0)*(clampX(v)-XMIN)/(XMAX-XMIN), Y=v=>YB-(YB-YT)*(clampY(v)-YMIN)/(YMAX-YMIN);
