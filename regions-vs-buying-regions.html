@@ -201,28 +201,27 @@ T.push({id:'t4',chart:'vr',sortK:'vNow',sortD:1,cols:[regionCol,
   {k:'rent',h:'Rent now ($/wk)',get:o=>o.rent,cell:o=>o.rent?'$'+Math.round(o.rent):'–',r:1},
   ...[0,1,2,3,4].map(i=>({k:'rg'+i,h:'Rent '+(i+1)+(i?' yrs':' yr'),get:o=>o.rg[i],cell:o=>pc(o.rg[i]),r:1,heat:'pos'}))]});
 T[T.length-1].sortD=1;
-function vrCharts(box,o){const s1=box.querySelector('svg.c1'),s2=box.querySelector('svg.c2'),r1=box.querySelector('.r1'),r2=box.querySelector('.r2');
-  const vfull=[];for(let m=HL;m<=NOW;m++)vfull.push(o.vac[m-VS]??null);const vroll=vfull.map((v,i)=>{let s=0,n=0;for(let j=Math.max(0,i-11);j<=i;j++){if(vfull[j]!=null){s+=vfull[j];n++}}return n>=6?s/n:null});
+function vrCharts(box,o){const s1=box.querySelector('svg.c1'),r1=box.querySelector('.r1');
+  const vfull=[];for(let m=HL;m<=NOW;m++)vfull.push(o.vac[m-VS]??null);
+  const vroll=vfull.map((v,i)=>{let s=0,n=0;for(let j=Math.max(0,i-11);j<=i;j++){if(vfull[j]!=null){s+=vfull[j];n++}}return n>=6?s/n:null});
+  const rg0=o.rentL.map((v,i)=>(v!=null&&i>=12&&o.rentL[i-12])?v/o.rentL[i-12]-1:null);const rg=rg0.map((v,i)=>{const w=[rg0[i-2],rg0[i-1],v].filter(x=>x!=null);return v==null?null:w.reduce((a,b)=>a+b,0)/w.length});
   const V0=2008*12-HL;for(let i=0;i<V0;i++){vfull[i]=null;vroll[i]=null}
   const rs=vroll.filter(v=>v!=null).sort((a,b)=>a-b);const cap=rs.length?Math.max(0.05,rs[Math.floor(rs.length*0.98)]*1.35):0.1;const clip=a=>a.map(v=>v==null?null:Math.min(v,cap));
-  const first=vfull.findIndex(v=>v!=null);
-  if(first<0){r1.innerHTML='No vacancy data for this market.';while(s1.firstChild)s1.removeChild(s1.firstChild)}
-  else{const from=HL+first;const g=lineChart(s1,o,{from,H:280,series:[{v:clip(vfull),c:'rgba(0,160,180,.35)'},{v:clip(vroll),c:css('--teal-ink')}],fmtL:v=>(100*v).toFixed(1)+'%',loL:0,
-      bands:[[0,0.02,'rgba(62,121,103,.12)','Below 2%: tight'],[0.02,0.03,'rgba(184,110,0,.10)','2–3%: balanced'],[0.03,1,'rgba(194,29,59,.08)','3%+: loose']]});
-    r1.dataset.def=`<b>Vacancy rate</b> since ${mLab(from)}: light line = monthly, dark line = 12-month average. Shown from 2008 (earlier figures rest on very few rentals); spikes above ${vp(cap)} are cut off. 3-month average now <b>${vp(o.vNow)}</b>; 12-month average ${vp(o.v12)}${o.vP12!=null?' (was '+vp(o.vP12)+')':''}. Hover to read any month.`;r1.innerHTML=r1.dataset.def;
-    hover(s1,g.box,g.X,g.xs.filter(m=>vfull[m-HL]!=null),m=>`<b>${mLab(m)}</b>: vacancy ${vp(vfull[m-HL])}${vroll[m-HL]!=null?' · 12-month average '+vp(vroll[m-HL]):''}`,r1)}
-  const h=lineChart(s2,o,{from:HL,H:280,series:[{v:o.rentL,c:css('--good')}],fmtL:v=>'$'+Math.round(v)});
-  [1,2,3,4,5].forEach(k=>{const m=NOW-12*k;el('line',{x1:h.X(m),x2:h.X(m),y1:h.box.T,y2:h.box.B,stroke:css('--line')},s2);tx(s2,h.X(m),h.box.T-6,k+'y',{'text-anchor':'middle','font-size':10,fill:css('--teal-ink'),'font-weight':600})});
-  r2.dataset.def=`<b>Median asking rent</b> ($/week, 12 months), since ${mLab(HL)}. Now <b>$${Math.round(o.rent||0)}</b>: ${[0,2,4].map(i=>(i+1)+' yr '+pc(o.rg[i])).join(' · ')}. Hover to read any month.`;r2.innerHTML=r2.dataset.def;
-  hover(s2,h.box,h.X,h.xs.filter(m=>o.rentL[m-HL]!=null),m=>{const v=o.rentL[m-HL],a=o.rentL[m-HL-12];return `<b>${mLab(m)}</b>: $${Math.round(v)}/wk${a?' · 1 yr '+pc(v/a-1):''}`},r2)}
-
+  const from=2008*12;
+  const g=lineChart(s1,o,{from,H:500,right:true,negR:true,colR:'#C77700',series:[{v:clip(vfull),c:'rgba(0,160,180,.35)'},{v:clip(vroll),c:css('--teal-ink')},{v:rg,c:'#C77700',axis:'R'}],
+    fmtL:v=>(100*v).toFixed(1)+'%',fmtR:v=>(v>0?'+':'')+(100*v).toFixed(0)+'%',loL:0,
+    bands:[[0,0.02,'rgba(62,121,103,.10)','Vacancy below 2%: tight'],[0.02,0.03,'rgba(184,110,0,.08)','2–3%: balanced'],[0.03,1,'rgba(194,29,59,.06)','3%+: loose']]});
+  const last=rg.length-1;
+  r1.dataset.def=`Since ${mLab(from)}. Vacancy now <b>${vp(o.vNow)}</b> (10-year average ${vp(o.v10)}); rent growth now <b>${pc(rg[last])}</b> a year. Rents usually accelerate a few months after vacancy falls below about 2%. Spikes in vacancy above ${vp(cap)} are cut off. Hover to read any month.`;r1.innerHTML=r1.dataset.def;
+  hover(s1,g.box,g.X,g.xs.filter(m=>vfull[m-HL]!=null||rg[m-HL]!=null),m=>`<b>${mLab(m)}</b>: vacancy ${vp(vfull[m-HL])}${vroll[m-HL]!=null?' (12-month avg '+vp(vroll[m-HL])+')':''} · rent growth ${pc(rg[m-HL])} · rent $${o.rentL[m-HL]!=null?Math.round(o.rentL[m-HL]):'–'}/wk`,r1)}
 function lineChart(svg,o,opt){const W=1100,H=opt.H||300,b=frame(svg,W,H,[60,opt.right?64:24,22,28]);const start=opt.from;
   const ser=opt.series.map(s=>({...s,pts:s.v.map((v,i)=>({m:HL+i,v})).filter(p=>p.m>=start&&p.v!=null)}));
-  const ax=k=>{const v=ser.filter(s=>(s.axis||'L')===k).flatMap(s=>s.pts.map(p=>p.v));if(!v.length)return null;let lo=Math.min(...v),hi=Math.max(...v);if(opt['lo'+k]!=null)lo=Math.min(lo,opt['lo'+k]);const pd=(hi-lo)*.08||1;return [Math.max(0,lo-pd),hi+pd]};
+  const ax=k=>{const v=ser.filter(s=>(s.axis||'L')===k).flatMap(s=>s.pts.map(p=>p.v));if(!v.length)return null;let lo=Math.min(...v),hi=Math.max(...v);if(opt['lo'+k]!=null)lo=Math.min(lo,opt['lo'+k]);if(opt['neg'+k]){lo=Math.min(lo,0);hi=Math.max(hi,0)}const pd=(hi-lo)*.08||1;return [opt['neg'+k]?lo-pd:Math.max(0,lo-pd),hi+pd]};
   const AL=ax('L'),AR=ax('R');const X=m=>b.L+(b.R-b.L)*(m-start)/(NOW-start),YL=v=>b.T+(b.B-b.T)*(1-(v-AL[0])/(AL[1]-AL[0])),YR=AR?v=>b.T+(b.B-b.T)*(1-(v-AR[0])/(AR[1]-AR[0])):null;
   (opt.bands||[]).forEach(([a,z,c,l])=>{const y1=YL(Math.min(z,AL[1])),y0=YL(Math.max(a,AL[0]));if(y0<=y1)return;el('rect',{x:b.L,y:y1,width:b.R-b.L,height:y0-y1,fill:c},svg);tx(svg,b.L+6,y1+13,l,{'font-size':10,fill:css('--muted')})});
   niceTicks(AL[0],AL[1],5).forEach(v=>{el('line',{x1:b.L,x2:b.R,y1:YL(v),y2:YL(v),stroke:css('--line-soft')},svg);tx(svg,b.L-8,YL(v)+4,opt.fmtL(v),{'text-anchor':'end','font-size':10.5})});
-  if(AR)niceTicks(AR[0],AR[1],5).forEach(v=>tx(svg,b.R+8,YR(v)+4,opt.fmtR(v),{'font-size':10.5,fill:css('--good')}));
+  if(AR)niceTicks(AR[0],AR[1],5).forEach(v=>tx(svg,b.R+8,YR(v)+4,opt.fmtR(v),{'font-size':10.5,fill:opt.colR||css('--good')}));
+  if(AR&&opt.negR&&AR[0]<0)el('line',{x1:b.L,x2:b.R,y1:YR(0),y2:YR(0),stroke:opt.colR||css('--good'),'stroke-dasharray':'2 4','stroke-opacity':.6},svg);
   const span=NOW-start,step=span>150?24:12;for(let m=Math.ceil(start/12)*12;m<=NOW;m+=12){if((m/12)%(step/12))continue;tx(svg,X(m),H-8,m/12,{'text-anchor':'middle','font-size':10.5})}
   if(opt.seam&&SEAM>start){el('line',{x1:X(SEAM),x2:X(SEAM),y1:b.T,y2:b.B,stroke:css('--muted'),'stroke-dasharray':'2 4'},svg);tx(svg,X(SEAM)+4,b.T+10,'Cotality series change',{'font-size':9.5})}
   ser.forEach(s=>{const Y=(s.axis||'L')==='R'?YR:YL;const pts=[];let prev=null;s.pts.forEach(p=>{if(prev!=null&&p.m-prev>2)pts.push(null);pts.push([X(p.m),Y(p.v)]);prev=p.m});
@@ -309,7 +308,7 @@ function drawDetail(t,o,tr){if(t.chart==='vr')return vrCharts(tr,o);if(t.chart==
   if(t.chart==='price')priceChart(svg,o,out);
   else{const btns=tr.querySelectorAll('.det-win button');const go=w=>{btns.forEach(x=>x.classList.toggle('on',x.dataset.w==String(w)));rentChart(svg,o,out,w==='all'?'all':+w)};
     btns.forEach(x=>x.onclick=e=>{e.stopPropagation();t.win=x.dataset.w;go(t.win)});go(t.win||'60')}}
-function detailHTML(t,o){if(t.chart==='vr')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: vacancy rate and rents</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="det-read small r2" style="margin-top:10px"></div><svg class="dchart c2"></svg></div>`;
+function detailHTML(t,o){if(t.chart==='vr')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: vacancy rate vs rent growth</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="legend" style="margin-top:6px"><span><span class="sw" style="height:3px;background:rgba(0,160,180,.35)"></span>Vacancy, monthly (left axis)</span><span><span class="sw" style="height:3px;background:var(--teal-ink)"></span>Vacancy, 12-month average (left axis)</span><span><span class="sw" style="height:3px;background:#C77700"></span>Rent growth, year on year, 3-month smoothed (right axis)</span></div></div>`;
 if(t.chart==='dom')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: days on market and stock on market</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="det-read small r2" style="margin-top:10px"></div><svg class="dchart c2"></svg></div>`;
 const ttl=t.chart==='price'?`${esc(o.r)} ${o.t==='H'?'houses':'units'}: median sale price since 2005`:`${esc(o.r)} ${o.t==='H'?'houses':'units'}: rent vs price growth`;
   const win=t.chart==='rent'?`<div class="seg det-win">${[['36','3 yrs'],['60','5 yrs'],['120','10 yrs'],['all','Since 2005']].map(([w,l])=>`<button data-w="${w}">${l}</button>`).join('')}</div>`:'';
