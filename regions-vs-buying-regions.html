@@ -96,7 +96,7 @@ th{top:0}
     <div class="ctl"><span class="lbl">Property type</span><div class="seg" id="type"><button data-v="H" class="on">Houses</button><button data-v="U">Units</button></div></div>
     <div class="ctl"><span class="lbl">Show</span><select id="grp"><option value="all">All 36 regions</option><option value="cand">33 candidates only</option><option value="reg">Regional only</option><option value="cap">Capital cities only</option></select></div>
     <div class="ctl"><span class="lbl">Search</span><input type="search" id="q" placeholder="Region…"></div>
-    <nav class="toc"><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy &amp; rents</a></nav>
+    <nav class="toc"><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy</a></nav>
   </div>
 </div>
 
@@ -125,11 +125,11 @@ th{top:0}
 </section>
 
 <section class="panel" id="vr">
-  <h2>4 · Vacancy rate and rent growth</h2>
-  <p class="sub"><b>Vacancy rate</b> is the share of rental properties sitting empty, as a 3-month average to <span class="asofTxt"></span>. Bands: <span class="band g">below 2% tight</span> (the Trading Strategy entry condition), <span class="band o">2–3% balanced</span>, <span class="band r">3%+ loose</span>. The <b>12-month average</b> smooths out monthly noise, and is shown against the 12 months before. <b>Rent growth</b> is the change in the median asking rent over 1 to 5 years. Low or falling vacancy usually comes before rent rises, and rising rents pull investors in. <b>Click a region to chart its vacancy and rent history.</b></p>
+  <h2>4 · Vacancy rate</h2>
+  <p class="sub"><b>Vacancy rate</b> is the share of rental properties sitting empty, as a 3-month average to <span class="asofTxt"></span>. Bands: <span class="band g">below 2% tight</span> (the Trading Strategy entry condition), <span class="band o">2–3% balanced</span>, <span class="band r">3%+ loose</span>. The <b>12-month average</b> smooths out monthly noise, and is shown against the 12 months before. Low or falling vacancy usually comes before rent rises (see section 2 for rent vs price). <b>Click a region to chart its vacancy history.</b></p>
   <div class="tbl-wrap"><table id="t4"><thead></thead><tbody></tbody></table></div>
-  <div class="legend"><span><span class="sw" style="background:linear-gradient(90deg,rgba(var(--good-rgb),.06),rgba(var(--good-rgb),.42))"></span>Vacancy falling</span><span><span class="sw" style="background:linear-gradient(90deg,rgba(var(--heatneg),.06),rgba(var(--heatneg),.35))"></span>Vacancy rising</span><span><span class="sw" style="background:linear-gradient(90deg,rgba(var(--heat),.05),rgba(var(--heat),.45))"></span>Darker = more rent growth</span></div>
-  <p class="note">Vacancy: Cotality, monthly, by council area and Greater Capital City area, to Jun 2026. Each figure is a 3-month average; the 10-year average covers Jul 2016 – Jun 2026. Early years in small markets can be noisy. Rent: Cotality median asking rent (12 months), same property type.</p>
+  <div class="legend"><span><span class="sw" style="background:linear-gradient(90deg,rgba(var(--good-rgb),.06),rgba(var(--good-rgb),.42))"></span>Vacancy falling</span><span><span class="sw" style="background:linear-gradient(90deg,rgba(var(--heatneg),.06),rgba(var(--heatneg),.35))"></span>Vacancy rising</span></div>
+  <p class="note">Vacancy: Cotality, monthly, by council area and Greater Capital City area, to Jun 2026. Each figure is a 3-month average; the 10-year average covers Jul 2016 – Jun 2026. Early years in small markets can be noisy.</p>
 </section>
 </div>
 <div id="modal" class="modal" hidden></div>
@@ -197,9 +197,7 @@ T.push({id:'t4',chart:'vr',sortK:'vNow',sortD:1,cols:[regionCol,
   {k:'v5',h:'Vacancy 5 yrs ago',get:o=>o.v5,cell:o=>vp(o.v5),r:1},
   {k:'v10',h:'10-yr average',get:o=>o.v10,cell:o=>vp(o.v10),r:1},
   {k:'vChg',h:'Change vs 1 yr',get:o=>o.vChg,cell:o=>`<b>${vpts(o.vChg)}</b>`,r:1,heat:'inv'},
-  {k:'v12',h:'12-month avg (prior 12m)',get:o=>o.v12,cell:o=>o.v12==null?'–':`<div class="gp"><b>${vp(o.v12)}</b><span>${o.vP12==null?'no prior year':'was '+vp(o.vP12)}</span></div>`,r:1},
-  {k:'rent',h:'Rent now ($/wk)',get:o=>o.rent,cell:o=>o.rent?'$'+Math.round(o.rent):'–',r:1},
-  ...[0,1,2,3,4].map(i=>({k:'rg'+i,h:'Rent '+(i+1)+(i?' yrs':' yr'),get:o=>o.rg[i],cell:o=>pc(o.rg[i]),r:1,heat:'pos'}))]});
+  {k:'v12',h:'12-month avg (prior 12m)',get:o=>o.v12,cell:o=>o.v12==null?'–':`<div class="gp"><b>${vp(o.v12)}</b><span>${o.vP12==null?'no prior year':'was '+vp(o.vP12)}</span></div>`,r:1}]});
 T[T.length-1].sortD=1;
 function vrCharts(box,o){const s1=box.querySelector('svg.c1'),r1=box.querySelector('.r1');
   const vfull=[];for(let m=HL;m<=NOW;m++)vfull.push(o.vac[m-VS]??null);
@@ -208,12 +206,12 @@ function vrCharts(box,o){const s1=box.querySelector('svg.c1'),r1=box.querySelect
   const V0=2008*12-HL;for(let i=0;i<V0;i++){vfull[i]=null;vroll[i]=null}
   const rs=vroll.filter(v=>v!=null).sort((a,b)=>a-b);const cap=rs.length?Math.max(0.05,rs[Math.floor(rs.length*0.98)]*1.35):0.1;const clip=a=>a.map(v=>v==null?null:Math.min(v,cap));
   const from=2008*12;
-  const g=lineChart(s1,o,{from,H:500,right:true,negR:true,colR:'#C77700',series:[{v:clip(vfull),c:'rgba(0,160,180,.35)'},{v:clip(vroll),c:css('--teal-ink')},{v:rg,c:'#C77700',axis:'R'}],
+  const g=lineChart(s1,o,{from,H:460,series:[{v:clip(vfull),c:'rgba(0,160,180,.35)'},{v:clip(vroll),c:css('--teal-ink')}],
     fmtL:v=>(100*v).toFixed(1)+'%',fmtR:v=>(v>0?'+':'')+(100*v).toFixed(0)+'%',loL:0,
     bands:[[0,0.02,'rgba(62,121,103,.10)','Vacancy below 2%: tight'],[0.02,0.03,'rgba(184,110,0,.08)','2–3%: balanced'],[0.03,1,'rgba(194,29,59,.06)','3%+: loose']]});
   const last=rg.length-1;
-  r1.dataset.def=`Since ${mLab(from)}. Vacancy now <b>${vp(o.vNow)}</b> (10-year average ${vp(o.v10)}); rent growth now <b>${pc(rg[last])}</b> a year. Rents usually accelerate a few months after vacancy falls below about 2%. Spikes in vacancy above ${vp(cap)} are cut off. Hover to read any month.`;r1.innerHTML=r1.dataset.def;
-  hover(s1,g.box,g.X,g.xs.filter(m=>vfull[m-HL]!=null||rg[m-HL]!=null),m=>`<b>${mLab(m)}</b>: vacancy ${vp(vfull[m-HL])}${vroll[m-HL]!=null?' (12-month avg '+vp(vroll[m-HL])+')':''} · rent growth ${pc(rg[m-HL])} · rent $${o.rentL[m-HL]!=null?Math.round(o.rentL[m-HL]):'–'}/wk`,r1)}
+  r1.dataset.def=`Since ${mLab(from)}. Vacancy now <b>${vp(o.vNow)}</b> (10-year average ${vp(o.v10)}). Below about 2% landlords can push rents up; above 3% they struggle to. Spikes in vacancy above ${vp(cap)} are cut off. Hover to read any month.`;r1.innerHTML=r1.dataset.def;
+  hover(s1,g.box,g.X,g.xs.filter(m=>vfull[m-HL]!=null),m=>`<b>${mLab(m)}</b>: vacancy ${vp(vfull[m-HL])}${vroll[m-HL]!=null?' (12-month avg '+vp(vroll[m-HL])+')':''}`,r1)}
 function lineChart(svg,o,opt){const W=1100,H=opt.H||300,b=frame(svg,W,H,[60,opt.right?64:24,22,28]);const start=opt.from;
   const ser=opt.series.map(s=>({...s,pts:s.v.map((v,i)=>({m:HL+i,v})).filter(p=>p.m>=start&&p.v!=null)}));
   const ax=k=>{const v=ser.filter(s=>(s.axis||'L')===k).flatMap(s=>s.pts.map(p=>p.v));if(!v.length)return null;let lo=Math.min(...v),hi=Math.max(...v);if(opt['lo'+k]!=null)lo=Math.min(lo,opt['lo'+k]);if(opt['neg'+k]){lo=Math.min(lo,0);hi=Math.max(hi,0)}const pd=(hi-lo)*.08||1;return [opt['neg'+k]?lo-pd:Math.max(0,lo-pd),hi+pd]};
@@ -308,7 +306,7 @@ function drawDetail(t,o,tr){if(t.chart==='vr')return vrCharts(tr,o);if(t.chart==
   if(t.chart==='price')priceChart(svg,o,out);
   else{const btns=tr.querySelectorAll('.det-win button');const go=w=>{btns.forEach(x=>x.classList.toggle('on',x.dataset.w==String(w)));rentChart(svg,o,out,w==='all'?'all':+w)};
     btns.forEach(x=>x.onclick=e=>{e.stopPropagation();t.win=x.dataset.w;go(t.win)});go(t.win||'60')}}
-function detailHTML(t,o){if(t.chart==='vr')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: vacancy rate vs rent growth</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="legend" style="margin-top:6px"><span><span class="sw" style="height:3px;background:rgba(0,160,180,.35)"></span>Vacancy, monthly (left axis)</span><span><span class="sw" style="height:3px;background:var(--teal-ink)"></span>Vacancy, 12-month average (left axis)</span><span><span class="sw" style="height:3px;background:#C77700"></span>Rent growth, year on year, 3-month smoothed (right axis)</span></div></div>`;
+function detailHTML(t,o){if(t.chart==='vr')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: vacancy rate</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="legend" style="margin-top:6px"><span><span class="sw" style="height:3px;background:rgba(0,160,180,.35)"></span>Vacancy, monthly</span><span><span class="sw" style="height:3px;background:var(--teal-ink)"></span>Vacancy, 12-month average</span></div></div>`;
 if(t.chart==='dom')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: days on market and stock on market</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="det-read small r2" style="margin-top:10px"></div><svg class="dchart c2"></svg></div>`;
 const ttl=t.chart==='price'?`${esc(o.r)} ${o.t==='H'?'houses':'units'}: median sale price since 2005`:`${esc(o.r)} ${o.t==='H'?'houses':'units'}: rent vs price growth`;
   const win=t.chart==='rent'?`<div class="seg det-win">${[['36','3 yrs'],['60','5 yrs'],['120','10 yrs'],['all','Since 2005']].map(([w,l])=>`<button data-w="${w}">${l}</button>`).join('')}</div>`:'';
