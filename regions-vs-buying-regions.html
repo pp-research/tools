@@ -191,7 +191,7 @@ th{top:0}
     <li><b>Supply well below normal:</b> FY26 approvals 20%+ below the previous 10-year average (half: 5%+ below). Before their runs: −28% to −45%.</li>
     <li><b>Vacancy around 2% or below:</b> 12-month average ≤2.2% (half: ≤2.6%).</li>
   </ol>
-  <p class="sub" style="margin-top:-4px">The hatched rows at the top are Darwin and Townsville 12 and 6 months before their runs, scored the same way. <b>Click a region to see where it sits against them on each condition.</b></p>
+  <p class="sub" style="margin-top:-4px">The four striped rows pinned at the top are <b>reference snapshots</b>: Darwin and Townsville 12 and 6 months before their runs, scored the same way. Darwin and Townsville also appear further down as they are <b>today</b>, marked "today". <b>Click a region to see where it sits against them on each condition.</b></p>
   <div class="tbl-wrap"><table id="t8"><thead></thead><tbody></tbody></table></div>
   <div class="legend"><span><span class="fp y">✓</span> meets it</span><span><span class="fp p">½</span> partly</span><span><span class="fp n">✗</span> doesn't</span></div>
   <p class="note">Based on two buying regions (four markets, houses and units), so treat it as a pattern to watch, not a proven rule. Approvals and vacancy cover all dwellings; the other conditions use the selected property type. Melbourne is not used as a reference because it hasn't run yet.</p>
@@ -437,15 +437,15 @@ const FPC=[
   {k:'c5',h:'⑤ Supply below normal',test:v=>v.ap==null?null:v.ap<=-0.2?'y':v.ap<=-0.05?'p':'n',show:v=>`<b>${pc(v.ap)}</b><span>approvals vs prior 10 yrs</span>`},
   {k:'c6',h:'⑥ Vacancy ≤ ~2%',test:v=>v.vac==null?null:v.vac<=0.022?'y':v.vac<=0.026?'p':'n',show:v=>`<b>${v.vac==null?'–':(100*v.vac).toFixed(2)+'%'}</b><span>12-month avg</span>`}];
 const fpScore=o=>{const v=fpv(o);let s=0;FPC.forEach(c=>{const t=c.test(v);s+=t==='y'?1:t==='p'?0.5:0});return s};
-const fpStage=o=>{if(o.ref)return o.off===-12?'12 months before run':'6 months before run';const v=fpv(o),s=fpScore(o);
-  if(v.g12!=null&&v.g12>0.08&&(v.flow??0)>=70)return 'Already running (like Darwin at its run start)';
+const fpStage=o=>{if(o.ref)return `Reference: ${o.off===-12?'12':'6'} months before its run (run started ${mLab(mIdx(o.run))})`;const v=fpv(o),s=fpScore(o);
+  if(v.g12!=null&&v.g12>0.08&&(v.flow??0)>=70)return o.buy?'Running now (buying region)':'Already running: past the pre-run stage';
   if(s>=5)return 'Pre-run: matches Darwin & Townsville';
   if(v.g12!=null&&v.g12>0.08&&(v.flow??0)<55)return 'Rising but buyers fading';
   if(v.g12!=null&&v.g12<=0.07&&(v.flow??0)<55)return 'Cheap, not turning yet';
   return s>=3.5?'Partial match':'Weak match'};
 const fpRefRows=()=>(D.prerun||[]).filter(x=>x.off!==0&&x.t===type).map(x=>({...x,ref:true,key:'ref|'+x.r+'|'+x.off,st:x.r==='Darwin'?'NT':'QLD',buy:1}));
 T.push({id:'t8',chart:'fp',sortK:'fps',sortD:-1,extraTop:fpRefRows,cols:[
-  {k:'r',h:'Region',get:o=>o.r,cell:o=>o.ref?`<b>${esc(o.r)}</b> <span class="muted small">${mLab(mIdx(o.m))}</span>`:`<b>${esc(o.r)}</b><span class="pill">${o.st}</span>`},
+  {k:'r',h:'Region',get:o=>o.r,cell:o=>o.ref?`<b>${esc(o.r)}</b> <span class="muted small">as at ${mLab(mIdx(o.m))}</span>`:`<b>${esc(o.r)}</b><span class="pill">${o.st}</span>${o.buy?' <span class="muted small">today</span>':''}`},
   {k:'stage',h:'Stage',get:o=>fpStage(o),cell:o=>`<span class="small">${fpStage(o)}</span>`},
   {k:'fps',h:'Fingerprint score',get:o=>fpScore(o),cell:o=>{const v=fpv(o);return `<div class="fpdots">${FPC.map(c=>{const t=c.test(v);return `<i class="${t||'x'}"></i>`}).join('')}</div><b>${fpScore(o)}</b> / 6`},r:1},
   ...FPC.map(c=>({k:c.k,h:c.h,get:o=>{const t=c.test(fpv(o));return t==='y'?2:t==='p'?1:0},cell:o=>{const v=fpv(o),t=c.test(v);return `<div class="gp fpc ${t||''}">${c.show(v)}</div>`},r:1}))]});
