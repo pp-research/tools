@@ -1829,7 +1829,7 @@ function renderPVR(){
     ?('Over a fixed window a market qualifies when its rent grew faster than its price. On '+segW+'s, last '+PVRWIN+' years: '+out.length+' qualify ('+out.filter(r=>r.fell).length+' with price down) &middot; '+skip.rentdown+' with rent behind price &middot; '+skip.norent+' without a full rent record for the window &middot; '+skip.thin+' too thin to rank. ')
     :('A market qualifies when its price peaked 3+ years ago, has not been passed since, and rent is higher than at that peak. On '+segW+'s: '+out.length+' qualify &middot; '+skip.flat+' not stalled 3+ years &middot; '+skip.rentdown+' with rent no higher than at the peak &middot; '+skip.norent+' with no rent history back to the peak &middot; '+skip.thin+' too thin to rank. '))+
     'Nominal medians; rent to the 12 months to Jun 2026. Drive (under regional names): road time from the Melbourne GPO to the LGA&rsquo;s main town (OpenStreetMap routing, no traffic); the 2-hour line is strict, 2h00 or less.';
-  { const SC=[['gap','Gap'],['gpy','Gap / yr'],['yNow','Gross yield'],[PVRWIN?'fell':'stag',PVRWIN?'Price fell':'Stalled'],['pNow','Median now']];
+  { const SC=[['gap','Gap'],['gpy','Gap / yr'],['yNow','Gross yield'],...(PVRWIN?[]:[['stag','Stalled']]),   /* no Price fell button (Shaene 2026-10-08) */['pNow','Median now']];
     const sc=document.getElementById('pvrSortChips');
     if(sc){ sc.innerHTML=SC.map(([k,t])=>'<button type="button" data-k="'+k+'" aria-pressed="'+(PVRSORT===k)+'">'+t+(PVRSORT===k?(PVRDIR===-1?' ↓':' ↑'):'')+'</button>').join('');
       sc.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const kk=b.dataset.k; if(kk===PVRSORT) PVRDIR=-PVRDIR; else { PVRSORT=kk; PVRDIR=(kk==='l'||kk==='pNow')?1:-1; } renderPVR(); }); } }
