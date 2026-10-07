@@ -78,6 +78,15 @@ tr.det td{background:var(--surface);padding:4px 10px 14px;white-space:normal}
 .dchart{width:100%;height:auto;display:block}
 .band{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600}
 .band.g{background:var(--good-soft);color:var(--good)} .band.o{background:var(--warn-soft);color:var(--warn)} .band.r{background:var(--bad-soft);color:var(--bad)}
+.stageboard{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.stg{border:1px solid var(--line);border-radius:10px;padding:12px 14px;border-top:4px solid var(--muted);background:var(--surface)}
+.stg.g{border-top-color:#3E7967;background:linear-gradient(var(--good-soft),var(--surface) 60px)}.stg.g2{border-top-color:#7FB8A6}.stg.t{border-top-color:#00A0B4}.stg.t2{border-top-color:#7FCFDA}.stg.o{border-top-color:#B86E00}.stg.r{border-top-color:#C21D3B}.stg.n{border-top-color:#9AA0A6}
+.stg-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.stg-h b{font-size:15px}.stg-h span{font-size:12px;color:var(--muted);font-weight:600}
+.stg p{font-size:12px;color:var(--ink-2);margin:4px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:5px 9px;cursor:pointer;display:flex;flex-direction:column;line-height:1.25}
+.chip:hover{border-color:var(--teal);background:var(--teal-soft)}
+.chip b{font-size:12.5px}.chip span{font-size:10.5px;color:var(--muted)}
 #t8 td,#t8 th{padding:6px 7px;font-size:12.5px} #t8 th{white-space:normal;vertical-align:bottom;font-size:10.5px;min-width:70px}
 .fpdots{display:inline-flex;gap:2px;margin-right:6px;vertical-align:middle}.fpdots i{width:8px;height:8px;border-radius:50%;background:var(--line)}.fpdots i.y{background:var(--good)}.fpdots i.p{background:var(--warn)}.fpdots i.n{background:var(--bad);opacity:.55}
 .fpc.y{color:var(--good)} .fpc.y b::before{content:"✓ "} .fpc.p b::before{content:"½ ";color:var(--warn)} .fpc.n b{color:var(--bad)} .fpc.n b::before{content:"✗ "}
@@ -97,7 +106,7 @@ th{top:0}
 </style>
 </head>
 <body>
-<nav class="side" aria-label="Sections"><div class="side-h">Sections</div><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy</a><a href="#ap">5 · Approvals &amp; households</a><a href="#pop">6 · Population</a><a href="#flow">7 · Buyer activity (flow score)</a><a href="#pre">8 · Pre-run fingerprint</a></nav>
+<nav class="side" aria-label="Sections"><div class="side-h">Sections</div><a href="#stage">Overview: market stage</a><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy</a><a href="#ap">5 · Approvals &amp; households</a><a href="#pop">6 · Population</a><a href="#flow">7 · Buyer activity (flow score)</a><a href="#pre">8 · Pre-run fingerprint</a></nav>
 <div class="wrap">
 <header class="top">
   <div>
@@ -115,6 +124,13 @@ th{top:0}
     <div class="ctl"><span class="lbl">Search</span><input type="search" id="q" placeholder="Region…"></div>
   </div>
 </div>
+
+<section class="panel" id="stage">
+  <h2>Overview · Where each region is in its cycle</h2>
+  <p class="sub">Each region is placed in a stage using three things: <b>12-month price growth</b> (flat ≤ 8%, or rising), the <b>flow score</b> (are buyers arriving: 70+ strong, below 55 weak), and its <b>6-month change</b> (are buyers increasing or fading). <b>Running</b> is split by 3-year growth: <b>early stage</b> = 3-year growth still in the bottom 40% of council areas, so the run has only just begun. ▲ = buying region. Each chip shows 12-month growth · flow score (6-month change). <b>Click a region to open its flow chart.</b></p>
+  <div id="stageBoard" class="stageboard"></div>
+  <p class="note">Rules, in order. <b>If 12-month growth is above 8%:</b> flow below 55, or down 20+ points in 6 months → <b>running, late / cooling</b>; otherwise <b>running</b> (early or mid stage by 3-year growth). <b>If prices are flat:</b> flow 70+ and rising or listings falling → <b>about to run</b>; flow 55+ and rising, or up 20+ points to 45+ → <b>watch: early signs</b>; flow down 15+ points → <b>fading</b>; flow below 55 → <b>stagnant, not turning</b>; anything else → <b>watch: mixed</b>.</p>
+</section>
 
 <section class="panel" id="growth">
   <h2>1 · Price growth and the last peak</h2>
@@ -463,6 +479,27 @@ function fpChart(box,o){const svg=box.querySelector('svg.c1'),out=box.querySelec
     const me=v[k];if(me!=null){el('circle',{cx:X(me),cy:y,r:8,fill:css('--teal'),stroke:'#fff','stroke-width':2},svg);tx(svg,X(me),y-14,fmt(me),{'text-anchor':'middle','font-size':11,'font-weight':700,fill:css('--teal-ink')})}});
   out.innerHTML=`<b>${fpScore(o)} / 6</b> · ${fpStage(o)}. Teal dot = ${esc(o.r)} ${o.t==='H'?'houses':'units'} now. Small dots = <span style="color:#D9822B">Darwin</span> and <span style="color:#7A4FB5">Townsville</span> 12 and 6 months before their runs (purple band = their range). Green zone = meets the condition.`}
 
+// ---------- overview: market stage board ----------
+const STAGES=[
+  ['about','About to run','Prices still flat, buyers arriving strongly. The entry window.','g'],
+  ['watch','Watch: early signs','Flat prices, buyer flow building but not yet strong.','g2'],
+  ['early','Running: early stage','Prices rising, buyers strong, and 3-year growth still low: the run has just begun.','t'],
+  ['mid','Running: mid stage','Prices rising with strong buyers, after a bigger 3-year rise.','t2'],
+  ['late','Running: late / cooling','Prices still rising, but buyers fading. Watch for the top; not an entry.','o'],
+  ['mixed','Watch: mixed','Flat prices with mixed signals.','n'],
+  ['fading','Fading','Flat prices and buyers leaving.','r'],
+  ['stag','Stagnant, not turning','Flat prices and weak buyer flow: cheap, but no sign of a turn yet.','n']];
+function stageOf(o){const g=o.g1,f=o.flow??0,f6=o.flow6??0,l=o.lst12;if(g==null)return null;
+  if(g>0.08){if(f<55||f6<=-20)return 'late';return (o.p3r!=null&&o.p3r<0.4)?'early':'mid'}
+  if(f>=70&&(f6>=0||(l!=null&&l<0)))return 'about';
+  if((f>=55&&f6>0)||(f6>=20&&f>=45))return 'watch';
+  if(f6<=-15)return 'fading';
+  if(f<55)return 'stag';
+  return 'mixed'}
+function renderStage(){const box=document.getElementById('stageBoard');if(!box)return;const L=rowsNow();const by={};L.forEach(o=>{const s=stageOf(o);if(s)(by[s]=by[s]||[]).push(o)});
+  box.innerHTML=STAGES.filter(s=>by[s[0]]).map(([k,n,d,c])=>`<div class="stg ${c}"><div class="stg-h"><b>${n}</b><span>${by[k].length}</span></div><p>${d}</p><div class="chips">${by[k].sort((a,b)=>(b.flow??0)-(a.flow??0)).map(o=>`<button class="chip" data-k="${esc(o.r+'|'+o.t)}"><b>${esc(o.r)}${o.buy?' ▲':''}</b><span>${pc(o.g1).replace('.0%','%')} · flow ${o.flow??'–'} (${(o.flow6??0)>0?'+':''}${o.flow6??0})</span></button>`).join('')}</div></div>`).join('');
+  box.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const o=D.rows.find(x=>x.r+'|'+x.t===b.dataset.k);const t=T.find(x=>x.id==='t7');if(o&&t)openModal(t,o)})}
+
 function lineChart(svg,o,opt){const W=1100,H=opt.H||300,b=frame(svg,W,H,[60,opt.right?64:24,22,28]);const start=opt.from;
   const ser=opt.series.map(s=>({...s,pts:s.v.map((v,i)=>({m:HL+i,v})).filter(p=>p.m>=start&&p.v!=null)}));
   const ax=k=>{const v=ser.filter(s=>(s.axis||'L')===k).flatMap(s=>s.pts.map(p=>p.v));if(!v.length)return null;let lo=Math.min(...v),hi=Math.max(...v);if(opt['lo'+k]!=null)lo=Math.min(lo,opt['lo'+k]);if(opt['neg'+k]){lo=Math.min(lo,0);hi=Math.max(hi,0)}const pd=(hi-lo)*.08||1;return [opt['neg'+k]?lo-pd:Math.max(0,lo-pd),hi+pd]};
@@ -574,7 +611,7 @@ function openModal(t,o){if(!o)return;const m=document.getElementById('modal');m.
   m.onclick=e=>{if(e.target===m)close()};m.querySelector('.det-x').onclick=close;drawDetail(t,o,m)}
 
 {const links=[...document.querySelectorAll('.side a')];const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id))}})},{rootMargin:'-30% 0px -60% 0px'});document.querySelectorAll('section.panel').forEach(s=>io.observe(s))}
-const all=()=>{T.forEach(render);if(typeof apHeadline==='function')apHeadline()};
+const all=()=>{T.forEach(render);renderStage();if(typeof apHeadline==='function')apHeadline()};
 document.querySelectorAll('#apSub button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#apSub button').forEach(x=>x.classList.remove('on'));b.classList.add('on');apSub=b.dataset.v;render(T.find(t=>t.id==='t5'));apHeadline()});
 document.querySelectorAll('#type button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#type button').forEach(x=>x.classList.remove('on'));b.classList.add('on');type=b.dataset.v;all()});
 $('#grp').onchange=e=>{grp=e.target.value;all()};$('#q').oninput=e=>{q=e.target.value.toLowerCase();all()};
