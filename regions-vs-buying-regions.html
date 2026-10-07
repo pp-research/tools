@@ -176,7 +176,7 @@ function hover(svg,box,X,xs,read,out){const g=el('g',{},svg);const ln=el('line',
   const pick=e=>{const r=svg.getBoundingClientRect();const vb=svg.viewBox.baseVal;const x=(e.clientX-r.left)*vb.width/r.width;let best=null,bd=1e9;xs.forEach(m=>{const d=Math.abs(X(m)-x);if(d<bd){bd=d;best=m}});return best};
   ov.addEventListener('mousemove',e=>{const m=pick(e);if(m==null)return;ln.setAttribute('x1',X(m));ln.setAttribute('x2',X(m));ln.setAttribute('visibility','visible');out.innerHTML=read(m)});
   ov.addEventListener('mouseleave',()=>{ln.setAttribute('visibility','hidden');out.innerHTML=out.dataset.def||''})}
-function priceChart(svg,o,out){const W=1100,H=320,b=frame(svg,W,H,[64,20,30,28]);const s=o.medL;const xs=[];s.forEach((v,i)=>{if(v!=null)xs.push(HL+i)});
+function priceChart(svg,o,out){const W=1100,H=520,b=frame(svg,W,H,[64,20,30,28]);const s=o.medL;const xs=[];s.forEach((v,i)=>{if(v!=null)xs.push(HL+i)});
   const vals=xs.map(m=>s[m-HL]);let lo=Math.min(...vals),hi=Math.max(...vals);const pd=(hi-lo)*.08;lo=Math.max(0,lo-pd);hi+=pd;
   const X=m=>b.L+(b.R-b.L)*(m-HL)/(NOW-HL),Y=v=>b.T+(b.B-b.T)*(1-(v-lo)/(hi-lo));
   const p=o.peak||{};
@@ -192,7 +192,7 @@ function priceChart(svg,o,out){const W=1100,H=320,b=frame(svg,W,H,[64,20,30,28])
   const lv=s[NOW-HL];if(lv!=null){el('circle',{cx:X(NOW),cy:Y(lv),r:4,fill:css('--teal')},svg);tx(svg,X(NOW)-6,Y(lv)-8,'$'+Math.round(lv)+'k',{'text-anchor':'end','font-size':11,'font-weight':700,fill:css('--teal-ink')})}
   out.dataset.def=`Median sale price (12 months), ${mLab(HL)} – ${mLab(NOW)}. Hover the chart to read any month.`;out.innerHTML=out.dataset.def;
   hover(svg,b,X,xs,m=>{const v=s[m-HL];const ch=k=>{const a=s[m-HL-12*k];return a?pc(v/a-1):'–'};return `<b>${mLab(m)}</b>: $${Math.round(v)}k · 1 year ${ch(1)} · 3 years ${ch(3)} · 5 years ${ch(5)}`},out)}
-function rentChart(svg,o,out,win){const W=1100,H=320,b=frame(svg,W,H,[56,90,24,28]);const P=o.medL,R=o.rentL;
+function rentChart(svg,o,out,win){const W=1100,H=520,b=frame(svg,W,H,[56,90,24,28]);const P=o.medL,R=o.rentL;
   let start=win==='all'?HL:NOW-win;while(start<NOW&&!(P[start-HL]&&R[start-HL]))start++;
   const p0=P[start-HL],r0=R[start-HL];if(!p0||!r0){tx(svg,W/2,H/2,'Not enough rent history for this window',{'text-anchor':'middle'});return}
   const xs=[];for(let m=start;m<=NOW;m++)if(P[m-HL]!=null&&R[m-HL]!=null)xs.push(m);
