@@ -106,7 +106,7 @@ th{top:0}
 </style>
 </head>
 <body>
-<nav class="side" aria-label="Sections"><div class="side-h">Sections</div><a href="#stage">Overview: market stage</a><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy</a><a href="#ap">5 · Approvals &amp; households</a><a href="#pop">6 · Population</a><a href="#flow">7 · Buyer activity (flow score)</a><a href="#pre">8 · Pre-run fingerprint</a></nav>
+<nav class="side" aria-label="Sections"><div class="side-h">Sections</div><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy</a><a href="#ap">5 · Approvals &amp; households</a><a href="#pop">6 · Population</a><a href="#flow">7 · Buyer activity (flow score)</a><a href="#pre">8 · Pre-run fingerprint</a><a href="#stage">Summary: market stage</a></nav>
 <div class="wrap">
 <header class="top">
   <div>
@@ -124,13 +124,6 @@ th{top:0}
     <div class="ctl"><span class="lbl">Search</span><input type="search" id="q" placeholder="Region…"></div>
   </div>
 </div>
-
-<section class="panel" id="stage">
-  <h2>Overview · Where each region is in its cycle</h2>
-  <p class="sub">Each region is placed in a stage using three things: <b>12-month price growth</b> (flat ≤ 8%, or rising), the <b>flow score</b> (are buyers arriving: 70+ strong, below 55 weak), and its <b>6-month change</b> (are buyers increasing or fading). <b>Running</b> is split by 3-year growth: <b>early stage</b> = 3-year growth still in the bottom 40% of council areas, so the run has only just begun. ▲ = buying region. Each chip shows 12-month growth · flow score (6-month change). <b>Click a region to open its flow chart.</b></p>
-  <div id="stageBoard" class="stageboard"></div>
-  <p class="note">Rules, in order. <b>If 12-month growth is above 8%:</b> flow below 55, or down 20+ points in 6 months → <b>running, late / cooling</b>; otherwise <b>running</b> (early or mid stage by 3-year growth). <b>If prices are flat:</b> flow 70+ and rising or listings falling → <b>about to run</b>; flow 55+ and rising, or up 20+ points to 45+ → <b>watch: early signs</b>; flow down 15+ points → <b>fading</b>; flow below 55 → <b>stagnant, not turning</b>; anything else → <b>watch: mixed</b>.</p>
-</section>
 
 <section class="panel" id="growth">
   <h2>1 · Price growth and the last peak</h2>
@@ -211,6 +204,13 @@ th{top:0}
   <div class="tbl-wrap"><table id="t8"><thead></thead><tbody></tbody></table></div>
   <div class="legend"><span><span class="fp y">✓</span> meets it</span><span><span class="fp p">½</span> partly</span><span><span class="fp n">✗</span> doesn't</span></div>
   <p class="note">Based on two buying regions (four markets, houses and units), so treat it as a pattern to watch, not a proven rule. Approvals and vacancy cover all dwellings; the other conditions use the selected property type. Melbourne is not used as a reference because it hasn't run yet.</p>
+</section>
+
+<section class="panel" id="stage">
+  <h2>Summary · Where each region is in its cycle</h2>
+  <p class="sub">Pulling the sections together, each region is placed in a stage using three things: <b>12-month price growth</b> (flat ≤ 8%, or rising), the <b>flow score</b> (are buyers arriving: 70+ strong, below 55 weak), and its <b>6-month change</b> (are buyers increasing or fading). <b>Running</b> is split by 3-year growth: <b>early stage</b> = 3-year growth still in the bottom 40% of council areas, so the run has only just begun. ▲ = buying region. Each chip shows 12-month growth · flow score (6-month change). <b>Click a region to open its flow chart.</b></p>
+  <div id="stageBoard" class="stageboard"></div>
+  <p class="note">Rules, in order. <b>If 12-month growth is above 8%:</b> flow score below 55, or down 20+ points in 6 months → <b>running: late / cooling</b>; otherwise <b>running: early stage</b> (3-year growth in the bottom 40%) or <b>running: mid stage</b>. <b>If prices are flat (≤ 8%):</b> flow 70+ and rising or listings falling, or flow 55+ and rising, or up 20+ points to 45+ → <b>about to run / likely to run</b>; everything else → <b>not running yet</b> (flat with weak or fading buyer flow).</p>
 </section>
 </div>
 <div id="modal" class="modal" hidden></div>
@@ -481,21 +481,16 @@ function fpChart(box,o){const svg=box.querySelector('svg.c1'),out=box.querySelec
 
 // ---------- overview: market stage board ----------
 const STAGES=[
-  ['about','About to run','Prices still flat, buyers arriving strongly. The entry window.','g'],
-  ['watch','Watch: early signs','Flat prices, buyer flow building but not yet strong.','g2'],
+  ['about','About to run / likely to run','Prices still flat, buyer flow strong or building. The entry window.','g'],
   ['early','Running: early stage','Prices rising, buyers strong, and 3-year growth still low: the run has just begun.','t'],
   ['mid','Running: mid stage','Prices rising with strong buyers, after a bigger 3-year rise.','t2'],
   ['late','Running: late / cooling','Prices still rising, but buyers fading. Watch for the top; not an entry.','o'],
-  ['mixed','Watch: mixed','Flat prices with mixed signals.','n'],
-  ['fading','Fading','Flat prices and buyers leaving.','r'],
-  ['stag','Stagnant, not turning','Flat prices and weak buyer flow: cheap, but no sign of a turn yet.','n']];
+  ['not','Not running yet','Flat prices with weak or fading buyer flow: no sign of a turn yet.','n']];
 function stageOf(o){const g=o.g1,f=o.flow??0,f6=o.flow6??0,l=o.lst12;if(g==null)return null;
   if(g>0.08){if(f<55||f6<=-20)return 'late';return (o.p3r!=null&&o.p3r<0.4)?'early':'mid'}
   if(f>=70&&(f6>=0||(l!=null&&l<0)))return 'about';
-  if((f>=55&&f6>0)||(f6>=20&&f>=45))return 'watch';
-  if(f6<=-15)return 'fading';
-  if(f<55)return 'stag';
-  return 'mixed'}
+  if((f>=55&&f6>0)||(f6>=20&&f>=45))return 'about';
+  return 'not'}
 function renderStage(){const box=document.getElementById('stageBoard');if(!box)return;const L=rowsNow();const by={};L.forEach(o=>{const s=stageOf(o);if(s)(by[s]=by[s]||[]).push(o)});
   box.innerHTML=STAGES.filter(s=>by[s[0]]).map(([k,n,d,c])=>`<div class="stg ${c}"><div class="stg-h"><b>${n}</b><span>${by[k].length}</span></div><p>${d}</p><div class="chips">${by[k].sort((a,b)=>(b.flow??0)-(a.flow??0)).map(o=>`<button class="chip" data-k="${esc(o.r+'|'+o.t)}"><b>${esc(o.r)}${o.buy?' ▲':''}</b><span>${pc(o.g1).replace('.0%','%')} · flow ${o.flow??'–'} (${(o.flow6??0)>0?'+':''}${o.flow6??0})</span></button>`).join('')}</div></div>`).join('');
   box.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const o=D.rows.find(x=>x.r+'|'+x.t===b.dataset.k);const t=T.find(x=>x.id==='t7');if(o&&t)openModal(t,o)})}
