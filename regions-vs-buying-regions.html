@@ -72,6 +72,7 @@ tr.det td{background:var(--surface);padding:4px 10px 14px;white-space:normal}
 .dchart{width:100%;height:auto;display:block}
 .band{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600}
 .band.g{background:var(--good-soft);color:var(--good)} .band.o{background:var(--warn-soft);color:var(--warn)} .band.r{background:var(--bad-soft);color:var(--bad)}
+#t7 td,#t7 th{padding:6px 7px;font-size:12.5px} #t7 th{white-space:normal;vertical-align:bottom;font-size:10.5px;min-width:62px}
 #t6 td,#t6 th{padding:6px 7px;font-size:12.5px} #t6 th{white-space:normal;vertical-align:bottom;font-size:10.5px;min-width:58px}
 #t5 td,#t5 th{padding:6px 7px;font-size:12.5px} #t5 th{white-space:normal;vertical-align:bottom;font-size:10.5px;min-width:56px}
 #t4 td,#t4 th{padding:6px 7px;font-size:12.5px} #t4 th{white-space:normal;vertical-align:bottom;font-size:10.5px;min-width:60px}
@@ -99,7 +100,7 @@ th{top:0}
     <div class="ctl"><span class="lbl">Property type</span><div class="seg" id="type"><button data-v="H" class="on">Houses</button><button data-v="U">Units</button></div></div>
     <div class="ctl"><span class="lbl">Show</span><select id="grp"><option value="all">All 36 regions</option><option value="cand">33 candidates only</option><option value="reg">Regional only</option><option value="cap">Capital cities only</option></select></div>
     <div class="ctl"><span class="lbl">Search</span><input type="search" id="q" placeholder="Region…"></div>
-    <nav class="toc"><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy</a><a href="#ap">5 · Approvals</a><a href="#pop">6 · Population</a></nav>
+    <nav class="toc"><a href="#growth">1 · Price growth</a><a href="#rentgap">2 · Rent vs price</a><a href="#dom">3 · Days &amp; stock on market</a><a href="#vr">4 · Vacancy</a><a href="#ap">5 · Approvals &amp; households</a><a href="#pop">6 · Population</a></nav>
   </div>
 </div>
 
@@ -136,12 +137,12 @@ th{top:0}
 </section>
 
 <section class="panel" id="ap">
-  <h2>5 · Building approvals and the long-term trend</h2>
-  <p class="sub">New dwellings approved each financial year (July–June). Approvals turn into finished homes about 1–2 years later, so they show the supply coming. Each region is compared with its own <b>10-year average</b> (FY17–26) and <b>15-year average</b> (FY12–26). <b>Use the Houses / Units toggle to switch between house approvals and unit &amp; townhouse approvals.</b> Showing <b class="apType"></b> approvals. When we entered, our buying regions' <span class="apType"></span> approvals vs their previous 10-year average were: <span id="apEntryTxt"></span>. The last column shows all dwellings for context. <b>Click a region to chart its 15-year history.</b></p>
+  <h2>5 · Building approvals and new households</h2>
+  <p class="sub">New dwellings approved each financial year (July–June). Approvals turn into finished homes about 1–2 years later, so they show the supply coming. Each region is compared with its own <b>10-year average</b> (FY17–26) and <b>15-year average</b> (FY12–26). <b>Use the Houses / Units toggle to switch between house approvals and unit &amp; townhouse approvals.</b> Showing <b class="apType"></b> approvals. When we entered, our buying regions' <span class="apType"></span> approvals vs their previous 10-year average were: <span id="apEntryTxt"></span>. The last columns compare all approvals with <b>new households</b> (population added ÷ average household size): above 1.0 households per approval means supply isn't keeping up. FY26 households are estimated at the 5-year average pace because FY26 population isn't out yet. <b>Click a region to chart its 15-year history.</b></p>
   <div class="controls" id="apSubWrap" style="display:none"><div class="ctl"><span class="lbl">Unit type</span><div class="seg" id="apSub"><button data-v="all" class="on">All units &amp; townhouses</button><button data-v="apt">Apartments only</button><button data-v="tw">Townhouses &amp; villas only</button></div></div></div>
   <div class="tbl-wrap"><table id="t5"><thead></thead><tbody></tbody></table></div>
   <div class="legend"><span><span class="sw" style="background:linear-gradient(90deg,rgba(var(--good-rgb),.06),rgba(var(--good-rgb),.42))"></span>Below its long-term average (supply limited)</span><span><span class="sw" style="background:linear-gradient(90deg,rgba(var(--heatneg),.06),rgba(var(--heatneg),.35))"></span>Above its long-term average (more supply coming)</span></div>
-  <p class="note">Source: ABS Building Approvals (data.api.abs.gov.au), new dwellings. FY2019–26 by council area; capital cities use the Greater Capital City area. FY2012–18 for regional areas is estimated from the nearest SA3 statistical areas, scaled to the council area. That estimate is less reliable for Bunbury, Rockhampton, Launceston and Wodonga (marked *). "Units &amp; townhouses" = all dwellings other than detached houses (ABS "other residential"), split into <b>apartments</b> (flats and units in blocks) and <b>townhouses &amp; villas</b> (semi-detached, row and terrace houses, townhouses and attached villa units). Cotality's "units" prices include both. Where a region averages fewer than 30 a year, it's marked <i>low volume</i> and not shaded, because a few approvals swing the percentage a lot. Per 1,000 residents uses each region's latest population. Very small counts (e.g. Launceston's 0 units and townhouses in FY26) are as reported by the ABS and can swing a lot in percentage terms.</p>
+  <p class="note">Source: ABS Building Approvals (data.api.abs.gov.au), new dwellings. FY2019–26 by council area; capital cities use the Greater Capital City area. FY2012–18 for regional areas is estimated from the nearest SA3 statistical areas, scaled to the council area. That estimate is less reliable for Bunbury, Rockhampton, Launceston and Wodonga (marked *). "Units &amp; townhouses" = all dwellings other than detached houses (ABS "other residential"), split into <b>apartments</b> (flats and units in blocks) and <b>townhouses &amp; villas</b> (semi-detached, row and terrace houses, townhouses and attached villa units). Cotality's "units" prices include both. Where a region averages fewer than 30 a year, it's marked <i>low volume</i> and not shaded, because a few approvals swing the percentage a lot. Per 1,000 residents uses each region's latest population. Household size: the sourced 2026 figure used by PP's VR Projection tool (ABS 3236.0 for capitals, state LGA projections for regional areas, PP's 2.4 assumption for Bunbury, Mandurah and Launceston), held constant. Not every approval gets built and some replace demolished homes, so treat households per approval as a direction-of-travel signal. Very small counts (e.g. Launceston's 0 units and townhouses in FY26) are as reported by the ABS and can swing a lot in percentage terms.</p>
 </section>
 
 <section class="panel" id="pop">
@@ -257,30 +258,36 @@ T.push({id:'t5',chart:'ap',sortK:'r10',sortD:1,cols:[
   {k:'a15',h:'15-yr avg',get:a15,cell:o=>num(a15(o)),r:1},
   {k:'r10',h:'FY26 vs 10-yr avg',get:o=>low(o)?null:r10(o),val:o=>low(o)?null:r10(o),cell:o=>`<b>${pc(r10(o))}</b>${lowTag(o)}`,r:1,heat:'inv'},
   {k:'r15',h:'FY26 vs 15-yr avg',get:o=>low(o)?null:r15(o),val:o=>low(o)?null:r15(o),cell:o=>`<b>${pc(r15(o))}</b>`,r:1,heat:'inv'},
-  {k:'p1k',h:'Per 1,000 residents',get:o=>{const p=pop(o),v=a26(o);return (p&&v!=null)?1000*v/p:null},cell:o=>{const p=pop(o),v=a26(o);return (p&&v!=null)?(1000*v/p).toFixed(1):'–'},r:1},
-  {k:'rng',h:'15-yr low – high',get:o=>{const v=Object.values(apH(o.r)).map(x=>x[AK()]);return v.length?Math.max(...v):null},cell:o=>{const v=Object.values(apH(o.r)).map(x=>x[AK()]);return v.length?`<span class="muted">${num(Math.min(...v))} – ${num(Math.max(...v))}</span>`:'–'},r:1},
-  {k:'tot',h:'All dwellings FY26 (vs 10-yr)',get:o=>apV(o.r,2026,0),cell:o=>{const a=apAvg(o.r,0,2017,2026),v=apV(o.r,2026,0);return `<div class="gp"><b>${num(v)}</b><span>${(a&&v!=null)?pc(v/a-1):'–'}</span></div>`},r:1}]});
+  {k:'tot',h:'All dwellings FY26 (vs 10-yr)',get:o=>apV(o.r,2026,0),cell:o=>{const a=apAvg(o.r,0,2017,2026),v=apV(o.r,2026,0);return `<div class="gp"><b>${num(v)}</b><span>${(a&&v!=null)?pc(v/a-1):'–'}</span></div>`},r:1},
+  {k:'h26',h:'New households FY26 (est.) per approval',get:o=>ratio(nh26(o.r),apT(o.r,2026)),cell:o=>`<div class="gp"><b>${rt(ratio(nh26(o.r),apT(o.r,2026)))}</b><span>${num(nh26(o.r))} vs ${num(apT(o.r,2026))}</span></div>`,r:1,heat:'ratio'},
+  {k:'h5',h:'New households per approval FY21–25',get:o=>ratio(sumRange(nh,o.r,2021,2025),sumRange(apT,o.r,2021,2025)),cell:o=>{const h=sumRange(nh,o.r,2021,2025),a=sumRange(apT,o.r,2021,2025);return `<div class="gp"><b>${rt(ratio(h,a))}</b><span>gap ${(h!=null&&a!=null)?sgn(h-a):'–'}</span></div>`},r:1,heat:'ratio'}]});
 T[T.length-1].sortD=1;
 function apHeadline(){const sw=document.getElementById('apSubWrap');if(sw)sw.style.display=type==='U'?'':'none';const k=AK();const el2=document.getElementById('apEntryTxt');if(el2)el2.textContent=['Townsville','Darwin','Melbourne'].map(b=>{const e=apEntry(b,k);return e?`${b} ${pc(e.r)} (FY${String(e.f).slice(2)})`:b}).join(', ');
   document.querySelectorAll('.apType').forEach(x=>x.textContent=AN())}
-function apChart(box,o){const svg=box.querySelector('svg.c1'),out=box.querySelector('.r1');const h=apH(o.r);const k=AK();const fys=[];for(let f=2012;f<=2026;f++)if(h[f])fys.push(f);
-  const W=1100,H=460,b=frame(svg,W,H,[64,24,30,30]);const A10=apAvg(o.r,k,2017,2026),A15=apAvg(o.r,k,2012,2026);
-  const hi=Math.max(...fys.map(f=>h[f][k]),A10||0)*1.12||1;const bw=(b.R-b.L)/fys.length;const Y=v=>b.T+(b.B-b.T)*(1-v/hi);
-  niceTicks(0,hi,5).forEach(v=>{el('line',{x1:b.L,x2:b.R,y1:Y(v),y2:Y(v),stroke:css('--line-soft')},svg);tx(svg,b.L-8,Y(v)+4,Math.round(v).toLocaleString(),{'text-anchor':'end','font-size':10.5})});
-  const ef=['Townsville','Darwin','Melbourne'].includes(o.r)?apEntry(o.r,k):null;const col=k===1?css('--teal'):'#C77700',colL=k===1?'rgba(0,160,180,.45)':'rgba(199,119,0,.45)';
-  const bars=[];fys.forEach((f,i)=>{const v=h[f][k];const x=b.L+i*bw+bw*.14,w=bw*.72;const last=f===2026;
-    el('rect',{x,y:Y(v),width:w,height:Y(0)-Y(v),fill:last?col:colL,rx:2},svg);
-    if(ef&&ef.f===f){el('rect',{x:x-3,y:Y(v)-3,width:w+6,height:Y(0)-Y(v)+3,fill:'none',stroke:css('--ink'),'stroke-width':1.5,'stroke-dasharray':'4 3'},svg);tx(svg,x+w/2,Y(v)-10,'we entered',{'text-anchor':'middle','font-size':10,'font-weight':600,fill:css('--ink')})}
-    tx(svg,x+w/2,H-10,'FY'+String(f).slice(2),{'text-anchor':'middle','font-size':10.5});bars.push({f,x,w})});
-  const l10x=b.L+fys.indexOf(2017)*bw;
-  if(A10){el('line',{x1:l10x,x2:b.R,y1:Y(A10),y2:Y(A10),stroke:css('--ink'),'stroke-width':2},svg);tx(svg,b.R-4,Y(A10)-6,'10-yr avg '+num(A10),{'text-anchor':'end','font-size':11,'font-weight':700,fill:css('--ink')})}
-  if(A15){el('line',{x1:b.L,x2:b.R,y1:Y(A15),y2:Y(A15),stroke:css('--muted'),'stroke-dasharray':'6 4','stroke-width':1.5},svg);tx(svg,b.L+6,Y(A15)-6,'15-yr avg '+num(A15),{'font-size':10.5,fill:css('--muted')})}
-  const R10=(A10&&h[2026])?h[2026][k]/A10-1:null,R15=(A15&&h[2026])?h[2026][k]/A15-1:null;
-  out.dataset.def=`FY26: <b>${num(h[2026]&&h[2026][k])}</b> new ${ANp()}, <b>${pc(R10)}</b> vs the 10-year average and ${pc(R15)} vs the 15-year average.${low(o)?' <b>Low volume</b> (under 30 a year): treat the percentages with care.':''}${ef?` When we entered (FY${String(ef.f).slice(2)}) ${AN()} approvals were ${pc(ef.r)} vs the previous 10 years.`:''} Hover a bar for the full split.`;out.innerHTML=out.dataset.def;
+function apChart(box,o){const svg=box.querySelector('svg.c1'),out=box.querySelector('.r1');const h=apH(o.r);const k=AK();const ys=[];for(let f=2012;f<=2026;f++)if(h[f])ys.push(f);
+  // stacked approvals: the selected type first (bottom, highlighted), everything else on top (faded)
+  const sel=f=>h[f][k]||0,rest=f=>Math.max(0,(h[f][0]||0)-sel(f));
+  const HHv=f=>f===2026?nh26(o.r):nh(o.r,f);
+  const W=1100,H=480,b=frame(svg,W,H,[64,24,30,30]);const A10=apAvg(o.r,k,2017,2026);
+  const vals=ys.flatMap(f=>[h[f][0],HHv(f)]).filter(v=>v!=null);let lo=Math.min(0,...vals),hi=Math.max(...vals,A10||0)*1.12||1;
+  const gw=(b.R-b.L)/ys.length,Y=v=>b.T+(b.B-b.T)*(1-(v-lo)/(hi-lo));
+  niceTicks(lo,hi,5).forEach(v=>{el('line',{x1:b.L,x2:b.R,y1:Y(v),y2:Y(v),stroke:Math.abs(v)<1e-9?css('--muted'):css('--line-soft')},svg);tx(svg,b.L-8,Y(v)+4,Math.round(v).toLocaleString(),{'text-anchor':'end','font-size':10.5})});
+  const ef=['Townsville','Darwin','Melbourne'].includes(o.r)?apEntry(o.r,k):null;
+  const selCol=k===1?'#00A0B4':'#C77700',selLight=k===1?'rgba(0,160,180,.55)':'rgba(199,119,0,.55)',restCol='rgba(99,102,106,.22)';
+  const groups=[];ys.forEach((f,i)=>{const x0=b.L+i*gw+gw*.08,bw=gw*.84/2;const last=f===2026;const s=sel(f),r=rest(f);
+    el('rect',{x:x0,y:Y(s),width:bw-2,height:Y(0)-Y(s),fill:last?selCol:selLight,rx:1},svg);
+    el('rect',{x:x0,y:Y(s+r),width:bw-2,height:Y(s)-Y(s+r),fill:restCol,rx:1},svg);
+    if(ef&&ef.f===f){el('rect',{x:x0-3,y:Y(s+r)-3,width:bw*2+4,height:Y(0)-Y(s+r)+3,fill:'none',stroke:css('--ink'),'stroke-width':1.5,'stroke-dasharray':'4 3'},svg);tx(svg,x0+bw,Y(Math.max(s+r,HHv(f)||0))-10,'we entered',{'text-anchor':'middle','font-size':10,'font-weight':600,fill:css('--ink')})}
+    const hv=HHv(f);if(hv!=null)el('rect',{x:x0+bw,y:Math.min(Y(hv),Y(0)),width:bw-2,height:Math.abs(Y(hv)-Y(0)),fill:f===2026?'rgba(62,121,103,.3)':'#3E7967',stroke:f===2026?'#3E7967':'none','stroke-dasharray':f===2026?'3 2':'',rx:1},svg);
+    tx(svg,x0+bw,H-10,'FY'+String(f).slice(2)+(f===2026?'*':''),{'text-anchor':'middle','font-size':10.5});groups.push({f,x0,w:gw*.84})});
+  const l10x=b.L+ys.indexOf(2017)*gw;
+  if(A10){el('line',{x1:l10x,x2:b.R,y1:Y(A10),y2:Y(A10),stroke:selCol,'stroke-width':2,'stroke-dasharray':'6 3'},svg);tx(svg,l10x+4,Y(A10)-6,`${ANp()} 10-yr avg ${num(A10)}`,{'font-size':11,'font-weight':700,fill:selCol})}
+  const R10=(A10&&h[2026])?h[2026][k]/A10-1:null;const r5=ratio(sumRange(nh,o.r,2021,2025),sumRange(apT,o.r,2021,2025));
+  out.dataset.def=`FY26: <b>${num(h[2026]&&h[2026][k])}</b> ${ANp()} approved (${pc(R10)} vs their 10-year average) out of ${num(h[2026]&&h[2026][0])} dwellings; new households about ${num(nh26(o.r))} (estimated). Over FY21–25: <b>${rt(r5)}</b> new households per approval${r5!=null?(r5>=1?' (undersupplied)':' (supply catching up)'):''}.${low(o)?' <b>Low volume</b> for this type.':''}${ef?` When we entered (FY${String(ef.f).slice(2)}) ${AN()} approvals were ${pc(ef.r)} vs the previous 10 years.`:''} Hover a year for the numbers.`;out.innerHTML=out.dataset.def;
   const ov=el('rect',{x:b.L,y:b.T,width:b.R-b.L,height:b.B-b.T,fill:'transparent'},svg);
-  ov.addEventListener('mousemove',e=>{const r=svg.getBoundingClientRect();const x=(e.clientX-r.left)*W/r.width;const bb=bars.find(q=>x>=q.x-bw*.14&&x<=q.x+q.w+bw*.14);if(bb){const v=h[bb.f];out.innerHTML=`<b>FY${String(bb.f).slice(2)}</b> (Jul ${bb.f-1} – Jun ${bb.f}): houses ${num(v[1])} · townhouses &amp; villas ${num(v[3])} · apartments ${num(v[4])} · all dwellings ${num(v[0])}`}});
+  ov.addEventListener('mousemove',e=>{const r=svg.getBoundingClientRect();const x=(e.clientX-r.left)*W/r.width;const g=groups.find(q=>x>=q.x0-gw*.08&&x<=q.x0+q.w+gw*.08);if(g){const v=h[g.f];const hv=HHv(g.f);
+    out.innerHTML=`<b>FY${String(g.f).slice(2)}</b> (Jul ${g.f-1} – Jun ${g.f}): approvals ${num(v[0])} (houses ${num(v[1])} · townhouses &amp; villas ${num(v[3])} · apartments ${num(v[4])}) · new households ${num(hv)}${g.f===2026?' (estimated)':''} · ${rt(ratio(hv,v[0]))} households per approval`}});
   ov.addEventListener('mouseleave',()=>{out.innerHTML=out.dataset.def})}
-
 // ---------- section 6: population ----------
 const PP=r=>(D.pop&&D.pop[r])||{erp:{},comp:{}};
 const erp=(r,y)=>PP(r).erp[y];
@@ -322,6 +329,17 @@ function popCharts(box,o){const s1=box.querySelector('svg.c1'),s2=box.querySelec
       tx(s2,b.L+i*gw+gw/2,H-8,'FY'+String(y).slice(2)+' (to June '+y+')',{'text-anchor':'middle','font-size':10.5})});
     r2.innerHTML=`<b>Where the growth came from</b>, FY22–FY25: ${C.map(c=>`<span class="sw" style="width:14px;height:10px;background:${c[1]}"></span>${c[0]}`).join(' &nbsp; ')}`}}
 
+// ---------- section 7: new households vs approvals ----------
+const HH={Sydney:2.656,Melbourne:2.590,Brisbane:2.590,Adelaide:2.453,Perth:2.583,Hobart:2.421,Darwin:2.763,Canberra:2.486,Ballarat:2.297,Bendigo:2.368,Geelong:2.380,Mildura:2.368,Wodonga:2.355,Albury:2.269,
+  'Central Coast':2.449,'Coffs Harbour':2.377,Newcastle:2.332,Orange:2.366,'Port Macquarie':2.241,Tamworth:2.388,'Wagga Wagga':2.405,Wollongong:2.478,Bundaberg:2.281,Cairns:2.419,Gladstone:2.383,'Gold Coast':2.485,
+  Ipswich:2.669,Mackay:2.384,Rockhampton:2.395,'Sunshine Coast':2.440,Toowoomba:2.399,Townsville:2.438,Rockingham:2.55,Bunbury:2.4,Mandurah:2.4,Launceston:2.4};
+const nh=(r,y)=>{const a=erp(r,y-1),b=erp(r,y),s=HH[r];return (a&&b&&s)?(b-a)/s:null};
+const nh26=r=>{let s=0,n=0;for(let y=2021;y<=2025;y++){const v=nh(r,y);if(v!=null){s+=v;n++}}return n?s/n:null};
+const apT=(r,y)=>apV(r,y,0);
+const sumRange=(f,r,a,z)=>{let s=0,n=0;for(let y=a;y<=z;y++){const v=f(r,y);if(v!=null){s+=v;n++}}return n===(z-a+1)?s:null};
+const ratio=(h,a)=>(h!=null&&a)?h/a:null;
+const rt=v=>v==null?'–':v.toFixed(2);
+
 function lineChart(svg,o,opt){const W=1100,H=opt.H||300,b=frame(svg,W,H,[60,opt.right?64:24,22,28]);const start=opt.from;
   const ser=opt.series.map(s=>({...s,pts:s.v.map((v,i)=>({m:HL+i,v})).filter(p=>p.m>=start&&p.v!=null)}));
   const ax=k=>{const v=ser.filter(s=>(s.axis||'L')===k).flatMap(s=>s.pts.map(p=>p.v));if(!v.length)return null;let lo=Math.min(...v),hi=Math.max(...v);if(opt['lo'+k]!=null)lo=Math.min(lo,opt['lo'+k]);if(opt['neg'+k]){lo=Math.min(lo,0);hi=Math.max(hi,0)}const pd=(hi-lo)*.08||1;return [opt['neg'+k]?lo-pd:Math.max(0,lo-pd),hi+pd]};
@@ -356,7 +374,8 @@ function render(t){const L=rowsNow();const col=t.cols.find(c=>c.k===t.sortK);
   tb.querySelectorAll('th').forEach(h=>h.onclick=()=>{const k=h.dataset.k;if(k===t.sortK)t.sortD=-t.sortD;else{t.sortK=k;t.sortD=k==='r'?1:-1}render(t)});
   const key=o=>o.r+'|'+o.t;
   tb.querySelector('tbody').innerHTML=L.map(o=>'<tr data-k="'+esc(key(o))+'" class="row '+(o.buy?'buy':'')+'">'+t.cols.map(c=>{let st='';if(c.heat){const v=(c.val||c.get)(o);if(v!=null){const [lo,hi]=rng[c.k];
-      if(c.heat==='inv'){if(v<0)st=`background:rgba(var(--good-rgb),${(0.05+0.4*v/(lo||-1)).toFixed(3)})`;else if(v>0)st=`background:rgba(var(--heatneg),${(0.06+0.32*v/(hi||1)).toFixed(3)})`}
+      if(c.heat==='ratio'){const d=v-1;if(d>=0)st=`background:rgba(var(--good-rgb),${(0.05+0.4*Math.min(1,d/1.5)).toFixed(3)})`;else st=`background:rgba(var(--heatneg),${(0.06+0.32*Math.min(1,-d/0.6)).toFixed(3)})`}
+      else if(c.heat==='inv'){if(v<0)st=`background:rgba(var(--good-rgb),${(0.05+0.4*v/(lo||-1)).toFixed(3)})`;else if(v>0)st=`background:rgba(var(--heatneg),${(0.06+0.32*v/(hi||1)).toFixed(3)})`}
       else if(c.heat==='pos'&&v>=0)st=`background:rgba(var(--heat),${(0.04+0.42*v/(hi||1)).toFixed(3)})`;
       else if(v>=0)st=`background:rgba(var(--good-rgb),${(0.05+0.4*v/(hi||1)).toFixed(3)})`;
       else st=`background:rgba(var(--heatneg),${(0.06+0.32*v/(lo||-1)).toFixed(3)})`}}
@@ -412,12 +431,13 @@ function rentChart(svg,o,out,win){const W=1100,H=520,b=frame(svg,W,H,[56,90,24,2
   tx(svg,b.R+6,ly(re,sep[1]),'Rent '+pc(re/100-1),{'font-size':11,'font-weight':700,fill:css('--good')});
   out.dataset.def=`Rent (dashed) and price (solid), both set to 100 in ${mLab(start)}. Green fill = rents ahead of prices; red = prices ahead. Gap now: <b>${pts((re-pe)/100)}</b>. Hover to read any month.`;out.innerHTML=out.dataset.def;
   hover(svg,b,X,xs,m=>`<b>${mLab(m)}</b>: price $${Math.round(P[m-HL])}k (${pc(pi(m)/100-1)}) · rent $${Math.round(R[m-HL])}/wk (${pc(ri(m)/100-1)}) · gap ${pts((ri(m)-pi(m))/100)}`,out)}
-function drawDetail(t,o,tr){if(t.chart==='pop')return popCharts(tr,o);if(t.chart==='ap')return apChart(tr,o);if(t.chart==='vr')return vrCharts(tr,o);if(t.chart==='dom')return domCharts(tr,o);const svg=tr.querySelector('svg'),out=tr.querySelector('.det-read');
+function drawDetail(t,o,tr){if(t.chart==='hh')return hhChart(tr,o);if(t.chart==='pop')return popCharts(tr,o);if(t.chart==='ap')return apChart(tr,o);if(t.chart==='vr')return vrCharts(tr,o);if(t.chart==='dom')return domCharts(tr,o);const svg=tr.querySelector('svg'),out=tr.querySelector('.det-read');
   if(t.chart==='price')priceChart(svg,o,out);
   else{const btns=tr.querySelectorAll('.det-win button');const go=w=>{btns.forEach(x=>x.classList.toggle('on',x.dataset.w==String(w)));rentChart(svg,o,out,w==='all'?'all':+w)};
     btns.forEach(x=>x.onclick=e=>{e.stopPropagation();t.win=x.dataset.w;go(t.win)});go(t.win||'60')}}
-function detailHTML(t,o){if(t.chart==='pop')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)}: population change</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="det-read small r2" style="margin-top:12px"></div><svg class="dchart c2"></svg></div>`;
-if(t.chart==='ap')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)}: ${AN()} approvals FY2012–26</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="legend" style="margin-top:6px"><span><span class="sw" style="background:${AK()===1?'rgba(0,160,180,.45)':'rgba(199,119,0,.45)'}"></span>New ${ANp()} per year (FY26 darker)</span><span><span class="sw" style="height:3px;background:var(--ink)"></span>10-year average</span><span><span class="sw" style="height:2px;background:var(--muted)"></span>15-year average (dashed)</span></div></div>`;
+function detailHTML(t,o){if(t.chart==='hh')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)}: new households vs approvals</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="legend" style="margin-top:6px"><span><span class="sw" style="background:#3E7967"></span>New households</span><span><span class="sw" style="background:rgba(99,102,106,.55)"></span>New dwellings approved</span><span>* FY26 households estimated</span></div></div>`;
+if(t.chart==='pop')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)}: population change</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="det-read small r2" style="margin-top:12px"></div><svg class="dchart c2"></svg></div>`;
+if(t.chart==='ap')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)}: approvals vs new households, FY2012–26</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="legend" style="margin-top:6px"><span><span class="sw" style="background:${AK()===1?'rgba(0,160,180,.55)':'rgba(199,119,0,.55)'}"></span>${ANp()} approved (highlighted, bottom of bar)</span><span><span class="sw" style="background:rgba(99,102,106,.22)"></span>Other dwellings approved</span><span><span class="sw" style="background:#3E7967"></span>New households (FY26* estimated)</span><span><span class="sw" style="height:2px;background:${AK()===1?'#00A0B4':'#C77700'}"></span>${ANp()} 10-year average</span></div></div>`;
 if(t.chart==='vr')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: vacancy rate</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="legend" style="margin-top:6px"><span><span class="sw" style="height:3px;background:rgba(0,160,180,.35)"></span>Vacancy, monthly</span><span><span class="sw" style="height:3px;background:var(--teal-ink)"></span>Vacancy, 12-month average</span></div></div>`;
 if(t.chart==='dom')return `<div class="det-box" role="dialog" aria-modal="true"><div class="det-head"><b>${esc(o.r)} ${o.t==='H'?'houses':'units'}: days on market and stock on market</b><button class="det-x" title="Close">×</button></div><div class="det-read small r1"></div><svg class="dchart c1"></svg><div class="det-read small r2" style="margin-top:10px"></div><svg class="dchart c2"></svg></div>`;
 const ttl=t.chart==='price'?`${esc(o.r)} ${o.t==='H'?'houses':'units'}: median sale price since 2005`:`${esc(o.r)} ${o.t==='H'?'houses':'units'}: rent vs price growth`;
