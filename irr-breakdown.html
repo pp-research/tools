@@ -973,8 +973,9 @@ details .body strong{color:var(--text)}
   var resultMode = 'empty';
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
-  var BUILD = '2026-10-08-a';
+  var BUILD = '2026-10-08-b';
   var SHARE_DOC = 'state/book';
+  var histRows = {};        // log id -> the deleted record, for Restore
   var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
   /* Bumping this re-seeds every browser once. Gating on STORE alone was wrong:
@@ -2834,12 +2835,35 @@ details .body strong{color:var(--text)}
      the change stands. */
   /* Read-only and open to anyone who can read the list — the point of a log is
      that the people who did not make the change can see it. */
+  /* Putting a deleted property back. The log row carries the whole record, so
+     this is a re-import of one entry — addEntries dedupes on name and dates, so
+     pressing it twice cannot create a second copy. */
+  function restoreDeleted(json, name){
+    var e;
+    try { e = JSON.parse(json); } catch (err) { e = null; }
+    if (!e || !e.name) { $('messages').innerHTML = msg('err','That log entry does not carry enough to restore.'); return; }
+    var list = loadProps();
+    var key = function(x){ return String(x.name||'').trim().toLowerCase()+'|'+x.purchaseDate+'|'+x.soldDate; };
+    var k = key(e);
+    if (list.some(function(x){ return key(x) === k; })) {
+      $('messages').innerHTML = msg('warn', esc(name)+' is already on the list.');
+      return;
+    }
+    list.push(e);
+    if (!putProps(list)) return;
+    logChange([{ action:'restored from log', property:e.name, detail:'' }]);
+    renderProps();
+    var d = $('histDialog'); if (d.open) d.close();
+    $('messages').innerHTML = msg('ok', esc(e.name)+' is back on the list.');
+  }
+  /* Read-only and open to anyone who can read the list — the point of a log is
+     that the people who did not make the change can see it. */
   function showHistory(){
     var d = $('histDialog');
     $('histBody').innerHTML = '<p class="count-line">Loading…</p>';
     if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
     if (!share.sb) { $('histBody').innerHTML = '<p class="count-line">History needs the shared list.</p>'; return; }
-    share.sb.from('irr_log').select('at,who,action,property,detail')
+    share.sb.from('irr_log').select('id,at,who,action,property,detail')
       .order('at', { ascending:false }).limit(300)
       .then(function(r){
         if (r.error) {
@@ -2853,19 +2877,31 @@ details .body strong{color:var(--text)}
             '<p>Changes are recorded from now on — archiving, restoring, re-filing and deleting.</p></div>';
           return;
         }
+        histRows = {};
+        var canUndo = (share.canWrite !== false);
         var h = '<p class="count-line" style="margin-bottom:var(--sp-3)">'+
-                'The last '+rows.length+' change'+(rows.length===1?'':'s')+', newest first.</p>'+
+                'The last '+rows.length+' change'+(rows.length===1?'':'s')+', newest first.'+
+                (canUndo ? ' A deleted property can be put back from here.' : '')+'</p>'+
                 '<div class="tbl-scroll"><table><thead><tr>'+
                 '<th scope="col">When</th><th scope="col">Who</th><th scope="col">Change</th>'+
-                '<th scope="col">Property</th><th scope="col">Detail</th></tr></thead><tbody>';
+                '<th scope="col">Property</th><th scope="col">Detail</th>'+
+                '<th scope="col"><span class="sr-only">Undo</span></th></tr></thead><tbody>';
         rows.forEach(function(x){
           var dt = new Date(x.at);
+          var deleted = (x.action === 'deleted') && x.detail && x.detail.charAt(0) === '{';
+          if (deleted) histRows[x.id] = x.detail;
+          /* a deleted row's detail is the whole record — showing that JSON helps
+             nobody, so the cell says what it is instead */
+          var det = deleted ? '<span class="faint">record kept</span>' : esc(x.detail||'');
           h += '<tr><td>'+esc(dLabel(dt))+' '+String(dt.getHours()).padStart(2,'0')+':'+
                String(dt.getMinutes()).padStart(2,'0')+'</td>'+
                '<td>'+esc((x.who||'—').split('@')[0])+'</td>'+
                '<td>'+esc(x.action||'')+'</td>'+
                '<td class="name">'+esc(x.property||'')+'</td>'+
-               '<td>'+esc(x.detail||'')+'</td></tr>';
+               '<td>'+det+'</td>'+
+               '<td class="num">'+((deleted && canUndo)
+                 ? '<button type="button" class="btn-ghost btn-sm" data-undel="'+x.id+'">Restore</button>' : '')+
+               '</td></tr>';
         });
         $('histBody').innerHTML = h + '</tbody></table></div>';
       });
@@ -2965,7 +3001,11 @@ details .body strong{color:var(--text)}
         var ids = {}; picked.forEach(function(id){ ids[id] = 1; });
         var list = loadProps().filter(function(e){ return !ids[e.id]; });
         if (!putProps(list)) return;
-        logChange(hits.map(function(e){ return { action:'deleted', property:e.name, detail:'' }; }));
+        /* the whole record, so a delete can be undone from the log — it is the
+           one action here with nothing else to recover it from */
+        logChange(hits.map(function(e){
+          return { action:'deleted', property:e.name, detail: JSON.stringify(e) };
+        }));
         picked = [];
         if (resultMode === 'compare') showEmpty();
         renderProps();
@@ -2975,6 +3015,11 @@ details .body strong{color:var(--text)}
       });
   }
   $('btnHistory').addEventListener('click', showHistory);
+  $('histBody').addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('button[data-undel]');
+    if (!b) return;
+    restoreDeleted(histRows[b.dataset.undel], b.closest('tr').querySelector('.name').textContent);
+  });
   $('histClose').addEventListener('click', function(){ var d=$('histDialog'); if(d.open) d.close(); });
   $('histDialog').addEventListener('click', function(ev){ if(ev.target===$('histDialog')) $('histDialog').close(); });
   $('btnMoveCat').addEventListener('click', moveSelected);
