@@ -257,6 +257,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 }
 .modal-x:hover{color:var(--text);background:var(--panel-2)}
 .modal-sm{width:min(440px,calc(100vw - 32px))}
+.modal-lg{width:min(860px,calc(100vw - 32px))}
 .modal-body{padding:var(--sp-6);overflow:auto;flex:1 1 auto}
 .modal-body p{font-size:14px;line-height:21px;color:var(--muted)}
 .modal-body p strong{color:var(--text)}
@@ -740,6 +741,7 @@ details .body strong{color:var(--text)}
             <div class="btns" style="margin:0">
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
               <button type="button" class="btn-ghost btn-sm btn-archive" id="btnArchiveView"></button>
+              <button type="button" class="btn-ghost btn-sm" id="btnHistory" hidden>History</button>
               <button type="button" class="btn-ghost btn-sm" id="btnQuickOpen">Quick IRR</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
@@ -804,6 +806,17 @@ details .body strong{color:var(--text)}
             <button type="button" class="btn-primary" id="authGo">Sign in</button>
             <button type="button" class="btn-ghost" id="authCancel">Cancel</button>
           </div>
+        </div>
+      </dialog>
+
+      <!-- append-only: what moved, which way, who and when -->
+      <dialog class="modal modal-lg" id="histDialog" aria-labelledby="hist-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="hist-h">History</h2>
+            <button type="button" class="modal-x" id="histClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body" id="histBody"></div>
         </div>
       </dialog>
 
@@ -960,7 +973,7 @@ details .body strong{color:var(--text)}
   var resultMode = 'empty';
   /* Declared up here because renderProps reads share.canWrite on the very first
      render, which happens before the shared-state block further down runs. */
-  var BUILD = '2026-09-30-e';
+  var BUILD = '2026-10-08-a';
   var SHARE_DOC = 'state/book';
   var share = { db:null, sb:null, row:'adelaide', canWrite:null, applying:false, sent:null, ready:false };
   var STORE = 'pp-irr-saved-v1';      // unchanged, so existing saves survive
@@ -2813,18 +2826,79 @@ details .body strong{color:var(--text)}
       function(value){ commitAside(want, true, String(value || '').trim()); },
       true);
   }
+  /* ── the change log ──
+     The book is one record that each save overwrites, so until now "was this
+     archived before?" had no answer. This is append-only beside it: who, what,
+     which way, why, when. It never gates an edit — a log that can block the
+     work it records is worse than no log, so a failed write is swallowed and
+     the change stands. */
+  /* Read-only and open to anyone who can read the list — the point of a log is
+     that the people who did not make the change can see it. */
+  function showHistory(){
+    var d = $('histDialog');
+    $('histBody').innerHTML = '<p class="count-line">Loading…</p>';
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
+    if (!share.sb) { $('histBody').innerHTML = '<p class="count-line">History needs the shared list.</p>'; return; }
+    share.sb.from('irr_log').select('at,who,action,property,detail')
+      .order('at', { ascending:false }).limit(300)
+      .then(function(r){
+        if (r.error) {
+          $('histBody').innerHTML = '<p class="count-line">Could not read the history: '+
+            esc(r.error.message)+'</p>';
+          return;
+        }
+        var rows = r.data || [];
+        if (!rows.length) {
+          $('histBody').innerHTML = '<div class="empty"><h3>Nothing logged yet</h3>'+
+            '<p>Changes are recorded from now on — archiving, restoring, re-filing and deleting.</p></div>';
+          return;
+        }
+        var h = '<p class="count-line" style="margin-bottom:var(--sp-3)">'+
+                'The last '+rows.length+' change'+(rows.length===1?'':'s')+', newest first.</p>'+
+                '<div class="tbl-scroll"><table><thead><tr>'+
+                '<th scope="col">When</th><th scope="col">Who</th><th scope="col">Change</th>'+
+                '<th scope="col">Property</th><th scope="col">Detail</th></tr></thead><tbody>';
+        rows.forEach(function(x){
+          var dt = new Date(x.at);
+          h += '<tr><td>'+esc(dLabel(dt))+' '+String(dt.getHours()).padStart(2,'0')+':'+
+               String(dt.getMinutes()).padStart(2,'0')+'</td>'+
+               '<td>'+esc((x.who||'—').split('@')[0])+'</td>'+
+               '<td>'+esc(x.action||'')+'</td>'+
+               '<td class="name">'+esc(x.property||'')+'</td>'+
+               '<td>'+esc(x.detail||'')+'</td></tr>';
+        });
+        $('histBody').innerHTML = h + '</tbody></table></div>';
+      });
+  }
+  function logChange(rows){
+    if (!share.sb || share.canWrite === false || !rows || !rows.length) return;
+    var who = '';
+    try { who = localStorage.getItem('pp-irr-email') || ''; } catch (e) {}
+    var body = rows.slice(0, 500).map(function(r){
+      return { who: who, action: r.action, property: r.property || null, detail: r.detail || null };
+    });
+    try {
+      share.sb.from('irr_log').insert(body).then(function(res){
+        if (res && res.error) console.warn('change log unavailable:', res.error.message);
+      });
+    } catch (e) { /* the edit has already been saved; never surface this */ }
+  }
   function commitAside(want, to, reason){
-    var list = loadProps(), n = 0;
+    var list = loadProps(), n = 0, touched = [];
     list.forEach(function(e){
       if (!want[e.id]) return;
       var changed = (!!e.outside !== to) || (to && (e.outsideReason || '') !== reason);
       if (!changed) return;
       e.outside = to || undefined;
       e.outsideReason = to ? (reason || undefined) : undefined;
+      touched.push(e.name);
       n++;
     });
     if (!n) return;
     if (!putProps(list)) return;
+    logChange(touched.map(function(nm){
+      return { action: to ? 'archived' : 'restored', property: nm, detail: to ? reason : '' };
+    }));
     if (resultMode === 'compare') showEmpty();
     renderProps();
     $('parseMsg').innerHTML = msg('ok', n + ' propert' + (n===1?'y':'ies') +
@@ -2857,14 +2931,21 @@ details .body strong{color:var(--text)}
     askPrompt('Move city',
       'File <strong>' + hits.length + '</strong> selected propert' + (hits.length===1?'y':'ies') +
       ' under a capital city. An existing name moves them into it; a new one creates it; ' +
-      'leaving it blank clears the category.',
-      'Category', (hits[0].category || '').trim(), 'Move',
+      'leaving it blank clears it.',
+      'Capital city', (hits[0].category || '').trim(), 'Move',
       function(value){
         var to = String(value || '').trim();
         var ids = {}; picked.forEach(function(id){ ids[id] = 1; });
-        var list = loadProps(), n = 0;
-        list.forEach(function(e){ if (ids[e.id] && (e.category||'').trim() !== to) { e.category = to; n++; } });
+        var list = loadProps(), n = 0, touched = [];
+        list.forEach(function(e){
+          if (ids[e.id] && (e.category||'').trim() !== to) {
+            touched.push({ action:'moved', property:e.name,
+                           detail:((e.category||'').trim() || 'none') + ' → ' + (to || 'none') });
+            e.category = to; n++;
+          }
+        });
         if (!putProps(list)) return;
+        logChange(touched);
         renderProps();
         $('parseMsg').innerHTML = msg('ok', n
           ? n + ' propert' + (n===1?'y':'ies') + ' moved to <strong>' + (to ? esc(to) : 'no capital city') + '</strong>.'
@@ -2884,6 +2965,7 @@ details .body strong{color:var(--text)}
         var ids = {}; picked.forEach(function(id){ ids[id] = 1; });
         var list = loadProps().filter(function(e){ return !ids[e.id]; });
         if (!putProps(list)) return;
+        logChange(hits.map(function(e){ return { action:'deleted', property:e.name, detail:'' }; }));
         picked = [];
         if (resultMode === 'compare') showEmpty();
         renderProps();
@@ -2892,6 +2974,9 @@ details .body strong{color:var(--text)}
           '<strong>+ Add properties</strong>.');
       });
   }
+  $('btnHistory').addEventListener('click', showHistory);
+  $('histClose').addEventListener('click', function(){ var d=$('histDialog'); if(d.open) d.close(); });
+  $('histDialog').addEventListener('click', function(ev){ if(ev.target===$('histDialog')) $('histDialog').close(); });
   $('btnMoveCat').addEventListener('click', moveSelected);
   $('btnAside').addEventListener('click', asideSelected);
   $('btnArchiveView').addEventListener('click', function(){
@@ -3063,6 +3148,7 @@ details .body strong{color:var(--text)}
     /* The button says everything the sentence did: if it offers you a sign-in,
        you cannot edit yet. */
     var ab = $('btnShareAuth'); if (ab) ab.hidden = !(share.db || share.sb);
+    var hb = $('btnHistory'); if (hb) hb.hidden = !share.sb;
     if (ro) renderProps();   // drops the per-row delete and archive buttons
   }
   /* ── the shared list on a published web page ──
