@@ -3701,8 +3701,20 @@ details .body strong{color:var(--text)}
          out to be — which is what makes "Unit 2, 10 Example Rd, Glandore" work
          as well as the three-part form above */
       if (si > 1) street = parts.slice(0, si).join(' ');
-    } else if (parts.length > 2) {
-      street = parts.slice(0, parts.length - 1).join(' ');
+    } else if (suburb) {
+      /* The suburb came from the file's own column, so everything in the address
+         is street — except a tail that merely repeats that suburb, or is nothing
+         but a state and a postcode.
+         Taking parts[0] turned "Unit 1, 38 Mary Street" into "unit 1" and threw
+         the rest away: 12 of 574 known sales went unfound in the harness, every
+         one of them a unit written out in full. Taking all but the last part
+         instead put the suburb into the street, which fails the other way. */
+      var ps = parts.slice();
+      while (ps.length > 1) {
+        var tail = bare(ps[ps.length - 1]);
+        if (!tail || tail === suburb) ps.pop(); else break;
+      }
+      street = ps.join(' ');
     }
     /* ── the address that never said where it was ──
        21 of 1,213 are written with no comma at all — "141B Young Street
