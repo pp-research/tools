@@ -5521,10 +5521,20 @@ details .body strong{color:var(--text)}
     if (!share.ready || (!share.db && !share.sb)) return;
     var body = shareBody(), json = JSON.stringify(body);
     if (json === share.sent) return;                 // nothing actually changed
-    if (json.length > 200000) {
-      $('messages').innerHTML = msg('warn','This list has grown too large to share '+
+    /* The 200 KB guard belongs to the artifact's document store, which has a
+       256 KiB ceiling per document. Supabase has no such limit: body is jsonb
+       and Postgres holds up to a gigabyte in one field. Applying the artifact's
+       ceiling to Supabase stopped a 218 KB book from ever reaching the people
+       it is shared with, and left the only copy in one browser — where a
+       reload would have replaced it with the older shared one.
+       The Supabase number is a sanity bound, not a known limit; a real refusal
+       comes back from the API below and is reported as itself. */
+    var ceiling = share.db ? 200000 : 4000000;
+    if (json.length > ceiling) {
+      $('messages').innerHTML = msg('warn','This list is too large to share '+
         '('+Math.round(json.length/1024)+' KB). It is still saved in this browser, '+
-        'but the shared copy has not been updated.');
+        'but the shared copy has not been updated. Export CSV to keep a copy '+
+        'before reloading.');
       return;
     }
     share.sent = json;
@@ -5553,8 +5563,54 @@ details .body strong{color:var(--text)}
         });
     }
   }
+  /* ── properties this browser has and the shared list does not ──
+     The shared copy replaces the local one on load, which is right when the
+     local one is just stale. It is wrong when a push failed: the only copy of
+     an evening's work is then quietly replaced by yesterday's. Those rows are
+     set aside before the replacement and offered back, rather than being
+     silently dropped or silently re-added — re-adding on its own would undo
+     somebody else's deletes. */
+  var UNSENT_KEY = 'pp-irr-unsent-v1';
+  function stashUnsent(rows){
+    try {
+      if (rows && rows.length) localStorage.setItem(UNSENT_KEY, JSON.stringify(rows));
+      else localStorage.removeItem(UNSENT_KEY);
+    } catch (e) { /* storage blocked: the offer below is this session only */ }
+  }
+  function offerUnsent(rows){
+    if (!rows || !rows.length) return;
+    $('messages').innerHTML = msg('warn',
+      '<strong>'+rows.length+'</strong> propert'+(rows.length===1?'y is':'ies are')+
+      ' in this browser but not in the shared list — a change that never reached it. '+
+      'Nothing has been lost; they are set aside. '+
+      '<button type="button" class="btn-primary btn-sm" id="btnPutBack" style="margin-left:8px">'+
+      'Put '+(rows.length===1?'it':'them')+' back</button>');
+  }
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('#btnPutBack');
+    if (!b) return;
+    var rows = [];
+    try { rows = JSON.parse(localStorage.getItem(UNSENT_KEY) || '[]'); } catch (e) {}
+    if (!rows.length) { $('messages').innerHTML = ''; return; }
+    var list = loadProps(), have = {};
+    list.forEach(function(e){ have[e.id] = 1; });
+    var added = 0;
+    rows.forEach(function(e){ if (!have[e.id]) { list.push(e); added++; } });
+    if (!putProps(list)) return;
+    stashUnsent(null);
+    logChange([{ action:'restored unsent', property:null,
+                 detail: added + ' propert' + (added===1?'y':'ies') + ' this browser held but the shared list did not' }]);
+    renderProps();
+    $('messages').innerHTML = msg('ok', added + ' propert' + (added===1?'y':'ies') +
+      ' put back and sent to the shared list.');
+  });
+
   function applyShared(body){
     if (!body || !Array.isArray(body.properties)) return;
+    /* what is here that the incoming copy has never seen */
+    var incoming = {};
+    body.properties.forEach(function(p){ if (p && p.id) incoming[p.id] = 1; });
+    var onlyHere = loadProps().filter(function(e){ return e.id && !incoming[e.id]; });
     share.applying = true;
     try {
       putProps(body.properties);
@@ -5572,6 +5628,7 @@ details .body strong{color:var(--text)}
       share.sent = JSON.stringify(shareBody());
       syncAssumpFlag(); renderProps(); calc();
     } finally { share.applying = false; }
+    if (onlyHere.length) { stashUnsent(onlyHere); offerUnsent(onlyHere); }
   }
   /* A viewer who cannot write should not be shown buttons that will fail.
      Everything that only reads — filters, compare, both exports, the whole
