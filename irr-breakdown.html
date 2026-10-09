@@ -3645,6 +3645,13 @@ details .body strong{color:var(--text)}
     mews:'mews', loop:'loop', link:'link', green:'green', row:'row',
     gardens:'gdns', gdns:'gdns', parkway:'pwy', pwy:'pwy', view:'view', vista:'vista'
   };
+  /* A direction on the end of a street name. "12 Leslie Street E" and
+     "12 Leslie Street East" are one address written two ways, and neither of
+     them is "12 Leslie Street" — so the direction is canonicalised and kept,
+     never dropped. */
+  var ST_DIRS = { n:'n', north:'n', s:'s', south:'s', e:'e', east:'e', w:'w', west:'w',
+                  ne:'ne', northeast:'ne', nw:'nw', northwest:'nw',
+                  se:'se', southeast:'se', sw:'sw', southwest:'sw' };
   var AU_STATES = { sa:1, vic:1, nsw:1, qld:1, wa:1, nt:1, tas:1, act:1 };
   /* The councils used to be a fixed list of metropolitan Adelaide. They are not
      any more: the list is whichever councils your unsold properties are in, and
@@ -3692,6 +3699,38 @@ details .body strong{color:var(--text)}
     } else if (parts.length > 2) {
       street = parts.slice(0, parts.length - 1).join(' ');
     }
+    /* ── the address that never said where it was ──
+       21 of 1,213 are written with no comma at all — "141B Young Street
+       Parkside" — and the comma walk-back above has nothing to walk. The same
+       gap swallows "12 Smith Street Parkside, QLD 4305", where the suburb is in
+       the first part and the only other part is a state and a postcode, so the
+       walk-back falls through to "qld 4305".
+       Both end in a suburb, so ask the suburb list. The longest trailing run of
+       words it recognises wins — longest first, or "West Hindmarsh" becomes
+       "Hindmarsh" and "Woodville West" becomes "West". Only ever a run the list
+       knows, so a street is never mistaken for a suburb: "25 Vincent Street
+       Hendon" finds Hendon and leaves Vincent alone.
+       A suburb the file itself gave us is never second-guessed, and a suburb
+       that is merely misspelt stays as it is, so the misspelling flag still
+       has something to flag. */
+    if (!suburbHint && (!suburb || !suburbRec(suburb))) {
+      var tw = s.replace(/,/g, ' ').split(' ').filter(Boolean).filter(function(w){
+        return !AU_STATES[w] && !/^\d{4}$/.test(w);
+      });
+      for (var tn = Math.min(4, tw.length - 1); tn >= 1; tn--) {
+        var cand = tw.slice(tw.length - tn).join(' ');
+        if (!suburbRec(cand)) continue;
+        suburb = cand;
+        /* and it is not part of the street — but only strip it where the street
+           really does end with it, or a comma form would lose its street name */
+        var sw = street.split(' ').filter(Boolean);
+        while (sw.length && (AU_STATES[sw[sw.length-1]] || /^\d{4}$/.test(sw[sw.length-1]))) sw.pop();
+        if (sw.length > tn && sw.slice(sw.length - tn).join(' ') === cand) {
+          street = sw.slice(0, sw.length - tn).join(' ');
+        }
+        break;
+      }
+    }
     var unit = '', num = '';
     var words = street.split(' ').filter(Boolean);
     var saidUnit = false;
@@ -3712,15 +3751,24 @@ details .body strong{color:var(--text)}
            (AU_STATES[words[words.length-1]] || /^\d{4}$/.test(words[words.length-1]))) {
       words.pop();
     }
+    /* The direction comes off before the street type, because it sits behind
+       it: "leslie street east" is name, type, direction in that order. Needs
+       three words to be a direction at all, so "12 East Street" keeps its
+       street and a road called "Main North" keeps its name. */
+    var dir = '';
+    if (words.length > 2 && ST_DIRS[words[words.length-1]]) dir = ST_DIRS[words.pop()];
     var type = '';
     if (words.length > 1 && ST_TYPES[words[words.length-1]]) type = ST_TYPES[words.pop()];
-    return { unit:unit, num:num, street:words.join(' '), type:type, suburb:suburb };
+    return { unit:unit, num:num, street:words.join(' '), type:type, dir:dir, suburb:suburb };
   }
   /* Two keys per address: the tight one has to agree about the unit and the
      street type, the loose one only about the number, the street and the
      suburb. A tight match is a Sold; a loose one is a Check. */
-  function tightKey(a){ return [a.unit, a.num, a.street, a.type, a.suburb].join('|'); }
-  function looseKey(a){ return [a.num, a.street, a.suburb].join('|'); }
+  /* The direction is in both keys, including the loose one: the loose key
+     forgives the unit and the street type, which are ways of writing the same
+     street, but "Leslie Street East" and "Leslie Street" are two streets. */
+  function tightKey(a){ return [a.unit, a.num, a.street, a.type, a.dir || '', a.suburb].join('|'); }
+  function looseKey(a){ return [a.num, a.street, a.dir || '', a.suburb].join('|'); }
 
   /* ── reading the file ──
      A CSV cell can hold a quoted comma, a quoted newline and a doubled quote,
