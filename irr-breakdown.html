@@ -279,11 +279,20 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
    that changes what you are looking at rather than a value that gets saved.
    aria-pressed carries the state, so the styling and the screen reader cannot
    disagree about which one is on. */
-.seg-btns{display:flex;gap:2px;background-color:var(--bg);background-image:var(--grad-recess);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:3px}
+/* fit-content so the box ends where the last button does: left to stretch, a
+   two-option toggle in a narrow panel trails a stripe of empty space */
+.seg-btns{display:flex;width:fit-content;max-width:100%;gap:2px;background-color:var(--bg);background-image:var(--grad-recess);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:3px}
 .seg-btns button{border:1px solid transparent;background:transparent;color:var(--muted);border-radius:7px;padding:5px 11px;font:600 12px/16px 'Manrope',sans-serif;white-space:nowrap;cursor:pointer}
 .seg-btns button:hover{color:var(--text);background:var(--panel-2)}
 .seg-btns button[aria-pressed="true"]{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
 .seg-btns button:focus-visible{outline:2px solid var(--accent-300);outline-offset:2px}
+/* In the narrow side panel it spans the panel and the two options split it
+   evenly — one control, not two buttons with a stripe of space after them.
+   Shorter as well: it sits above a list and should not outweigh it. */
+.seg-btns.seg-fill{width:100%}
+/* the base button rule carries min-height:44px for touch targets, which is why
+   setting the padding alone changed nothing */
+.seg-btns.seg-fill button{flex:1 1 0;min-width:0;min-height:0;padding:5px 8px;line-height:16px}
 
 /* ═══ MODAL ═══
    Native <dialog> so the backdrop, focus trap and Escape-to-close come from
@@ -387,6 +396,19 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* ═══ SOLD CHECK ═══ */
 .chk-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4)}
 @media (min-width:1024px){ .chk-grid{grid-template-columns:minmax(0,1fr) minmax(0,240px);align-items:start} }
+/* the how-to: a numbered list that can carry status chips inline without the
+   chips knocking the line spacing about */
+#chkHelpDialog h3{margin:var(--sp-6) 0 0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text)}
+#chkHelpDialog h3:first-of-type{margin-top:var(--sp-4)}
+#chkHelpDialog > .modal-inner > .modal-body > p{font-size:13px;line-height:20px}
+.howto{margin:var(--sp-3) 0 0;padding-left:20px;font-size:13px;line-height:20px;color:var(--muted)}
+.howto > li{margin-bottom:var(--sp-3)}
+.howto > li:last-child{margin-bottom:0}
+.howto strong{color:var(--text)}
+.howto em{font-style:normal;color:var(--text);font-weight:600}
+.howto ul{margin:var(--sp-2) 0 0;padding-left:0;list-style:none}
+.howto ul li{display:flex;gap:var(--sp-2);align-items:baseline;margin-bottom:5px}
+.howto ul li .st{flex:none}
 .colsel{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-3);margin-top:var(--sp-3)}
 .colsel label{display:block;font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .colsel select{margin-top:4px;width:100%}
@@ -424,6 +446,9 @@ line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;c
 .copy-list button:focus-visible{outline:2px solid var(--accent-300);outline-offset:1px}
 .copy-list .n{color:var(--faint);font-variant-numeric:tabular-nums lining-nums;flex:none}
 .copy-list .gap{color:var(--note-ink);font-weight:700}
+/* a row with nothing to copy: the same shape, none of the affordance */
+.copy-list .copy-none{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);
+  padding:5px 8px;font:500 12px/17px 'Manrope',sans-serif;color:var(--faint)}
 .copy-list button.copied{background:rgba(113,179,87,.14);border-color:rgba(113,179,87,.4)}
 :root[data-theme="light"] .copy-list button.copied{background:rgba(63,125,46,.12);border-color:rgba(63,125,46,.34)}
 /* The four answers a check can give. Each carries its word as well as its
@@ -572,6 +597,9 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
 :root[data-theme="light"] .btn-archive.is-on:hover{background-color:#603D00;border-color:#603D00}
 /* the base chip is nowrap because a category is two words; a reason is a
    sentence, so this one wraps and keeps the column from stretching */
+/* an address the council list does not recognise — almost always a typo */
+.cat.warn-chip{background:rgba(231,35,71,.10);border-color:rgba(231,35,71,.45);color:#ffb3c1;white-space:normal}
+:root[data-theme="light"] .cat.warn-chip{background:rgba(193,18,47,.08);border-color:rgba(193,18,47,.34);color:#8E0F24}
 /* what the last sold-check run said about this row */
 .cat.check-chip{background:var(--note-bg);border-color:var(--note-line);color:var(--note-ink)}
 .cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted);
@@ -642,9 +670,16 @@ td.pd .src-link:hover{color:var(--text)}
    scroll to see the IRR of is a table you misread. Tighter gutters here only —
    the monthly breakdown and the compare table keep the roomier default. */
 #propsBody th,#propsBody td{padding-left:8px;padding-right:8px}
-#propsBody td.acts button{margin-right:3px}
-#propsBody .acts .btn-sm{padding:6px 10px}
-#propsBody .acts .icon-btn{width:28px;padding:6px 4px}
+/* Open · Edit · Archive · Delete as one row of equal controls. Open is a text
+   button and the other three are icons; left alone they are inline-block and
+   inline-flex sitting on a shared baseline, which put Open 2px taller and 3px
+   lower than the icons beside it. Same height, same centring, aligned on the
+   middle rather than the baseline. */
+#propsBody td.acts button{
+  display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
+  height:32px;min-height:32px;padding:0 10px;margin-right:3px;
+}
+#propsBody .acts .icon-btn{width:28px;padding:0}
 td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
@@ -995,6 +1030,7 @@ details .body strong{color:var(--text)}
               <h2 id="chk-h">Sold check</h2>
               <div class="btns" style="margin:0">
                 <button type="button" class="btn-primary btn-sm" id="btnChkFile">Load a sales export</button>
+                <button type="button" class="btn-ghost btn-sm" id="btnChkHelp">How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
             </div>
@@ -1014,20 +1050,13 @@ details .body strong{color:var(--text)}
                 </div>
                 <p class="hint" id="chkScopeWhy"></p>
               </div>
-              <div class="pair">
-                <div class="field">
-                  <label for="chkSource">Sold price verified by</label>
-                  <select id="chkSource">
-                    <option value="RPData import">RPData import</option>
-                    <option value="Pricefinder import">Pricefinder import</option>
-                  </select>
-                  <p class="hint" id="chkSourceWhy"></p>
-                </div>
-                <div class="field">
-                  <label for="chkFrom">Sales on or after</label>
-                  <input id="chkFrom" type="date">
-                  <p class="hint">Older sales in the file are ignored.</p>
-                </div>
+              <div class="field">
+                <label for="chkSource">Sold price verified by</label>
+                <select id="chkSource">
+                  <option value="RPData import">RPData import</option>
+                  <option value="Pricefinder import">Pricefinder import</option>
+                </select>
+                <p class="hint" id="chkSourceWhy"></p>
               </div>
               <details id="chkCols">
                 <summary>Columns used</summary>
@@ -1048,14 +1077,16 @@ details .body strong{color:var(--text)}
 
           <section class="card" aria-labelledby="chk-sub-h">
             <div class="card-head">
-              <h2 id="chk-sub-h">Suburbs</h2>
+              <h2 id="chk-sub-h">Where to look</h2>
               <span class="badge" id="chkGapBadge" hidden>0</span>
             </div>
-            <p class="count-line">The suburbs the held properties are in. Click one to copy it.</p>
-            <div id="chkSuburbs"></div>
-            <h3 class="sub-h">Adelaide councils</h3>
-            <p class="count-line">Click to copy into the export's council filter.</p>
-            <div id="chkCouncils"></div>
+            <!-- RP Data filters by either, so the list answers in either -->
+            <div class="seg-btns seg-fill" role="group" aria-label="List by" style="margin-bottom:var(--sp-2)">
+              <button type="button" data-chkby="suburb" aria-pressed="true">Suburb</button>
+              <button type="button" data-chkby="council" aria-pressed="false">Council</button>
+            </div>
+            <p class="count-line" id="chkByWhy"></p>
+            <div id="chkList"></div>
           </section>
         </div>
       </div>
@@ -1092,6 +1123,106 @@ details .body strong{color:var(--text)}
           <div class="modal-foot">
             <button type="button" class="btn-primary" id="authGo">Sign in</button>
             <button type="button" class="btn-ghost" id="authCancel">Cancel</button>
+          </div>
+        </div>
+      </dialog>
+
+      <!-- ══════════ HOW THE SOLD CHECK WORKS ══════════ -->
+      <dialog class="modal modal-lg" id="chkHelpDialog" aria-labelledby="chkhelp-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="chkhelp-h">How the sold check works</h2>
+            <button type="button" class="modal-x" id="chkHelpClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>Give it a list of sales and it matches them to the register by address,
+               then tells you which of your properties the list says have sold — or, where
+               a sale is already recorded, whether the two agree.</p>
+
+            <h3>From RP Data</h3>
+            <ol class="howto">
+              <li>Run a <strong>Recent Sale</strong> export for the suburbs or councils you
+                want. <em>Where to look</em> on the Sold check tab is the list to work from:
+                switch it to Suburb or Council, click one to copy it, paste it into RP Data's
+                filter.</li>
+              <li>Set the date range to cover the period you are checking. There is a
+                export covering more than you need is fine — the check only ever looks at
+                the properties on your register, so the rest of the file is ignored.</li>
+              <li>Make sure the column set includes <strong>Street Address</strong>,
+                <strong>Suburb</strong>, <strong>Sale Price</strong> and
+                <strong>Sale Date</strong>. Keep <strong>Council Area</strong> in as well —
+                it is how the council counts here fill in. <strong>Open in RPData</strong>
+                gives each row a link back, which gets saved onto the property.</li>
+              <li>Export as CSV or Excel and drop the file on this page.</li>
+            </ol>
+
+            <h3>From Pricefinder</h3>
+            <ol class="howto">
+              <li>Export a sales result for the suburbs you want, as CSV or Excel.</li>
+              <li>It needs an address, a sale price and a sale date. Pricefinder calls the
+                suburb <strong>Locality</strong> and the buyer <strong>Purchaser</strong> —
+                the tool reads either name, and uses those two to recognise the file as
+                Pricefinder's and tag the sales accordingly.</li>
+              <li>Drop the file on this page. If it names no council the Council list stays
+                uncounted; everything else works the same.</li>
+            </ol>
+
+            <h3>From any other sheet</h3>
+            <p>Anything with an address, a sale price and a sale date in columns named so.
+               The headings do not have to be on the first row — a title and the filters the
+               report was run with are fine above them. If a column is named something it
+               does not recognise, <strong>Columns used</strong> lets you point it at the
+               right one.</p>
+            <p class="count-line">Columns named <strong>Owner</strong>, <strong>Vendor</strong>,
+               <strong>Purchaser</strong> or <strong>Agent</strong> are names of people and are
+               never read. The window lists them back so you can see they were skipped.</p>
+
+            <h3>Once it is loaded</h3>
+            <ol class="howto">
+              <li><strong>Choose what to check.</strong> <em>Not sold yet</em> asks "has this
+                sold?" of the properties with no sale recorded. <em>Every property</em> turns
+                the same export into a check on the sale prices already in the book. With
+                almost nothing waiting on a sale it opens on <em>Every property</em> and says
+                so.</li>
+              <li><strong>Read what it found.</strong>
+                <ul>
+                  <li><span class="st st-sold">Sold</span> the address matched exactly, down
+                    to the unit and the street type</li>
+                  <li><span class="st st-check">Check</span> the number, street and suburb
+                    match but the unit or the street type does not — worth your eyes</li>
+                  <li><span class="st st-differs">Differs</span> it is already sold and the
+                    export disagrees, with a chip saying whether it was the price, the date
+                    or both. Your figure and theirs sit side by side</li>
+                  <li><span class="st st-agree">Agrees</span> the book and the export say the
+                    same thing</li>
+                  <li><span class="st st-none">No sale found</span> the suburb is in the
+                    export but this address is not</li>
+                  <li><span class="st st-gap">Suburb not in export</span> the export does not
+                    cover it at all — the badge beside <em>Where to look</em> counts how many
+                    properties that is</li>
+                </ul>
+              </li>
+              <li><strong>Write it on, row by row.</strong> <strong>Mark sold</strong> records
+                the sale price, the date, the link and the source. On a row that disagrees the
+                button says <strong>Use the export</strong> instead, because it replaces a
+                figure rather than filling a blank. <strong>Mark all sold</strong> only ever
+                touches rows with no sale yet that matched exactly — a disagreement is never
+                written in bulk.</li>
+            </ol>
+
+            <div class="note note-warn" style="margin-top:var(--sp-4)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div><strong>Nothing is written until you press one of those buttons</strong>,
+                and everything written goes into <strong>History</strong> with your name
+                against it. One to watch: where RP Data gives a <em>settlement</em> date and
+                you recorded a <em>contract</em> date, that shows as <em>Differs — date</em>.
+                That is a real difference worth seeing, not an error, so do not accept those
+                in bulk.</div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn-primary" id="chkHelpGo">Load a sales export</button>
+            <button type="button" class="btn-ghost" id="chkHelpDone" style="margin-left:auto">Close</button>
           </div>
         </div>
       </dialog>
@@ -1383,6 +1514,8 @@ details .body strong{color:var(--text)}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="supabase-config.js?v=2"></script>
 <script src="irr-breakdown-engine.js"></script>
+<!-- which council each suburb is in; see the file for where it comes from -->
+<script src="suburb-lga.js?v=1"></script>
 <!-- versioned so a browser holding the previous set fetches this one rather than
      serving its cached copy — Pages sends max-age=600 and the filename alone
      gives it no reason to look again -->
@@ -1450,6 +1583,11 @@ details .body strong{color:var(--text)}
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
     '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6"/>'+
     '<path d="M10 11v6M14 11v6"/></svg>';
+  /* Lucide "pencil" — edit this property's details */
+  var PENCIL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '+
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
+    '<path d="M21.17 2.83a2.83 2.83 0 0 0-4 0L3 17v4h4L21.17 6.83a2.83 2.83 0 0 0 0-4z"/>'+
+    '<path d="M15 5l4 4"/></svg>';
   /* take it / leave it, on an import's updates */
   var TICK = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '+
     'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
@@ -2265,6 +2403,15 @@ details .body strong{color:var(--text)}
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
           ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +
           ((e.soldCheck||'').trim() ? '<br><span class="cat check-chip">Sold check: '+esc(e.soldCheck)+'</span>' : '') +
+          (function(){
+            /* a misspelt suburb fails every address match silently, so it is
+               worth saying on the row rather than leaving it to be noticed */
+            var f = suburbFlag(e);
+            if (!f) return '';
+            return '<br><span class="cat warn-chip" title="Not one of the 13,744 suburbs on record">'+
+              'Check the suburb' + (f.suggest ? ' — did you mean ' + esc(f.suggest) + '?' : '') +
+              '</span>';
+          })() +
           (e.outside
             ? '<br><span class="cat aside-chip">outside of advice'+
               ((e.outsideReason||'').trim() ? ' — '+esc(e.outsideReason) : '')+'</span>'
@@ -2278,6 +2425,10 @@ details .body strong{color:var(--text)}
            rather than between them where a mis-aimed click finds it. */
         '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-open="'+e.id+'">Open</button>'+
           (share.canWrite === false ? '' :
+           /* straight to the details, without going through the calculation:
+              fixing a misspelt suburb should not be a three-step journey */
+           '<button type="button" class="btn-ghost btn-sm icon-btn" data-edit="'+e.id+'" '+
+           'aria-label="Edit '+esc(e.name)+'" title="Edit details">'+PENCIL+'</button>'+
            '<button type="button" class="btn-ghost btn-sm icon-btn" data-aside="'+e.id+'" '+
            'aria-label="'+(e.outside ? 'Return '+esc(e.name)+' to advice' : 'Set '+esc(e.name)+' outside of advice')+'" '+
            'title="'+(e.outside ? 'Return to advice' : 'Outside of advice')+'">'+(e.outside ? UNDO_ASIDE : ASIDE)+'</button>'+
@@ -3459,11 +3610,9 @@ details .body strong{color:var(--text)}
     gardens:'gdns', gdns:'gdns', parkway:'pwy', pwy:'pwy', view:'view', vista:'vista'
   };
   var AU_STATES = { sa:1, vic:1, nsw:1, qld:1, wa:1, nt:1, tas:1, act:1 };
-  /* Metropolitan Adelaide, named the way an RP Data export names them. */
-  var ADL_COUNCILS = ['Adelaide','Adelaide Hills','Burnside','Campbelltown','Charles Sturt',
-    'Gawler','Holdfast Bay','Marion','Mitcham','Norwood Payneham & St Peters','Onkaparinga',
-    'Playford','Port Adelaide Enfield','Prospect','Salisbury','Tea Tree Gully','Unley',
-    'Walkerville','West Torrens'];
+  /* The councils used to be a fixed list of metropolitan Adelaide. They are not
+     any more: the list is whichever councils your unsold properties are in, and
+     the names come from RP Data rather than from anything written in here. */
 
   /* The comma survives: it is the only thing in an address that says where the
      street stops and the suburb starts. Everything else that is not a letter,
@@ -3483,17 +3632,30 @@ details .body strong{color:var(--text)}
     var parts = s.split(',').map(function(x){ return x.trim(); }).filter(Boolean);
     var suburb = tidy(suburbHint || '');
     var street = parts.length ? parts[0] : '';
-    if (!suburb && parts.length > 1) {
-      /* the suburb is whatever follows the last comma, less any state and
-         postcode that came along with it */
-      var tail = parts[parts.length - 1].split(' ').filter(function(w){
+    var bare = function(p){            // a part with its state and postcode taken off
+      return p.split(' ').filter(function(w){
         return !AU_STATES[w] && !/^\d{4}$/.test(w);
       }).join(' ').trim();
-      suburb = tail || parts[parts.length - 1];
+    };
+    if (!suburb && parts.length > 1) {
+      /* Walk back from the end for the last part that is more than a state and
+         a postcode. "11 Smith St, Raceview, QLD 4305" ends in "qld 4305",
+         which is not a suburb — taking the last part on faith made the suburb
+         "qld 4305", so every address written that way failed to match and the
+         council was never found for it. */
+      var si = -1;
+      for (var pi = parts.length - 1; pi >= 1; pi--) {
+        var t = bare(parts[pi]);
+        if (t) { suburb = t; si = pi; break; }
+      }
+      if (si < 0) { suburb = parts[parts.length - 1]; si = parts.length - 1; }
+      /* and the street is everything in front of wherever the suburb turned
+         out to be — which is what makes "Unit 2, 10 Example Rd, Glandore" work
+         as well as the three-part form above */
+      if (si > 1) street = parts.slice(0, si).join(' ');
+    } else if (parts.length > 2) {
+      street = parts.slice(0, parts.length - 1).join(' ');
     }
-    /* "Unit 2, 10 Example Road, Glandore" puts the unit in its own comma part,
-       so with three or more parts the street is everything but the last. */
-    if (parts.length > 2) street = parts.slice(0, parts.length - 1).join(' ');
     var unit = '', num = '';
     var words = street.split(' ').filter(Boolean);
     var saidUnit = false;
@@ -3729,6 +3891,14 @@ details .body strong{color:var(--text)}
       chkSay(msg('ok','Read '+chk.rows.length+' row'+(chk.rows.length===1?'':'s')+' from <strong>'+esc(g.name)+'</strong>.'+
         (cm.skipped.length ? ' Not read, because they are people’s names: <strong>'+
            esc(cm.skipped.join(', '))+'</strong>.' : '')));
+      /* RP Data names the council on every row; that is the only trustworthy
+         source for which council a suburb is in, so it is kept */
+      var learned = learnCouncils(chk.rows, chk.map);
+      if (learned) {
+        chkSay($('chkMsg').innerHTML.replace(/<\/div>\s*$/, '') +
+          ' Learned the council for ' + learned + ' suburb' + (learned===1?'':'s') +
+          ' from this file.</div>');
+      }
       renderColMap();
       chkRun();
     }).catch(function(e){ chkSay(msg('err', esc(e.message))); });
@@ -3750,7 +3920,6 @@ details .body strong{color:var(--text)}
   /* ── the match ── */
   function chkRun(){
     if (!chk) return;
-    var from = $('chkFrom').value;
     var m = chk.map;
     var sales = [], tight = {}, loose = {}, subs = {}, undated = 0, unpriced = 0;
     chk.rows.forEach(function(r){
@@ -3761,7 +3930,6 @@ details .body strong{color:var(--text)}
       var when  = m.date  !== undefined ? gridDate(r[m.date]) : null;
       if (!when) undated++;
       if (!price) unpriced++;
-      if (from && when && when < from) return;        // older than the window asked for
       var s = { a:a, price:price, date:when,
                 link: m.link !== undefined ? String(r[m.link] || '').trim() : '' };
       sales.push(s);
@@ -3952,32 +4120,184 @@ details .body strong{color:var(--text)}
   /* ── the suburb panel ──
      The list you work from while you are in RP Data: which suburbs the held
      properties are in, and which of those the export did not cover. */
-  function drawSuburbs(){
-    var held = loadProps().filter(isHeld);
-    var tally = {};
-    held.forEach(function(e){
-      var s = splitAddr(e.name).suburb || '';
-      var label = s ? s.replace(/\b[a-z]/g, function(c){ return c.toUpperCase(); }) : '—';
-      tally[label] = (tally[label] || 0) + 1;
+  /* ── which council a suburb is in ──
+     The book does not record it, and a lookup table written from memory would
+     be wrong in exactly the places it mattered. So the tool learns it from the
+     Council Area column of the exports you load — RP Data's own answer — and
+     keeps what it learns. Until an export with that column has been read there
+     are no councils to list, which the panel says rather than guessing. */
+  var CO_KEY = 'pp-irr-councils-v1';
+  var councilBySuburb = {};
+  try { councilBySuburb = JSON.parse(localStorage.getItem(CO_KEY) || '{}') || {}; }
+  catch (e) { councilBySuburb = {}; }
+  /* The capital city a property is filed under is the only thing that says
+     which state its suburb is in, and suburb names repeat across states. */
+  var CITY_STATE = { adelaide:'SA', brisbane:'QLD', sydney:'NSW', melbourne:'VIC',
+                     perth:'WA', hobart:'TAS', darwin:'NT', canberra:'ACT' };
+  /* suburb-lga.js holds each council name once and refers to it by index */
+  function lgaName(v){
+    var L = window.PP_SUBURB_LGA && window.PP_SUBURB_LGA.l;
+    if (!L) return '';
+    if (typeof v === 'number') return L[v] || '';
+    if (Object.prototype.toString.call(v) === '[object Array]') {
+      return v.map(function(i){ return L[i] || ''; }).filter(Boolean).join(' / ');
+    }
+    return '';
+  }
+  function suburbRec(s){
+    var m = window.PP_SUBURB_LGA;
+    return (m && m.s && m.s[s]) || null;
+  }
+  /* What suburb-lga.js says, picked for the right state. The learned map wins
+     where it has an answer: it came from the export this is being checked
+     against, so it is the most current thing there is. */
+  function baselineCouncil(suburb, city){
+    var rec = suburbRec(suburb);
+    if (!rec) return '';
+    var st = CITY_STATE[String(city || '').trim().toLowerCase()];
+    if (st && rec[st] !== undefined) return lgaName(rec[st]);
+    /* no capital city on the property, or one this does not know: only answer
+       if the suburb means one place across the whole country */
+    var keys = Object.keys(rec);
+    return keys.length === 1 ? lgaName(rec[keys[0]]) : '';
+  }
+
+  /* ── a suburb that is not a suburb ──
+     13,744 of them are known, so one that is not in the list is almost always
+     a typo. Almost: a new estate may not have reached the workbook yet, so
+     this is a flag to look at, never a correction made for you. */
+  var subFlagCache = {};
+  function editDistance(a, b, cap){
+    var la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > cap) return cap + 1;
+    var prev = [], cur = [], i, j;
+    for (j = 0; j <= lb; j++) prev[j] = j;
+    for (i = 1; i <= la; i++) {
+      cur[0] = i;
+      var best = cur[0];
+      for (j = 1; j <= lb; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1,
+                          prev[j-1] + (a.charAt(i-1) === b.charAt(j-1) ? 0 : 1));
+        if (cur[j] < best) best = cur[j];
+      }
+      if (best > cap) return cap + 1;        // no way back under the cap
+      for (j = 0; j <= lb; j++) prev[j] = cur[j];
+    }
+    return prev[lb];
+  }
+  function suburbFlag(e){
+    var m = window.PP_SUBURB_LGA;
+    if (!m || !m.s) return null;
+    var s = tidy(splitAddr(e.name).suburb || '');
+    if (!s || m.s[s]) return null;
+    if (subFlagCache[s] !== undefined) return subFlagCache[s];
+    var cap = s.length <= 6 ? 1 : 2, best = '', bestD = cap + 1;
+    for (var k in m.s) {
+      if (Math.abs(k.length - s.length) > cap) continue;
+      var d = editDistance(s, k, cap);
+      if (d < bestD) { bestD = d; best = k; if (d === 1) break; }
+    }
+    var out = { suburb: titleCase(s), suggest: best ? titleCase(best) : '' };
+    subFlagCache[s] = out;
+    return out;
+  }
+  function councilFor(e){
+    var s = tidy(splitAddr(e.name).suburb || '');
+    if (!s) return '';
+    return councilBySuburb[s] || baselineCouncil(s, e.category) || '';
+  }
+  function learnCouncils(rows, map){
+    if (map.council === undefined || map.suburb === undefined) return 0;
+    var learned = 0;
+    rows.forEach(function(r){
+      var s = tidy(r[map.suburb]), c = String(r[map.council] || '').trim();
+      if (!s || !c || councilBySuburb[s] === c) return;
+      councilBySuburb[s] = c; learned++;
     });
-    var names = Object.keys(tally).sort(function(a, b){ return a.localeCompare(b); });
+    if (learned) {
+      try { localStorage.setItem(CO_KEY, JSON.stringify(councilBySuburb)); }
+      catch (e) { /* storage blocked — it just will not be remembered */ }
+    }
+    return learned;
+  }
+  function titleCase(s){ return String(s).replace(/\b[a-z]/g, function(c){ return c.toUpperCase(); }); }
+
+  var chkBy = 'suburb';
+  function drawSuburbs(){
+    /* Always the unsold ones, whatever the check above is set to. The question
+       this panel answers is "where do I still need sales data", and a property
+       with a sale already recorded is not part of that question. */
+    var pool = loadProps().filter(isHeld);
+
+    /* the gap badge is about the export's coverage, which is a question about
+       suburbs however the list is grouped */
     var gaps = 0;
-    var html = names.length
+    pool.forEach(function(e){
+      var s = tidy(splitAddr(e.name).suburb || '');
+      if (s && chk && chk.subs && chk.subs[s] === undefined) gaps++;
+    });
+
+    var tally = {}, missingIn = {};
+    pool.forEach(function(e){
+      var s = tidy(splitAddr(e.name).suburb || '');
+      var key;
+      if (chkBy === 'council') key = councilFor(e) || '— not known yet';
+      else key = s ? titleCase(s) : '—';
+      tally[key] = (tally[key] || 0) + 1;
+      if (chkBy !== 'council' && s && chk && chk.subs && chk.subs[s] === undefined) missingIn[key] = 1;
+    });
+
+    /* Both lists answer the same question — where is there still a sale to find
+       — so both list only the places with an unsold property in them. A council
+       you have nothing unsold in is not an answer to it. */
+    var names = Object.keys(tally).sort(function(a, b){
+      /* "not known yet" is a bucket, not a place, so it sits at the bottom */
+      var an = a.charAt(0) === '—', bn = b.charAt(0) === '—';
+      if (an !== bn) return an ? 1 : -1;
+      return tally[b] - tally[a] || a.localeCompare(b);
+    });
+
+    var known = Object.keys(councilBySuburb).length +
+                (window.PP_SUBURB_LGA ? Object.keys(window.PP_SUBURB_LGA).length : 0);
+    var unsold = pool.length;
+    /* Three different reasons for an uncounted list, and one message for all of
+       them told you nothing about which you were looking at. */
+    var noCouncilCol = !!(chk && chk.map && chk.map.council === undefined);
+    $('chkByWhy').textContent = (chkBy === 'council')
+      ? (known
+          ? 'Councils, numbered by how many properties in them have no sale recorded yet. '
+            + 'Click one to copy it into the export’s filter.'
+            + (tally['— not known yet'] ? ' The suburbs under “not known yet” are '
+                + 'ones the council list does not have — often a misspelt suburb.' : '')
+          : noCouncilCol
+            ? 'The export you loaded has no Council Area column, so the councils are not known '
+              + 'yet. Include it next time and they fill in.'
+            : 'No export with a Council Area column has been read yet, so the councils are not '
+              + 'known yet. Load one and they fill in.')
+      : (unsold
+          ? 'Suburbs with properties that have no sale recorded yet, and how many. Click one to copy it.'
+          : 'Every property on the register has a sale recorded, so there is nothing to look up.');
+
+    $('chkList').innerHTML = names.length
       ? '<div class="copy-list">' + names.map(function(n){
-          var missing = chk && chk.subs && n !== '—' && chk.subs[tidy(n)] === undefined;
-          if (missing) gaps++;
+          var miss = !!missingIn[n];
+          var n0 = tally[n] || 0;
+          /* the "not known yet" bucket is a state, not a place: there is
+             nothing to paste into a filter, so it is not a button */
+          if (n.charAt(0) === '—') {
+            return '<div class="copy-none"><span>'+esc(n)+'</span>'+
+              '<span class="n">'+(n0 || '')+'</span></div>';
+          }
           return '<button type="button" data-copy="'+esc(n)+'">'+
-            '<span>'+esc(n)+(missing ? ' <span class="gap" title="No sale in this suburb is in the export">not in export</span>' : '')+'</span>'+
-            '<span class="n">'+tally[n]+'</span></button>';
+            '<span>'+esc(n)+(miss ? ' <span class="gap" title="No sale in this suburb is in the export">not in export</span>' : '')+'</span>'+
+            '<span class="n">'+(n0 || '')+'</span></button>';
         }).join('') + '</div>'
-      : '<p class="count-line">Nothing is held, so there is no suburb to look up.</p>';
-    $('chkSuburbs').innerHTML = html;
+      : '<p class="count-line">Every property on the register has a sale recorded.</p>';
+
     var b = $('chkGapBadge');
     b.hidden = !gaps; b.textContent = gaps;
-    b.title = gaps ? gaps + ' suburb' + (gaps===1?'':'s') + ' the export does not cover' : '';
-    $('chkCouncils').innerHTML = '<div class="copy-list">' + ADL_COUNCILS.map(function(c){
-      return '<button type="button" data-copy="'+esc(c)+'"><span>'+esc(c)+'</span></button>';
-    }).join('') + '</div>';
+    b.title = gaps ? gaps + ' unsold propert' + (gaps===1?'y is':'ies are') +
+                     ' in a suburb the export does not cover' : '';
   }
   function copyText(t, btn){
     var done = function(){
@@ -4395,6 +4715,7 @@ details .body strong{color:var(--text)}
       // the note belongs in the Result panel, not as a banner over everything
       if (e) { openEntryId = e.id; loadIntoForm(e.name, e, e.category); syncEditBtn(); showTab('calc'); }
     }
+    if (b.dataset.edit) { openEntryId = b.dataset.edit; syncEditBtn(); openEdit(); return; }
     if (b.dataset.aside) { setAside([b.dataset.aside]); return; }
     if (b.dataset.del) {
       var id = b.dataset.del;
@@ -4987,10 +5308,24 @@ details .body strong{color:var(--text)}
     this.value = '';
   });
   $('btnChkClear').addEventListener('click', chkReset);
+  /* The how-to opens from its own button rather than sitting on the tab: it is
+     a thing you read once, and the first time you need it you have no file to
+     read it about. Its primary action is the one it is explaining. */
+  function openChkHelp(){
+    var d = $('chkHelpDialog');
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
+  }
+  function closeChkHelp(){ var d = $('chkHelpDialog'); if (d.open) d.close(); else d.removeAttribute('open'); }
+  $('btnChkHelp').addEventListener('click', openChkHelp);
+  $('chkHelpClose').addEventListener('click', closeChkHelp);
+  $('chkHelpDone').addEventListener('click', closeChkHelp);
+  $('chkHelpGo').addEventListener('click', function(){ closeChkHelp(); $('chkInput').click(); });
+  $('chkHelpDialog').addEventListener('click', function(ev){
+    if (ev.target === $('chkHelpDialog')) closeChkHelp();
+  });
   $('chkSource').addEventListener('change', function(){
     if (chk) { chk.source = this.value; $('chkSourceWhy').textContent = 'Chosen by hand.'; }
   });
-  $('chkFrom').addEventListener('change', chkRun);
   document.querySelector('[data-chkscope]').parentNode.addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button[data-chkscope]');
     if (!b || b.getAttribute('aria-pressed') === 'true') return;
@@ -5020,11 +5355,18 @@ details .body strong{color:var(--text)}
     if (b.dataset.marksold) markSold([b.dataset.marksold]);
   });
   /* one handler for both copy lists */
-  ['chkSuburbs','chkCouncils'].forEach(function(id){
-    $(id).addEventListener('click', function(ev){
-      var b = ev.target.closest && ev.target.closest('button[data-copy]');
-      if (b) copyText(b.dataset.copy, b);
+  $('chkList').addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('button[data-copy]');
+    if (b) copyText(b.dataset.copy, b);
+  });
+  document.querySelector('[data-chkby]').parentNode.addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('button[data-chkby]');
+    if (!b || b.getAttribute('aria-pressed') === 'true') return;
+    chkBy = b.dataset.chkby;
+    Array.prototype.forEach.call(this.querySelectorAll('button[data-chkby]'), function(x){
+      x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
     });
+    drawSuburbs();
   });
 
   $('btnEditDet').addEventListener('click', openEdit);
