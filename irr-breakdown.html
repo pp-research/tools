@@ -449,6 +449,12 @@ line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;c
 /* a row with nothing to copy: the same shape, none of the affordance */
 .copy-list .copy-none{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);
   padding:5px 8px;font:500 12px/17px 'Manrope',sans-serif;color:var(--faint)}
+/* The "not known yet" bucket. It carries a count like any other row, but it is
+   a state rather than a place, so it opens a window naming what is in it
+   instead of copying a filter term. Dashed, to say it does something else. */
+.copy-list button.bucket-open{color:var(--faint);border-style:dashed;
+  border-color:var(--border)}
+.copy-list button.bucket-open:hover{color:var(--text);border-color:var(--border-hover)}
 .copy-list button.copied{background:rgba(113,179,87,.14);border-color:rgba(113,179,87,.4)}
 :root[data-theme="light"] .copy-list button.copied{background:rgba(63,125,46,.12);border-color:rgba(63,125,46,.34)}
 /* The four answers a check can give. Each carries its word as well as its
@@ -1108,6 +1114,26 @@ details .body strong{color:var(--text)}
           <div id="histBody"></div>
         </section>
       </div>
+
+      <!-- ══════════ WHAT IS IN THE "NOT KNOWN YET" BUCKET ══════════
+           A count you cannot act on is only a worry. This names the properties
+           behind it and puts their Edit next to them, because the cause is
+           nearly always one misspelt suburb. -->
+      <dialog class="modal" id="bucketDialog" aria-labelledby="bucket-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="bucket-h">Not known yet</h2>
+            <button type="button" class="modal-x" id="bucketClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="count-line" id="bucketWhy"></p>
+            <div id="bucketList"></div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn-ghost" id="bucketDone" style="margin-left:auto">Close</button>
+          </div>
+        </div>
+      </dialog>
 
       <!-- one screen: email and the shared password together -->
       <dialog class="modal modal-sm" id="authDialog" aria-labelledby="auth-h">
@@ -2873,6 +2899,9 @@ details .body strong{color:var(--text)}
     }
     closeEdit();
     renderProps();
+    /* an edit is how a misspelt suburb gets fixed, so the panel that flagged it
+       has to be told — otherwise the count it is still showing is yesterday's */
+    drawSuburbs();
     loadIntoForm(e.name, e, e.category);
     $('messages').innerHTML = changes.length
       ? msg('ok','Saved — '+esc(changes.join(', '))+' updated on '+esc(e.name)+'.')
@@ -4231,6 +4260,36 @@ details .body strong{color:var(--text)}
 
   var chkBy = 'suburb';
   var chkCity = '';
+  /* what the bucket is made of, kept from the last draw so the window it opens
+     shows the same thing the count was counting */
+  var bucketState = { rows: [], by: 'suburb', label: '' };
+  function openBucket(){
+    var s = bucketState;
+    if (!s.rows.length) return;
+    $('bucketWhy').innerHTML = (s.by === 'council')
+      ? 'These have no council. The council is looked up by the spelling of the '+
+        'suburb, so this is nearly always a misspelt one — correct it here and it '+
+        'resolves on its own.'
+      : 'No suburb could be read out of these addresses. That is a different '+
+        'fault from a misspelling: there is nothing in the address to look up. '+
+        'The form it expects is <strong>number street, suburb STATE postcode</strong>.';
+    $('bucketList').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
+      '<th scope="col">Property</th><th scope="col">Capital city</th>'+
+      '<th scope="col"><span class="sr-only">Edit</span></th>'+
+      '</tr></thead><tbody>'+
+      s.rows.map(function(e){
+        return '<tr><td class="name">'+esc(e.name)+'</td>'+
+          '<td>'+(e.cat ? esc(e.cat) : '<span class="faint">not set</span>')+'</td>'+
+          '<td class="acts"><button type="button" class="btn-ghost btn-sm" '+
+            'data-bucketedit="'+esc(e.id)+'">Edit</button></td></tr>';
+      }).join('')+'</tbody></table></div>';
+    var d = $('bucketDialog');
+    if (d.showModal) d.showModal(); else d.setAttribute('open','');
+  }
+  function closeBucket(){
+    var d = $('bucketDialog');
+    if (d.open) d.close(); else d.removeAttribute('open');
+  }
   /* The dropdown is rebuilt from whatever is actually unsold, so a city with
      nothing left to look up stops offering itself. */
   function syncChkCity(pool){
@@ -4269,13 +4328,17 @@ details .body strong{color:var(--text)}
       if (s && chk && chk.subs && chk.subs[s] === undefined) gaps++;
     });
 
-    var tally = {}, missingIn = {};
+    /* The bucket keeps its own properties, not just a count. A count you cannot
+       act on is only a worry, and the cause is nearly always one misspelt
+       suburb — so the window it opens has to be able to name them. */
+    var tally = {}, missingIn = {}, bucket = [];
     pool.forEach(function(e){
       var s = tidy(splitAddr(e.name).suburb || '');
       var key;
       if (chkBy === 'council') key = councilFor(e) || '— not known yet';
       else key = s ? titleCase(s) : '—';
       tally[key] = (tally[key] || 0) + 1;
+      if (key.charAt(0) === '—') bucket.push({ id:e.id, name:e.name, cat:e.category || '' });
       if (chkBy !== 'council' && s && chk && chk.subs && chk.subs[s] === undefined) missingIn[key] = 1;
     });
 
@@ -4315,16 +4378,22 @@ details .body strong{color:var(--text)}
           var miss = !!missingIn[n];
           var n0 = tally[n] || 0;
           /* the "not known yet" bucket is a state, not a place: there is
-             nothing to paste into a filter, so it is not a button */
+             nothing to paste into a filter, so it opens the list of what is in
+             it instead — too wide a thing to read in a column this narrow */
           if (n.charAt(0) === '—') {
-            return '<div class="copy-none"><span>'+esc(n)+'</span>'+
-              '<span class="n">'+(n0 || '')+'</span></div>';
+            return '<button type="button" class="bucket-open" data-bucket="1">'+
+              '<span>'+esc(n)+'</span><span class="n">'+(n0 || '')+'</span></button>';
           }
           return '<button type="button" data-copy="'+esc(n)+'">'+
             '<span>'+esc(n)+(miss ? ' <span class="gap" title="No sale in this suburb is in the export">not in export</span>' : '')+'</span>'+
             '<span class="n">'+(n0 || '')+'</span></button>';
         }).join('') + '</div>'
       : '<p class="count-line">Every property on the register has a sale recorded.</p>';
+
+    /* held for the window the bucket opens: what is in it, and which fault it
+       is, since the two modes bucket for different reasons */
+    bucketState = { rows: bucket, by: chkBy,
+                    label: bucket.length ? (chkBy === 'council' ? '— not known yet' : '—') : '' };
 
     var b = $('chkGapBadge');
     b.hidden = !gaps; b.textContent = gaps;
@@ -5393,7 +5462,22 @@ details .body strong{color:var(--text)}
   /* one handler for both copy lists */
   $('chkList').addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button[data-copy]');
-    if (b) copyText(b.dataset.copy, b);
+    if (b) { copyText(b.dataset.copy, b); return; }
+    if (ev.target.closest && ev.target.closest('button[data-bucket]')) openBucket();
+  });
+  $('bucketClose').addEventListener('click', closeBucket);
+  $('bucketDone').addEventListener('click', closeBucket);
+  $('bucketDialog').addEventListener('click', function(ev){
+    if (ev.target === $('bucketDialog')) closeBucket();
+  });
+  /* Its own attribute rather than data-edit: two modal dialogs stacked is a
+     trap to get out of, so this one steps aside before the editor opens. */
+  $('bucketDialog').addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('button[data-bucketedit]');
+    if (!b) return;
+    var id = b.dataset.bucketedit;
+    closeBucket();
+    openEntryId = id; syncEditBtn(); openEdit();
   });
   document.querySelector('[data-chkby]').parentNode.addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button[data-chkby]');
