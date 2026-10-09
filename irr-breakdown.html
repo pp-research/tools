@@ -575,6 +575,7 @@ td.city{color:var(--muted);font-weight:600}
    reads as a flag rather than another category chip. */
 .note-chip{background:var(--note-bg);border-color:var(--note-line);color:var(--note-ink);white-space:normal}
 .faint{color:var(--faint);font-weight:400}
+.sync-ok{color:var(--money-pos)}
 td.pick,th:first-child:has(.sr-only){width:1%}
 td.pick{padding-right:0}
 td.pick input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
@@ -1111,6 +1112,10 @@ details .body strong{color:var(--text)}
             <h2 id="hist-h">History</h2>
             <button type="button" class="btn-ghost btn-sm" id="btnHistRefresh">Refresh</button>
           </div>
+          <!-- Whether this browser and the shared list agree, said plainly and
+               without being asked. The 218 KB failure ran for weeks because
+               nothing on the page ever compared the two. -->
+          <div id="syncStatus"></div>
           <div id="histBody"></div>
         </section>
       </div>
@@ -5228,9 +5233,74 @@ details .body strong{color:var(--text)}
     showHistory();   /* the restore is itself a logged change — show it */
     $('messages').innerHTML = msg('ok', esc(e.name)+' is back on the list.');
   }
+  /* ── do this browser and the shared list agree? ──
+     Nothing on the page ever asked, which is why a failing push went unnoticed
+     for weeks: every save looked fine, because saving to this browser had
+     worked. Counts both sides, compares them by id rather than by total — equal
+     totals can still be different books — and says which way any difference
+     goes, because the two have opposite remedies. */
+  function drawSync(){
+    var box = $('syncStatus');
+    var local = loadProps();
+    var mine = local.length + ' propert' + (local.length === 1 ? 'y' : 'ies') +
+      ' · ' + local.filter(function(e){ return isHeld(e) && !e.outside; }).length + ' held';
+    if (!share.sb && !share.db) {
+      box.innerHTML = '<p class="count-line"><b>This browser:</b> ' + mine +
+        '. There is no shared list on this copy of the tool, so there is nothing ' +
+        'to compare it with.</p>';
+      return;
+    }
+    box.innerHTML = '<p class="count-line"><b>This browser:</b> ' + mine +
+      ' · <span class="faint">checking the shared list…</span></p>';
+    if (!share.sb) { return; }               /* the artifact store has no row to read */
+    share.sb.from('irr_book').select('updated_at,body').eq('id', share.row).maybeSingle()
+      .then(function(r){
+        if (r.error || !r.data) {
+          box.innerHTML = '<p class="count-line"><b>This browser:</b> ' + mine +
+            '. Could not read the shared list' +
+            (r.error ? ': ' + esc(r.error.message) : ' — there is no saved copy yet') + '.</p>';
+          return;
+        }
+        var theirs = (r.data.body && r.data.body.properties) || [];
+        var here = {}, there = {};
+        local.forEach(function(e){ if (e.id) here[e.id] = 1; });
+        theirs.forEach(function(e){ if (e && e.id) there[e.id] = 1; });
+        var onlyHere = local.filter(function(e){ return e.id && !there[e.id]; }).length;
+        var onlyThere = theirs.filter(function(e){ return e && e.id && !here[e.id]; }).length;
+        var dt = r.data.updated_at ? new Date(r.data.updated_at) : null;
+        var when = dt ? dLabel(dt) + ' ' + String(dt.getHours()).padStart(2,'0') + ':' +
+                        String(dt.getMinutes()).padStart(2,'0') : 'at an unknown time';
+        var h = '<p class="count-line"><b>This browser:</b> ' + mine + '<br>' +
+          '<b>Shared list:</b> ' + theirs.length + ' · last saved ' + esc(when) + '</p>';
+        if (!onlyHere && !onlyThere) {
+          h += '<p class="count-line"><b class="sync-ok">In sync.</b> ' +
+               'Every property here is in the shared list and the other way round.</p>';
+        } else {
+          h += '<div class="note note-warn"><div>';
+          if (onlyHere) {
+            h += '<strong>' + onlyHere + ' propert' + (onlyHere===1?'y is':'ies are') +
+              ' in this browser but not in the shared list.</strong> Nobody else can see ' +
+              (onlyHere===1?'it':'them') + ' yet.' +
+              (share.canWrite === false ? ' Sign in to send ' + (onlyHere===1?'it':'them') + '.'
+                : ' <button type="button" class="btn-primary btn-sm" id="btnSendMine" ' +
+                  'style="margin-left:8px">Send ' + (onlyHere===1?'it':'them') + ' now</button>');
+          }
+          if (onlyHere && onlyThere) h += '<br>';
+          if (onlyThere) {
+            h += '<strong>' + onlyThere + ' propert' + (onlyThere===1?'y is':'ies are') +
+              ' in the shared list but not in this browser.</strong> Somebody else added ' +
+              (onlyThere===1?'it':'them') + ' — reload the page to pick ' +
+              (onlyThere===1?'it':'them') + ' up.';
+          }
+          h += '</div></div>';
+        }
+        box.innerHTML = h;
+      });
+  }
   /* Read-only and open to anyone who can read the list — the point of a log is
      that the people who did not make the change can see it. */
   function showHistory(){
+    drawSync();
     $('histBody').innerHTML = '<p class="count-line">Loading…</p>';
     if (!share.sb) {
       $('histBody').innerHTML = '<div class="empty"><h3>No shared list on this page</h3>'+
@@ -5543,6 +5613,16 @@ details .body strong{color:var(--text)}
   $('btnEditCancel').addEventListener('click', closeEdit);
   $('editDialog').addEventListener('click', function(ev){ if (ev.target === $('editDialog')) closeEdit(); });
   $('btnHistRefresh').addEventListener('click', showHistory);
+  /* share.sent holds the last body that went up, and pushShared returns early
+     when nothing has changed since — so clearing it is what makes this a
+     genuine retry rather than a no-op. */
+  $('syncStatus').addEventListener('click', function(ev){
+    if (!(ev.target.closest && ev.target.closest('#btnSendMine'))) return;
+    share.sent = null;
+    pushShared();
+    $('syncStatus').innerHTML = '<p class="count-line">Sending…</p>';
+    setTimeout(drawSync, 1200);        /* long enough for the upsert to land */
+  });
   $('histBody').addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button[data-undel]');
     if (!b) return;
