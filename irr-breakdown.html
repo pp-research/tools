@@ -1080,6 +1080,13 @@ details .body strong{color:var(--text)}
               <h2 id="chk-sub-h">Where to look</h2>
               <span class="badge" id="chkGapBadge" hidden>0</span>
             </div>
+            <!-- One capital city at a time, because an export is run for one
+                 state's suburbs at a time. Hidden only when the register has no
+                 capital city on anything. -->
+            <div class="field" id="chkCityField" style="margin-bottom:var(--sp-3)" hidden>
+              <label for="chkCity">Capital city</label>
+              <select id="chkCity"><option value="">All capital cities</option></select>
+            </div>
             <!-- RP Data filters by either, so the list answers in either -->
             <div class="seg-btns seg-fill" role="group" aria-label="List by" style="margin-bottom:var(--sp-2)">
               <button type="button" data-chkby="suburb" aria-pressed="true">Suburb</button>
@@ -4223,11 +4230,36 @@ details .body strong{color:var(--text)}
   function titleCase(s){ return String(s).replace(/\b[a-z]/g, function(c){ return c.toUpperCase(); }); }
 
   var chkBy = 'suburb';
+  var chkCity = '';
+  /* The dropdown is rebuilt from whatever is actually unsold, so a city with
+     nothing left to look up stops offering itself. */
+  function syncChkCity(pool){
+    var sel = $('chkCity'), keep = sel.value;
+    var cats = categoriesOf(pool);
+    var hasUncat = pool.some(function(e){ return !(e.category||'').trim(); });
+    sel.innerHTML = '<option value="">All capital cities</option>' +
+      cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('') +
+      (hasUncat ? '<option value="'+NO_CAT+'">Not set</option>' : '');
+    sel.value = [].some.call(sel.options, function(o){ return o.value === keep; }) ? keep : '';
+    chkCity = sel.value;
+    /* Shown whenever there is anything to pick. One city is a trivial choice,
+       but a filter that disappears is one you go looking for. */
+    $('chkCityField').hidden = !(cats.length + (hasUncat ? 1 : 0));
+  }
+  function inChkCity(e){
+    if (!chkCity) return true;
+    var c = (e.category || '').trim();
+    return chkCity === NO_CAT ? !c : c === chkCity;
+  }
   function drawSuburbs(){
     /* Always the unsold ones, whatever the check above is set to. The question
        this panel answers is "where do I still need sales data", and a property
        with a sale already recorded is not part of that question. */
     var pool = loadProps().filter(isHeld);
+    /* the dropdown offers every city with something unsold in it; the list
+       below then answers for the one chosen */
+    syncChkCity(pool);
+    pool = pool.filter(inChkCity);
 
     /* the gap badge is about the export's coverage, which is a question about
        suburbs however the list is grouped */
@@ -5353,6 +5385,10 @@ details .body strong{color:var(--text)}
       return;
     }
     if (b.dataset.marksold) markSold([b.dataset.marksold]);
+  });
+  $('chkCity').addEventListener('change', function(){
+    chkCity = this.value;
+    drawSuburbs();
   });
   /* one handler for both copy lists */
   $('chkList').addEventListener('click', function(ev){
