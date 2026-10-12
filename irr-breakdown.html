@@ -1143,6 +1143,25 @@ details .body strong{color:var(--text)}
         </div>
       </dialog>
 
+      <!-- Several sales can share one street number — a block of units against
+           a record with no unit on it. Marking it sold without asking writes
+           whichever the export listed first, so this asks. -->
+      <dialog class="modal" id="pickDialog" aria-labelledby="pick-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="pick-h">Which sale is this?</h2>
+            <button type="button" class="modal-x" id="pickClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="count-line" id="pickWhy"></p>
+            <div id="pickList"></div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn-ghost" id="pickDone" style="margin-left:auto">Cancel</button>
+          </div>
+        </div>
+      </dialog>
+
       <!-- one screen: email and the shared password together -->
       <dialog class="modal modal-sm" id="authDialog" aria-labelledby="auth-h">
         <div class="modal-inner">
@@ -4096,7 +4115,9 @@ details .body strong{color:var(--text)}
       var when  = m.date  !== undefined ? gridDate(r[m.date]) : null;
       if (!when) undated++;
       if (!price) unpriced++;
-      var s = { a:a, price:price, date:when,
+      /* the row as the export wrote it — the only way a chooser can show which
+         of several units at one street number this sale actually was */
+      var s = { a:a, raw:String(addrRaw).trim(), price:price, date:when,
                 link: m.link !== undefined ? String(r[m.link] || '').trim() : '' };
       sales.push(s);
       if (a.suburb) subs[a.suburb] = (subs[a.suburb] || 0) + 1;
@@ -4207,18 +4228,32 @@ details .body strong{color:var(--text)}
     var canWrite = (share.canWrite !== false);
     var body = rs.map(function(r){
       var h = r.hit;
-      var found = h
-        ? '<b>'+(h.price ? aud(h.price) : '—')+'</b><span>'+(h.date ? dLabel(new Date(h.date+'T00:00:00Z')) : 'no date')+
-          (r.hits.length > 1 ? ' · '+r.hits.length+' possible matches' : '')+'</span>'
-        : '<span class="faint">—</span>';
-      var writable = h && h.price && h.date && canWrite;
+      /* With more than one candidate there is no "the" price, and showing the
+         first one puts a figure in the column that is probably a neighbour's. */
+      var found = !h
+        ? '<span class="faint">—</span>'
+        : (r.hits.length > 1
+            ? '<b class="faint">'+r.hits.length+' sales</b><span>at this street number</span>'
+            : '<b>'+(h.price ? aud(h.price) : '—')+'</b><span>'+
+              (h.date ? dLabel(new Date(h.date+'T00:00:00Z')) : 'no date')+'</span>');
+      /* Several sales can share a street number — a block of units against a
+         record with no unit on it. Writing r.hits[0] then picks whichever the
+         export happened to list first, which is a coin toss between other
+         people's sale prices. Those rows get a chooser instead. */
+      var usable = (r.hits || []).filter(function(s){ return s.price && s.date; });
+      var many = usable.length > 1;
+      var writable = canWrite && usable.length > 0 && (many || (h && h.price && h.date));
       var act = '';
       if (writable && (r.status === 'sold' || r.status === 'check')) {
-        act = '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Mark sold</button>';
+        act = many
+          ? '<button type="button" class="btn-ghost btn-sm" data-pickone="'+esc(r.e.id)+'">Choose sale</button>'
+          : '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Mark sold</button>';
       } else if (writable && r.status === 'differs') {
         /* a different verb, because this one replaces a figure that is already
            there rather than filling in a blank */
-        act = '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Use the export</button>';
+        act = many
+          ? '<button type="button" class="btn-ghost btn-sm" data-pickone="'+esc(r.e.id)+'">Choose sale</button>'
+          : '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Use the export</button>';
       }
       /* when the two disagree, the book's own figure has to be on the row —
          otherwise "price differs" is an accusation with no evidence */
@@ -4419,6 +4454,47 @@ details .body strong{color:var(--text)}
   function closeBucket(){
     var d = $('bucketDialog');
     if (d.open) d.close(); else d.removeAttribute('open');
+  }
+
+  /* ── choosing between several sales at one street number ──────────────────
+     The register says "22 Kenilworth Road"; the export has 1/22, 3/22 and
+     7/22. All three match on number, street and suburb, so the old one-click
+     Mark sold wrote whichever came first — a neighbour's price, onto her
+     property, and straight into the shared list. */
+  var pickId = null;
+  function openPick(id){
+    var r = (chk && chk.results || []).filter(function(x){ return x.e.id === id; })[0];
+    if (!r || !r.hits || r.hits.length < 2) return;
+    pickId = id;
+    var mine = r.a || {};
+    var allUnits = r.hits.every(function(s){ return s.a && s.a.unit; });
+    $('pickWhy').innerHTML =
+      '<strong>'+esc(r.e.name)+'</strong> matched '+r.hits.length+' sales on number, street and suburb.'+
+      (!mine.unit && allUnits
+        ? ' The record has no unit number on it and every one of these does, so '+
+          'this is a block of units — pick the one that is yours, or put the unit '+
+          'number on the property and run the check again.'
+        : ' Pick the one that is yours.');
+    $('pickList').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
+      '<th scope="col">In the export</th><th scope="col" class="num">Sold for</th>'+
+      '<th scope="col">Sold on</th><th scope="col"><span class="sr-only">Choose</span></th>'+
+      '</tr></thead><tbody>'+
+      r.hits.map(function(s, i){
+        var can = s.price && s.date;
+        return '<tr><td class="name">'+esc(s.raw || '—')+'</td>'+
+          '<td class="pd"><b>'+(s.price ? aud(s.price) : '—')+'</b></td>'+
+          '<td>'+(s.date ? dLabel(new Date(s.date+'T00:00:00Z')) : '<span class="faint">no date</span>')+'</td>'+
+          '<td class="acts">'+(can
+            ? '<button type="button" class="btn-ghost btn-sm" data-pickhit="'+i+'">This one</button>'
+            : '<span class="faint">no price or date</span>')+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+    var d = $('pickDialog');
+    if (d.showModal) d.showModal(); else d.setAttribute('open','');
+  }
+  function closePick(){
+    var d = $('pickDialog');
+    if (d.open) d.close(); else d.removeAttribute('open');
+    pickId = null;
   }
   /* The dropdown is rebuilt from whatever is actually unsold, so a city with
      nothing left to look up stops offering itself. */
@@ -5650,7 +5726,26 @@ details .body strong{color:var(--text)}
         'Mark '+ids.length+' sold', function(){ markSold(ids); });
       return;
     }
+    if (b.dataset.pickone) { openPick(b.dataset.pickone); return; }
     if (b.dataset.marksold) markSold([b.dataset.marksold]);
+  });
+  $('pickClose').addEventListener('click', closePick);
+  $('pickDone').addEventListener('click', closePick);
+  $('pickDialog').addEventListener('click', function(ev){
+    if (ev.target === $('pickDialog')) closePick();
+  });
+  $('pickDialog').addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('button[data-pickhit]');
+    if (!b || !pickId) return;
+    var r = (chk && chk.results || []).filter(function(x){ return x.e.id === pickId; })[0];
+    var s = r && r.hits[Number(b.dataset.pickhit)];
+    if (!s) { closePick(); return; }
+    /* the chosen one becomes the row's match, so a later redraw — or Mark all —
+       sees what was picked rather than reverting to whatever came first */
+    r.hit = s;
+    var id = pickId;
+    closePick();
+    markSold([id]);
   });
   $('chkCity').addEventListener('change', function(){
     chkCity = this.value;
