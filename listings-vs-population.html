@@ -120,7 +120,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     </div>
     <div id="chart" aria-describedby="ctitle"></div>
     <p class="range-note" id="rangeNote" hidden><b>Before Aug 2018:</b> sale and rental listing data are not reliable for this earlier period. Cotality was still building its listings coverage, so early counts are understated, rental listings most of all. The figures come from Cotality’s older files and are rescaled to join the current series, hence the lighter line colour.</p>
-    <p class="read" id="readnote"></p>
   </div>
 
   <details>
@@ -248,14 +247,10 @@ function render(){
     const a=d[k], li=lastIdx(a), yi=li-12, bi=BASE;
     document.getElementById(el).innerHTML=`${f1(a[li])}<small>${unitTxt} · ${lab(MONTHS[li])}</small>`;
     const ya=yi>=0?a[yi]:null, ba=a[bi];
-    const crossesBreak=(from,to)=>d.breaks.some(b=>b>from&&b<=to)||(k==='rent'&&d.gaps.some(g=>g[0]>from&&g[0]<=to));
     document.getElementById(eld).innerHTML=
-      `<span>vs a year earlier <b>${fp(pct(a[li],ya))}</b>${crossesBreak(yi,li)?' ⚑':''}</span>`+
-      `<span>vs May 2022 <b>${fp(pct(a[li],ba))}</b>${crossesBreak(bi,li)?' ⚑':''}</span>`;
+      `<span>vs a year earlier <b>${fp(pct(a[li],ya))}</b></span>`+
+      `<span>vs May 2022 <b>${fp(pct(a[li],ba))}</b></span>`;
   }
-  const flagged=document.querySelectorAll('.ro-d').length && /⚑/.test(document.getElementById('roSaleD').textContent+document.getElementById('roRentD').textContent);
-  document.getElementById('readnote').textContent=(flagged?'⚑ means the comparison spans a rental data gap or a count-method change, so read it with care. ':'')+
-    'How to read it: sale listings per head rising while rental listings per head fall points to buyers holding back (rates) while renters absorb stock. Both rising points to genuine oversupply. Both falling points to genuine undersupply.';
   draw(d); table(d);
 }
 
@@ -371,7 +366,7 @@ function draw(d){
 function table(d){
   const u=S.win==='12'?'12-mo':'month';
   let h=`<thead><tr><th>Month</th><th>Sale listings (${u})</th><th>Rental listings (${u}${S.win==='1'?', 12-mo ÷ 12':''})</th><th>Residents</th><th>Sale, % of pop.</th><th>Rent, % of pop.</th><th>Cash rate</th><th>Bank Rate</th></tr></thead><tbody>`;
-  for(let i=N-1;i>=startIdx();i--) h+=`<tr><td>${lab(MONTHS[i])}${d.breaks.includes(i)?' ⚑':''}</td><td>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</td><td>${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()}</td><td>${d.pop[i].toLocaleString()}</td><td>${f1(d.sale[i])}</td><td>${f1(d.rent[i])}</td><td>${RATES.cash[i]==null?'–':RATES.cash[i].toFixed(2)+'%'}</td><td>${RATES.mortDisc[i]==null?'–':RATES.mortDisc[i].toFixed(2)+'%'}</td></tr>`;
+  for(let i=N-1;i>=startIdx();i--) h+=`<tr><td>${lab(MONTHS[i])}</td><td>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</td><td>${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()}</td><td>${d.pop[i].toLocaleString()}</td><td>${f1(d.sale[i])}</td><td>${f1(d.rent[i])}</td><td>${RATES.cash[i]==null?'–':RATES.cash[i].toFixed(2)+'%'}</td><td>${RATES.mortDisc[i]==null?'–':RATES.mortDisc[i].toFixed(2)+'%'}</td></tr>`;
   document.getElementById('tbl').innerHTML=h+'</tbody>';
 }
 
