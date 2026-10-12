@@ -123,7 +123,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       </div>
     </div>
     <div id="chart" aria-describedby="ctitle"></div>
-    <p class="range-note" id="rangeNote" hidden><b>Before Aug 2018:</b> sale and rental listing data are not reliable for this earlier period. Cotality was still building its listings coverage, so early counts are understated, rental listings most of all; before about 2006 many markets have no rental count at all, and the all-markets total only starts once every market reports. <span id="rangeNoteScale"></span></p>
+    <p class="range-note" id="rangeNote" hidden><b>Before Aug 2018:</b> sale and rental listing data are not reliable for this earlier period. Cotality was still building its listings coverage, so early counts are understated, rental listings most of all; before about 2006 many markets have no rental count at all, so the all-markets line covers only the markets reporting each month (hover to see how many). <span id="rangeNoteScale"></span></p>
   </div>
 
   <details>
@@ -134,7 +134,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <p><b>Rental gap.</b> Cotality’s files carry no rental listings from Dec 2023 to Oct 2024, in every market. The gap is left empty, not filled. Treat any level change across it with caution.</p>
       <p><b>Count-method changes.</b> A 12-month total can’t move 15% or more in a single month from real activity, so a jump that size is marked as a change in how Cotality counts. The big ones are Mar 2020 (capitals), May 2020 (rentals down about 23% everywhere) and Jan 2021 (rentals back up about 33%). Nov 2024 and Jan 2026 move listings between houses and units, which is why the <b>All</b> view is steadier than Houses or Units alone. Compare levels within a stretch between markers, not across one.</p>
       <p><b>Earlier years.</b> Jan 2001 to Jun 2018 come from Cotality’s older history files: the capital-city file and the ten LGA files. The old files count more listings than the monthly files at the same date, by different amounts in each market. For houses the old sale count runs from 5% lower (Newcastle) to 68% higher (Perth). So each market’s houses and units, sale and rental, are rescaled separately, so that Jun 2018 meets the Aug 2018 level, and that scale is held for every earlier month. Both lines are drawn lighter before Aug 2018. Switch <b>Before Aug 2018</b> to <b>As published</b> to see the older files’ own figures without rescaling; the lines then step at Aug 2018.</p>
-      <p><b>Early rental listings are understated.</b> Cotality’s rental coverage kept growing until about 2016. Capitals’ rental listings went from 1.5% of population in 2008 to 3.7% in 2016 before levelling off, which is far more than the rental market itself moved. Some regional markets barely register before 2010 (Launceston houses: 7 rental listings a year in 2008). Treat the rental line before about 2016 as showing direction only, not level. Sale listing coverage settled around 2008: regional sale listings more than doubled from 2004 to 2008, then flattened. The chart can go back to Jan 2001 at most, because that is where the ABS population estimates start (30 June 2001, held for Jan–May 2001). Before about 2006 many markets have no rental count, and some none for sale, so a combined total only shows from the month every chosen market reports.</p>
+      <p><b>Early rental listings are understated.</b> Cotality’s rental coverage kept growing until about 2016. Capitals’ rental listings went from 1.5% of population in 2008 to 3.7% in 2016 before levelling off, which is far more than the rental market itself moved. Some regional markets barely register before 2010 (Launceston houses: 7 rental listings a year in 2008). Treat the rental line before about 2016 as showing direction only, not level. Sale listing coverage settled around 2008: regional sale listings more than doubled from 2004 to 2008, then flattened. The chart can go back to Jan 2001 at most, because that is where the ABS population estimates start (30 June 2001, held for Jan–May 2001). Before about 2006 many markets have no rental count, and some none for sale (Launceston has no sale count until Feb 2008). The <b>All 36 markets</b> line therefore adds up only the markets reporting each month and divides by those markets’ population, so a missing market drops out of both sides. The mix of markets changes as each one starts reporting; the hover note gives the count for each month.</p>
       <p><b>Jul 2018.</b> The month Cotality switched council boundaries. Merged councils are missing (Central Coast shows 423 sale listings), and the older files end in Jun 2018, so the month is left empty.</p>
       <p><b>Rate overlay.</b> Both rates come from the RBA. <b>Cash rate</b> is the cash rate target at month end, drawn as steps (table F1; before 2011 the RBA file holds monthly averages, so a month with a change takes the new rate). <b>Bank Rate</b> (from mid-2004, when the RBA series starts) is the banks’ discounted variable rate for owner-occupier housing loans (table F5, indicator lending rates). It sits close to what new borrowers actually pay; the standard variable rate runs about 2 points higher. Both read off the right-hand % axis.</p>
     </div>
@@ -225,18 +225,28 @@ function series(){
   const ms=S.market==='all'?MARKETS:MARKETS.filter(m=>m.slug===S.market);
   const pts=S.ptype==='A'?['H','U']:[S.ptype];
   const raw=S.scaled==='u', kk=k=>k==='r12'?1:0;
-  const sum=(k)=>MONTHS.map((_,i)=>{let t=0;for(const m of ms)for(const p of pts){let v=m[p][k][i]; if(v==null) return null; if(raw&&i<J&&k!=='l1') v=v/m.k[p][kk(k)]; t+=v} return t});
+  // Each series adds up only the markets reporting that month and divides by those markets' population,
+  // so a market missing early data drops out of both sides instead of dragging the total down.
+  const agg=(k)=>{ const val=[], pp=[], cnt=[];
+    for(let i=0;i<N;i++){ let t=0, q=0, c=0;
+      for(const m of ms){ let s=0, ok=true;
+        for(const p of pts){ let v=m[p][k][i]; if(v==null){ok=false;break} if(raw&&i<J&&k!=='l1') v=v/m.k[p][kk(k)]; s+=v }
+        if(ok){ t+=s; q+=m.pop[i]; c++ } }
+      val.push(c?t:null); pp.push(q); cnt.push(c) }
+    return {val,pop:pp,cnt} };
   const pop=MONTHS.map((_,i)=>ms.reduce((a,m)=>a+m.pop[i],0));
-  const l1=sum('l1'), l12=sum('l12'), r12=sum('r12');
-  const sale=S.win==='12'?l12:l1, rent=S.win==='12'?r12:r12.map(v=>v==null?null:v/12);
-  const pc=(arr)=>arr.map((v,i)=>v==null?null:v/pop[i]*100);
-  // count-method breaks, read off the 12-month totals (smooth by construction)
+  const L1=agg('l1'), L12=agg('l12'), R12=agg('r12');
+  const S1=S.win==='12'?L12:L1, R1=R12;
+  const sale=S1.val, rent=S.win==='12'?R1.val:R1.val.map(v=>v==null?null:v/12);
+  const pc=(arr,den)=>arr.map((v,i)=>v==null||!den[i]?null:v/den[i]*100);
+  // count-method breaks, read off the 12-month totals (smooth by construction); a month where the
+  // set of reporting markets changes is not a count-method change, so it is skipped
   const thr=0.15, br=new Set();
-  for(const a of [l12,r12]) for(let i=1;i<N;i++){const p=a[i-1],c=a[i]; if(p>0&&c>0&&Math.abs(c/p-1)>thr) br.add(i)}
+  for(const g of [L12,R12]) for(let i=1;i<N;i++){const p=g.val[i-1],c=g.val[i]; if(p>0&&c>0&&g.cnt[i]===g.cnt[i-1]&&Math.abs(c/p-1)>thr) br.add(i)}
   const gaps=[]; let st=-1;
-  r12.forEach((v,i)=>{ if(i<J) return; if(v==null&&st<0) st=i; if(v!=null&&st>=0){gaps.push([st,i-1]);st=-1} }); if(st>=0) gaps.push([st,N-1]);
+  R12.val.forEach((v,i)=>{ if(i<J) return; if(v==null&&st<0) st=i; if(v!=null&&st>=0){gaps.push([st,i-1]);st=-1} }); if(st>=0) gaps.push([st,N-1]);
   const name=S.market==='all'?'All 36 markets':ms[0].name;
-  return {name,pop,sale:pc(sale),rent:pc(rent),saleN:sale,rentN:rent,breaks:[...br].sort((a,b)=>a-b),gaps};
+  return {name,pop,sale:pc(sale,S1.pop),rent:pc(rent,R1.pop),saleN:sale,rentN:rent,saleCnt:S1.cnt,rentCnt:R1.cnt,nMk:ms.length,breaks:[...br].sort((a,b)=>a-b),gaps};
 }
 const f1=v=>v==null?'–':v.toFixed(2)+'%';
 const pct=(a,b)=>(a==null||b==null||!b)?null:(a/b-1)*100;
@@ -349,6 +359,7 @@ function draw(d){
     if(i<J-1) note.push(S.scaled==='u'?'Sale and rental listings as published in Cotality’s older files (not rescaled), so they step at Aug 2018. Early counts are understated (Cotality was still building coverage).':'Sale and rental listings from Cotality’s older files, rescaled to meet the Aug 2018 level. Early counts are understated (Cotality was still building coverage).');
     else if(i===J-1) note.push('No Cotality data this month (council boundary changeover).');
     else if(d.rent[i]==null) note.push('Cotality published no rental listings this month.');
+    if(d.nMk>1&&((d.saleN[i]!=null&&d.saleCnt[i]<d.nMk)||(d.rentN[i]!=null&&d.rentCnt[i]<d.nMk))) note.push(`Only some markets report this month: sale listings ${d.saleCnt[i]} of ${d.nMk}, rental listings ${d.rentCnt[i]} of ${d.nMk}. Each percentage uses the population of the markets it includes.`);
     if(MONTHS[i]>'2025-06') note.push('Population after Jun 2025 uses the Jun 2025 ABS figure.');
     tip.innerHTML=`<div class="t-m">${lab(MONTHS[i])}</div>`+
       `<div class="t-r"><span><i class="key"></i>Sale listing</span><b>${v(A)}</b></div>`+
