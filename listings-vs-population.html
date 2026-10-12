@@ -66,6 +66,9 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 .tip .t-m{font-weight:700;margin-bottom:5px}
 .tip .t-r{display:flex;justify-content:space-between;gap:14px;align-items:center}
 .tip .t-r span:first-child{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2)}
+.tip .t-div{border-top:1px solid var(--rule);margin:7px 0 5px}
+.tip .t-sub{font-size:12px;color:var(--muted)}
+.tip .t-sub span:last-child{color:var(--ink-2)}
 .tip .t-n{color:var(--muted);margin-top:5px;font-size:11.5px;max-width:240px}
 .tip .t-warn{color:var(--break)}
 .read{font-size:13px;color:var(--ink-2);padding-inline:6px;max-width:80ch}
@@ -108,7 +111,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <div class="chart-top">
       <div class="chart-title" id="ctitle"></div>
       <div class="legend">
-        <span><i class="key"></i>For sale</span><span><i class="key rent"></i>For rent</span>
+        <span><i class="key"></i>Sale listing</span><span><i class="key rent"></i>Rental listing</span>
         <span id="lgOld"><i class="key faded"></i>Before Aug 2018 (rescaled)</span><span><i class="sw-hatch"></i>No rental data</span><span id="lgCash" hidden><i class="key cash"></i>Cash rate</span><span id="lgMort" hidden><i class="key mort"></i>Bank Rate</span>
       </div>
     </div>
@@ -340,11 +343,14 @@ function draw(d){
     else if(d.rent[i]==null) note.push('Cotality published no rental listings this month.');
     if(MONTHS[i]>'2025-06') note.push('Population after Jun 2025 uses the Jun 2025 ABS figure.');
     tip.innerHTML=`<div class="t-m">${lab(MONTHS[i])}</div>`+
-      `<div class="t-r"><span><i class="key"></i>For sale</span><b>${v(A)}</b></div>`+
-      `<div class="t-r"><span><i class="key rent"></i>For rent</span><b>${v(B)}</b></div>`+
+      `<div class="t-r"><span><i class="key"></i>Sale listing</span><b>${v(A)}</b></div>`+
+      `<div class="t-r"><span><i class="key rent"></i>Rental listing</span><b>${v(B)}</b></div>`+
       (S.cash?`<div class="t-r"><span><i class="key cash"></i>Cash rate</span><b>${RATES.cash[i]==null?'–':RATES.cash[i].toFixed(2)+'%'}</b></div>`:'')+
       (S.mort?`<div class="t-r"><span><i class="key mort"></i>Bank Rate</span><b>${RATES.mortDisc[i]==null?'–':RATES.mortDisc[i].toFixed(2)+'%'}</b></div>`:'')+
-      (idx?'':`<div class="t-n">${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()} sale · ${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()} rental listings · ${d.pop[i].toLocaleString()} residents</div>`)+
+      `<div class="t-div"></div>`+
+      `<div class="t-r t-sub"><span>Sale listings (12 mo)</span><span>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</span></div>`+
+      `<div class="t-r t-sub"><span>Rental listings (12 mo)</span><span>${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()}</span></div>`+
+      `<div class="t-r t-sub"><span>Population</span><span>${d.pop[i].toLocaleString()}</span></div>`+
       note.map(n=>`<div class="t-n">${n}</div>`).join('');
     tip.hidden=false;
     const cw=chartEl.clientWidth, tw=tip.offsetWidth, sx=x(i)/k;
