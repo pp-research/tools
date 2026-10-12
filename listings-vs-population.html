@@ -12,13 +12,13 @@
 :root{
   --bg:#F5F7F7; --surface:#FFFFFF; --ink:#171B24; --ink-2:#3E434B; --muted:#63666A; --rule:#DDE2E2; --grid:#E8ECEC;
   --sale:#00879A; --rent:#B87100; --band:rgba(0,160,180,.07); --band-ink:#2D6F78; --hatch:#C9CFD0; --break:#A5122D;
-  --chip:#EAF1F2; --chip-on:#171B24; --chip-on-ink:#FFFFFF; --cash:#4A4F57; --mort:#8C2C8C;
+  --chip:#EAF1F2; --chip-on:#171B24; --chip-on-ink:#FFFFFF; --cash:#4A4F57; --mort:#8C2C8C; --note-ink:#8F5800; --note-bg:#FFF4E0; --note-rule:#F5C46B;
   --f-display:"Montserrat",Arial,Helvetica,sans-serif; --f-body:"Montserrat",Arial,Helvetica,sans-serif;
 }
 :root[data-theme="dark"]{
   --bg:#12161E; --surface:#1A2029; --ink:#EEF1F2; --ink-2:#C9CED3; --muted:#9AA1A8; --rule:#2B333F; --grid:#232A35;
   --sale:#38C6D8; --rent:#FFB947; --band:rgba(56,198,216,.08); --band-ink:#8FD6DF; --hatch:#3A4350; --break:#F17E93;
-  --cash:#C9CED3; --mort:#DD92DD; --chip:#232A35; --chip-on:#EEF1F2; --chip-on-ink:#171B24; color-scheme:dark }
+  --cash:#C9CED3; --mort:#DD92DD; --note-ink:#FFC870; --note-bg:rgba(255,169,31,.12); --note-rule:rgba(255,185,71,.45); --chip:#232A35; --chip-on:#EEF1F2; --chip-on-ink:#171B24; color-scheme:dark }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
@@ -72,6 +72,8 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 .tip .t-sub span:last-child{color:var(--ink-2)}
 .tip .t-n{color:var(--muted);margin-top:5px;font-size:11.5px;max-width:240px}
 .tip .t-warn{color:var(--break)}
+.tip .t-note{margin-top:6px;padding:6px 8px;font-size:11.5px;line-height:1.4;max-width:250px;color:var(--note-ink);background:var(--note-bg);border-left:3px solid var(--note-rule);border-radius:4px}
+.tip .t-note .t-warn{color:inherit;font-weight:600}
 .range-note{margin:0;padding:9px 12px;font-size:13px;color:var(--ink-2);background:var(--bg);border:1px solid var(--rule);border-radius:8px}
 .range-note b{color:var(--ink)}
 .read{font-size:13px;color:var(--ink-2);padding-inline:6px;max-width:80ch}
@@ -352,7 +354,7 @@ function draw(d){
       `<div class="t-r t-sub"><span>Sale listings (12 mo)</span><span>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</span></div>`+
       `<div class="t-r t-sub"><span>Rental listings (12 mo)</span><span>${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()}</span></div>`+
       `<div class="t-r t-sub"><span>Population</span><span>${d.pop[i].toLocaleString()}</span></div>`+
-      note.map(n=>`<div class="t-n">${n}</div>`).join('');
+      note.map(n=>`<div class="t-note">${n}</div>`).join('');
     tip.hidden=false;
     const cw=chartEl.clientWidth, tw=tip.offsetWidth, sx=x(i)/k;
     tip.style.left=(sx+14+tw>cw? Math.max(0,sx-14-tw) : sx+14)+'px';
