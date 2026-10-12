@@ -4066,6 +4066,12 @@ details .body strong{color:var(--text)}
                 map:{ address:0, date:1, price:2 }, skipped:[],
                 source:'RPData import',
                 why:'Read from RP Data itself, one property at a time.' };
+        /* Advertised but not sold is a different thing to act on: a sale is
+           settled, a listing is a conversation to have. Carried separately so
+           it never gets written onto a property as though it were a sale. */
+        chk.listed = all.filter(function(r){
+          return r.onMarket && String(r.status || '') !== 'SOLD SINCE PURCHASE';
+        });
         applyDefaultScope();
         $('chkSource').value = chk.source;
         $('chkSourceWhy').textContent = chk.why;
@@ -4270,7 +4276,25 @@ details .body strong{color:var(--text)}
         '<td class="pd">'+found+'</td>'+
         '<td class="acts">'+act+'</td></tr>';
     }).join('');
-    $('chkBody').innerHTML =
+    /* Only the sheet knows about listings; a sales export cannot. Nothing here
+       is written to a property — it is a prompt to pick up the phone. */
+    var listedBlock = (chk.listed && chk.listed.length)
+      ? '<details class="note" style="margin:0 0 var(--sp-3)"><summary><strong>'+
+        chk.listed.length+'</strong> showing a listing in RP Data, with no sale yet</summary>'+
+        '<p class="count-line">Advertised is not sold — none of these change the register. '+
+        'RP Data shows a current status and a listing history in the same place, so check the '+
+        'last advertised date before acting on one.</p>'+
+        '<div class="tbl-scroll short"><table><thead><tr>'+
+        '<th scope="col">Property</th><th scope="col">Status</th>'+
+        '<th scope="col">Last advertised</th></tr></thead><tbody>'+
+        chk.listed.map(function(r){
+          return '<tr><td class="name">'+esc(r.address || '—')+'</td>'+
+            '<td>'+esc(r.onMarket || '—')+'</td>'+
+            '<td>'+(r.lastAd ? esc(r.lastAd) : '<span class="faint">not given</span>')+'</td></tr>';
+        }).join('')+'</tbody></table></div></details>'
+      : '';
+
+    $('chkBody').innerHTML = listedBlock +
       (tally.sold && canWrite
         ? '<div class="btns" style="margin:0 0 var(--sp-3)">'+
           '<button type="button" class="btn-primary btn-sm" id="btnMarkAll">Mark all '+tally.sold+' sold</button>'+
