@@ -15,10 +15,6 @@
   --chip:#EAF1F2; --chip-on:#171B24; --chip-on-ink:#FFFFFF; --cash:#4A4F57; --mort:#8C2C8C;
   --f-display:"Montserrat",Arial,Helvetica,sans-serif; --f-body:"Montserrat",Arial,Helvetica,sans-serif;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#12161E; --surface:#1A2029; --ink:#EEF1F2; --ink-2:#C9CED3; --muted:#9AA1A8; --rule:#2B333F; --grid:#232A35;
-  --sale:#38C6D8; --rent:#FFB947; --band:rgba(56,198,216,.08); --band-ink:#8FD6DF; --hatch:#3A4350; --break:#F17E93;
-  --cash:#C9CED3; --mort:#DD92DD; --chip:#232A35; --chip-on:#EEF1F2; --chip-on-ink:#171B24; color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#12161E; --surface:#1A2029; --ink:#EEF1F2; --ink-2:#C9CED3; --muted:#9AA1A8; --rule:#2B333F; --grid:#232A35;
   --sale:#38C6D8; --rent:#FFB947; --band:rgba(56,198,216,.08); --band-ink:#8FD6DF; --hatch:#3A4350; --break:#F17E93;
@@ -90,7 +86,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Supply check · 36 Traffic Lights markets · Cotality + ABS</div>
     <h1>Listings as a % of population</h1>
     <p class="lede">Sale listings and rental listings, each divided by population, on one timeline. Use it to separate genuine over- or under-supply from a demand shift caused by interest rates before trusting the other forecasts.</p>
   </header>
