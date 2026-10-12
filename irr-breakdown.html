@@ -1037,6 +1037,9 @@ details .body strong{color:var(--text)}
               <h2 id="chk-h">Sold check</h2>
               <div class="btns" style="margin:0">
                 <button type="button" class="btn-primary btn-sm" id="btnChkFile">Load a sales export</button>
+                <!-- Only appears once this browser knows where the sheet is.
+                     The URL is a capability, so it is never in this file. -->
+                <button type="button" class="btn-ghost btn-sm" id="btnChkSheet" hidden>From Google Sheet</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkHelp">How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
@@ -4004,6 +4007,68 @@ details .body strong{color:var(--text)}
       chkRun();
     }).catch(function(e){ chkSay(msg('err', esc(e.message))); });
   }
+  /* ── the Google Sheet the RP Data bookmarklet writes to ──────────────────
+     That sheet is reached by a URL anyone holding can read, and this page is
+     public, so the URL is never in this file. It lives in one browser only:
+
+         localStorage.ppSheetUrl = 'https://script.google.com/macros/s/…/exec'
+
+     Set it and the button appears. Everyone else sees the tool unchanged. */
+  function sheetUrl(){
+    try { return (localStorage.getItem('ppSheetUrl') || '').trim(); }
+    catch(e){ return ''; }                 // private window, blocked storage
+  }
+  function syncSheetBtn(){ $('btnChkSheet').hidden = !sheetUrl(); }
+
+  function chkLoadSheet(){
+    var u = sheetUrl();
+    if (!u) return;
+    showTab('check');
+    chkSay(msg('ok','Reading the Google Sheet…'));
+    fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'rows=1')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.ok) throw new Error(d && d.error ? d.error : 'the sheet did not answer');
+        var all = d.rows || [];
+        if (!all.length) {
+          chkSay(msg('err','The sheet has no rows yet — run the RP Data check first.'));
+          return;
+        }
+        /* Only the ones RP Data says changed hands AFTER the purchase. A row
+           that is still held carries her own purchase as its last sale, and
+           feeding those in would match every property and call it sold. */
+        var sold = all.filter(function(r){ return String(r.status || '') === 'SOLD SINCE PURCHASE'; });
+        /* Same shape a loaded export produces, so the match, the review list
+           and "Where to look" all work from here on without knowing the
+           difference. */
+        chk = { name:'Google Sheet',
+                head:['Address','Sold date','Sold price','RP Data record'],
+                rows: sold.map(function(r){ return [r.address, r.soldDate, r.soldPrice, r.resolved]; }),
+                map:{ address:0, date:1, price:2 }, skipped:[],
+                source:'RPData import',
+                why:'Read from RP Data itself, one property at a time.' };
+        applyDefaultScope();
+        $('chkSource').value = chk.source;
+        $('chkSourceWhy').textContent = chk.why;
+        $('chkSetup').hidden = false;
+        $('btnChkClear').hidden = false;
+        chkSay(msg('ok','Read '+all.length+' checked propert'+(all.length===1?'y':'ies')+
+          ' from the sheet · <strong>'+sold.length+'</strong> sold since purchase.'+
+          (all.length > sold.length
+            ? ' The other '+(all.length - sold.length)+
+              (all.length - sold.length === 1 ? ' is' : ' are')+' still held, so '+
+              (all.length - sold.length === 1 ? 'it is' : 'they are')+' not in the match.'
+            : '')));
+        renderColMap();
+        chkRun();
+      })
+      .catch(function(e){
+        chkSay(msg('err','Could not read the sheet: '+esc(e.message)+
+          '<br>Check <code>localStorage.ppSheetUrl</code> points at the deployment’s '+
+          '<code>/exec</code> address, and that it is deployed for “Anyone”.'));
+      });
+  }
+
   function renderColMap(){
     if (!chk) return;
     var opts = function(sel){
@@ -5534,6 +5599,8 @@ details .body strong{color:var(--text)}
 
   /* ── sold check ── */
   $('btnChkFile').addEventListener('click', function(){ $('chkInput').click(); });
+  $('btnChkSheet').addEventListener('click', chkLoadSheet);
+  syncSheetBtn();
   $('chkInput').addEventListener('change', function(){
     if (this.files && this.files[0]) chkLoad(this.files[0]);
     this.value = '';
