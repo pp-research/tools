@@ -259,12 +259,11 @@ function render(){
   document.getElementById('ctitle').textContent=`${d.name} · ${S.ptype==='A'?'houses and units':S.ptype==='H'?'houses':'units'} · ${S.view==='idx'?'indexed, May 2022 = 100':'listings as % of population, '+unitTxt}`;
   // readouts
   for(const [k,el,eld] of [['sale','roSale','roSaleD'],['rent','roRent','roRentD']]){
-    const a=d[k], li=lastIdx(a), yi=li-12, bi=BASE;
+    const a=d[k], li=lastIdx(a), yi=li-12;
     document.getElementById(el).innerHTML=`${f1(a[li])}<small>${unitTxt} · ${lab(MONTHS[li])}</small>`;
-    const ya=yi>=0?a[yi]:null, ba=a[bi];
+    const ya=yi>=0?a[yi]:null;
     document.getElementById(eld).innerHTML=
-      `<span>vs a year earlier <b>${fp(pct(a[li],ya))}</b></span>`+
-      `<span>vs May 2022 <b>${fp(pct(a[li],ba))}</b></span>`;
+      `<span>vs a year earlier <b>${fp(pct(a[li],ya))}</b></span>`;
   }
   draw(d); table(d);
 }
