@@ -2262,7 +2262,7 @@ window.stopCheck=false;
   /* A property whose check straddled the tab being hidden has not been
      answered, it has been interrupted. Noted, so the result can be thrown
      away rather than written down as a finding. */
-  let sawHidden = false, redone = -1;
+  let sawHidden = false, redone = -1, slowRetried = -1;
   document.addEventListener('visibilitychange', function(){
     if (document.hidden) sawHidden = true;
   });
@@ -2330,6 +2330,20 @@ window.stopCheck=false;
     }
     /* consecutive failures, reset by any property that actually answered */
     if (/still held|SOLD SINCE PURCHASE/.test(r.status)) misses = 0; else misses++;
+
+    /* Two in a row is the shape of RP Data having started refusing rather
+       than of two odd addresses. Breathe, and ask this one again before
+       writing it down — otherwise the next property is burnt the same way,
+       and the one after that. */
+    if (misses >= 2 && slowRetried !== i) {
+      slowRetried = i;
+      console.warn(`%cwaiting 45s — ${misses} in a row have come back empty, which `+
+        `usually means RP Data has stopped answering rather than anything about `+
+        `these properties. Trying this one again.`, 'color:#b9770e');
+      await sleep(45000);
+      i--;
+      continue;
+    }
     const hit = r.status === 'SOLD SINCE PURCHASE';
     console.log(`%c${i + 1}/${held.length}  ${p.name}  —  ${r.status}` +
       (r.soldDate ? `  (sold ${r.soldDate} $${r.soldPrice.toLocaleString()})` : '') +
@@ -2342,9 +2356,10 @@ window.stopCheck=false;
 
     if (misses >= GIVE_UP_AFTER) {
       console.error(`%cStopped: ${GIVE_UP_AFTER} in a row came back with no answer. ` +
-        'That is RP Data not responding, not those properties. Leave it a while, ' +
-        'then click the bookmark again — it carries on from here and the ones ' +
-        'it could not settle are asked again.', 'font-weight:bold;font-size:13px');
+        'That is RP Data not responding, not those properties. ' +
+        'Reload rpp.corelogic.com.au, check you are still signed in, and click ' +
+        'the bookmark again. It carries on from here, and everything it could ' +
+        'not settle is asked again. Nothing is lost.', 'font-weight:bold;font-size:13px');
       break;
     }
 
