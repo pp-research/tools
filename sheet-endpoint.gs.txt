@@ -221,7 +221,17 @@ function doGet(e) {
       });
   }
 
+  /* Resume only from a tab this version of the file wrote. One left over from
+     an older version is about to be renamed out of the way by the first write
+     — saying "already done" about rows that are about to move somewhere else
+     would skip those properties and leave a hole in the new tab. */
   if (p.done) {
+    var sh = ss.getSheetByName(tabName_(p.tab));
+    if (sh && sh.getLastColumn() > 0) {
+      var h = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+                .map(function (x) { return String(x || '').trim(); }).join('|');
+      if (h !== HEADERS.join('|')) return json_({ ok: true, addresses: [], count: 0, stale: true });
+    }
     var mine = read_(tabName_(p.tab))
       .map(function (r) { return r.address; })
       .filter(function (s) { return s; });
