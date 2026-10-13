@@ -2290,6 +2290,28 @@ window.stopCheck=false;
      page, so a router that is not listening leaves the old view on screen
      under a new address — which is why this one is not believed until the
      title changes too. */
+  /* Our click must not be allowed to turn into a real page load.
+
+     A results row's address is usually a link. Where the app handles that
+     link itself, clicking it moves the view and nothing else happens — which
+     is what every suggestion click in this run already does, and why the run
+     survives hundreds of them. Where it does NOT, the browser follows the
+     link for real, the whole page reloads, and a reload takes this script
+     with it: the run stops dead in the middle, with an empty console, having
+     looked exactly like a crash.
+
+     So the default is cancelled — after the page's own handlers have had the
+     event, not before. A listener on document in the bubble phase runs last,
+     and React's are attached below it, so the app still sees the click and
+     still navigates. What it cannot do is take the page away from us. Only
+     here, on the results rows: the suggestion clicks are left exactly as they
+     are, because they work. */
+  function clickNoNav(el) {
+    const stop = ev => ev.preventDefault();
+    document.addEventListener('click', stop, false);
+    try { clickOption(el); }
+    finally { setTimeout(() => document.removeEventListener('click', stop, false), 0); }
+  }
   async function openRow(row) {
     const link = row.matches('a[href]') ? row : row.querySelector('a[href]');
     const cell = row.querySelector('td,[role=gridcell],[role=cell]');
@@ -2299,7 +2321,7 @@ window.stopCheck=false;
     if (cell && cell !== link && cell !== row) tries.push(cell);
 
     for (let i = 0; i < tries.length; i++) {
-      clickOption(tries[i]);
+      clickNoNav(tries[i]);
       if (await waitFor(() => /\/property\//.test(location.pathname), 6000)) return true;
     }
     const href = link && link.getAttribute('href');
@@ -2309,8 +2331,10 @@ window.stopCheck=false;
         history.pushState({}, '', href);
         window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
       } catch (e) { return false; }
-      return await waitFor(
-        () => /\/property\//.test(location.pathname) && document.title !== title, 8000);
+      /* Did it open: yes or no, never "null because a wait expired". The
+         caller asks a question with two answers. */
+      return !!(await waitFor(
+        () => /\/property\//.test(location.pathname) && document.title !== title, 8000));
     }
     return false;
   }
