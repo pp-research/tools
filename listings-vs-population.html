@@ -217,7 +217,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <label class="ctl"><span>Market</span><select id="dl-mkt"></select></label>
     <div class="ctl"><span>Period</span><div class="period" id="dl-period"></div></div>
   </div>
-  <p class="warn" id="dl-huWarn" hidden>Cotality moved some properties between houses and units in Jan 2026, which lifts unit sale stock by roughly 5–10% from that month on and lowers houses slightly. Use All dwellings for the verdict; read the houses and units views with that in mind.</p>
+  <p class="warn" id="dl-huWarn" hidden>Cotality moved some properties from houses to units in Jan 2026, inside this 12-month window, so unit stock jumps and house stock dips that month. The houses and units trends overstate both; use All dwellings for the reading.</p>
 
   <section class="verdicts" id="dl-verdicts" aria-label="Markets by verdict"></section>
 
@@ -421,7 +421,7 @@ const lastIdx=a=>{for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return i; return
 const prevNonNull=(a,i)=>{for(;i>=0;i--) if(a[i]!=null) return i; return -1};
 
 function render(){
-  if(window.dlSync) window.dlSync(S.market!=='all'?S.market:null, S.ptype);
+  if(window.dlSync) window.dlSync(S.market!=='all'?S.market:null);
   const d=series(); const unitTxt=S.win==='12'?'per year':'per month';
   document.getElementById('ctitle').textContent=`${d.name} · ${S.ptype==='A'?'houses and units':S.ptype==='H'?'houses':'units'} · ${S.view==='idx'?'indexed, May 2022 = 100':'listings as % of population, '+unitTxt}`;
   // readouts
@@ -572,7 +572,7 @@ const VERD={leave:{t:'Demand leaving',d:'Sale stock rising and rental stock risi
   buy:{t:'Shifting to buying',d:'Sale stock falling, rental stock rising',c:'buy'},
   tight:{t:'Tightening',d:'Sale stock falling and rental stock falling',c:'tight'}};
 const DS={pt:'A', mkt:'gold-coast'};
-try{const v=JSON.parse(localStorage.getItem('lpc-demand')||'{}'); if(v.pt) DS.pt=v.pt; if(v.mkt) DS.mkt=v.mkt}catch(e){}
+try{const v=JSON.parse(localStorage.getItem('lpc-demand')||'{}'); if(v.mkt) DS.mkt=v.mkt}catch(e){}   // always opens on All dwellings
 const save=()=>{try{localStorage.setItem('lpc-demand',JSON.stringify(DS))}catch(e){}};
 
 function series(m,k){ const pts=DS.pt==='A'?['H','U']:[DS.pt]; return DL_MONTHS.map((_,i)=>{let t=0; for(const p of pts){const v=m[p][k][i]; if(v==null) return null; t+=v} return t}) }
@@ -693,11 +693,12 @@ if(!DL.some(m=>m.slug===DS.mkt)) DS.mkt='gold-coast';
 mkSel.value=DS.mkt; mkSel.addEventListener('change',()=>pick(mkSel.value));
 document.getElementById('dl-ptSeg').addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return; DS.pt=b.dataset.v; save(); render() });
 
-// follows the chart above: picking a single market or a dwelling type there carries down here
+// follows the chart above: picking a single market there carries down here. Dwellings stay on their own setting:
+// the Jan 2026 house/unit reclassification sits inside this 12-month window, so All is the default.
 let last='';
-window.dlSync=(slug,pt)=>{ const k=slug+'|'+pt; if(k===last) return; last=k;
-  if(slug&&DL.some(m=>m.slug===slug)){DS.mkt=slug; mkSel.value=slug} if(pt) DS.pt=pt; render() };
-window.dlSync(S.market!=='all'?S.market:null, S.ptype);
+window.dlSync=(slug)=>{ if(slug===last) return; last=slug;
+  if(slug&&DL.some(m=>m.slug===slug)){DS.mkt=slug; mkSel.value=slug} render() };
+window.dlSync(S.market!=='all'?S.market:null);
 let rt2; addEventListener('resize',()=>{ clearTimeout(rt2); rt2=setTimeout(render,150) });
 })();
 </script>
