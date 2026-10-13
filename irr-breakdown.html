@@ -1688,7 +1688,7 @@ window.stopCheck=false;
 
     await waitFor(readSale, 9000);
     const sale = readSale();
-    const resolved = location.pathname;
+    const resolved = location.origin + location.pathname;   // clickable, not a fragment
     if (!sale) return { status: 'no sale on record', resolved, raw: sample() };
 
     const bought = p.purchased ? new Date(p.purchased) : null;
@@ -1997,7 +1997,9 @@ window.stopCheck=false;
 
     await waitFor(readLastSold, 9000);       // let the detail panel render
     const sale = readLastSold();
-    const resolved = location.pathname.split('/')[2];
+    /* The whole address, not the slug out of the middle of it. A column of
+       slugs is a column you cannot click. */
+    const resolved = location.origin + location.pathname;
     const mkt = readOnMarket();
 
     if (!sale) return { status: 'no sale on record', resolved,
@@ -2031,6 +2033,8 @@ window.stopCheck=false;
     r.city          = (p.category || '').trim();
     r.source        = 'RP Data';
     r.who           = WHO;
+    r.lookup        = r.resolved ? ''
+                    : 'https://www.pricefinder.com.au/search?q=' + encodeURIComponent(p.name);
     r.purchased     = p.purchaseDate || '';
     r.purchasePrice = p.purchasePrice || '';
     results.push(r);
@@ -2075,9 +2079,9 @@ window.stopCheck=false;
   if (SHEET_URL) { console.log('All rows sent to your sheet.'); return; }
 
   /* ── 7. no sheet configured: CSV + clipboard ────────────────────────── */
-  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','source','who','onMarket','lastAd','resolved'];
+  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','source','who','onMarket','lastAd','resolved','lookup'];
   const HEAD = ['Address','City','Purchase date','Purchase price','Sold date','Sold price','Status',
-                'Source','Checked by','On market','Last advertised','RP Data record'];
+                'Source','Checked by','On market','Last advertised','Property link','Look up'];
   const cell = r => COLS.map(c => r[c] === undefined ? '' : r[c]);
 
   const csv = [HEAD.join(',')].concat(results.map(r =>
@@ -4757,9 +4761,12 @@ window.stopCheck=false;
            and "Where to look" all work from here on without knowing the
            difference. */
         chk = { name:'Google Sheet',
-                head:['Address','Sold date','Sold price','Record','Source'],
+                head:['Address','Sold date','Sold price','Property link','Source'],
                 rows: sold.map(function(r){ return [r.address, r.soldDate, r.soldPrice, r.resolved, r.source || 'RP Data']; }),
-                map:{ address:0, date:1, price:2, src:4 }, skipped:[],
+                /* link:3 is what lets Mark sold save the property page it came
+                   from onto the record — the column used to be a slug, which
+                   was not a link, so nothing was ever saved. */
+                map:{ address:0, date:1, price:2, link:3, src:4 }, skipped:[],
                 /* the fallback only: each row carries the site that actually
                    answered, and srcOf() prefers that when the sale is written */
                 source:'RPData import',
