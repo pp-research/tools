@@ -116,17 +116,35 @@ function doPost(e) {
   try {
     var payload = JSON.parse(e.postData.contents);
     var rows = payload.rows || [];
-    /* Only sent deliberately. A normal run appends and skips what is
-       already here, so stopping half way and clicking again resumes. */
+    /* Only sent deliberately. A normal run updates what is already here and
+       skips what has settled, so stopping half way and clicking again
+       resumes. */
     if (payload.reset) {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var old = ss.getSheetByName(tabName_(payload.tab));
       if (old) ss.deleteSheet(old);
     }
     var sh = sheet_(payload.tab);
+
+    /* One property, one row. A retry used to append a second row beside the
+       first, so a sheet that had been through a few passes carried the same
+       address three and four times over and you could not see at a glance
+       which line was current. The address is the key; a row that is already
+       here is overwritten in place. */
+    var addrCol = HEADERS.indexOf('Address') + 1;
+    var rowOf = {};
+    var last = sh.getLastRow();
+    if (last > 1) {
+      var keys = sh.getRange(2, addrCol, last - 1, 1).getValues();
+      for (var k = 0; k < keys.length; k++) {
+        var key = String(keys[k][0] || '').trim();
+        if (key) rowOf[key] = k + 2;       // the row number in the sheet
+      }
+    }
+
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
-      sh.appendRow([
+      var vals = [
         r.address || '',
         r.city || '',
         r.purchased || '',
@@ -151,14 +169,28 @@ function doPost(e) {
            property is noise; beside a dead end it is the next thing to do. */
         r.resolved ? '' : (r.address ? PRICEFINDER_SEARCH + encodeURIComponent(r.address) : ''),
         new Date()
-      ]);
+      ];
+
+      var at = rowOf[String(r.address || '').trim()];
+      if (at) {
+        sh.getRange(at, 1, 1, HEADERS.length).setValues([vals]);
+      } else {
+        sh.appendRow(vals);
+        at = sh.getLastRow();
+        if (r.address) rowOf[String(r.address).trim()] = at;
+      }
+
       /* Sold outranks listed: a sale is settled, a listing is only a signal.
-         Red for one, amber for the other, nothing for the quiet ones. */
+         Red for one, amber for the other, nothing for the quiet ones. Set
+         every time, not only when it applies — a row being updated may have
+         been red last pass and must not stay red if it is not any more. */
+      var band = sh.getRange(at, 1, 1, HEADERS.length);
       if (r.status === 'SOLD SINCE PURCHASE') {
-        sh.getRange(sh.getLastRow(), 1, 1, HEADERS.length)
-          .setBackground('#fde8e6').setFontWeight('bold');
+        band.setBackground('#fde8e6').setFontWeight('bold');
       } else if (r.onMarket) {
-        sh.getRange(sh.getLastRow(), 1, 1, HEADERS.length).setBackground('#fef7e0');
+        band.setBackground('#fef7e0').setFontWeight('normal');
+      } else {
+        band.setBackground(null).setFontWeight('normal');
       }
     }
     return ContentService
@@ -304,4 +336,35 @@ function doGet(e) {
     if (!rows.some(function (x) { return x.address === r.address; })) rows.push(r);
   });
   return json_({ ok: true, rows: rows, count: rows.length });
+}
+
+/* ── one-off tidy: collapse the duplicates already in the sheet ───────────
+   Run this once from the editor (pick dedupeTabs from the function list and
+   press Run). New rows no longer duplicate — doPost updates in place — but
+   anything written before that change is still doubled up.
+
+   For each address it keeps the LAST row, which is the most recent pass, and
+   deletes the earlier ones. Nothing is merged: the newest row is the whole
+   answer for that property. */
+function dedupeTabs() {
+  [TAB, TAB2].forEach(function (name) {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+    if (!sh || sh.getLastRow() < 3) return;
+
+    var addrCol = HEADERS.indexOf('Address') + 1;
+    var vals = sh.getRange(2, addrCol, sh.getLastRow() - 1, 1).getValues();
+
+    /* Walk upwards and keep the first of each address we meet — which, going
+       up, is the last one in the sheet. Deleting from the bottom also means
+       the row numbers above never shift under us. */
+    var seen = {}, removed = 0;
+    for (var i = vals.length - 1; i >= 0; i--) {
+      var key = String(vals[i][0] || '').trim();
+      if (!key) continue;
+      if (seen[key]) { sh.deleteRow(i + 2); removed++; }
+      else seen[key] = true;
+    }
+    Logger.log(name + ': removed ' + removed + ' duplicate row(s), ' +
+               Object.keys(seen).length + ' properties remain');
+  });
 }
