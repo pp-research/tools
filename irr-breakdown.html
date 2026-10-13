@@ -1830,8 +1830,9 @@ window.stopCheck=false;
   let done = new Set();
   if (SHEET_URL) {
     try {
-      const d = await fetch(SHEET_URL + (SHEET_URL.includes('?') ? '&' : '?') + 'done=1')
-        .then(r => r.json());
+      const d = await withTimeout(
+        fetch(SHEET_URL + (SHEET_URL.includes('?') ? '&' : '?') + 'done=1').then(r => r.json()),
+        20000, 'asking the sheet what is already done');
       (d && d.addresses || []).forEach(a => done.add(a));
     } catch (e) {
       console.warn('Could not ask the sheet what it already has, so this is a ' +
@@ -1865,12 +1866,12 @@ window.stopCheck=false;
   async function send(rows, reset) {
     if (!SHEET_URL) return;
     try {
-      await fetch(SHEET_URL, {
+      await withTimeout(fetch(SHEET_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ reset: !!reset, rows })
-      });
+      }), 25000, 'writing to the sheet');
     } catch (e) {
       console.warn('sheet write failed:', e.message);
     }
@@ -1878,6 +1879,15 @@ window.stopCheck=false;
 
   /* ── 3. page helpers ────────────────────────────────────────────────── */
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  /* Every network call gets a deadline. A fetch that never settles stalls
+     the whole run with nothing on screen to say so, which is
+     indistinguishable from the script having died. */
+  function withTimeout(p, ms, label) {
+    return Promise.race([
+      p,
+      new Promise((_, rej) => setTimeout(() => rej(new Error(label + ' timed out')), ms))
+    ]);
+  }
 
   function searchBox() {
     return document.getElementById('crux-multi-locality-search') ||
@@ -2105,9 +2115,12 @@ window.stopCheck=false;
     const was = allowSame ? '' : (optionTexts()[0] || '');
 
     box.focus();
+    /* Clearing the field is what closes the list. An Escape keydown used to
+       be sent as well, which some search components read as "close and
+       reset" — after that, typing goes into a field nothing is listening
+       to and no suggestions ever arrive. Not worth the risk. */
     typeInto(box, '');
-    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
-    await waitFor(() => optionTexts().length === 0 ? true : null, 4000, 150);
+    await waitFor(() => optionTexts().length === 0 ? true : null, 3000, 150);
     await sleep(250);
 
     typeInto(box, name);
@@ -2121,9 +2134,15 @@ window.stopCheck=false;
     }, ms);
   }
 
+  /* Narrated for the first property only. A silent stall and a slow answer
+     look identical from the outside, and that cost a round trip. */
+  let narrate = true;
+  const step = m => { if (narrate) console.log('  · ' + m); };
+
   async function check(p) {
     const box = searchBox();
     if (!box) return { status: 'NO SEARCH BOX' };
+    step('found the search box');
 
     let opts = await suggest(box, p.name, 8000);
     if (!opts) {
@@ -2131,6 +2150,7 @@ window.stopCheck=false;
       opts = await suggest(box, p.name, 12000);
     }
     if (!opts) return { status: 'no match in RP Data' };
+    step(opts.length + ' suggestion(s) came back');
 
     /* Not opts[0]. The one that is actually this address, if it is offered at
        all. A list that holds nothing matching is a list for a different query
@@ -2179,6 +2199,7 @@ window.stopCheck=false;
       if (attempt >= curOrder.length) break;
 
       const before = location.pathname;
+      step('clicking candidate ' + (attempt + 1) + ' of ' + curOrder.length);
       clickOption(cur[curOrder[attempt]]);
       moved = await waitFor(
         () => location.pathname !== before && /\/property\//.test(location.pathname),
@@ -2351,6 +2372,7 @@ window.stopCheck=false;
       hit ? 'color:#c0392b;font-weight:bold'
           : r.onMarket ? 'color:#b9770e' : 'color:#888');
 
+    narrate = false;
     await send([r]);
     window.rpResults = results;              // readable while it runs
 
