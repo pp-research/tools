@@ -90,11 +90,9 @@ th,td{padding:5px 10px;text-align:right;border-bottom:1px solid var(--grid);whit
 th:first-child,td:first-child{text-align:left}
 thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font-weight:600}
 @media (max-width:560px){ .wrap{padding-inline:16px} select{min-width:0;width:100%} .ctl{flex:1 1 100%} .ro-v{font-size:24px} }
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
-.tabs button{font:inherit;font-size:14px;font-weight:600;color:var(--muted);background:none;border:0;border-bottom:2.5px solid transparent;padding:8px 4px;margin-right:18px;cursor:pointer}
-.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--sale)}
-.tabs button:focus-visible{outline:2px solid var(--sale);outline-offset:2px}
-#tabListings,#tabDemand{display:grid;gap:20px;min-width:0}
+#tabDemand{display:grid;gap:20px;min-width:0;padding-top:12px;border-top:1px solid var(--rule)}
+#tabDemand .dl-head{display:grid;gap:6px}
+#tabDemand .dl-head h2{font-size:clamp(20px,2.6vw,24px);font-weight:700;margin:0;text-wrap:balance}
 
 #tabDemand .controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:end;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
 #tabDemand .ctl{display:grid;gap:5px;min-width:0}
@@ -134,6 +132,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 #tabDemand .mini h4{margin:0 0 2px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center}
 #tabDemand .key{display:inline-block;width:16px;height:0;border-top:2.5px solid var(--sale)}
 #tabDemand .key.rent{border-top-color:var(--rent)}
+#tabDemand .key.trendk{border-top:1.6px dashed var(--ink-2);opacity:.7}
 #tabDemand .key.prev{border-top-style:dashed;opacity:.7}
 #tabDemand .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);align-items:center}
 #tabDemand .legend span{display:inline-flex;gap:6px;align-items:center}
@@ -172,8 +171,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 </head>
 <body>
 <div class="wrap">
-  <nav class="tabs" role="tablist" aria-label="Views"><button type="button" role="tab" id="tbL" aria-controls="tabListings" aria-selected="true">Listings vs population</button><button type="button" role="tab" id="tbD" aria-controls="tabDemand" aria-selected="false">Demand: leaving or shifting</button></nav>
-<div id="tabListings" role="tabpanel" aria-labelledby="tbL">
   <header>
     <h1>Listings as a % of population</h1>
     <p class="lede">Sale listings and rental listings, each divided by population, on one timeline.</p>
@@ -209,6 +206,47 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <p class="range-note" id="rangeNote" hidden><b>Before Aug 2018:</b> sale and rental listing data are not reliable for this earlier period. Cotality was still building its listings coverage, so early counts are understated, rental listings most of all; before about 2006 many markets have no rental count at all, so the all-markets line covers only the markets reporting each month (hover to see how many). <span id="rangeNoteScale"></span></p>
   </div>
 
+  <section id="tabDemand" aria-labelledby="dl-h">
+  <header class="dl-head">
+    <h2 id="dl-h">Is demand leaving, or shifting to renting?</h2>
+    <p class="lede">Sale stock and rental stock on market, each traced over the last 12 months. If both are rising, demand is leaving the market. If sale stock is rising while rental stock falls, the demand is still there but has moved to renting.</p>
+  </header>
+
+  <div class="controls">
+    <label class="ctl"><span>Dwellings</span><div class="seg" id="dl-ptSeg"><button type="button" data-v="A" aria-pressed="true">All</button><button type="button" data-v="H" aria-pressed="false">Houses</button><button type="button" data-v="U" aria-pressed="false">Units</button></div></label>
+    <label class="ctl"><span>Market</span><select id="dl-mkt"></select></label>
+    <div class="ctl"><span>Period</span><div class="period" id="dl-period"></div></div>
+  </div>
+  <p class="warn" id="dl-huWarn" hidden>Cotality moved some properties between houses and units in Jan 2026, which lifts unit sale stock by roughly 5–10% from that month on and lowers houses slightly. Use All dwellings for the verdict; read the houses and units views with that in mind.</p>
+
+  <section class="verdicts" id="dl-verdicts" aria-label="Markets by verdict"></section>
+
+  <section class="card quad">
+    <div><h2>Sale stock against rental stock, 12-month trend</h2>
+    <p class="sub">Each dot is a market. Right means sale stock has been rising over the last 12 months; up means rental stock has been rising. The shaded band is within ±5%, too small a move to call.</p></div>
+    <div id="dl-quad"></div>
+  </section>
+
+  <section class="card" id="dl-detail"></section>
+
+  <section class="card">
+    <h2>All 36 markets</h2>
+    <div class="tbl-wrap"><table id="dl-tbl"></table></div>
+  </section>
+
+  <details class="notes">
+    <summary>How the demand reading is built</summary>
+    <div class="notes-body">
+      <p><b>Sale stock on market.</b> Cotality Market Trends, “# of listings last 1 months”: every property advertised for sale during the month, including ones still on the market from earlier months. Capitals use Greater Capital City areas; the 28 regional markets use their council area.</p>
+      <p><b>Rental stock on market.</b> The rental listings count behind Cotality’s 1-month vacancy rate. Cotality publishes the rate, not the count, but the rate is stored as an exact fraction (rental listings ÷ rental stock), so both numbers can be recovered. In Townsville, Jul 2026, RP Data’s own rental count agrees within about 7%. The vacancy rate shown is the same count ÷ rental stock.</p>
+      <p><b>The trend.</b> A straight-line trend fitted through the last 12 monthly counts (on a log scale, so a market of any size reads in percent), expressed as the change from the start of the trend line to its end. It uses every month in the window rather than just the first and last, so one unusual month moves it less. The 12 months run winter to winter, so the seasonal dip over summer and rise into spring roughly balance out, but a market with a strong seasonal swing can still lean one way. A trend within ±5% is marked borderline: the reading follows the direction, but the move is small.</p>
+      <p><b>The four readings.</b> Sale up, rent up: demand leaving. Sale up, rent down: demand shifting to renting (people still arriving but not buying). Sale down, rent up: demand shifting from renting to buying. Sale down, rent down: tightening on both sides.</p>
+      <p><b>Population.</b> ABS Regional Population to 30 June 2025 is the latest available, so the population figure shown is growth over 2024–25. It gives context for whether people are still arriving; it does not cover the 12 months shown.</p>
+      <p><b>Houses and units.</b> Cotality reassigned some properties between houses and units in Nov 2024 and Jan 2026. Totals for all dwellings are unaffected; the split is not.</p>
+    </div>
+  </details>
+</section>
+
   <details>
     <summary>How this is built, and what to watch for</summary>
     <div class="notes">
@@ -228,47 +266,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <summary>Data table for the current selection</summary>
     <div class="tbl"><table id="tbl"></table></div>
   </details>
-</div>
-<div id="tabDemand" role="tabpanel" aria-labelledby="tbD" hidden>
-  <header>
-    <h1>Is demand leaving, or shifting to renting?</h1>
-    <p class="lede">Each market compares sale stock on market and rental stock on market against the same months a year earlier. If both are rising, demand is leaving the market. If sale stock is rising while rental stock falls, the demand is still there but has moved to renting.</p>
-  </header>
-
-  <div class="controls">
-    <label class="ctl"><span>Dwellings</span><div class="seg" id="dl-ptSeg"><button type="button" data-v="A" aria-pressed="true">All</button><button type="button" data-v="H" aria-pressed="false">Houses</button><button type="button" data-v="U" aria-pressed="false">Units</button></div></label>
-    <label class="ctl"><span>Market</span><select id="dl-mkt"></select></label>
-    <div class="ctl"><span>Comparing</span><div class="period" id="dl-period"></div></div>
-  </div>
-  <p class="warn" id="dl-huWarn" hidden>Cotality moved some properties between houses and units in Jan 2026, which lifts unit sale stock by roughly 5–10% against last year and lowers houses slightly. Use All dwellings for the verdict; read the houses and units views with that in mind.</p>
-
-  <section class="verdicts" id="dl-verdicts" aria-label="Markets by verdict"></section>
-
-  <section class="card quad">
-    <div><h2>Sale stock against rental stock, change on a year earlier</h2>
-    <p class="sub">Each dot is a market. Right means more homes for sale than a year ago; up means more rentals on the market. The shaded band is within ±5%, too small a move to call.</p></div>
-    <div id="dl-quad"></div>
-  </section>
-
-  <section class="card" id="dl-detail"></section>
-
-  <section class="card">
-    <h2>All 36 markets</h2>
-    <div class="tbl-wrap"><table id="dl-tbl"></table></div>
-  </section>
-
-  <details class="notes">
-    <summary>How this is built</summary>
-    <div class="notes-body">
-      <p><b>Sale stock on market.</b> Cotality Market Trends, “# of listings last 1 months”: every property advertised for sale during the month, including ones still on the market from earlier months. Capitals use Greater Capital City areas; the 28 regional markets use their council area.</p>
-      <p><b>Rental stock on market.</b> The rental listings count behind Cotality’s 1-month vacancy rate. Cotality publishes the rate, not the count, but the rate is stored as an exact fraction (rental listings ÷ rental stock), so both numbers can be recovered. In Townsville, Jul 2026, RP Data’s own rental count agrees within about 7%. The vacancy rate shown is the same count ÷ rental stock.</p>
-      <p><b>The comparison.</b> The latest three months against the same three months a year earlier, summed. Using the same months of the year removes the seasonal swing (listings always dip over summer and rise into spring), and three months smooths one-off spikes. A change within ±5% is marked borderline: the verdict follows the sign, but the move is small.</p>
-      <p><b>The four readings.</b> Sale up, rent up: demand leaving. Sale up, rent down: demand shifting to renting (people still arriving but not buying). Sale down, rent up: demand shifting from renting to buying. Sale down, rent down: tightening on both sides.</p>
-      <p><b>Population.</b> ABS Regional Population to 30 June 2025 is the latest available, so the population figure shown is growth over 2024–25. It gives context for whether people are still arriving; it does not cover the comparison months.</p>
-      <p><b>Houses and units.</b> Cotality reassigned some properties between houses and units in Nov 2024 and Jan 2026. Totals for all dwellings are unaffected; the split is not.</p>
-    </div>
-  </details>
-</div>
 </div>
 <div class="tip" id="dl-tip" hidden></div>
 
@@ -424,6 +421,7 @@ const lastIdx=a=>{for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return i; return
 const prevNonNull=(a,i)=>{for(;i>=0;i--) if(a[i]!=null) return i; return -1};
 
 function render(){
+  if(window.dlSync) window.dlSync(S.market!=='all'?S.market:null, S.ptype);
   const d=series(); const unitTxt=S.win==='12'?'per year':'per month';
   document.getElementById('ctitle').textContent=`${d.name} · ${S.ptype==='A'?'houses and units':S.ptype==='H'?'houses':'units'} · ${S.view==='idx'?'indexed, May 2022 = 100':'listings as % of population, '+unitTxt}`;
   // readouts
@@ -566,34 +564,36 @@ let rt; addEventListener('resize',()=>{clearTimeout(rt); rt=setTimeout(()=>draw(
 <script>
 (()=>{
 
-const N=DL_MONTHS.length, WIN=3, BAND=5;
+const N=DL_MONTHS.length, W12=12, BAND=5, F=N-W12;   // the last 12 months
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const mLab=m=>MON[+m.slice(5)-1]+' '+m.slice(0,4), mShort=m=>MON[+m.slice(5)-1];
-const VERD={leave:{t:'Demand leaving',d:'Sale stock up and rental stock up',c:'leave'},
-  shift:{t:'Shifting to renting',d:'Sale stock up, rental stock down',c:'shift'},
-  buy:{t:'Shifting to buying',d:'Sale stock down, rental stock up',c:'buy'},
-  tight:{t:'Tightening',d:'Sale stock down and rental stock down',c:'tight'}};
+const VERD={leave:{t:'Demand leaving',d:'Sale stock rising and rental stock rising',c:'leave'},
+  shift:{t:'Shifting to renting',d:'Sale stock rising, rental stock falling',c:'shift'},
+  buy:{t:'Shifting to buying',d:'Sale stock falling, rental stock rising',c:'buy'},
+  tight:{t:'Tightening',d:'Sale stock falling and rental stock falling',c:'tight'}};
 const DS={pt:'A', mkt:'gold-coast'};
 try{const v=JSON.parse(localStorage.getItem('lpc-demand')||'{}'); if(v.pt) DS.pt=v.pt; if(v.mkt) DS.mkt=v.mkt}catch(e){}
 const save=()=>{try{localStorage.setItem('lpc-demand',JSON.stringify(DS))}catch(e){}};
 
 function series(m,k){ const pts=DS.pt==='A'?['H','U']:[DS.pt]; return DL_MONTHS.map((_,i)=>{let t=0; for(const p of pts){const v=m[p][k][i]; if(v==null) return null; t+=v} return t}) }
-const sumWin=(a,end)=>{let t=0; for(let i=end-WIN+1;i<=end;i++){ if(a[i]==null) return null; t+=a[i] } return t};
+// straight-line trend through the log of the 12 monthly values: {pct: change from the line's start to its end, fit: fitted values}
+function trend(a){ const pts=a.map((v,i)=>[i,v]).filter(p=>p[1]!=null&&p[1]>0); if(pts.length<6) return {pct:null,fit:a.map(()=>null)};
+  const n=pts.length, mx=pts.reduce((t,p)=>t+p[0],0)/n, my=pts.reduce((t,p)=>t+Math.log(p[1]),0)/n;
+  let sxy=0,sxx=0; for(const [x,v] of pts){ sxy+=(x-mx)*(Math.log(v)-my); sxx+=(x-mx)**2 }
+  const b=sxy/sxx, c=my-b*mx; return {pct:(Math.exp(b*(a.length-1))-1)*100, fit:a.map((_,i)=>Math.exp(c+b*i))} }
 function calc(m){
-  const s=series(m,'s'), r=series(m,'r'), q=series(m,'q'), e=N-1, b=N-13;
-  const s1=sumWin(s,e), s0=sumWin(s,b), r1=sumWin(r,e), r0=sumWin(r,b), q1=sumWin(q,e), q0=sumWin(q,b);
-  const sc=(s1/s0-1)*100, rc=(r1/r0-1)*100;
+  const s=series(m,'s').slice(F), r=series(m,'r').slice(F), q=series(m,'q').slice(F), L=W12-1;
+  const ts=trend(s), tr=trend(r), sc=ts.pct, rc=tr.pct;
   const v=sc>=0?(rc>=0?'leave':'shift'):(rc>=0?'buy':'tight');
-  return {m,s,r,q,sc,rc,v,border:Math.abs(sc)<BAND||Math.abs(rc)<BAND,s0:s0/WIN,s1:s1/WIN,r0:r0/WIN,r1:r1/WIN,vr0:r0/q0*100,vr1:r1/q1*100,pop:(m.pop25/m.pop24-1)*100};
+  return {m,s,r,q,sc,rc,v,fs:ts.fit,fr:tr.fit,border:Math.abs(sc)<BAND||Math.abs(rc)<BAND,s0:s[0],s1:s[L],r0:r[0],r1:r[L],vr0:r[0]/q[0]*100,vr1:r[L]/q[L]*100,pop:(m.pop25/m.pop24-1)*100};
 }
 const fp=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(0)+'%';
 const fn=v=>Math.round(v).toLocaleString();
 
 function render(){
-  document.querySelectorAll('#ptSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===DS.pt));
+  document.querySelectorAll('#dl-ptSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===DS.pt));
   document.getElementById('dl-huWarn').hidden=DS.pt==='A';
-  const e=N-1, b=N-13;
-  document.getElementById('dl-period').textContent=`${mShort(DL_MONTHS[e-WIN+1])}–${mLab(DL_MONTHS[e])} vs ${mShort(DL_MONTHS[b-WIN+1])}–${mLab(DL_MONTHS[b])}`;
+  document.getElementById('dl-period').textContent=`${mLab(DL_MONTHS[F])} – ${mLab(DL_MONTHS[N-1])}, 12-month trend`;
   const rows=DL.map(calc);
   // verdict counts
   document.getElementById('dl-verdicts').innerHTML=Object.entries(VERD).map(([k,o])=>{
@@ -605,7 +605,9 @@ function render(){
 function quad(rows){
   const box=document.getElementById('dl-quad'), W=Math.max(320,Math.min(1080,box.clientWidth||900)), narrow=W<600, H=narrow?420:580;
   const m={t:18,r:18,b:42,l:52}, pw=W-m.l-m.r, ph=H-m.t-m.b;
-  const lim=v=>Math.ceil(Math.max(15,...v.map(Math.abs))/10)*10;
+  // axis limit: covers the spread of most markets; a market far outside it is pinned to the edge and labelled with its value
+  const lim=v=>{ const a=v.filter(x=>x!=null).map(Math.abs).sort((p,q)=>p-q), p90=a[Math.floor(a.length*.9)]||15;
+    return Math.ceil(Math.max(15,Math.min(a[a.length-1],p90*1.5))/10)*10 };
   const X=lim(rows.map(r=>r.sc)), Y=lim(rows.map(r=>r.rc));
   const x=v=>m.l+(v+X)/(2*X)*pw, y=v=>m.t+(Y-v)/(2*Y)*ph;
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Scatter of sale stock change against rental stock change for 36 markets">`;
@@ -614,23 +616,23 @@ function quad(rows){
   const qc={'--leave-bg':'--leave','--shift-bg':'--shift','--buy-bg':'--buy','--tight-bg':'--tight'};
   for(const [x0,x1,y0,y1,c,t,ha,va] of q){ s+=`<rect x="${x(x0)}" y="${y(y1)}" width="${x(x1)-x(x0)}" height="${y(y0)-y(y1)}" fill="var(${c})"/>`;
     s+=`<text x="${ha==='end'?x(x1)-8:x(x0)+8}" y="${va==='start'?y(y1)+16:y(y0)-8}" text-anchor="${ha}" font-size="12" font-weight="700" fill="var(${qc[c]})">${t}</text>` }
-  s+=`<rect x="${x(-BAND)}" y="${m.t}" width="${x(BAND)-x(-BAND)}" height="${ph}" fill="var(--band)"/><rect x="${m.l}" y="${y(BAND)}" width="${pw}" height="${y(-BAND)-y(BAND)}" fill="var(--band)"/>`;
+  s+=`<rect x="${x(-BAND)}" y="${m.t}" width="${x(BAND)-x(-BAND)}" height="${ph}" fill="var(--dl-band)"/><rect x="${m.l}" y="${y(BAND)}" width="${pw}" height="${y(-BAND)-y(BAND)}" fill="var(--dl-band)"/>`;
   // grid + ticks
-  const st=X>60?20:10, sty=Y>60?20:10;
-  for(let v=-X;v<=X;v+=st){ s+=`<line x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${m.t+ph}" stroke="var(--rule)" stroke-width="${v===0?1.5:1}"/><text x="${x(v)}" y="${m.t+ph+16}" text-anchor="middle" font-size="11" fill="var(--muted)">${v>0?'+':''}${v}%</text>` }
-  for(let v=-Y;v<=Y;v+=sty){ s+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)" stroke-width="${v===0?1.5:1}"/><text x="${m.l-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v>0?'+':''}${v}%</text>` }
-  s+=`<text x="${m.l+pw/2}" y="${H-6}" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink-2)">Sale stock on market, change on a year earlier</text>`;
-  s+=`<text transform="translate(13 ${m.t+ph/2}) rotate(-90)" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink-2)">Rental stock on market, change</text>`;
+  const st=X>60?20:10, sty=Y>60?20:10, cl=(v,L)=>Math.max(-L,Math.min(L,v));
+  for(let v=-Math.floor(X/st)*st;v<=X;v+=st){ s+=`<line x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${m.t+ph}" stroke="var(--rule)" stroke-width="${v===0?1.5:1}"/><text x="${x(v)}" y="${m.t+ph+16}" text-anchor="middle" font-size="11" fill="var(--muted)">${v>0?'+':''}${v}%</text>` }
+  for(let v=-Math.floor(Y/sty)*sty;v<=Y;v+=sty){ s+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)" stroke-width="${v===0?1.5:1}"/><text x="${m.l-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v>0?'+':''}${v}%</text>` }
+  s+=`<text x="${m.l+pw/2}" y="${H-6}" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink-2)">Sale stock on market, 12-month trend</text>`;
+  s+=`<text transform="translate(13 ${m.t+ph/2}) rotate(-90)" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink-2)">Rental stock on market, 12-month trend</text>`;
   // dots + labels (greedy placement to avoid overlaps)
   const placed=[], fs=narrow?9.5:10.5, cw=fs*0.58;
-  const pts=rows.map(r=>({r,cx:x(r.sc),cy:y(r.rc)}));
+  const pts=rows.map(r=>({r,cx:x(cl(r.sc,X)),cy:y(cl(r.rc,Y)),out:Math.abs(r.sc)>X||Math.abs(r.rc)>Y}));
   pts.forEach(p=>placed.push({x0:p.cx-5,x1:p.cx+5,y0:p.cy-5,y1:p.cy+5}));
   const hit=b=>b.x0<m.l||b.x1>m.l+pw||b.y0<m.t||b.y1>m.t+ph||placed.some(o=>!(b.x1<o.x0||b.x0>o.x1||b.y1<o.y0||b.y0>o.y1));
   let dots='', labs='';
   for(const p of pts.sort((a,b)=>(a.r.m.slug===DS.mkt)-(b.r.m.slug===DS.mkt))){
     const sel=p.r.m.slug===DS.mkt, c=`var(--${VERD[p.r.v].c})`;
     dots+=`<circle class="mk" tabindex="0" role="button" aria-label="${p.r.m.name}: sale ${fp(p.r.sc)}, rental ${fp(p.r.rc)}" data-s="${p.r.m.slug}" cx="${p.cx}" cy="${p.cy}" r="${sel?7:5}" fill="${c}" stroke="${sel?'var(--ink)':'var(--surface)'}" stroke-width="${sel?2:1.2}"/>`;
-    const t=p.r.m.name, w=t.length*cw, h=fs+2;
+    const t=p.r.m.name+(p.out?` (${fp(p.r.sc)}, ${fp(p.r.rc)})`:''), w=t.length*cw, h=fs+2;
     const cand=[[p.cx+8,p.cy+fs/2-1,'start'],[p.cx-8,p.cy+fs/2-1,'end'],[p.cx-w/2,p.cy-9,'start'],[p.cx-w/2,p.cy+fs+8,'start']];
     for(const [lx,ly,an] of cand){ const x0=an==='end'?lx-w:lx, b={x0,x1:x0+w,y0:ly-fs,y1:ly+2};
       if(!hit(b)||sel){ placed.push(b); labs+=`<text x="${lx}" y="${ly}" text-anchor="${an}" font-size="${fs}" font-weight="${sel?700:500}" fill="${sel?'var(--ink)':'var(--ink-2)'}" pointer-events="none">${t}</text>`; break } }
@@ -640,7 +642,7 @@ function quad(rows){
   box.querySelectorAll('.mk').forEach(el=>{
     el.addEventListener('click',()=>pick(el.dataset.s));
     el.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();pick(el.dataset.s)} });
-    el.addEventListener('mousemove',ev=>{ const r=rows.find(x=>x.m.slug===el.dataset.s); tipShow(ev,`<b>${r.m.name}</b><br>Sale stock ${fp(r.sc)} · Rental stock ${fp(r.rc)}<br><span class="pill p-${VERD[r.v].c}">${VERD[r.v].t}</span>`) });
+    el.addEventListener('mousemove',ev=>{ const r=rows.find(x=>x.m.slug===el.dataset.s); tipShow(ev,`<b>${r.m.name}</b><br>12-month trend: sale stock ${fp(r.sc)} · rental stock ${fp(r.rc)}<br><span class="pill p-${VERD[r.v].c}">${VERD[r.v].t}</span>`) });
     el.addEventListener('mouseleave',tipHide);
   });
 }
@@ -649,9 +651,9 @@ function tipShow(ev,h){ tip.innerHTML=h; tip.hidden=false; const w=tip.offsetWid
 function tipHide(){ tip.hidden=true }
 function pick(sl){ DS.mkt=sl; save(); document.getElementById('dl-mkt').value=sl; render() }
 
-function mini(cur,prev,col,label){
+function mini(cur,fit,col,label){
   const W=520,H=190,m={t:12,r:12,b:24,l:48}, pw=W-m.l-m.r, ph=H-m.t-m.b, n=cur.length;
-  const all=[...cur,...prev].filter(v=>v!=null); let lo=Math.min(...all), hi=Math.max(...all); const pad=(hi-lo)*.12||hi*.1; lo=Math.max(0,lo-pad); hi=hi+pad;
+  const all=[...cur,...fit].filter(v=>v!=null); let lo=Math.min(...all), hi=Math.max(...all); const pad=(hi-lo)*.12||hi*.1; lo=Math.max(0,lo-pad); hi=hi+pad;
   const stepRaw=(hi-lo)/4, mag=10**Math.floor(Math.log10(stepRaw)), step=[1,2,2.5,5,10].map(k=>k*mag).find(k=>k>=stepRaw);
   lo=Math.floor(lo/step)*step; hi=Math.ceil(hi/step)*step;
   const x=i=>m.l+i/(n-1)*pw, y=v=>m.t+(hi-v)/(hi-lo)*ph;
@@ -659,29 +661,25 @@ function mini(cur,prev,col,label){
   for(let v=lo;v<=hi+1e-9;v+=step) s+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)"/><text x="${m.l-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fn(v)}</text>`;
   const months=DL_MONTHS.slice(N-n);
   months.forEach((mm,i)=>{ if(n<=13||i%2===0) s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" font-size="10.5" fill="var(--muted)">${mShort(mm)}</text>` });
-  // shade the comparison window
-  s+=`<rect x="${x(n-WIN)-6}" y="${m.t}" width="${x(n-1)-x(n-WIN)+12}" height="${ph}" fill="var(--band)"/>`;
   const path=a=>a.map((v,i)=>v==null?'':`${i&&a[i-1]!=null?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
-  s+=`<path d="${path(prev)}" fill="none" stroke="var(${col})" stroke-width="2" stroke-dasharray="5 4" opacity=".6"/>`;
+  s+=`<path d="${path(fit)}" fill="none" stroke="var(--ink-2)" stroke-width="1.6" stroke-dasharray="5 4" opacity=".7"/>`;
   s+=`<path d="${path(cur)}" fill="none" stroke="var(${col})" stroke-width="2.6" stroke-linejoin="round"/>`;
   s+=`<circle cx="${x(n-1)}" cy="${y(cur[n-1])}" r="4" fill="var(${col})"/>`;
   return s+'</svg>';
 }
 function detail(r){
-  const e=N-1, cur=a=>a.slice(e-11,e+1), prev=a=>a.slice(e-23,e-11);
-  const o=VERD[r.v], dw=DS.pt==='A'?'houses and units':DS.pt==='H'?'houses':'units';
-  const yr0=`${mShort(DL_MONTHS[e-23])} ${DL_MONTHS[e-23].slice(0,4)}–${mLab(DL_MONTHS[e-12])}`, yr1=`${mShort(DL_MONTHS[e-11])} ${DL_MONTHS[e-11].slice(0,4)}–${mLab(DL_MONTHS[e])}`;
+  const o=VERD[r.v], dw=DS.pt==='A'?'houses and units':DS.pt==='H'?'houses':'units', a=mLab(DL_MONTHS[F]), z=mLab(DL_MONTHS[N-1]);
   document.getElementById('dl-detail').innerHTML=`
     <div style="display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center"><h2>${r.m.name} · ${dw}</h2><span class="pill p-${o.c}">${o.t}</span>${r.border?'<span class="pill p-border">Borderline: a move within ±5%</span>':''}</div>
-    <div class="facts"><span>Sale stock <b>${fp(r.sc)}</b> (${fn(r.s0)} → ${fn(r.s1)} a month)</span><span>Rental stock <b>${fp(r.rc)}</b> (${fn(r.r0)} → ${fn(r.r1)} a month)</span><span>Vacancy rate <b>${r.vr0.toFixed(1)}% → ${r.vr1.toFixed(1)}%</b></span><span>Population growth 2024–25 <b>${r.pop>=0?'+':'−'}${Math.abs(r.pop).toFixed(1)}%</b></span></div>
-    <div class="legend"><span><i class="key"></i><i class="key rent"></i>${yr1}</span><span><i class="key prev"></i><i class="key rent prev"></i>${yr0}</span><span>Shaded: the three months compared</span></div>
+    <div class="facts"><span>Sale stock trend <b>${fp(r.sc)}</b> (${fn(r.s0)} in ${a} → ${fn(r.s1)} in ${z})</span><span>Rental stock trend <b>${fp(r.rc)}</b> (${fn(r.r0)} → ${fn(r.r1)})</span><span>Vacancy rate <b>${r.vr0.toFixed(1)}% → ${r.vr1.toFixed(1)}%</b></span><span>Population growth 2024–25 <b>${r.pop>=0?'+':'−'}${Math.abs(r.pop).toFixed(1)}%</b></span></div>
+    <div class="legend"><span><i class="key"></i><i class="key rent"></i>Listings a month, ${a} – ${z}</span><span><i class="key trendk"></i>12-month trend</span></div>
     <div class="detail-grid">
-      <div class="mini"><h4><i class="key"></i>Sale stock on market (listings a month)</h4>${mini(cur(r.s),prev(r.s),'--sale','Sale stock, last 12 months against the year before')}</div>
-      <div class="mini"><h4><i class="key rent"></i>Rental stock on market (listings a month)</h4>${mini(cur(r.r),prev(r.r),'--rent','Rental stock, last 12 months against the year before')}</div>
+      <div class="mini"><h4><i class="key"></i>Sale stock on market (listings a month)</h4>${mini(r.s,r.fs,'--sale','Sale stock over the last 12 months with its trend line')}</div>
+      <div class="mini"><h4><i class="key rent"></i>Rental stock on market (listings a month)</h4>${mini(r.r,r.fr,'--rent','Rental stock over the last 12 months with its trend line')}</div>
     </div>`;
 }
 function table(rows){
-  let h=`<thead><tr><th>Market</th><th>Sale stock, a month</th><th>Change</th><th>Rental stock, a month</th><th>Change</th><th>Vacancy rate</th><th>Population 2024–25</th><th>Reading</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Market</th><th>Sale stock, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th>Rental stock, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th>Vacancy rate, ${mShort(DL_MONTHS[F])} → ${mShort(DL_MONTHS[N-1])}</th><th>Population 2024–25</th><th>Reading</th></tr></thead><tbody>`;
   for(const [k,o] of Object.entries(VERD)){ const ms=rows.filter(x=>x.v===k).sort((a,b)=>(b.sc+b.rc)-(a.sc+a.rc)); if(!ms.length) continue;
     h+=`<tr class="grp"><td colspan="8">${o.t} · ${ms.length}</td></tr>`;
     for(const r of ms) h+=`<tr tabindex="0" data-s="${r.m.slug}" class="${r.m.slug===DS.mkt?'sel':''}"><td>${r.m.name}</td><td>${fn(r.s1)}</td><td>${fp(r.sc)}</td><td>${fn(r.r1)}</td><td>${fp(r.rc)}</td><td>${r.vr0.toFixed(1)}% → ${r.vr1.toFixed(1)}%</td><td>${r.pop>=0?'+':'−'}${Math.abs(r.pop).toFixed(1)}%</td><td><span class="pill p-${o.c}">${o.t}</span>${r.border?' <span class="pill p-border">Borderline</span>':''}</td></tr>` }
@@ -695,20 +693,13 @@ if(!DL.some(m=>m.slug===DS.mkt)) DS.mkt='gold-coast';
 mkSel.value=DS.mkt; mkSel.addEventListener('change',()=>pick(mkSel.value));
 document.getElementById('dl-ptSeg').addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return; DS.pt=b.dataset.v; save(); render() });
 
-let shown=false;
-window.dlShow=(slug)=>{ if(slug&&DL.some(m=>m.slug===slug)){DS.mkt=slug; mkSel.value=slug} shown=true; render() };
-let rt2; addEventListener('resize',()=>{ if(document.getElementById('tabDemand').hidden) return; clearTimeout(rt2); rt2=setTimeout(render,150) });
+// follows the chart above: picking a single market or a dwelling type there carries down here
+let last='';
+window.dlSync=(slug,pt)=>{ const k=slug+'|'+pt; if(k===last) return; last=k;
+  if(slug&&DL.some(m=>m.slug===slug)){DS.mkt=slug; mkSel.value=slug} if(pt) DS.pt=pt; render() };
+window.dlSync(S.market!=='all'?S.market:null, S.ptype);
+let rt2; addEventListener('resize',()=>{ clearTimeout(rt2); rt2=setTimeout(render,150) });
 })();
-</script>
-<script>
-// tabs: listings chart and the demand view; the demand view opens on the listings market when one is picked
-(()=>{ const bL=document.getElementById('tbL'), bD=document.getElementById('tbD'), pL=document.getElementById('tabListings'), pD=document.getElementById('tabDemand');
-  const show=t=>{ const d=t==='demand'; bL.setAttribute('aria-selected',!d); bD.setAttribute('aria-selected',d); pL.hidden=d; pD.hidden=!d;
-    try{localStorage.setItem('lpc-tab',t)}catch(e){}
-    if(d) window.dlShow(S.market!=='all'?S.market:null); else render() };
-  bL.addEventListener('click',()=>show('listings')); bD.addEventListener('click',()=>show('demand'));
-  let t='listings'; try{t=localStorage.getItem('lpc-tab')||'listings'}catch(e){} if(location.hash==='#demand') t='demand';
-  if(t==='demand') show('demand') })();
 </script>
 
 </body>
