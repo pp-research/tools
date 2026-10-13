@@ -50,6 +50,7 @@ var HEADERS = [
   'Sold price',
   'Status',
   'Source',
+  'Checked by',
   'On market',
   'Last advertised',
   'RP Data record',
@@ -128,6 +129,9 @@ function doPost(e) {
         /* Not taken from the row: the tab it is being written to IS the
            source, so the two can never disagree. */
         payload.tab === 'pricefinder' ? 'Pricefinder' : 'RP Data',
+        /* Taken from the row: the bookmarklet carries whoever was signed in
+           to the tool when it was built, and the sheet cannot know that. */
+        r.who || '',
         r.onMarket || '',
         r.lastAd || '',
         r.resolved || '',
@@ -209,6 +213,7 @@ function doGet(e) {
           soldDate:      fmt_(get(v, 'Sold date')),
           soldPrice:     get(v, 'Sold price'),
           status:        fmt_(get(v, 'Status')),
+          who:           fmt_(get(v, 'Checked by')),
           onMarket:      fmt_(get(v, 'On market')),
           lastAd:        fmt_(get(v, 'Last advertised')),
           resolved:      fmt_(get(v, 'RP Data record')),
