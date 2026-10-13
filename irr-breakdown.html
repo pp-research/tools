@@ -1115,6 +1115,29 @@ details .body strong{color:var(--text)}
                 </div>
                 <p class="hint" id="bmSheetLine" hidden style="margin-top:var(--sp-3)"></p>
 
+                <details id="chkBmPf">
+                  <summary>Second pass — Pricefinder</summary>
+                  <div class="body">
+                    <p>RP Data answers for nearly everything. What it cannot —
+                       no suggestion came back, the page never opened, or it
+                       opened with no sale on record — stays open in the sheet.
+                       This asks Pricefinder about <strong>exactly those</strong>,
+                       reading the list from the sheet so it is always the
+                       current remainder, and writes to its own
+                       <strong>Pricefinder check</strong> tab.</p>
+                    <div class="bm-row">
+                      <a class="bm-drag" id="pfLink" href="#" draggable="true">Pricefinder second pass</a>
+                      <span class="hint" id="pfNote" style="margin:0">Drag me, then click it on Pricefinder</span>
+                    </div>
+                    <p class="hint"><strong>First run, read the console.</strong>
+                       Pricefinder's own wording has not been read from the live
+                       site, so this recognises the shapes these pages use rather
+                       than what it actually says. It checks itself on the first
+                       property and stops — showing what the page said — instead
+                       of working through the list finding nothing. Send that
+                       text back and it is a one-line fix.</p>
+                  </div>
+                </details>
                 <details id="chkBmSheet">
                   <summary>Where the results go</summary>
                   <div class="body">
@@ -1675,6 +1698,251 @@ details .body strong{color:var(--text)}
      Sold check tab reads it out, substitutes the city and the sheet address
      from this browser's own settings, and builds the bookmarklet from that.
      Rebuild it with mkbm.pl; do not edit it between the markers by hand. -->
+<!-- The Pricefinder second pass, carried the same way. -->
+<!-- pfbm:start --><script type="text/plain" id="pfBmSrc">
+window.stopCheck=false;
+
+(async function () {
+  'use strict';
+
+  const RAW_SHEET = (localStorage.getItem('ppSheetUrl') || '__SHEET_URL__').trim();
+  const SHEET_URL = /^https:/.test(RAW_SHEET) ? RAW_SHEET : '';
+  const PAUSE     = 7000;         // ms between properties
+  const JITTER    = 2500;         // random extra, so the pace is not robotic
+  const LONG_REST = [20, 45000];  // every 20 properties, pause 45s
+
+  if (!SHEET_URL) {
+    console.error('This pass reads its list from the sheet, so it needs the sheet ' +
+      'address. Set it in the IRR Calculator, Sold check tab.');
+    return;
+  }
+
+  /* ── 1. what is still open ──────────────────────────────────────────── */
+  const q = u => u + (u.includes('?') ? '&' : '?');
+  const todo = await fetch(q(SHEET_URL) + 'todo=1')
+    .then(r => r.json()).then(d => (d && d.rows) || [])
+    .catch(e => { console.error('Could not read the sheet: ' + e.message); return null; });
+  if (!todo) return;
+
+  const done = new Set(await fetch(q(SHEET_URL) + 'done=1&tab=pricefinder')
+    .then(r => r.json()).then(d => (d && d.addresses) || [])
+    .catch(() => []));
+
+  const list = todo.filter(r => !done.has(r.address));
+  if (!list.length) {
+    console.log('%cNothing open — either RP Data answered for everything, or this ' +
+      'pass has already been through what it did not.',
+      'font-weight:bold;font-size:13px');
+    return;
+  }
+  console.log(`%c${list.length} propert${list.length === 1 ? 'y' : 'ies'} RP Data ` +
+    'could not answer for' + (done.size ? ` — ${done.size} already done here` : ''),
+    'font-weight:bold;font-size:13px');
+
+  /* ── 2. the sheet ───────────────────────────────────────────────────── */
+  /* Same fire-and-forget POST as the RP Data pass, and for the same reason:
+     Apps Script redirects on the way back, which kills the CORS headers. */
+  async function send(rows) {
+    try {
+      await fetch(SHEET_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ tab: 'pricefinder', rows })
+      });
+    } catch (e) { console.warn('sheet write failed:', e.message); }
+  }
+
+  /* ── 3. page helpers ────────────────────────────────────────────────── */
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  /* Described, not named. A hard-coded id that has never been checked against
+     the live page fails silently; "the visible input that asks for an address"
+     either finds one or says it could not. */
+  function searchBox() {
+    const inputs = [...document.querySelectorAll('input:not([type=hidden])')]
+      .filter(x => x.offsetParent !== null);
+    return inputs.find(x => /address|suburb|search|property/i
+            .test((x.placeholder || '') + ' ' + (x.getAttribute('aria-label') || ''))) ||
+           inputs.find(x => x.type === 'search') || null;
+  }
+
+  // React owns inputs like this, so set the value through the native setter
+  // and tell React about it — otherwise it reverts on the next render.
+  function typeInto(el, text) {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value').set;
+    setter.call(el, text);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  async function waitFor(test, ms = 9000, step = 250) {
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      const v = test();
+      if (v) return v;
+      await sleep(step);
+    }
+    return null;
+  }
+
+  /* The suggestion list, however it is built. role=option is the accessible
+     spelling; the rest are what a listbox looks like when it is not. */
+  function options() {
+    const sels = ['[role=option]', '[class*=suggestion] li', '[class*=autocomplete] li',
+                  '[class*=typeahead] li', 'ul[class*=menu] li', 'ul[class*=result] li'];
+    for (const sel of sels) {
+      const o = [...document.querySelectorAll(sel)].filter(x => x.offsetParent !== null);
+      if (o.length) return o;
+    }
+    return null;
+  }
+
+  const MONTHS = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,
+                   Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+  function asDate(s) {
+    let m = /^(\d{1,2}) (\w{3})\w* (\d{4})$/.exec(String(s).trim());
+    if (m) return new Date(+m[3], MONTHS[m[2]], +m[1]);
+    m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());   // dd/mm/yyyy
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+  }
+  function iso(d) {
+    return d ? d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0') : '';
+  }
+
+  /* Several spellings, because the live wording has not been read. Each one
+     captures a date and a price, in one order or the other, and the pair is
+     sorted out afterwards by which half parses as a date. */
+  const DATE = '(\\d{1,2}[ /]\\w{3,9}[ /]\\d{4})';
+  const CASH = '\\$([\\d,]+)';
+  const SALE_PATTERNS = [
+    new RegExp('Last Sold[^\\n]{0,40}?' + DATE + '[^\\n]{0,40}?' + CASH, 'i'),
+    new RegExp('Sold[^\\n]{0,40}?' + DATE + '[^\\n]{0,40}?' + CASH, 'i'),
+    new RegExp('Sold[^\\n]{0,40}?' + CASH + '[^\\n]{0,40}?' + DATE, 'i'),
+    new RegExp('Sale Price[^\\n]{0,40}?' + CASH + '[^\\n]{0,40}?' + DATE, 'i')
+  ];
+
+  function readSale() {
+    const t = document.body.innerText.replace(/\n{2,}/g, '\n');
+    /* Same trap as RP Data: comparable sales sit below the subject property,
+       and reading past them picks up a neighbour's price. */
+    let cut = t.length;
+    for (const k of ['Comparable', 'Nearby', 'Similar', 'Recent Sales']) {
+      const i = t.indexOf(k);
+      if (i >= 0 && i < cut) cut = i;
+    }
+    const sub = t.slice(0, cut);
+    for (const re of SALE_PATTERNS) {
+      const m = re.exec(sub);
+      if (!m) continue;
+      const d1 = asDate(m[1]), p2 = Number(String(m[2]).replace(/,/g, ''));
+      if (d1 && p2) return { date: d1, price: p2 };
+      const d2 = asDate(m[2]), p1 = Number(String(m[1]).replace(/,/g, ''));
+      if (d2 && p1) return { date: d2, price: p1 };
+    }
+    return null;
+  }
+  function sample() {                      // what to show when nothing matched
+    return document.body.innerText.replace(/\n{2,}/g, '\n').slice(0, 700);
+  }
+
+  /* ── 4. one property ────────────────────────────────────────────────── */
+  async function check(p) {
+    const box = searchBox();
+    if (!box) return { status: 'NO SEARCH BOX' };
+
+    box.focus();
+    typeInto(box, '');
+    await sleep(150);
+    typeInto(box, p.address);
+
+    const opts = await waitFor(options, 8000);
+    if (!opts) return { status: 'no match in Pricefinder' };
+
+    const before = location.href;
+    opts[0].click();
+    const moved = await waitFor(() => location.href !== before, 12000);
+    if (!moved) return { status: 'did not open', resolved: opts[0].innerText.trim() };
+
+    await waitFor(readSale, 9000);
+    const sale = readSale();
+    const resolved = location.pathname;
+    if (!sale) return { status: 'no sale on record', resolved, raw: sample() };
+
+    const bought = p.purchased ? new Date(p.purchased) : null;
+    return {
+      status: !bought              ? 'no purchase date on file'
+            : (sale.date > bought) ? 'SOLD SINCE PURCHASE'
+                                   : 'still held',
+      soldDate: iso(sale.date),
+      soldPrice: sale.price,
+      resolved
+    };
+  }
+
+  /* ── 5. the run ─────────────────────────────────────────────────────── */
+  if (!searchBox()) {
+    console.error('No search box on this page. Open the Pricefinder screen that ' +
+      'has one and click the bookmark again.');
+    return;
+  }
+
+  const results = [];
+  for (let i = 0; i < list.length; i++) {
+    if (window.stopCheck) { console.warn('stopped at', i, 'of', list.length); break; }
+    const p = list[i];
+    let r;
+    try { r = await check(p); }
+    catch (e) { r = { status: 'error: ' + e.message }; }
+
+    r.address       = p.address;
+    r.city          = p.city || '';
+    r.purchased     = p.purchased || '';
+    r.purchasePrice = p.purchasePrice || '';
+    results.push(r);
+
+    const hit = r.status === 'SOLD SINCE PURCHASE';
+    console.log(`${i + 1}/${list.length}  %c${p.address}  —  ${r.status}` +
+      (r.soldDate ? `  (sold ${r.soldDate} $${r.soldPrice.toLocaleString()})` : ''),
+      hit ? 'color:#c0392b;font-weight:bold' : 'color:#888');
+
+    /* The first property proves whether this works at all. If it opened one
+       and recognised nothing, every one after it will do the same — so stop,
+       show what the page said, and let the pattern be corrected. */
+    if (i === 0 && r.raw) {
+      window.pfSample = r.raw;
+      console.error('Opened the property but recognised no sale wording. Stopping ' +
+        'after one rather than running the whole list blind.\n\n' +
+        'This is what the page said — it is also in window.pfSample:\n\n' + r.raw);
+      return;
+    }
+
+    await send([{ address: r.address, city: r.city, purchased: r.purchased,
+                  purchasePrice: r.purchasePrice, soldDate: r.soldDate || '',
+                  soldPrice: r.soldPrice || '', status: r.status,
+                  onMarket: '', lastAd: '', resolved: r.resolved || '' }]);
+    window.pfResults = results;
+
+    if (i < list.length - 1) {
+      const rest = (i + 1) % LONG_REST[0] === 0 ? LONG_REST[1] : 0;
+      await sleep(PAUSE + Math.random() * JITTER + rest);
+    }
+  }
+
+  /* ── 6. what came back ──────────────────────────────────────────────── */
+  const sold  = results.filter(r => r.status === 'SOLD SINCE PURCHASE');
+  const still = results.filter(r => r.status === 'still held');
+  const open  = results.length - sold.length - still.length;
+  console.log(`%c\nchecked ${results.length} · ${sold.length} sold since purchase · ` +
+    `${still.length} still held · ${open} Pricefinder could not answer either`,
+    'font-weight:bold;font-size:13px');
+  if (sold.length) console.table(sold, ['address','city','purchased','soldDate','soldPrice']);
+  console.log('Rows are in the "Pricefinder check" tab. Read them into the tool ' +
+    'with From Google Sheet.');
+})();
+</script><!-- pfbm:end -->
 <!-- rpbm:start --><script type="text/plain" id="rpBmSrc">
 window.stopCheck=false;
 
@@ -4482,12 +4750,12 @@ window.stopCheck=false;
 
      The result is a javascript: URL on a real <a>, because dragging to the
      bookmarks bar is something browsers do for links and nothing else. */
-  function bmSource(){
-    var el = $('rpBmSrc');
+  function bmSource(id){
+    var el = $(id || 'rpBmSrc');
     return el ? el.textContent : '';
   }
-  function buildBm(){
-    var src = bmSource();
+  function buildBm(id){
+    var src = bmSource(id);
     if (!src) return '';
     var url = sheetUrl();
     /* a function replacement, not a string: a $ in the address would
@@ -4505,12 +4773,19 @@ window.stopCheck=false;
     var sig = sheetUrl() || '-';
     if (sig === bmLast) return;
     bmLast = sig;
-    a.href = buildBm() || '#';
+    a.href = buildBm('rpBmSrc') || '#';
     var n = $('bmNote');
     if (n) {
       n.textContent = sheetUrl()
         ? 'Drag me to your bookmarks bar · results go to your sheet'
         : 'Drag me to your bookmarks bar · no sheet set, so you get a CSV';
+    }
+    /* The second pass has no CSV fallback: its list comes FROM the sheet, so
+       without one there is nothing for it to work from. */
+    var pf = $('pfLink'), box = $('chkBmPf');
+    if (pf && box) {
+      box.hidden = !sheetUrl();
+      if (!box.hidden) pf.href = buildBm('pfBmSrc') || '#';
     }
     bmSheetLink();
   }
@@ -4597,11 +4872,14 @@ window.stopCheck=false;
            and "Where to look" all work from here on without knowing the
            difference. */
         chk = { name:'Google Sheet',
-                head:['Address','Sold date','Sold price','RP Data record'],
-                rows: sold.map(function(r){ return [r.address, r.soldDate, r.soldPrice, r.resolved]; }),
-                map:{ address:0, date:1, price:2 }, skipped:[],
+                head:['Address','Sold date','Sold price','Record','Source'],
+                rows: sold.map(function(r){ return [r.address, r.soldDate, r.soldPrice, r.resolved, r.source || 'RP Data']; }),
+                map:{ address:0, date:1, price:2, src:4 }, skipped:[],
+                /* the fallback only: each row carries the site that actually
+                   answered, and srcOf() prefers that when the sale is written */
                 source:'RPData import',
-                why:'Read from RP Data itself, one property at a time.' };
+                why:'Read from the site itself, one property at a time. Each sale '+
+                    'is recorded against whichever site answered for it.' };
         /* Advertised but not sold is a different thing to act on: a sale is
            settled, a listing is a conversation to have. Carried separately so
            it never gets written onto a property as though it were a sale. */
@@ -4613,8 +4891,10 @@ window.stopCheck=false;
         $('chkSourceWhy').textContent = chk.why;
         $('chkSetup').hidden = false;
         $('btnChkClear').hidden = false;
+        var viaPf = sold.filter(function(r){ return /pricefinder/i.test(r.source || ''); }).length;
         chkSay(msg('ok','Read '+all.length+' checked propert'+(all.length===1?'y':'ies')+
-          ' from the sheet · <strong>'+sold.length+'</strong> sold since purchase.'+
+          ' from the sheet · <strong>'+sold.length+'</strong> sold since purchase'+
+          (viaPf ? ', '+viaPf+' of them from the Pricefinder pass' : '')+'.'+
           (all.length > sold.length
             ? ' The other '+(all.length - sold.length)+
               (all.length - sold.length === 1 ? ' is' : ' are')+' still held, so '+
@@ -4660,7 +4940,11 @@ window.stopCheck=false;
       /* the row as the export wrote it — the only way a chooser can show which
          of several units at one street number this sale actually was */
       var s = { a:a, raw:String(addrRaw).trim(), price:price, date:when,
-                link: m.link !== undefined ? String(r[m.link] || '').trim() : '' };
+                link: m.link !== undefined ? String(r[m.link] || '').trim() : '',
+                /* which site actually answered, where the row says so. Two
+                   passes write into one list, and a figure has to carry the
+                   name of the source it came from onto the property. */
+                src:  m.src  !== undefined ? String(r[m.src]  || '').trim() : '' };
       sales.push(s);
       if (a.suburb) subs[a.suburb] = (subs[a.suburb] || 0) + 1;
       (tight[tightKey(a)] = tight[tightKey(a)] || []).push(s);
@@ -4851,6 +5135,14 @@ window.stopCheck=false;
   }
 
   /* ── writing a sale onto a property ── */
+  /* The sheet names the site; the property record names the import. One
+     word each way, kept in one place so the two cannot drift. */
+  function srcOf(hit){
+    var s = (hit && hit.src) || '';
+    if (/pricefinder/i.test(s)) return 'Pricefinder import';
+    if (/rps*data/i.test(s))  return 'RPData import';
+    return '';
+  }
   function markSold(ids){
     var want = {}; ids.forEach(function(i){ want[i] = 1; });
     var byId = {};
@@ -4861,7 +5153,10 @@ window.stopCheck=false;
       if (!r || !r.hit || !r.hit.price || !r.hit.date) return;
       e.soldPrice = r.hit.price;
       e.soldDate = r.hit.date;
-      e.soldVerified = $('chkSource').value || undefined;
+      /* The row knows which site answered; the dropdown is only the fallback
+         for a list that does not say. Recording "RPData import" against a
+         price Pricefinder found would be a lie on the record. */
+      e.soldVerified = srcOf(r.hit) || $('chkSource').value || undefined;
       e.soldLink = /^https?:\/\//i.test(r.hit.link) ? r.hit.link : undefined;
       e.soldCheck = 'Sold';
       done.push(e);
@@ -4870,7 +5165,7 @@ window.stopCheck=false;
     if (!putProps(list)) return;
     logChange(done.map(function(e){
       return { action:'marked sold', property:e.name,
-               detail:'from the ' + ($('chkSource').value || 'imported') + ' export' };
+               detail:'verified by ' + (e.soldVerified || 'an import') };
     }));
     renderProps();
     chkRun();
@@ -6241,10 +6536,12 @@ window.stopCheck=false;
   /* Clicking it would run the RP Data script against this page, which is not
      RP Data: it would read the register, find no search box and throw. Say
      what to do instead. */
-  $('bmLink').addEventListener('click', function(ev){
-    ev.preventDefault();
-    var n = $('bmNote');
-    if (n) n.innerHTML = '<strong>Drag</strong> it to your bookmarks bar — clicking it here does nothing.';
+  [['bmLink','bmNote'], ['pfLink','pfNote']].forEach(function(pair){
+    $(pair[0]).addEventListener('click', function(ev){
+      ev.preventDefault();
+      var n = $(pair[1]);
+      if (n) n.innerHTML = '<strong>Drag</strong> it to your bookmarks bar — clicking it here does nothing.';
+    });
   });
   syncBmBox();
   $('btnChkClear').addEventListener('click', chkReset);
