@@ -198,7 +198,7 @@ const N=MONTHS.length, iOf=m=>MONTHS.indexOf(m);
 const BASE=iOf('2022-05'), J=iOf(JOIN);
 const S={market:'all',ptype:'A',win:'12',view:'act'};
 try{const s=JSON.parse(localStorage.getItem('lpc-state')||'null'); if(s) Object.assign(S,s)}catch(e){}
-S.view='act'; if(S.win!=='1') S.win='12'; S.range='12m';   // always opens on the last 12 months if(S.scaled!=='u') S.scaled='r';
+S.view='act'; S.win='1';   // always opens on the monthly view S.range='12m';   // always opens on the last 12 months if(S.scaled!=='u') S.scaled='r';
 const startIdx=()=>S.range==='12m'?N-12:S.range==='2001'?0:S.range==='2008'?iOf('2008-01'):J; S.cash=false; S.mort=false;   // overlays always start unticked
 for(const [id,key] of [['showCash','cash'],['showMort','mort']]){
   const c=document.getElementById(id); c.checked=S[key];
