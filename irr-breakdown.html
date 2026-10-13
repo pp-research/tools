@@ -2019,14 +2019,38 @@ window.stopCheck=false;
      evidence: a slow response, a moment of throttling or a re-render that
      swallowed the keystrokes all look exactly like "this address does not
      exist", and the second attempt tells them apart. */
+  function optionTexts() {
+    return [...document.querySelectorAll('[role=option]')]
+      .map(o => (o.innerText || '').replace(/\s+/g, ' ').trim());
+  }
+  /* Type a query and wait for ITS OWN suggestion list.
+
+     The old version asked for [role=option] the moment it had typed, which
+     hands back whatever list is on screen — and after the first few properties
+     that is reliably the PREVIOUS one, still open. Matching the wanted address
+     against the previous property's suggestions is what produced the run of
+     "no confident match", and before the address was checked at all it is what
+     opened the wrong property.
+
+     So: dismiss what is there, wait for it to actually go, then type, then
+     wait for a list whose first entry is not the one we started with. */
   async function suggest(box, name, ms) {
+    const was = optionTexts()[0] || '';
+
     box.focus();
     typeInto(box, '');
-    await sleep(150);
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
+    await waitFor(() => optionTexts().length === 0 ? true : null, 4000, 150);
+    await sleep(250);
+
     typeInto(box, name);
     return waitFor(() => {
       const o = [...document.querySelectorAll('[role=option]')];
-      return o.length ? o : null;
+      if (!o.length) return null;
+      const now = (o[0].innerText || '').replace(/\s+/g, ' ').trim();
+      /* a list that is still the old one is not an answer to this query */
+      if (was && now === was) return null;
+      return o;
     }, ms);
   }
 
@@ -2047,19 +2071,6 @@ window.stopCheck=false;
     const offered = opts.map(o => (o.innerText || '').replace(/\s+/g, ' ').trim());
     const i = offered.findIndex(t => sameProperty(p.name, t, true));
 
-    /* The first few, in shape only: enough to tell whether the matcher is
-       reading RP Data's text correctly, without any address leaving this
-       browser. The text itself is in window.rpPeek, for your own eyes. */
-    if (peeked < 3) {
-      peeked++;
-      const a = parts(p.name), b = parts(offered[0] || '');
-      console.log('%cmatcher: ours parses=' + !!a + ' theirs parses=' + !!b +
-        ' number=' + (a && b ? (a.number === b.number) : 'n/a') +
-        ' street=' + (a && b ? (b.all.indexOf(a.street) >= 0) : 'n/a') +
-        ' suggestions=' + offered.length + ' matched=' + (i >= 0),
-        'color:#2b7');
-      (window.rpPeek = window.rpPeek || []).push({ asked: p.name, offered: offered });
-    }
     if (i < 0) {
       return { status: 'no confident match', offered: offered.slice(0, 3).join(' | ') };
     }
@@ -2133,6 +2144,24 @@ window.stopCheck=false;
     r.purchasePrice = p.purchasePrice || '';
     results.push(r);
 
+    /* The first few FAILURES, in shape only. Sampling the first three of
+       anything was useless — those are the ones that work. No address
+       leaves this browser; the text itself is in window.rpPeek. */
+    if (peeked < 4 && !/still held|SOLD SINCE/.test(r.status)) {
+      peeked++;
+      const a = parts(p.name), b = parts((r.offered || '').split(' | ')[0] || '');
+      console.log('%cfailure ' + peeked + ': ' + r.status +
+        ' | searchbox=' + !!searchBox() +
+        ' options=' + optionTexts().length +
+        ' overlay=' + !!document.querySelector('[role=dialog],[aria-modal="true"]') +
+        ' onPropertyPage=' + (location.pathname.indexOf('/property/') >= 0) +
+        ' | ours parses=' + !!a + ' theirs parses=' + !!b +
+        (a && b ? ' number=' + (a.number === b.number) +
+                  ' street=' + (b.all.indexOf(a.street) >= 0) : ''),
+        'color:#c0392b');
+      (window.rpPeek = window.rpPeek || []).push(
+        { asked: p.name, status: r.status, offered: r.offered || '' });
+    }
     /* consecutive failures, reset by any property that actually answered */
     if (/still held|SOLD SINCE PURCHASE/.test(r.status)) misses = 0; else misses++;
     const hit = r.status === 'SOLD SINCE PURCHASE';
