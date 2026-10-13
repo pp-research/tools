@@ -30,6 +30,12 @@
    nearly everything; Pricefinder is only ever asked about what RP Data could
    not resolve, and keeping that apart is what makes it obvious which source
    a figure came from. */
+/* Where to send someone when neither pass could find a property. The shape
+   of this URL has NOT been checked against the live site — nobody has put an
+   address through Pricefinder by hand yet. If the first link you click is
+   wrong, this one line is the fix. */
+var PRICEFINDER_SEARCH = 'https://www.pricefinder.com.au/search?q=';
+
 var TAB  = 'RP Data check';
 var TAB2 = 'Pricefinder check';
 function tabName_(which) { return which === 'pricefinder' ? TAB2 : TAB; }
@@ -53,7 +59,8 @@ var HEADERS = [
   'Checked by',
   'On market',
   'Last advertised',
-  'RP Data record',
+  'Property link',
+  'Look up',
   'Checked at'
 ];
 
@@ -135,6 +142,9 @@ function doPost(e) {
         r.onMarket || '',
         r.lastAd || '',
         r.resolved || '',
+        /* Only where there is nothing to click. A search link beside a found
+           property is noise; beside a dead end it is the next thing to do. */
+        r.resolved ? '' : (r.address ? PRICEFINDER_SEARCH + encodeURIComponent(r.address) : ''),
         new Date()
       ]);
       /* Sold outranks listed: a sale is settled, a listing is only a signal.
@@ -228,7 +238,9 @@ function doGet(e) {
           who:           fmt_(get(v, 'Checked by')),
           onMarket:      fmt_(get(v, 'On market')),
           lastAd:        fmt_(get(v, 'Last advertised')),
-          resolved:      fmt_(get(v, 'RP Data record')),
+          /* the old name too: a tab written before the rename still answers */
+          resolved:      fmt_(get(v, 'Property link')) || fmt_(get(v, 'RP Data record')),
+          lookup:        fmt_(get(v, 'Look up')),
           checkedAt:     fmt_(get(v, 'Checked at')),
           /* the column where there is one; the tab otherwise, so a row
              written before the column existed still answers */
