@@ -465,9 +465,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* they disagree about the price or the date, which is the one that wants eyes */
 .st-differs{background:rgba(231,35,71,.10);border-color:rgba(231,35,71,.45);color:#ffb3c1}
 :root[data-theme="light"] .st-differs{background:rgba(193,18,47,.08);border-color:rgba(193,18,47,.34);color:#8E0F24}
-.st-gap{background:rgba(231,35,71,.10);border-color:rgba(231,35,71,.45);color:#ffb3c1}
+/* Nothing has looked at this yet. Two ways that happens — a suburb an export
+   never covered, or a property missing from the sheet because the run skipped
+   it — and one colour, because to her they are the same problem. */
+.st-gap,.st-unchecked{background:rgba(231,35,71,.10);border-color:rgba(231,35,71,.45);color:#ffb3c1}
 :root[data-theme="light"] .st-sold{background:rgba(63,125,46,.12);border-color:rgba(63,125,46,.34);color:#2E5C22}
-:root[data-theme="light"] .st-gap{background:rgba(193,18,47,.08);border-color:rgba(193,18,47,.34);color:#8E0F24}
+:root[data-theme="light"] .st-gap,:root[data-theme="light"] .st-unchecked{background:rgba(193,18,47,.08);border-color:rgba(193,18,47,.34);color:#8E0F24}
 
 /* ═══ KPI STRIP ═══ */
 /* minmax(0,1fr) — plain 1fr keeps min-width:auto, so a long currency value
@@ -5509,6 +5512,20 @@ window.stopCheck=false;
                    from onto the record — the column used to be a slug, which
                    was not a link, so nothing was ever saved. */
                 map:{ address:0, date:1, price:2, link:3, src:4 }, skipped:[],
+                /* Every property the sheet has an answer for, sold or not.
+                   The match only ever sees the sold rows, so without this a
+                   property the run never reached and one it checked and found
+                   still held both come out as "No sale found" — and a property
+                   quietly skipped is invisible, which is the one thing a check
+                   like this must not do. */
+                checked: (function(){
+                  var s = {};
+                  all.forEach(function(r){
+                    var k = addrKey_(r.address);
+                    if (k) s[k] = 1;
+                  });
+                  return s;
+                })(),
                 /* the fallback only: each row carries the site that actually
                    answered, and srcOf() prefers that when the sale is written */
                 source:'RPData import',
@@ -5576,6 +5593,24 @@ window.stopCheck=false;
     if (d.open) d.close(); else d.removeAttribute('open');
     pickId = null;
   }
+  /* One key for one property, so the sheet's spelling of an address and the
+     register's are compared on what matters rather than on spacing. Deliberately
+     not a full address parse: both strings come from the same place, because the
+     bookmarklet is handed the register's own names, so anything cleverer than
+     tidying whitespace and case would be inventing a difference. */
+  function addrKey_(s){
+    return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+  /* A date cell that can never read "Invalid Date". The register writes
+     yyyy-mm-dd from a date input; anything else is shown as it was stored
+     rather than silently turned into nonsense. */
+  function dayLabel_(s){
+    var t = String(s == null ? '' : s).trim();
+    if (!t) return '';
+    var d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(t) ? t + 'T00:00:00Z' : t);
+    return isNaN(d.getTime()) ? esc(t) : dLabel(d);
+  }
+
   /* ── the match ── */
   function chkRun(){
     if (!chk) return;
@@ -5608,7 +5643,16 @@ window.stopCheck=false;
     var results = pool.map(function(e){
       var a = splitAddr(e.name);
       var out = { e:e, a:a, status:'none', hit:null, hits:[], held:isHeld(e) };
-      if (!a.suburb || subs[a.suburb] === undefined) { out.status = 'gap'; return out; }
+      /* Two different silences, and they were being told apart by the wrong
+         question. From the SHEET we know exactly which properties were asked
+         about, so one that is missing was skipped by the run — say that. From a
+         pasted export we only ever know which suburbs appear, so the honest
+         answer there stays the old one. */
+      if (chk.checked) {
+        if (!chk.checked[addrKey_(e.name)]) { out.status = 'unchecked'; return out; }
+      } else if (!a.suburb || subs[a.suburb] === undefined) {
+        out.status = 'gap'; return out;
+      }
       var t = tight[tightKey(a)];
       var exact = t && t.length === 1;
       var l = exact ? t : (loose[looseKey(a)] || []);
@@ -5644,7 +5688,8 @@ window.stopCheck=false;
      recorded, so a property that is already sold is not in the answer and
      there is nothing to choose between. */
   var CHK_WORD = { sold:'Sold', check:'Check', differs:'Differs',
-                   none:'No sale found', gap:'Suburb not checked', agree:'Agrees' };
+                   none:'No sale found', gap:'Suburb not checked',
+                   unchecked:'Property not checked', agree:'Agrees' };
   /* What each chip means, on the chip. These used to live in a window you
      had to open, which is no use at the moment you are looking at a row
      and wondering what it is telling you. */
@@ -5654,23 +5699,27 @@ window.stopCheck=false;
     differs: 'Already sold here, and the check disagrees. Your figure and theirs are side by side.',
     agree:   'The book and the check say the same thing.',
     none:    'Nothing sold at this address in what was checked.',
-    gap:     'Nothing in this suburb has been checked yet.'
+    gap:     'Nothing in this suburb has been checked yet.',
+    unchecked: 'This property is not in the sold-check sheet at all, so the run never reached it — skipped, stopped early, or still waiting its turn.'
   };
-  /* worst first: the two that want a decision, then the ones that do not */
-  var CHK_ORDER = { differs:0, sold:1, check:2, none:3, gap:4, agree:5 };
+  /* worst first: the two that want a decision, then the one nobody has looked
+     at, then the ones that do not. A property the run missed outranks a
+     property the run cleared. */
+  var CHK_ORDER = { differs:0, sold:1, check:2, unchecked:3, none:4, gap:5, agree:6 };
   function drawCheck(){
     if (!chk || !chk.results) return;
     var rs = chk.results.slice().sort(function(x, y){
       var d = CHK_ORDER[x.status] - CHK_ORDER[y.status];
       return d || String(x.e.name).localeCompare(String(y.e.name));
     });
-    var tally = { sold:0, check:0, differs:0, agree:0, none:0, gap:0 };
+    var tally = { sold:0, check:0, differs:0, agree:0, none:0, gap:0, unchecked:0 };
     rs.forEach(function(r){ tally[r.status]++; });
     var bits = [];
     if (tally.differs) bits.push(tally.differs + ' disagree with the book');
     if (tally.sold) bits.push(tally.sold + ' sold');
     if (tally.check) bits.push(tally.check + ' to check');
     if (tally.agree) bits.push(tally.agree + ' agree');
+    if (tally.unchecked) bits.push(tally.unchecked + ' never checked');
     if (tally.none) bits.push(tally.none + ' not found');
     if (tally.gap) bits.push(tally.gap + ' in suburbs not checked');
     $('chkCount').textContent = rs.length
@@ -5696,7 +5745,21 @@ window.stopCheck=false;
         : (r.hits.length > 1
             ? '<b class="faint">'+r.hits.length+' sales</b><span>at this street number</span>'
             : '<b>'+(h.price ? aud(h.price) : '—')+'</b><span>'+
-              (h.date ? dLabel(new Date(h.date+'T00:00:00Z')) : 'no date')+'</span>');
+              (h.date ? dayLabel_(h.date) : 'no date')+'</span>'+
+              /* Which site answered. This used to be a column three places
+                 away; it belongs against the figure it produced, where a
+                 price and the name of where it came from cannot be read
+                 apart. */
+              (h.src ? '<span class="src">'+esc(h.src)+'</span>' : ''));
+      /* What she paid, beside what it sold for. A sale price on its own says
+         nothing about whether the property actually did anything, and having
+         to open the record to find the other half is the reason the column is
+         here. */
+      var pp = r.e.purchasePrice, pd = r.e.purchaseDate;
+      var bought = (!pp && !pd)
+        ? '<span class="faint">—</span>'
+        : '<b>'+(pp ? aud(pp) : '—')+'</b><span>'+
+          (pd ? dayLabel_(pd) : 'no date')+'</span>';
       /* Several sales can share a street number — a block of units against a
          record with no unit on it. Writing r.hits[0] then picks whichever the
          export happened to list first, which is a coin toss between other
@@ -5716,17 +5779,13 @@ window.stopCheck=false;
           ? '<button type="button" class="btn-ghost btn-sm" data-pickone="'+esc(r.e.id)+'">Choose sale</button>'
           : '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Use RP Data’s</button>';
       }
-      /* Which site answered for this one. The sheet carries it per row, so a
-         price and the name of where it came from stay together all the way to
-         the property record. */
-      var src = (h && h.src) ? esc(h.src) : '<span class="faint">—</span>';
       return '<tr>'+
         '<td class="name">'+esc(r.e.name)+
           ((r.e.category||'').trim() ? '<br><span class="cat">'+esc(r.e.category)+'</span>' : '')+'</td>'+
         '<td><span class="st st-'+r.status+'" title="'+esc(CHK_WHY[r.status]||'')+'">'+CHK_WORD[r.status]+'</span>'+
           (r.why ? '<br><span class="cat">'+esc(r.why)+'</span>' : '')+'</td>'+
+        '<td class="pd">'+bought+'</td>'+
         '<td class="pd">'+found+'</td>'+
-        '<td>'+src+'</td>'+
         '<td class="acts">'+act+'</td></tr>';
     }).join('');
     /* Only the sheet knows about listings; a sales export cannot. Nothing here
@@ -5756,9 +5815,9 @@ window.stopCheck=false;
         : '')+
       '<div class="tbl-scroll short"><table><thead><tr>'+
       '<th scope="col">Property</th><th scope="col">Status</th>'+
+      '<th scope="col" class="num">Purchased for</th>'+
       '<th scope="col" class="num">Sold for</th>'+
-      '<th scope="col">Source</th>'+
-      '<th scope="col"><span class="sr-only">Actions</span></th>'+
+      '<th scope="col">Mark as sold</th>'+
       '</tr></thead><tbody>'+body+'</tbody></table></div>'+
       (chk.undated || chk.unpriced
         ? '<p class="count-line">'+(chk.undated ? chk.undated+' row'+(chk.undated===1?'':'s')+' had no readable date. ' : '')+
