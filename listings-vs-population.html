@@ -160,6 +160,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 #tabDemand td{padding:6px 6px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
 #tabDemand td:first-child{white-space:normal}
 @media (max-width:620px){ #tabDemand table{font-size:12px} #tabDemand th{font-size:10px;letter-spacing:.03em} #tabDemand th,#tabDemand td{padding-inline:4px} #tabDemand .col-pop{display:none} }
+@media (max-width:460px){ #tabDemand .col-n{display:none} }
 #tabDemand tr.grp td{background:var(--chip);font-weight:700;text-align:left;font-size:12.5px}
 #tabDemand tr[tabindex]{cursor:pointer}
 #tabDemand tr[tabindex]:hover td{background:var(--chip)}
@@ -765,10 +766,10 @@ function detail(r){
     </div>`;
 }
 function table(rows){
-  let h=`<thead><tr><th>Market</th><th>Sale stock, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th>Rental stock, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th>Vacancy rate ${mShort(DL_MONTHS[F])} → ${mShort(DL_MONTHS[N-1])}</th><th class="col-pop">Population 2024–25</th><th></th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Market</th><th class="col-n">Sale stock, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th class="col-n">Rental stock, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th>Vacancy rate ${mShort(DL_MONTHS[F])} → ${mShort(DL_MONTHS[N-1])}</th><th class="col-pop">Population 2024–25</th><th></th></tr></thead><tbody>`;
   for(const [k,o] of Object.entries(VERD)){ const ms=rows.filter(x=>x.v===k).sort((a,b)=>(b.sc+b.rc)-(a.sc+a.rc)); if(!ms.length) continue;
     h+=`<tr class="grp"><td colspan="8"><span class="pill p-${o.c}">${o.t}</span> ${ms.length} markets</td></tr>`;
-    for(const r of ms) h+=`<tr tabindex="0" data-s="${r.m.slug}" class="${r.m.slug===DS.mkt?'sel':''}"><td>${r.m.name}</td><td>${fn(r.s1)}</td><td>${fp(r.sc)}</td><td>${fn(r.r1)}</td><td>${fp(r.rc)}</td><td>${r.vr0.toFixed(1)}% → ${r.vr1.toFixed(1)}%</td><td class="col-pop">${r.pop>=0?'+':'−'}${Math.abs(r.pop).toFixed(1)}%</td><td>${r.border?'<span class="pill p-border">Borderline</span>':''}</td></tr>` }
+    for(const r of ms) h+=`<tr tabindex="0" data-s="${r.m.slug}" class="${r.m.slug===DS.mkt?'sel':''}"><td>${r.m.name}</td><td class="col-n">${fn(r.s1)}</td><td>${fp(r.sc)}</td><td class="col-n">${fn(r.r1)}</td><td>${fp(r.rc)}</td><td>${r.vr0.toFixed(1)}% → ${r.vr1.toFixed(1)}%</td><td class="col-pop">${r.pop>=0?'+':'−'}${Math.abs(r.pop).toFixed(1)}%</td><td>${r.border?'<span class="pill p-border">Borderline</span>':''}</td></tr>` }
   const t=document.getElementById('dl-tbl'); t.innerHTML=h+'</tbody>';
   t.querySelectorAll('tr[tabindex]').forEach(tr=>{ tr.addEventListener('click',()=>pick(tr.dataset.s)); tr.addEventListener('keydown',ev=>{ if(ev.key==='Enter'){pick(tr.dataset.s)} }) });
 }
