@@ -1,0 +1,209 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Google Sheet endpoint for the RP Data held check.
+
+   Setup, once (about three minutes)
+     1. Make a new Google Sheet. Name it whatever you like.
+     2. Extensions → Apps Script. Delete whatever is in the editor.
+     3. Paste this whole file in. Save.
+     4. Deploy → New deployment → gear icon → Web app
+          Execute as:        Me (your address)
+          Who has access:    Anyone
+        Deploy, approve the permission prompt, and copy the Web app URL.
+        It looks like  https://script.google.com/macros/s/AKfy..../exec
+     5. Paste that URL into the IRR Calculator, Sold check tab, under
+        "Check RP Data directly". It is kept in that browser and nowhere else.
+
+   Changing this file later
+     Edit, save, then Deploy → Manage deployments → pencil →
+     Version: New version → Deploy. Use Manage deployments, NOT New
+     deployment: a new deployment gets a new URL and the old one keeps
+     serving the old code.
+
+   "Who has access: Anyone" is required — the request comes from
+   rpp.corelogic.com.au, not from a signed-in Google page, so it arrives
+   anonymous. It still runs as YOU and writes only to YOUR sheet. Treat the
+   URL as a secret: anyone holding it can append rows. If it ever leaks,
+   Deploy → Manage deployments → Archive, and make a new one.
+   ───────────────────────────────────────────────────────────────────────── */
+
+var TAB = 'RP Data check';
+
+var HEADERS = [
+  'Address',
+  'City',
+  'Purchase date',
+  'Purchase price',
+  'Sold date',
+  'Sold price',
+  'Status',
+  'On market',
+  'Last advertised',
+  'RP Data record',
+  'Checked at'
+];
+
+function make_(ss) {
+  var sh = ss.insertSheet(TAB);
+  sh.appendRow(HEADERS);
+  sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 280);
+  sh.getRange('D:D').setNumberFormat('$#,##0');
+  sh.getRange('F:F').setNumberFormat('$#,##0');
+  return sh;
+}
+
+function sheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(TAB);
+  if (!sh) return make_(ss);
+
+  /* A tab built by an older version of this file has fewer columns, and
+     appending ten values to a nine-column header puts every value one place
+     to the left of the name above it. That is worse than an error, because
+     it looks like data. So the header row is checked every time.
+
+     Empty of rows: rewrite the header in place.
+     Holding rows:  rename it out of the way and start a clean one. Nothing
+                    is deleted — the old run stays readable beside the new. */
+  var width = Math.max(sh.getLastColumn(), 1);
+  var head = sh.getRange(1, 1, 1, width).getValues()[0]
+               .map(function (h) { return String(h || '').trim(); });
+  if (head.join('|') === HEADERS.join('|')) return sh;
+
+  if (sh.getLastRow() < 2) {
+    sh.clear();
+    sh.appendRow(HEADERS);
+    sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1, 280);
+    sh.getRange('D:D').setNumberFormat('$#,##0');
+    sh.getRange('F:F').setNumberFormat('$#,##0');
+    return sh;
+  }
+  sh.setName(TAB + ' — before ' +
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'));
+  return make_(ss);
+}
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);                    // rows arrive one at a time; queue them
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var rows = payload.rows || [];
+    /* Only sent deliberately. A normal run appends and skips what is
+       already here, so stopping half way and clicking again resumes. */
+    if (payload.reset) {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var old = ss.getSheetByName(TAB);
+      if (old) ss.deleteSheet(old);
+    }
+    var sh = sheet_();
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      sh.appendRow([
+        r.address || '',
+        r.city || '',
+        r.purchased || '',
+        r.purchasePrice || '',
+        r.soldDate || '',
+        r.soldPrice || '',
+        r.status || '',
+        r.onMarket || '',
+        r.lastAd || '',
+        r.resolved || '',
+        new Date()
+      ]);
+      /* Sold outranks listed: a sale is settled, a listing is only a signal.
+         Red for one, amber for the other, nothing for the quiet ones. */
+      if (r.status === 'SOLD SINCE PURCHASE') {
+        sh.getRange(sh.getLastRow(), 1, 1, HEADERS.length)
+          .setBackground('#fde8e6').setFontWeight('bold');
+      } else if (r.onMarket) {
+        sh.getRange(sh.getLastRow(), 1, 1, HEADERS.length).setBackground('#fef7e0');
+      }
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, added: rows.length }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function json_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function fmt_(v) {                        // Date cells → "2026-09-18"
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return v === '' || v == null ? '' : String(v);
+}
+
+/* Plain /exec  →  a liveness check, and the sheet's own address. The IRR
+                   Calculator shows that as an "open the sheet" link, so the
+                   address never has to be written into a published page.
+   /exec?done=1 →  just the addresses already checked. The run asks for this
+                   first and skips them, so a half-finished run picks up where
+                   it stopped instead of starting the whole book again.
+   /exec?rows=1 →  everything in the tab, which is what the IRR Calculator
+                   reads so the sold properties come up for review there. */
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (!p.rows && !p.done) {
+    return json_({ ok: true, endpoint: 'rpdata held check', tab: TAB,
+                   sheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl() });
+  }
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TAB);
+  if (!sh || sh.getLastRow() < 2) {
+    return json_(p.done ? { ok: true, addresses: [], count: 0 }
+                        : { ok: true, rows: [], count: 0 });
+  }
+
+  /* Read the columns the sheet actually has, not the ones this file expects —
+     a tab created before "On market" existed is narrower, and asking for more
+     columns than exist throws. It self-heals on the next run, which rebuilds
+     the tab, but until then it still has to answer. */
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+               .map(function (h) { return String(h || '').trim(); });
+  var at = function (name) { return head.indexOf(name); };
+  var get = function (v, name) { var i = at(name); return i < 0 ? '' : v[i]; };
+
+  /* The resume question is only "which addresses are in here already", and
+     reading one column of 600 rows is a fraction of reading nine. */
+  if (p.done) {
+    var ci = at('Address');
+    if (ci < 0) return json_({ ok: true, addresses: [], count: 0 });
+    var col = sh.getRange(2, ci + 1, sh.getLastRow() - 1, 1).getValues()
+                .map(function (r) { return String(r[0] || '').trim(); })
+                .filter(function (s) { return s; });
+    return json_({ ok: true, addresses: col, count: col.length });
+  }
+
+  var values = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  var rows = values.map(function (v) {
+    return {
+      address:       fmt_(get(v, 'Address')),
+      city:          fmt_(get(v, 'City')),
+      purchased:     fmt_(get(v, 'Purchase date')),
+      purchasePrice: get(v, 'Purchase price'),
+      soldDate:      fmt_(get(v, 'Sold date')),
+      soldPrice:     get(v, 'Sold price'),
+      status:        fmt_(get(v, 'Status')),
+      onMarket:      fmt_(get(v, 'On market')),
+      lastAd:        fmt_(get(v, 'Last advertised')),
+      resolved:      fmt_(get(v, 'RP Data record')),
+      checkedAt:     fmt_(get(v, 'Checked at'))
+    };
+  });
+  return json_({ ok: true, rows: rows, count: rows.length });
+}
