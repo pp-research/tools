@@ -2163,22 +2163,105 @@ window.stopCheck=false;
 
   /* A search does not always land on a property. Where several properties
      share the address RP Data shows a results LIST instead — "Displaying 3 of
-     3 properties", a table, one row each. The run only ever waited for a
-     /property/ URL, so every one of those came back "did not open" when the
-     answer was sitting in front of it.
+     3 properties", one row each. The run only ever waited for a /property/
+     URL, so every one of those came back "did not open" when the answer was
+     sitting in front of it.
 
-     A row here is any table row that contains something shaped like an
-     address. Deliberately not tied to RP Data's class names, which are not
-     ours to depend on. */
-  function resultRows() {
-    return [...document.querySelectorAll('tr')].filter(tr => {
-      if (tr.querySelector('th')) return false;          // the header row
-      const t = (tr.innerText || '').replace(/\s+/g, ' ').trim();
-      return t && !!parts(t);
-    });
+     The first attempt at this looked for <tr>, which assumes the list is a
+     table. It still said "did not open", so that assumption was wrong — a
+     grid built out of divs has no rows to find. Nothing here now depends on
+     how the list is built: real rows if it is a table, ARIA rows or list
+     items if it is not, and failing both, the block around each link to a
+     property, which is the one thing a list of properties has to contain. */
+  function rowText(el) {
+    return (el.innerText || '').replace(/\s+/g, ' ').trim();
   }
-  function rowText(tr) {
-    return (tr.innerText || '').replace(/\s+/g, ' ').trim();
+  /* Positive evidence that this is a list OF properties rather than one of
+     them. A property page carries tables of its own — its sale history, the
+     sales nearby — and every one of those is full of addresses, so "there
+     are rows with addresses in them" is not enough on its own: it is also
+     true of the page we are standing on while the next one loads. */
+  function resultsPage() {
+    if (/\/property\//.test(location.pathname)) return false;
+    if (/(search|result|list)/i.test(location.pathname + location.search)) return true;
+    /* "Displaying 3 of 3 properties" is what the one we have seen says, but
+       a count of properties in any wording is the same evidence. */
+    const txt = (document.body.innerText || '').slice(0, 6000);
+    return /displaying\s+\d+\s+of\s+\d+/i.test(txt) ||
+           /\b\d+\s+propert(?:y|ies)\b/i.test(txt);
+  }
+  function blockOf(a) {
+    /* Up from the link to the smallest thing around it that reads as a whole
+       address — the row, by any other name. */
+    let n = a;
+    for (let i = 0; i < 5 && n && n !== document.body; i++, n = n.parentElement) {
+      if (/^(TR|LI)$/.test(n.tagName) ||
+          (n.getAttribute && n.getAttribute('role') === 'row')) return n;
+      if (parts(rowText(n))) return n;
+    }
+    return a;
+  }
+  function resultRows() {
+    const seen = [], out = [];
+    const add = el => {
+      if (!el || seen.indexOf(el) >= 0) return;
+      seen.push(el);
+      const t = rowText(el);
+      if (t && t.length < 800 && parts(t)) out.push(el);
+    };
+    [...document.querySelectorAll('tr,[role=row]')]
+      .filter(r => !r.querySelector('th,[role=columnheader]')).forEach(add);
+    if (!out.length) document.querySelectorAll('li').forEach(add);
+    if (!out.length) {
+      document.querySelectorAll('a[href*="/property/"]')
+        .forEach(a => add(blockOf(a)));
+    }
+    /* A row inside a row: keep the innermost, or a nested list hands back the
+       whole list as one of its own rows. */
+    return out.filter(el => !out.some(o => o !== el && el.contains(o)));
+  }
+  /* What the page is made of, in counts only — no address goes in the log.
+     Said out loud on a failure, because every guess so far about the shape of
+     this page has been wrong and a count settles it. */
+  function shape() {
+    const n = s => document.querySelectorAll(s).length;
+    return 'rows=' + resultRows().length +
+           ' tr=' + n('tr') + ' ariarow=' + n('[role=row]') + ' li=' + n('li') +
+           ' proplinks=' + n('a[href*="/property/"]') +
+           ' resultsPage=' + resultsPage();
+  }
+  /* Opening a row is not the same as clicking it. Which element listens is
+     not ours to know: it may be a link in the address cell, a handler on the
+     row, or one on the cell. So try them in turn, and give each one a few
+     seconds to answer before moving on.
+
+     pushState last, and only last. It changes the URL without asking the
+     page, so a router that is not listening leaves the old view on screen
+     under a new address — which is why this one is not believed until the
+     title changes too. */
+  async function openRow(row) {
+    const link = row.matches('a[href]') ? row : row.querySelector('a[href]');
+    const cell = row.querySelector('td,[role=gridcell],[role=cell]');
+    const tries = [];
+    if (link) tries.push(link);
+    tries.push(row);
+    if (cell && cell !== link && cell !== row) tries.push(cell);
+
+    for (let i = 0; i < tries.length; i++) {
+      clickOption(tries[i]);
+      if (await waitFor(() => /\/property\//.test(location.pathname), 6000)) return true;
+    }
+    const href = link && link.getAttribute('href');
+    if (href && /\/property\//.test(href)) {
+      const title = document.title;
+      try {
+        history.pushState({}, '', href);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+      } catch (e) { return false; }
+      return await waitFor(
+        () => /\/property\//.test(location.pathname) && document.title !== title, 8000);
+    }
+    return false;
   }
 
   /* A suggestion is a div with a role, and the thing that actually navigates is
@@ -2222,37 +2305,38 @@ window.stopCheck=false;
       step('clicking candidate ' + (attempt + 1) + ' of ' + curOrder.length);
       clickOption(cur[curOrder[attempt]]);
 
-      /* Either outcome is progress: the property itself, or a list of them. */
+      /* Either outcome is progress: the property itself, or a list of them.
+         The list is only believed where the page says it is one — see
+         resultsPage() — because a page of addresses is also what we are
+         standing on until the click takes effect. */
       const landed = await waitFor(() => {
         if (location.pathname !== before && /\/property\//.test(location.pathname)) return 'property';
-        if (resultRows().length > 1) return 'results';
+        if (resultsPage() && resultRows().length) return 'results';
         return null;
       }, 12000);
 
       if (landed === 'property') { moved = true; break; }
 
       if (landed === 'results') {
-        /* Several properties share this address. Pick ours out of the table
+        /* Several properties share this address. Pick ours out of the list
            rather than giving up — the answer is on screen. */
         const rows = resultRows();
         step(rows.length + ' results listed; looking for ours');
         const mine = rows.filter(tr => sameProperty(p.name, rowText(tr)));
         if (!mine.length) {
-          return { status: 'several results, none matched',
+          return { status: 'several results, none matched', shape: shape(),
                    offered: rows.slice(0, 3).map(rowText).join(' | ').slice(0, 200) };
         }
         /* Last, not first. Where the same address lists more than once the
            later row is the current title — the earlier ones are the history
            of the land it was subdivided from. */
-        clickOption(mine[mine.length - 1]);
-        moved = await waitFor(
-          () => /\/property\//.test(location.pathname), 12000);
-        if (moved) break;
-        return { status: 'result row would not open',
+        if (await openRow(mine[mine.length - 1])) { moved = true; break; }
+        return { status: 'result row would not open', shape: shape(),
                  offered: rowText(mine[mine.length - 1]).slice(0, 120) };
       }
     }
-    if (!moved) return { status: 'did not open', offered: offered[order[0]] };
+    if (!moved) return { status: 'did not open', shape: shape(),
+                         offered: offered[order[0]] };
 
     await waitFor(readLastSold, 9000);       // let the detail panel render
 
@@ -2390,7 +2474,8 @@ window.stopCheck=false;
         ' onPropertyPage=' + (location.pathname.indexOf('/property/') >= 0) +
         ' | ours parses=' + !!a + ' theirs parses=' + !!b +
         (a && b ? ' number=' + (a.number === b.number) +
-                  ' street=' + (b.all.indexOf(a.street) >= 0) : ''),
+                  ' street=' + (b.all.indexOf(a.street) >= 0) : '') +
+        (r.shape ? ' | ' + r.shape : ''),
         'color:#c0392b');
       (window.rpPeek = window.rpPeek || []).push(
         { asked: p.name, status: r.status, offered: r.offered || '' });
