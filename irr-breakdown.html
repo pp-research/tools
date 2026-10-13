@@ -1793,9 +1793,17 @@ window.stopCheck=false;
   /* An unsubstituted placeholder is not an address. Treated as one it
      would POST every row at nothing and report success. */
   const SHEET_URL = /^https:/.test(RAW_SHEET) ? RAW_SHEET : '';
-  const PAUSE     = 7000;         // ms between properties
-  const JITTER    = 2500;         // random extra, so the pace is not robotic
-  const LONG_REST = [20, 45000];  // every 20 properties, pause 45s
+  /* Slower than it was. A run that produced 9 "no match" out of 14 was not
+     unlucky — it was going too fast and RP Data stopped answering. A check
+     that takes twice as long and is right is cheaper than one that is quick
+     and has to be done again. */
+  const PAUSE     = 12000;        // ms between properties
+  const JITTER    = 4000;         // random extra, so the pace is not robotic
+  const LONG_REST = [15, 90000];  // every 15 properties, pause 90s
+  /* If it stops answering, stop asking. Grinding through 600 properties
+     writing "no match" to all of them is worse than stopping at 8: it fills
+     the sheet with rows that look like answers. */
+  const GIVE_UP_AFTER = 8;        // consecutive failures
 
   /* ── 1. the register ────────────────────────────────────────────────── */
   const cfgSrc = await fetch('https://pp-research.github.io/tools/supabase-config.js')
@@ -1961,6 +1969,45 @@ window.stopCheck=false;
   }
 
   /* ── 4. one property ────────────────────────────────────────────────── */
+  /* ── is this the right property? ─────────────────────────────────────────
+     RP Data's first suggestion is not necessarily the one you asked for. It
+     offers near misses, it sometimes still shows the previous query's list for
+     a moment, and clicking [0] without looking opens whatever happens to be
+     there. Writing a neighbour's sale price onto a client's record is the one
+     failure here that is worse than no answer at all, so every step is
+     checked against the address we actually wanted. */
+  function parts(s) {
+    const t = String(s || '').toLowerCase()
+      .replace(/[^a-z0-9/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    /* "3/22 example road" and "22 example road" both have street number 22 —
+       a unit prefix is extra information, not a different property. */
+    const m = t.match(/^(?:([0-9a-z]+)\s*\/\s*)?(\d+[a-z]?)\s+(.*)$/);
+    if (!m) return null;
+    const rest = m[3].split(' ').filter(Boolean);
+    return { unit: m[1] || '', number: m[2], street: rest[0] || '', words: rest };
+  }
+  /* Same street number, same street name, and the suburb somewhere in it.
+     Conservative on purpose: a near miss is reported, never guessed at. */
+  function sameProperty(want, got) {
+    const a = parts(want), b = parts(got);
+    if (!a || !b) return false;
+    if (a.number !== b.number) return false;
+    if (a.street.length > 2 && a.street !== b.street) return false;
+    /* the suburb is the word after the street type in the register entry;
+       looking for any of our later words in theirs is enough to catch a
+       same-numbered street in a different suburb */
+    const theirs = b.words.join(' ');
+    const suburbish = a.words.slice(2).filter(w => w.length > 3);
+    if (suburbish.length && !suburbish.some(w => theirs.indexOf(w) >= 0)) return false;
+    return true;
+  }
+  /* The address RP Data thinks it is showing, off the top of the page. */
+  function pageAddress() {
+    const t = document.body.innerText.replace(/\n{2,}/g, '\n');
+    const cut = t.indexOf('Copy');
+    return (cut > 0 ? t.slice(0, cut) : t.slice(0, 300))
+      .split('\n').map(s => s.trim()).filter(Boolean).slice(-3).join(' ');
+  }
   /* Type it and wait for the suggestion list. Twice, because once is not
      evidence: a slow response, a moment of throttling or a re-render that
      swallowed the keystrokes all look exactly like "this address does not
@@ -1987,15 +2034,34 @@ window.stopCheck=false;
     }
     if (!opts) return { status: 'no match in RP Data' };
 
+    /* Not opts[0]. The one that is actually this address, if it is offered at
+       all. A list that holds nothing matching is a list for a different query
+       — usually the previous one, still on screen. */
+    const offered = opts.map(o => (o.innerText || '').replace(/\s+/g, ' ').trim());
+    const i = offered.findIndex(t => sameProperty(p.name, t));
+    if (i < 0) {
+      return { status: 'no confident match', offered: offered.slice(0, 3).join(' | ') };
+    }
+
     const before = location.pathname;
-    opts[0].click();
+    opts[i].click();
 
     const moved = await waitFor(
       () => location.pathname !== before && /\/property\//.test(location.pathname),
       12000);
-    if (!moved) return { status: 'did not open', resolved: opts[0].innerText.trim() };
+    if (!moved) return { status: 'did not open', offered: offered[i] };
 
     await waitFor(readLastSold, 9000);       // let the detail panel render
+
+    /* Checked again on the page itself, because the suggestion and the page it
+       opens are two different things and only the second one has the sale. */
+    const onPage = pageAddress();
+    if (onPage && !sameProperty(p.name, onPage)) {
+      return { status: 'opened a different property',
+               resolved: location.origin + location.pathname,
+               offered: onPage.slice(0, 80) };
+    }
+
     const sale = readLastSold();
     /* The whole address, not the slug out of the middle of it. A column of
        slugs is a column you cannot click. */
@@ -2022,6 +2088,7 @@ window.stopCheck=false;
 
   /* ── 5. the run ─────────────────────────────────────────────────────── */
   const results = [];
+  let misses = 0;
   for (let i = 0; i < held.length; i++) {
     if (window.stopCheck) { console.warn('stopped at', i, 'of', held.length); break; }
     const p = held[i];
@@ -2033,12 +2100,15 @@ window.stopCheck=false;
     r.city          = (p.category || '').trim();
     r.source        = 'RP Data';
     r.who           = WHO;
+    r.offered       = r.offered || '';
     r.lookup        = r.resolved ? ''
                     : 'https://www.pricefinder.com.au/search?q=' + encodeURIComponent(p.name);
     r.purchased     = p.purchaseDate || '';
     r.purchasePrice = p.purchasePrice || '';
     results.push(r);
 
+    /* consecutive failures, reset by any property that actually answered */
+    if (/still held|SOLD SINCE PURCHASE/.test(r.status)) misses = 0; else misses++;
     const hit = r.status === 'SOLD SINCE PURCHASE';
     console.log(`%c${i + 1}/${held.length}  ${p.name}  —  ${r.status}` +
       (r.soldDate ? `  (sold ${r.soldDate} $${r.soldPrice.toLocaleString()})` : '') +
@@ -2048,6 +2118,14 @@ window.stopCheck=false;
 
     await send([r]);
     window.rpResults = results;              // readable while it runs
+
+    if (misses >= GIVE_UP_AFTER) {
+      console.error(`%cStopped: ${GIVE_UP_AFTER} in a row came back with no answer. ` +
+        'That is RP Data not responding, not those properties. Leave it a while, ' +
+        'then click the bookmark again — it carries on from here and the ones ' +
+        'it could not settle are asked again.', 'font-weight:bold;font-size:13px');
+      break;
+    }
 
     if (i < held.length - 1) {
       const rest = (i + 1) % LONG_REST[0] === 0 ? LONG_REST[1] : 0;
@@ -2079,9 +2157,9 @@ window.stopCheck=false;
   if (SHEET_URL) { console.log('All rows sent to your sheet.'); return; }
 
   /* ── 7. no sheet configured: CSV + clipboard ────────────────────────── */
-  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','source','who','onMarket','lastAd','resolved','lookup'];
+  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','source','who','onMarket','lastAd','resolved','offered','lookup'];
   const HEAD = ['Address','City','Purchase date','Purchase price','Sold date','Sold price','Status',
-                'Source','Checked by','On market','Last advertised','Property link','Look up'];
+                'Source','Checked by','On market','Last advertised','Property link','What RP Data offered','Look up'];
   const cell = r => COLS.map(c => r[c] === undefined ? '' : r[c]);
 
   const csv = [HEAD.join(',')].concat(results.map(r =>
