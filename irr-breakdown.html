@@ -1844,20 +1844,96 @@ window.stopCheck=false;
   /* Matched on the address exactly as the register spells it, which is also
      exactly what was written. No tidying, so no chance of a near-match
      quietly skipping a property that was never actually checked. */
-  let done = new Set();
+  /* Two different kinds of "leave it alone".
+
+     ANSWERED is permanent: the property settled, and it is not asked again
+     until something changes.
+
+     ASKED TODAY is for the rest of the day only. A property that came back
+     "no match in RP Data" or "did not open" is deliberately not treated as
+     answered — a blip must not freeze itself in — but asking it again twenty
+     minutes later gets the same answer and costs the same twelve seconds, and
+     with a few dozen of them that is the whole evening. So within the same
+     day it is skipped, and tomorrow it is asked again.
+
+     The sheet stamps every row with the day it was written, so this is read
+     from what is already there — nothing new to record, and nothing to
+     deploy. Both sets are from the RP Data tab alone: what Pricefinder could
+     or could not do is its own pass's business. */
+  /* ── asked today, as this browser remembers it ──────────────────────────
+     The sheet stamps each row with the day it was written, and that stamp is
+     in the SCRIPT's timezone, not this browser's. They agree today — both
+     GMT+8 — but a rule that only works while two clocks agree is a rule
+     waiting to stop working, and "same day" is a question this browser can
+     answer by itself.
+
+     So it keeps its own note: a property asked and not answered, and when.
+     Twelve hours later it has expired and the property is asked again, which
+     is the behaviour that matters — a blip must not freeze itself in
+     permanently. The note also survives the page reloading, which is the
+     case the sheet cannot help with: a row is only written once a property
+     has an answer, so one interrupted half way is in neither place.
+
+     Addresses are not what is written down. This is RP Data's own origin, and
+     a list of her clients' addresses is not something to leave sitting in
+     another company's local storage; a hash is enough to recognise one we
+     already asked about. */
+  const ASKED = 'rpAskedUnanswered';
+  function key_(s) {
+    let h = 7;
+    for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 4294967296;
+    return 'a' + h.toString(36);
+  }
+  function loadAsked() {
+    try {
+      const o = JSON.parse(localStorage.getItem(ASKED) || '{}');
+      const cut = Date.now() - 12 * 3600e3;
+      const out = {};
+      Object.keys(o).forEach(k => { if (o[k] > cut) out[k] = o[k]; });
+      return out;
+    } catch (e) { return {}; }
+  }
+  function noteAsked(addr, answered) {
+    try {
+      const o = loadAsked();
+      if (answered) delete o[key_(addr)]; else o[key_(addr)] = Date.now();
+      localStorage.setItem(ASKED, JSON.stringify(o));
+    } catch (e) {}
+  }
+  const askedBefore = loadAsked();
+
+  let done = new Set(), askedToday = new Set();
   if (SHEET_URL) {
     try {
       const d = await withTimeout(
-        fetch(SHEET_URL + (SHEET_URL.includes('?') ? '&' : '?') + 'done=1').then(r => r.json()),
-        20000, 'asking the sheet what is already done');
-      (d && d.addresses || []).forEach(a => done.add(a));
+        fetch(SHEET_URL + (SHEET_URL.includes('?') ? '&' : '?') + 'rows=1').then(r => r.json()),
+        20000, 'asking the sheet what it already has');
+      const now = new Date();
+      const today = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+      ((d && d.rows) || []).forEach(r => {
+        if (!r.address || !/^RP Data/.test(r.source || '')) return;
+        if (/still held|SOLD SINCE PURCHASE/.test(r.status || '')) done.add(r.address);
+        else if (String(r.checkedAt || '').slice(0, 10) === today) askedToday.add(r.address);
+      });
     } catch (e) {
       console.warn('Could not ask the sheet what it already has, so this is a ' +
                    'full run: ' + e.message);
     }
   }
-  const held = all.filter(p => !done.has(p.name));
-  const skipped = all.length - held.length;
+  /* Whichever of the two noticed it. The sheet's set reaches across browsers
+     and machines; the browser's own reaches across midnight. */
+  all.forEach(p => { if (askedBefore[key_(p.name)]) askedToday.add(p.name); });
+
+  /* One way to override it, said out loud below: ask for them anyway. */
+  if (window.rpAskAgain) {
+    askedToday = new Set();
+    try { localStorage.removeItem(ASKED); } catch (e) {}
+  }
+  const held = all.filter(p => !done.has(p.name) && !askedToday.has(p.name));
+  const skipped = done.size ? all.filter(p => done.has(p.name)).length : 0;
+  const retried = all.filter(p => askedToday.has(p.name)).length;
 
   if (!held.length) {
     console.log('%cNothing left to check — all ' + all.length +
@@ -1868,9 +1944,14 @@ window.stopCheck=false;
   }
   console.log(`%c${held.length} propert${held.length === 1 ? 'y' : 'ies'} to check` +
     (CITY ? ` in ${CITY}` : ' across every capital') +
-    (skipped ? ` — ${skipped} already in the sheet, skipped` : '') +
+    (skipped ? ` — ${skipped} already answered` : '') +
+    (retried ? ` — ${retried} asked today and still unanswered, left for tomorrow` : '') +
     (SHEET_URL ? ' — writing to your Google Sheet' : ' — CSV at the end'),
     'font-weight:bold;font-size:13px');
+  if (retried) {
+    console.log(`To ask those ${retried} again now rather than tomorrow, run ` +
+      ` rpAskAgain = true  and click the bookmark again.`);
+  }
   console.log(`About ${Math.round(held.length * 9.5 / 60)} minutes. ` +
     'Keep this tab in front. Stop any time with  stopCheck = true  — ' +
     'clicking the bookmark again carries on from where it stopped.');
@@ -2658,6 +2739,9 @@ window.stopCheck=false;
           : r.onMarket ? 'color:#b9770e' : 'color:#888');
 
     narrate = false;
+    /* Settled: forget it was ever a problem. Not settled: remember, so the
+       next click today carries on past it instead of starting again. */
+    noteAsked(p.name, /still held|SOLD SINCE PURCHASE/.test(r.status));
     await send([r]);
     window.rpResults = results;              // readable while it runs
 
