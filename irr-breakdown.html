@@ -2188,6 +2188,35 @@ window.stopCheck=false;
   }
 
   /* ── 5. the run ─────────────────────────────────────────────────────── */
+  /* ── keep the screen on ──────────────────────────────────────────────────
+     A run is an hour or more with nobody touching the keyboard, and when the
+     screen sleeps it takes the tab with it: the run stops dead part way and
+     every wait that was in flight expires. Chrome will hold the screen awake
+     if asked, so ask — scoped to this run, released when it finishes, rather
+     than changing anything about the machine.
+
+     The lock is dropped automatically whenever the tab is hidden, so it is
+     taken again on the way back. */
+  let wake = null;
+  async function holdScreen() {
+    if (!navigator.wakeLock) return false;
+    try {
+      wake = await navigator.wakeLock.request('screen');
+      return true;
+    } catch (e) {
+      return false;                 // not permitted, or no display to lock
+    }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && (!wake || wake.released)) holdScreen();
+  });
+  const screenHeld = await holdScreen();
+  console.log(screenHeld
+    ? 'Screen will stay on until this finishes.'
+    : 'Could not hold the screen awake — set Windows to never sleep, or it ' +
+      'will stop part way. Settings → System → Power & battery → ' +
+      'Screen and sleep.');
+
   const results = [];
   let misses = 0;
   let peeked = 0;          // how many shape reports have been logged
@@ -2285,6 +2314,9 @@ window.stopCheck=false;
       await sleep(PAUSE + Math.random() * JITTER + rest);
     }
   }
+
+  /* The screen is ours no longer. */
+  if (wake && !wake.released) { try { await wake.release(); } catch (e) {} }
 
   /* ── 6. what came back ──────────────────────────────────────────────── */
   const sold    = results.filter(r => r.status === 'SOLD SINCE PURCHASE');
