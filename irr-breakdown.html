@@ -1692,12 +1692,23 @@ window.stopCheck=false;
     if (!sale) return { status: 'no sale on record', resolved, raw: sample() };
 
     const bought = p.purchased ? new Date(p.purchased) : null;
+    const since = !!(sale.date && bought && sale.date > bought);
+
+    /* The same correction as the RP Data pass: the last sale on a property
+       she still owns is her own purchase of it, and it does not belong in the
+       Sold columns. See the note there. */
+    const paid = Number(String(p.purchasePrice || '').replace(/[^0-9.]/g, ''));
+    const agrees = !!(sale.date && bought &&
+      (Math.abs(sale.date - bought) < 180 * 864e5 ||
+       (paid && sale.price && Math.abs(sale.price - paid) < 0.02 * sale.price)));
+
     return {
-      status: !bought              ? 'no purchase date on file'
-            : (sale.date > bought) ? 'SOLD SINCE PURCHASE'
-                                   : 'still held',
-      soldDate: iso(sale.date),
-      soldPrice: sale.price,
+      status: !bought ? 'no purchase date on file'
+            : since   ? 'SOLD SINCE PURCHASE'
+            : agrees  ? 'still held'
+                      : 'still held — last sale predates the purchase',
+      soldDate:  (since || !bought) ? iso(sale.date) : '',
+      soldPrice: (since || !bought) ? sale.price     : '',
       resolved
     };
   }
@@ -1753,7 +1764,7 @@ window.stopCheck=false;
 
   /* ── 6. what came back ──────────────────────────────────────────────── */
   const sold  = results.filter(r => r.status === 'SOLD SINCE PURCHASE');
-  const still = results.filter(r => r.status === 'still held');
+  const still = results.filter(r => /^still held/.test(r.status));
   const open  = results.length - sold.length - still.length;
   console.log(`%c\nchecked ${results.length} · ${sold.length} sold since purchase · ` +
     `${still.length} still held · ${open} Pricefinder could not answer either`,
@@ -1976,6 +1987,45 @@ window.stopCheck=false;
     return d ? d.getFullYear() + '-' +
       String(d.getMonth() + 1).padStart(2, '0') + '-' +
       String(d.getDate()).padStart(2, '0') : '';
+  }
+
+  /* The verdict on one property, given the last sale RP Data has for it.
+
+     Kept out of the page-reading so it can be tested on its own, which is how
+     the Sold columns got fixed: a property she still owns has a last sale on
+     record — her own purchase of it — and that was being written into Sold
+     date and Sold price anyway. A held property therefore read at a glance as
+     a sold one, sold on a date before the purchase it was supposed to have
+     followed. Those two columns now carry a sale AFTER the purchase and
+     nothing else.
+
+     Which leaves the earlier sale, and it is worth a word rather than
+     nothing. Where it IS the purchase on file — the same few months, or the
+     same money — RP Data and the record agree, and that is quiet confirmation
+     this was the right property. Where it is older than that, RP Data has no
+     record of the purchase at all: either the transfer has not reached them
+     yet, or this is not the lot we think it is. Same verdict either way, so
+     the status carries the difference in confidence instead. */
+  function soldVerdict(sale, sold, bought, purchasePrice) {
+    const since = !!(sold && bought && sold > bought);
+    const paid = Number(String(purchasePrice || '').replace(/[^0-9.]/g, ''));
+    /* Four months either way on the date, because a contract date and a
+       settlement date are both "the purchase" and they are not the same day;
+       or the money, to the nearest two per cent, which settles it on its own. */
+    const agrees = !!(sold && bought &&
+      (Math.abs(sold - bought) < 180 * 864e5 ||
+       (paid && sale.price && Math.abs(sale.price - paid) < 0.02 * sale.price)));
+    return {
+      status: !bought ? 'no purchase date on file'
+            : since   ? 'SOLD SINCE PURCHASE'
+            : agrees  ? 'still held'
+                      : 'still held — last sale predates the purchase',
+      /* No purchase date on file is the one case where the sale goes in
+         regardless: there is nothing to judge it against, so what RP Data
+         says is the whole of the answer. */
+      soldDate:  (since || !bought) ? iso(sold)  : '',
+      soldPrice: (since || !bought) ? sale.price : ''
+    };
   }
 
   /* ── 4. one property ────────────────────────────────────────────────── */
@@ -2365,12 +2415,26 @@ window.stopCheck=false;
     const sold = asDate(sale.date);
     const bought = p.purchaseDate ? new Date(p.purchaseDate) : null;
 
+    /* A property she still owns has a last sale on record: her own purchase
+       of it. That went into the Sold date and Sold price columns anyway, so a
+       held property read at a glance as a sold one — and read as sold on a
+       date before the purchase it was supposed to have followed. Those two
+       columns now carry a sale AFTER the purchase and nothing else.
+
+       Which leaves the earlier sale, and it is worth a word rather than
+       nothing. Where it IS the purchase on file — the same few months, or the
+       same money — RP Data and the record agree, and that is quiet
+       confirmation this was the right property. Where it is older than that,
+       RP Data has no record of the purchase at all, and that is worth
+       knowing: either the transfer has not reached them yet or this is not
+       the lot we think it is. Same verdict either way; different confidence
+       in it, so the status says which. */
+    const v = soldVerdict(sale, sold, bought, p.purchasePrice);
+
     return {
-      status: !bought              ? 'no purchase date on file'
-            : (sold && sold > bought) ? 'SOLD SINCE PURCHASE'
-                                    : 'still held',
-      soldDate: iso(sold),
-      soldPrice: sale.price,
+      status: v.status,
+      soldDate: v.soldDate,
+      soldPrice: v.soldPrice,
       onMarket: mkt.onMarket,
       lastAd: mkt.lastAd,
       resolved
