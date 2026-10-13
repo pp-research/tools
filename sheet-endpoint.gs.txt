@@ -196,6 +196,18 @@ function doGet(e) {
   /* One tab, read once, as {header: value} objects. Reading by header name
      and not by position is what lets a tab written by an older version of
      this file still answer. */
+  /* Rows are appended, never updated, so a retry leaves two rows for one
+     address. The later one is the answer — it is what the retry found. */
+  function latestPerAddress_(rows) {
+    var seen = {}, out = [];
+    for (var i = rows.length - 1; i >= 0; i--) {
+      var a = rows[i].address;
+      if (!a || seen[a]) continue;
+      seen[a] = 1;
+      out.unshift(rows[i]);
+    }
+    return out;
+  }
   function read_(name) {
     var sh = ss.getSheetByName(name);
     if (!sh || sh.getLastRow() < 2) return [];
@@ -203,7 +215,7 @@ function doGet(e) {
                  .map(function (h) { return String(h || '').trim(); });
     var at = function (n) { return head.indexOf(n); };
     var get = function (v, n) { var i = at(n); return i < 0 ? '' : v[i]; };
-    return sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues()
+    var rows = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues()
       .map(function (v) {
         return {
           address:       fmt_(get(v, 'Address')),
@@ -224,6 +236,7 @@ function doGet(e) {
                          (name === TAB2 ? 'Pricefinder' : 'RP Data')
         };
       });
+    return latestPerAddress_(rows);
   }
 
   /* Resume only from a tab this version of the file wrote. One left over from
@@ -237,9 +250,14 @@ function doGet(e) {
                 .map(function (x) { return String(x || '').trim(); }).join('|');
       if (h !== HEADERS.join('|')) return json_({ ok: true, addresses: [], count: 0, stale: true });
     }
+    /* Only rows that actually settled. "no match in RP Data" and friends are
+       not verdicts about a property — they mean the suggestion list never
+       appeared, or the page never opened. Counting those as done froze a
+       one-off blip in permanently: the next run skipped the address and it
+       was never asked again. They are retried instead. */
     var mine = read_(tabName_(p.tab))
-      .map(function (r) { return r.address; })
-      .filter(function (s) { return s; });
+      .filter(function (r) { return r.address && resolved_(r.status); })
+      .map(function (r) { return r.address; });
     return json_({ ok: true, addresses: mine, count: mine.length });
   }
 
