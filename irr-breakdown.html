@@ -1979,6 +1979,41 @@ window.stopCheck=false;
      Nothing RP Data produces looks like that — its suggestions and its page
      text carry labels, icons and line breaks around the address — so every
      property failed. The address is now looked for ANYWHERE in the text. */
+  /* Street types, with the short forms the register and RP Data each use.
+     "22 Park Road" and "22 Park Street" are different properties, and until
+     now they matched: only the street NAME was compared. */
+  const ST_TYPE = {
+    st:'street', street:'street', rd:'road', road:'road',
+    av:'avenue', ave:'avenue', avenue:'avenue', dr:'drive', drv:'drive', drive:'drive',
+    ct:'court', crt:'court', court:'court', pl:'place', place:'place',
+    tce:'terrace', terrace:'terrace', ln:'lane', lane:'lane',
+    cl:'close', close:'close', cr:'crescent', cres:'crescent', crescent:'crescent',
+    pde:'parade', parade:'parade', wy:'way', way:'way',
+    gr:'grove', grv:'grove', grove:'grove', rise:'rise', view:'view',
+    bvd:'boulevard', blvd:'boulevard', boulevard:'boulevard',
+    hwy:'highway', highway:'highway', cct:'circuit', circuit:'circuit',
+    esp:'esplanade', esplanade:'esplanade', sq:'square', square:'square',
+    mews:'mews', walk:'walk', row:'row', loop:'loop', link:'link'
+  };
+  /* Every type word in the text, not just one. "St Andrews Road" legitimately
+     contains two — "st" from the name and "road" from the type — and picking
+     one of them by position gets it wrong either way round. Comparing the sets
+     and asking only that they overlap keeps that case working while still
+     separating Road from Street. */
+  function streetTypes(t, nameToken) {
+    const out = [];
+    let skipped = false;
+    t.split(' ').forEach(w => {
+      /* The word straight after the house number is the street NAME, so it
+         is never the type — "22 St Andrews Road" is a Road, not a Street.
+         Skipping it once is what separates that from a genuine Road/Street
+         disagreement. */
+      if (!skipped && nameToken && w === nameToken) { skipped = true; return; }
+      const k = ST_TYPE[w];
+      if (k && out.indexOf(k) < 0) out.push(k);
+    });
+    return out;
+  }
   function parts(s) {
     const t = String(s || '').toLowerCase()
       .replace(/[^a-z0-9/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -2002,6 +2037,10 @@ window.stopCheck=false;
     if (!a || !b) return -1;
     if (a.number !== b.number) return -1;
     if (a.street.length > 2 && b.all.indexOf(a.street) < 0) return -1;
+    /* Only when both say what kind of street it is. One of them leaving it
+       out is not a disagreement. */
+    const at = streetTypes(a.all, a.street), bt = streetTypes(b.all, b.street);
+    if (at.length && bt.length && !at.some(x => bt.indexOf(x) >= 0)) return -1;
     if (a.unit) {
       /* We asked about one home in a block. The block itself is not it, and
          neither is somebody else's unit. */
