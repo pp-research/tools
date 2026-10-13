@@ -1988,20 +1988,48 @@ window.stopCheck=false;
     if (!m) return null;
     return { unit: m[1] || '', number: m[2], street: m[3], all: t };
   }
-  /* Street number and street name must agree. `strict` also wants the suburb,
-     which is reliable in a suggestion (we searched for it) but not on a page,
-     where the address may be the only thing near the heading. */
-  function sameProperty(want, got, strict) {
+  /* How well a suggestion answers the address we asked about. -1 is "not this
+     property"; higher is better.
+
+     The unit is the point. Search a unit address and RP Data offers the
+     building and the homes inside it under one street number — "422 Example
+     Street" and "1/422" and "8/422" all come back, and the one you want is not
+     reliably first. Ignoring the unit, every one of them looked like a match,
+     so the building got clicked; the building has no property page, which is
+     why these came back "did not open". */
+  function score(want, got) {
     const a = parts(want), b = parts(got);
-    if (!a || !b) return false;
-    if (a.number !== b.number) return false;
-    if (a.street.length > 2 && b.all.indexOf(a.street) < 0) return false;
-    if (strict) {
-      const suburbish = a.all.split(' ').slice(2)
-        .filter(w => w.length > 3 && !/^(street|road|avenue|drive|court|place|terrace|lane|close|crescent|parade|way|grove|rise|view)$/.test(w));
-      if (suburbish.length && !suburbish.some(w => b.all.indexOf(w) >= 0)) return false;
+    if (!a || !b) return -1;
+    if (a.number !== b.number) return -1;
+    if (a.street.length > 2 && b.all.indexOf(a.street) < 0) return -1;
+    if (a.unit) {
+      /* We asked about one home in a block. The block itself is not it, and
+         neither is somebody else's unit. */
+      if (!b.unit || a.unit !== b.unit) return -1;
+      return 3;
     }
+    /* No unit on our record. A plain street address is the better answer, but
+       a single unit at that number is often the same place recorded two ways,
+       so it stays eligible — just ranked below. */
+    return b.unit ? 1 : 2;
+  }
+  function sameProperty(want, got, strict) {
+    if (score(want, got) < 0) return false;
+    if (!strict) return true;
+    const a = parts(want), b = parts(got);
+    const suburbish = a.all.split(' ').slice(2)
+      .filter(w => w.length > 3 && !/^(street|road|avenue|drive|court|place|terrace|lane|close|crescent|parade|way|grove|rise|view)$/.test(w));
+    if (suburbish.length && !suburbish.some(w => b.all.indexOf(w) >= 0)) return false;
     return true;
+  }
+  /* Best first, so a failure to open can fall through to the next real
+     candidate instead of giving up on the property. */
+  function rank(want, offered) {
+    return offered
+      .map((t, idx) => ({ idx, s: sameProperty(want, t, true) ? score(want, t) : -1 }))
+      .filter(x => x.s >= 0)
+      .sort((x, y) => y.s - x.s)
+      .map(x => x.idx);
   }
   /* What the page says it is showing. The tab title is the dependable one —
      scraping the heading out of innerText depends on where the nav ends, which
@@ -2069,19 +2097,27 @@ window.stopCheck=false;
        all. A list that holds nothing matching is a list for a different query
        — usually the previous one, still on screen. */
     const offered = opts.map(o => (o.innerText || '').replace(/\s+/g, ' ').trim());
-    const i = offered.findIndex(t => sameProperty(p.name, t, true));
-
-    if (i < 0) {
+    const order = rank(p.name, offered);
+    if (!order.length) {
       return { status: 'no confident match', offered: offered.slice(0, 3).join(' | ') };
     }
 
-    const before = location.pathname;
-    opts[i].click();
-
-    const moved = await waitFor(
-      () => location.pathname !== before && /\/property\//.test(location.pathname),
-      12000);
-    if (!moved) return { status: 'did not open', offered: offered[i] };
+    /* Best candidate first, then the next. One that will not open is usually
+       the building rather than the home, and the home is the one after it. */
+    let moved = null, used = -1;
+    for (const idx of order.slice(0, 3)) {
+      const before = location.pathname;
+      opts[idx].click();
+      moved = await waitFor(
+        () => location.pathname !== before && /\/property\//.test(location.pathname),
+        12000);
+      if (moved) { used = idx; break; }
+      /* it did not open — put the list back and try the next one */
+      const again = await suggest(box, p.name, 8000);
+      if (!again) break;
+      opts = again;
+    }
+    if (!moved) return { status: 'did not open', offered: offered[order[0]] };
 
     await waitFor(readLastSold, 9000);       // let the detail panel render
 
