@@ -398,17 +398,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 @media (min-width:1024px){ .chk-grid{grid-template-columns:minmax(0,1fr) minmax(0,240px);align-items:start} }
 /* the how-to: a numbered list that can carry status chips inline without the
    chips knocking the line spacing about */
-#chkHelpDialog h3{margin:var(--sp-6) 0 0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text)}
-#chkHelpDialog h3:first-of-type{margin-top:var(--sp-4)}
-#chkHelpDialog > .modal-inner > .modal-body > p{font-size:13px;line-height:20px}
-.howto{margin:var(--sp-3) 0 0;padding-left:20px;font-size:13px;line-height:20px;color:var(--muted)}
-.howto > li{margin-bottom:var(--sp-3)}
-.howto > li:last-child{margin-bottom:0}
-.howto strong{color:var(--text)}
-.howto em{font-style:normal;color:var(--text);font-weight:600}
-.howto ul{margin:var(--sp-2) 0 0;padding-left:0;list-style:none}
-.howto ul li{display:flex;gap:var(--sp-2);align-items:baseline;margin-bottom:5px}
-.howto ul li .st{flex:none}
 .colsel{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-3);margin-top:var(--sp-3)}
 .colsel label{display:block;font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .colsel select{margin-top:4px;width:100%}
@@ -435,9 +424,21 @@ button:disabled{opacity:.45;cursor:not-allowed}
    wraps it mid-token and makes a typo impossible to spot */
 #chkBm input{font:500 12px/18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:38px;padding:8px 10px}
 #chkBm select{min-height:38px;padding:8px 38px 8px 10px;font-size:13px}
-/* nothing else on the page links out, so the one link that does has to say
-   so for itself */
-#chkBm .hint a{color:var(--accent-300);text-decoration:underline}
+/* nothing else on the page links out, so the links that do have to say so
+   for themselves */
+#chkBm .hint a, #chkBm .bm-steps a{color:var(--accent-300);text-decoration:underline}
+/* The instructions sit on the page rather than behind a summary, so they
+   need the reading styles a <details> body used to give them. */
+#chkBm{border-top:1px solid var(--border);padding-top:var(--sp-4);margin-top:var(--sp-4)}
+#chkBm[hidden]{display:none}
+#chkBm > p, #chkBmPf > p{font-size:13px;line-height:20px;color:var(--muted);margin-bottom:var(--sp-3);max-width:90ch}
+#chkBm strong{color:var(--text)}
+#chkBm em{font-style:normal;color:var(--text);font-weight:600}
+#chkBm code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+#chkBm > h3:first-of-type{margin-top:var(--sp-4)}
+#chkBm .note{margin-bottom:var(--sp-3)}
+#chkBm #bmSheetLine{margin:0 0 var(--sp-3)}
+#chkBm #bmSheetLine a{color:var(--accent-300);text-decoration:underline}
 /* The window's own prose and controls need room between them: a paragraph
    whose last line touches the next field reads as one run-on block. */
 #addPurchased > h3, #addSold > h3{margin:0 0 var(--sp-2)}
@@ -1065,104 +1066,103 @@ details .body strong{color:var(--text)}
                 <!-- Only appears once this browser knows where the sheet is.
                      The address is a capability, so it is never in this file. -->
                 <button type="button" class="btn-primary btn-sm" id="btnChkSheet" hidden>From Google Sheet</button>
-                <button type="button" class="btn-ghost btn-sm" id="btnChkHelp">How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
             </div>
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
-            <!-- ══════════ RP DATA BOOKMARKLET ══════════
+            <!-- ══════════ THE TWO BOOKMARKLETS ══════════
+                 On the page, not behind a summary: this is how the tab is
+                 used, and an instruction you have to open is one you read
+                 once and then stop seeing.
+
                  Shown only to someone signed in. It reads the whole register
-                 and drives a licensed RP Data account; it is a job the team
-                 does, not a feature a reader is offered.
+                 and drives a licensed account; it is a job the team does, not
+                 a feature a reader is offered.
 
-                 The javascript: URL is assembled in the browser by buildBm().
-                 It is never written into this file, because it carries that
-                 browser's own Google Sheet address — a capability anyone
-                 holding it can write to — and this file is public. The same
-                 goes for the link to the sheet itself. -->
-            <details id="chkBm" hidden>
-              <summary>Check RP Data directly — the bookmarklet</summary>
-              <div class="body">
-                <p>One button checks <strong>every held property in the book</strong>,
-                   whatever capital it is in. For each one it types the address into
-                   RP Data's own search box, opens the property, and reads the last
-                   sale and the listing status. <strong>A last sale newer than your
-                   purchase is the signal</strong> — it has changed hands since you
-                   bought it.</p>
-                <p>It runs in <em>your</em> browser on <em>your</em> RP Data sign-in,
-                   about eight seconds a property, and writes each row to the sheet
-                   as it finds it. <strong>It resumes</strong>: stop whenever you
-                   like and click it again later, and it carries on from where it
-                   stopped rather than starting the book again.</p>
+                 The javascript: URLs are assembled in the browser by
+                 buildBm(). They are never written into this file, because
+                 they carry that browser's own Google Sheet address — a
+                 capability anyone holding it can write to — and this file is
+                 public. Same for the link to the sheet itself. -->
+            <div id="chkBm" hidden>
 
-                <ol class="bm-steps">
-                  <li>Show the bookmarks bar if it is hidden — <code>Ctrl+Shift+B</code>.</li>
-                  <li><strong>Drag the button below onto it.</strong> Dragging,
-                      not clicking — clicking it here does nothing, this page is not
-                      RP Data.</li>
-                  <li>Open <code>rpp.corelogic.com.au</code> and sign in.</li>
-                  <li>Click the bookmark. <strong>Leave that tab in front</strong> —
-                      Chrome freezes background tabs and the run stalls.</li>
-                  <li>Watch it in the sheet, or press <code>F12</code> to watch the
-                      console. To stop: <code>stopCheck = true</code> in the console,
-                      or just close the tab. Everything found so far is already saved.</li>
-                </ol>
-
-                <div class="bm-row">
-                  <a class="bm-drag" id="bmLink" href="#" draggable="true">RP Data held check</a>
-                  <span class="hint" id="bmNote" style="margin:0">Drag me to your bookmarks bar</span>
-                </div>
-                <p class="hint" id="bmSheetLine" hidden style="margin-top:var(--sp-3)"></p>
-
-                <details id="chkBmPf">
-                  <summary>Second pass — Pricefinder</summary>
-                  <div class="body">
-                    <p>RP Data answers for nearly everything. What it cannot —
-                       no suggestion came back, the page never opened, or it
-                       opened with no sale on record — stays open in the sheet.
-                       This asks Pricefinder about <strong>exactly those</strong>,
-                       reading the list from the sheet so it is always the
-                       current remainder, and writes to its own
-                       <strong>Pricefinder check</strong> tab.</p>
-                    <div class="bm-row">
-                      <a class="bm-drag" id="pfLink" href="#" draggable="true">Pricefinder second pass</a>
-                      <span class="hint" id="pfNote" style="margin:0">Drag me, then click it on Pricefinder</span>
-                    </div>
-                    <p class="hint"><strong>First run, read the console.</strong>
-                       Pricefinder's own wording has not been read from the live
-                       site, so this recognises the shapes these pages use rather
-                       than what it actually says. It checks itself on the first
-                       property and stops — showing what the page said — instead
-                       of working through the list finding nothing. Send that
-                       text back and it is a one-line fix.</p>
-                  </div>
-                </details>
-                <details id="chkBmSheet">
-                  <summary>Where the results go</summary>
-                  <div class="body">
-                    <div class="field">
-                      <label for="bmSheet">Google Sheet address</label>
-                      <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
-                             autocapitalize="off" placeholder="https://script.google.com/macros/s/…/exec">
-                      <p class="hint">The <code>/exec</code> address of the Apps Script
-                         behind the sheet — not the sheet's own link. Already set up?
-                         Paste it once and it is remembered in this browser only; it is
-                         never written into this page and never sent anywhere but your
-                         own sheet. Setting one up from scratch:
-                         <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>
-                         tells you how, in about three minutes.</p>
-                    </div>
-                    <p>Each row lands the moment it is found, so a run that dies at
-                       property 180 keeps the first 179 — and <strong>From Google
-                       Sheet</strong> above reads them straight back in here, where you
-                       can mark the sales onto the register.</p>
-                    <p>With no address set you get a CSV download at the end instead,
-                       and the run cannot resume.</p>
-                  </div>
-                </details>
+              <!-- Where the results go. One line once it is set, because then
+                   it is a fact and not a task; the whole setup only shows
+                   itself while there is nothing there. -->
+              <p class="hint" id="bmSheetLine" hidden></p>
+              <div class="note note-warn" id="bmSheetSetup" hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div><strong>Set the Google Sheet address first.</strong> Without it the
+                  run has nowhere to write, cannot resume, and the second pass has no
+                  list to work from.</div>
               </div>
-            </details>
+              <div class="field" id="bmSheetField">
+                <label for="bmSheet">Google Sheet address</label>
+                <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
+                       autocapitalize="off" placeholder="https://script.google.com/macros/s/…/exec">
+                <p class="hint">The <code>/exec</code> address of the Apps Script behind
+                   the sheet, not the sheet's own link. Kept in this browser only — it is
+                   never written into this page and nothing is sent anywhere but your own
+                   sheet. Making one:
+                   <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>,
+                   about three minutes.</p>
+                <p class="hint" id="bmSheetDone" hidden><a href="#" data-bmdone="1">Done — put this away</a></p>
+              </div>
+
+              <h3>1 · RP Data — every held property</h3>
+              <p>One button checks <strong>every held property in the book</strong>,
+                 whatever capital it is in. For each one it types the address into
+                 RP Data's own search box, opens the property, and reads the last sale
+                 and the listing status. <strong>A last sale newer than your purchase
+                 is the signal</strong> — it has changed hands since you bought it.</p>
+              <p>It runs in <em>your</em> browser on <em>your</em> RP Data sign-in,
+                 about eight seconds a property, and writes each row to the sheet as it
+                 finds it. <strong>It resumes</strong>: stop whenever you like and click
+                 it again later, and it carries on from where it stopped rather than
+                 starting the book again.</p>
+
+              <ol class="bm-steps">
+                <li>Show the bookmarks bar if it is hidden — <code>Ctrl+Shift+B</code>.</li>
+                <li><strong>Drag the button below onto it.</strong> Dragging, not
+                    clicking — clicking it here does nothing, this page is not RP Data.</li>
+                <li>Open <code>rpp.corelogic.com.au</code> and sign in.</li>
+                <li>Click the bookmark. <strong>Leave that tab in front</strong> — Chrome
+                    freezes background tabs and the run stalls.</li>
+                <li>Watch it in the sheet, or press <code>F12</code> to watch the console.
+                    To stop: <code>stopCheck = true</code> in the console, or just close
+                    the tab. Everything found so far is already saved.</li>
+                <li>Come back here and press <strong>From Google Sheet</strong>.</li>
+              </ol>
+
+              <div class="bm-row">
+                <a class="bm-drag" id="bmLink" href="#" draggable="true">RP Data held check</a>
+                <span class="hint" id="bmNote" style="margin:0">Drag me to your bookmarks bar</span>
+              </div>
+
+              <!-- The second pass reads its list FROM the sheet, so without one
+                   there is nothing for it to work from and it has no business
+                   being offered. -->
+              <div id="chkBmPf" hidden>
+                <h3>2 · Pricefinder — second pass</h3>
+                <p>RP Data answers for nearly everything. What it cannot — no suggestion
+                   came back, the page never opened, or it opened with no sale on record
+                   — stays open in the sheet. This asks Pricefinder about
+                   <strong>exactly those</strong>, reading the list from the sheet so it
+                   is always the current remainder, and writes to its own
+                   <strong>Pricefinder check</strong> tab. Same drag, same routine.</p>
+                <div class="bm-row">
+                  <a class="bm-drag" id="pfLink" href="#" draggable="true">Pricefinder second pass</a>
+                  <span class="hint" id="pfNote" style="margin:0">Drag me, then click it on Pricefinder</span>
+                </div>
+                <p class="hint"><strong>First run, watch the console.</strong>
+                   Pricefinder's own wording has not been read from the live site, so this
+                   recognises the shapes these pages use rather than what it actually
+                   says. It checks itself on the first property and stops — showing what
+                   the page said — instead of working through the list finding nothing.
+                   Send that text back and it is a one-line fix.</p>
+              </div>
+            </div>
 
             <!-- everything below only exists once an export has been read -->
             <div id="chkSetup" hidden>
@@ -1302,106 +1302,6 @@ details .body strong{color:var(--text)}
           <div class="modal-foot">
             <button type="button" class="btn-primary" id="authGo">Sign in</button>
             <button type="button" class="btn-ghost" id="authCancel">Cancel</button>
-          </div>
-        </div>
-      </dialog>
-
-      <!-- ══════════ HOW THE SOLD CHECK WORKS ══════════ -->
-      <dialog class="modal modal-lg" id="chkHelpDialog" aria-labelledby="chkhelp-h">
-        <div class="modal-inner">
-          <div class="modal-head">
-            <h2 id="chkhelp-h">How the sold check works</h2>
-            <button type="button" class="modal-x" id="chkHelpClose" aria-label="Close">&times;</button>
-          </div>
-          <div class="modal-body">
-            <p>The bookmarklet asks RP Data about every held property in the register,
-               one at a time, and writes what it finds to a Google Sheet. This tab reads
-               that sheet back and tells you which of your properties have sold — or,
-               where a sale is already recorded, whether the two agree.</p>
-
-            <h3>Setting it up, once</h3>
-            <ol class="howto">
-              <li>Open <strong>Check RP Data directly</strong> on this tab and put the
-                Google Sheet address in. <em>sheet-endpoint.gs</em>, linked there, says
-                how to make one — about three minutes.</li>
-              <li><strong>Drag</strong> the button onto your bookmarks bar.
-                <code>Ctrl+Shift+B</code> shows the bar if it is hidden.</li>
-            </ol>
-
-            <h3>Each time</h3>
-            <ol class="howto">
-              <li>Open <strong>rpp.corelogic.com.au</strong>, signed in, and click the
-                bookmark. It works through every held property, about eight seconds
-                each, and writes each row to the sheet as it goes.</li>
-              <li><strong>Leave that tab in front.</strong> Chrome freezes background
-                tabs and the run stalls. You can use another window.</li>
-              <li>Stop whenever you like — close the tab, or <code>stopCheck = true</code>
-                in the console. <strong>It resumes</strong>: click the bookmark again
-                later and it carries on from where it stopped.</li>
-              <li>Come back here and press <strong>From Google Sheet</strong>.</li>
-            </ol>
-
-            <h3>What it tells you</h3>
-            <ol class="howto">
-              <li><strong>Sold since purchase.</strong> RP Data's last sale is newer than
-                your purchase date, so it has changed hands. These are the ones that come
-                through to the list below to be marked on.</li>
-              <li><strong>On the market.</strong> For Sale, Under Offer, Under Contract,
-                Auction, For Rent or Withdrawn, with the date it was last advertised. A
-                listing is not a sale, so none of this is ever written onto a property —
-                it is a conversation to have, and it is counted separately at the top
-                of this tab.</li>
-              <li><strong>Needs a second look.</strong> RP Data returned no suggestion,
-                the page did not open, or it opened with no sale on record. The sheet
-                says which.</li>
-            </ol>
-
-            <h3>Once it is loaded</h3>
-            <ol class="howto">
-              <li><strong>Choose what to check.</strong> <em>Not sold yet</em> asks "has this
-                sold?" of the properties with no sale recorded. <em>Every property</em> turns
-                the same answer into a check on the sale prices already in the book. With
-                almost nothing waiting on a sale it opens on <em>Every property</em> and says
-                so.</li>
-              <li><strong>Read what it found.</strong>
-                <ul>
-                  <li><span class="st st-sold">Sold</span> the address matched exactly, down
-                    to the unit and the street type</li>
-                  <li><span class="st st-check">Check</span> the number, street and suburb
-                    match but the unit or the street type does not — worth your eyes</li>
-                  <li><span class="st st-differs">Differs</span> it is already sold and the
-                    export disagrees, with a chip saying whether it was the price, the date
-                    or both. Your figure and theirs sit side by side</li>
-                  <li><span class="st st-agree">Agrees</span> the book and the export say the
-                    same thing</li>
-                  <li><span class="st st-none">No sale found</span> the suburb is in the
-                    export but this address is not</li>
-                  <li><span class="st st-gap">Suburb not in export</span> the export does not
-                    cover it at all — the badge beside <em>Where to look</em> counts how many
-                    properties that is</li>
-                </ul>
-              </li>
-              <li><strong>Write it on, row by row.</strong> <strong>Mark sold</strong> records
-                the sale price, the date, the link and the source. On a row that disagrees the
-                button says <strong>Use the export</strong> instead, because it replaces a
-                figure rather than filling a blank. <strong>Mark all sold</strong> only ever
-                touches rows with no sale yet that matched exactly — a disagreement is never
-                written in bulk.</li>
-            </ol>
-
-            <div class="note note-warn" style="margin-top:var(--sp-4)">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <div><strong>Nothing is written until you press one of those buttons</strong>,
-                and everything written goes into <strong>History</strong> with your name
-                against it. One to watch: where RP Data gives a <em>settlement</em> date and
-                you recorded a <em>contract</em> date, that shows as <em>Differs — date</em>.
-                That is a real difference worth seeing, not an error, so do not accept those
-                in bulk.</div>
-            </div>
-          </div>
-          <div class="modal-foot">
-            <button type="button" class="btn-primary" id="chkHelpGo">Show me the bookmarklet</button>
-            <button type="button" class="btn-ghost" id="chkHelpDone" style="margin-left:auto">Close</button>
           </div>
         </div>
       </dialog>
@@ -2193,6 +2093,7 @@ window.stopCheck=false;
 
     r.address       = p.name;
     r.city          = (p.category || '').trim();
+    r.source        = 'RP Data';
     r.purchased     = p.purchaseDate || '';
     r.purchasePrice = p.purchasePrice || '';
     results.push(r);
@@ -2237,9 +2138,9 @@ window.stopCheck=false;
   if (SHEET_URL) { console.log('All rows sent to your sheet.'); return; }
 
   /* ── 7. no sheet configured: CSV + clipboard ────────────────────────── */
-  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','onMarket','lastAd','resolved'];
+  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','source','onMarket','lastAd','resolved'];
   const HEAD = ['Address','City','Purchase date','Purchase price','Sold date','Sold price','Status',
-                'On market','Last advertised','RP Data record'];
+                'Source','On market','Last advertised','RP Data record'];
   const cell = r => COLS.map(c => r[c] === undefined ? '' : r[c]);
 
   const csv = [HEAD.join(',')].concat(results.map(r =>
@@ -4794,16 +4695,30 @@ window.stopCheck=false;
      fetched it. Publishing it here would hand the register to anyone who
      opened the page source. */
   function bmSheetLink(){
-    var p = $('bmSheetLine');
+    var p = $('bmSheetLine'), u = sheetUrl();
     if (!p) return;
     var view = '';
     try { view = (localStorage.getItem('ppSheetView') || '').trim(); } catch (e) {}
-    p.hidden = !view;
-    if (view) {
-      p.innerHTML = '<a href="'+esc(view)+'" target="_blank" rel="noopener">Open the sheet</a>' +
-                    ' — rows appear in it as the run finds them.';
+
+    /* Once the address is set it is a fact, not a task, so it shrinks to one
+       line and the field it was typed into goes away. Change is there for the
+       day the sheet moves. */
+    var setup = $('bmSheetSetup'), field = $('bmSheetField');
+    if (setup) setup.hidden = !!u;
+    /* Two states of one setting, both reached by a click. Nothing here
+       hangs off focus: a blur that never arrives would strand the field
+       open with the address on screen. */
+    var editing = !!(field && field.dataset.editing === '1');
+    if (field) field.hidden = !!u && !editing;
+    var dn = $('bmSheetDone');
+    if (dn) dn.hidden = !(u && editing);
+    p.hidden = !u || editing;
+    if (!p.hidden) {
+      p.innerHTML = 'Results go to your Google Sheet' +
+        (view ? ' — <a href="'+esc(view)+'" target="_blank" rel="noopener">open it</a>' : '') +
+        ' · <a href="#" data-bmedit="1">change the address</a>';
     }
-    var u = sheetUrl();
+
     if (view || !u) return;
     /* Asked once, cached. A plain /exec answers with the spreadsheet's own
        address, so nobody has to paste a second link. */
@@ -4820,15 +4735,10 @@ window.stopCheck=false;
     var box = $('chkBm');
     if (!box) return;
     if (!pool) pool = loadProps().filter(isHeld);
-    var on = (share.canWrite === true) && !!bmSource() && pool.length > 0;
-    box.hidden = !on;
-    if (!on) { box.open = false; return; }
+    box.hidden = !((share.canWrite === true) && !!bmSource() && pool.length > 0);
+    if (box.hidden) return;
     var inp = $('bmSheet');
     if (inp && document.activeElement !== inp) inp.value = sheetUrl();
-    /* The sheet section is the setup step, so it opens itself only while
-       there is nothing set — once it is, it stays out of the way. */
-    var s = $('chkBmSheet');
-    if (s && !s.dataset.touched) s.open = !sheetUrl();
     syncBm();
     /* outside syncBm's cache: the link can arrive from the sheet long
        after the href it was built alongside stopped changing */
@@ -5021,6 +4931,17 @@ window.stopCheck=false;
   }
   var CHK_WORD = { sold:'Sold', check:'Check', differs:'Differs',
                    none:'No sale found', gap:'Suburb not checked', agree:'Agrees' };
+  /* What each chip means, on the chip. These used to live in a window you
+     had to open, which is no use at the moment you are looking at a row
+     and wondering what it is telling you. */
+  var CHK_WHY = {
+    sold:    'The address matched exactly, down to the unit and the street type.',
+    check:   'The number, street and suburb match but the unit or street type does not — worth your eyes.',
+    differs: 'Already sold here, and the check disagrees. Your figure and theirs are side by side.',
+    agree:   'The book and the check say the same thing.',
+    none:    'Nothing sold at this address in what was checked.',
+    gap:     'Nothing in this suburb has been checked yet.'
+  };
   /* worst first: the two that want a decision, then the ones that do not */
   var CHK_ORDER = { differs:0, sold:1, check:2, none:3, gap:4, agree:5 };
   function drawCheck(){
@@ -5090,7 +5011,7 @@ window.stopCheck=false;
       return '<tr>'+
         '<td class="name">'+esc(r.e.name)+
           ((r.e.category||'').trim() ? '<br><span class="cat">'+esc(r.e.category)+'</span>' : '')+'</td>'+
-        '<td><span class="st st-'+r.status+'">'+CHK_WORD[r.status]+'</span>'+
+        '<td><span class="st st-'+r.status+'" title="'+esc(CHK_WHY[r.status]||'')+'">'+CHK_WORD[r.status]+'</span>'+
           (r.why ? '<br><span class="cat">'+esc(r.why)+'</span>' : '')+'</td>'+
         mine +
         '<td class="pd">'+found+'</td>'+
@@ -6531,7 +6452,17 @@ window.stopCheck=false;
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
   syncSheetBtn();
   $('bmSheet').addEventListener('input', bmSaveSheet);
-  $('chkBmSheet').addEventListener('toggle', function(){ this.dataset.touched = '1'; });
+  /* “Change the address” puts the field back without a window: the summary
+     line and the field are the same setting in two states. */
+  $('chkBm').addEventListener('click', function(ev){
+    var t = ev.target.closest && ev.target.closest('[data-bmedit],[data-bmdone]');
+    if (!t) return;
+    ev.preventDefault();
+    var open = t.hasAttribute('data-bmedit');
+    $('bmSheetField').dataset.editing = open ? '1' : '';
+    bmSheetLink();
+    if (open) $('bmSheet').focus();
+  });
   $('bmSheet').addEventListener('change', bmSaveSheet);
   /* Clicking it would run the RP Data script against this page, which is not
      RP Data: it would read the register, find no search box and throw. Say
@@ -6545,25 +6476,6 @@ window.stopCheck=false;
   });
   syncBmBox();
   $('btnChkClear').addEventListener('click', chkReset);
-  /* The how-to opens from its own button rather than sitting on the tab: it is
-     a thing you read once, and the first time you need it you have no file to
-     read it about. Its primary action is the one it is explaining. */
-  function openChkHelp(){
-    var d = $('chkHelpDialog');
-    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
-  }
-  function closeChkHelp(){ var d = $('chkHelpDialog'); if (d.open) d.close(); else d.removeAttribute('open'); }
-  $('btnChkHelp').addEventListener('click', openChkHelp);
-  $('chkHelpClose').addEventListener('click', closeChkHelp);
-  $('chkHelpDone').addEventListener('click', closeChkHelp);
-  $('chkHelpGo').addEventListener('click', function(){
-    closeChkHelp();
-    var d = $('chkBm');
-    if (d && !d.hidden) { d.open = true; d.scrollIntoView({ block:'nearest' }); }
-  });
-  $('chkHelpDialog').addEventListener('click', function(ev){
-    if (ev.target === $('chkHelpDialog')) closeChkHelp();
-  });
   $('chkSource').addEventListener('change', function(){
     if (chk) { chk.source = this.value; $('chkSourceWhy').textContent = 'Chosen by hand.'; }
   });
