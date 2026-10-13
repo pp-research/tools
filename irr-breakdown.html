@@ -1970,43 +1970,50 @@ window.stopCheck=false;
 
   /* ── 4. one property ────────────────────────────────────────────────── */
   /* ── is this the right property? ─────────────────────────────────────────
-     RP Data's first suggestion is not necessarily the one you asked for. It
-     offers near misses, it sometimes still shows the previous query's list for
-     a moment, and clicking [0] without looking opens whatever happens to be
-     there. Writing a neighbour's sale price onto a client's record is the one
-     failure here that is worse than no answer at all, so every step is
-     checked against the address we actually wanted. */
+     RP Data's first suggestion is not necessarily the one you asked for, so
+     the suggestion is checked before it is clicked and the page is checked
+     after it opens. Writing a neighbour's sale price onto a client's record is
+     the worst failure available here.
+
+     The first version of this anchored the address to the start of the string.
+     Nothing RP Data produces looks like that — its suggestions and its page
+     text carry labels, icons and line breaks around the address — so every
+     property failed. The address is now looked for ANYWHERE in the text. */
   function parts(s) {
     const t = String(s || '').toLowerCase()
       .replace(/[^a-z0-9/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
-    /* "3/22 example road" and "22 example road" both have street number 22 —
-       a unit prefix is extra information, not a different property. */
-    const m = t.match(/^(?:([0-9a-z]+)\s*\/\s*)?(\d+[a-z]?)\s+(.*)$/);
+    /* the first "<number> <word>", with an optional unit in front of it:
+       "3/22 example road" and "22 example road" are the same place */
+    const m = t.match(/(?:([0-9a-z]{1,4})\s*\/\s*)?\b(\d+[a-z]?)\s+([a-z]+)/);
     if (!m) return null;
-    const rest = m[3].split(' ').filter(Boolean);
-    return { unit: m[1] || '', number: m[2], street: rest[0] || '', words: rest };
+    return { unit: m[1] || '', number: m[2], street: m[3], all: t };
   }
-  /* Same street number, same street name, and the suburb somewhere in it.
-     Conservative on purpose: a near miss is reported, never guessed at. */
-  function sameProperty(want, got) {
+  /* Street number and street name must agree. `strict` also wants the suburb,
+     which is reliable in a suggestion (we searched for it) but not on a page,
+     where the address may be the only thing near the heading. */
+  function sameProperty(want, got, strict) {
     const a = parts(want), b = parts(got);
     if (!a || !b) return false;
     if (a.number !== b.number) return false;
-    if (a.street.length > 2 && a.street !== b.street) return false;
-    /* the suburb is the word after the street type in the register entry;
-       looking for any of our later words in theirs is enough to catch a
-       same-numbered street in a different suburb */
-    const theirs = b.words.join(' ');
-    const suburbish = a.words.slice(2).filter(w => w.length > 3);
-    if (suburbish.length && !suburbish.some(w => theirs.indexOf(w) >= 0)) return false;
+    if (a.street.length > 2 && b.all.indexOf(a.street) < 0) return false;
+    if (strict) {
+      const suburbish = a.all.split(' ').slice(2)
+        .filter(w => w.length > 3 && !/^(street|road|avenue|drive|court|place|terrace|lane|close|crescent|parade|way|grove|rise|view)$/.test(w));
+      if (suburbish.length && !suburbish.some(w => b.all.indexOf(w) >= 0)) return false;
+    }
     return true;
   }
-  /* The address RP Data thinks it is showing, off the top of the page. */
+  /* What the page says it is showing. The tab title is the dependable one —
+     scraping the heading out of innerText depends on where the nav ends, which
+     is exactly the guess that broke the first attempt. */
   function pageAddress() {
+    const bits = [document.title || ''];
+    const h = document.querySelector('h1');
+    if (h) bits.push(h.innerText || '');
     const t = document.body.innerText.replace(/\n{2,}/g, '\n');
     const cut = t.indexOf('Copy');
-    return (cut > 0 ? t.slice(0, cut) : t.slice(0, 300))
-      .split('\n').map(s => s.trim()).filter(Boolean).slice(-3).join(' ');
+    if (cut > 0) bits.push(t.slice(Math.max(0, cut - 200), cut));
+    return bits.map(s => String(s).replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
   /* Type it and wait for the suggestion list. Twice, because once is not
      evidence: a slow response, a moment of throttling or a re-render that
@@ -2038,7 +2045,21 @@ window.stopCheck=false;
        all. A list that holds nothing matching is a list for a different query
        — usually the previous one, still on screen. */
     const offered = opts.map(o => (o.innerText || '').replace(/\s+/g, ' ').trim());
-    const i = offered.findIndex(t => sameProperty(p.name, t));
+    const i = offered.findIndex(t => sameProperty(p.name, t, true));
+
+    /* The first few, in shape only: enough to tell whether the matcher is
+       reading RP Data's text correctly, without any address leaving this
+       browser. The text itself is in window.rpPeek, for your own eyes. */
+    if (peeked < 3) {
+      peeked++;
+      const a = parts(p.name), b = parts(offered[0] || '');
+      console.log('%cmatcher: ours parses=' + !!a + ' theirs parses=' + !!b +
+        ' number=' + (a && b ? (a.number === b.number) : 'n/a') +
+        ' street=' + (a && b ? (b.all.indexOf(a.street) >= 0) : 'n/a') +
+        ' suggestions=' + offered.length + ' matched=' + (i >= 0),
+        'color:#2b7');
+      (window.rpPeek = window.rpPeek || []).push({ asked: p.name, offered: offered });
+    }
     if (i < 0) {
       return { status: 'no confident match', offered: offered.slice(0, 3).join(' | ') };
     }
@@ -2055,11 +2076,15 @@ window.stopCheck=false;
 
     /* Checked again on the page itself, because the suggestion and the page it
        opens are two different things and only the second one has the sale. */
-    const onPage = pageAddress();
-    if (onPage && !sameProperty(p.name, onPage)) {
+    /* Advisory, not fatal. If none of the candidates can be read as an
+       address we learn nothing — that is not evidence of a wrong property,
+       and treating it as such failed every single one. It only objects
+       when it can read an address AND that address disagrees. */
+    const cands = pageAddress().filter(s => parts(s));
+    if (cands.length && !cands.some(s => sameProperty(p.name, s))) {
       return { status: 'opened a different property',
                resolved: location.origin + location.pathname,
-               offered: onPage.slice(0, 80) };
+               offered: cands[0].slice(0, 80) };
     }
 
     const sale = readLastSold();
@@ -2089,6 +2114,7 @@ window.stopCheck=false;
   /* ── 5. the run ─────────────────────────────────────────────────────── */
   const results = [];
   let misses = 0;
+  let peeked = 0;          // how many shape reports have been logged
   for (let i = 0; i < held.length; i++) {
     if (window.stopCheck) { console.warn('stopped at', i, 'of', held.length); break; }
     const p = held[i];
