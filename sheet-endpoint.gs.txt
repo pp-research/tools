@@ -26,7 +26,20 @@
    Deploy → Manage deployments → Archive, and make a new one.
    ───────────────────────────────────────────────────────────────────────── */
 
-var TAB = 'RP Data check';
+/* Two tabs, because they are two passes. RP Data goes first and answers for
+   nearly everything; Pricefinder is only ever asked about what RP Data could
+   not resolve, and keeping that apart is what makes it obvious which source
+   a figure came from. */
+var TAB  = 'RP Data check';
+var TAB2 = 'Pricefinder check';
+function tabName_(which) { return which === 'pricefinder' ? TAB2 : TAB; }
+
+/* RP Data answered for a property when it found a sale, either way. Anything
+   else — no suggestion, page never opened, nothing on record — is the second
+   pass. */
+function resolved_(status) {
+  return /still held|SOLD SINCE PURCHASE/.test(String(status || ''));
+}
 
 var HEADERS = [
   'Address',
@@ -42,8 +55,8 @@ var HEADERS = [
   'Checked at'
 ];
 
-function make_(ss) {
-  var sh = ss.insertSheet(TAB);
+function make_(ss, name) {
+  var sh = ss.insertSheet(name);
   sh.appendRow(HEADERS);
   sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
   sh.setFrozenRows(1);
@@ -53,10 +66,11 @@ function make_(ss) {
   return sh;
 }
 
-function sheet_() {
+function sheet_(which) {
+  var name = tabName_(which);
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(TAB);
-  if (!sh) return make_(ss);
+  var sh = ss.getSheetByName(name);
+  if (!sh) return make_(ss, name);
 
   /* A tab built by an older version of this file has fewer columns, and
      appending ten values to a nine-column header puts every value one place
@@ -81,9 +95,9 @@ function sheet_() {
     sh.getRange('F:F').setNumberFormat('$#,##0');
     return sh;
   }
-  sh.setName(TAB + ' — before ' +
+  sh.setName(name + ' — before ' +
     Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'));
-  return make_(ss);
+  return make_(ss, name);
 }
 
 function doPost(e) {
@@ -96,10 +110,10 @@ function doPost(e) {
        already here, so stopping half way and clicking again resumes. */
     if (payload.reset) {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var old = ss.getSheetByName(TAB);
+      var old = ss.getSheetByName(tabName_(payload.tab));
       if (old) ss.deleteSheet(old);
     }
-    var sh = sheet_();
+    var sh = sheet_(payload.tab);
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       sh.appendRow([
@@ -152,58 +166,84 @@ function fmt_(v) {                        // Date cells → "2026-09-18"
 /* Plain /exec  →  a liveness check, and the sheet's own address. The IRR
                    Calculator shows that as an "open the sheet" link, so the
                    address never has to be written into a published page.
-   /exec?done=1 →  just the addresses already checked. The run asks for this
-                   first and skips them, so a half-finished run picks up where
-                   it stopped instead of starting the whole book again.
-   /exec?rows=1 →  everything in the tab, which is what the IRR Calculator
-                   reads so the sold properties come up for review there. */
+   ?done=1      →  the addresses already in a tab. A run asks for this first
+                   and skips them, so stopping half way and clicking again
+                   carries on instead of starting the book over.
+   ?todo=1      →  the addresses RP Data could not answer for, minus anything
+                   Pricefinder has since answered. That is the second pass,
+                   and it is the list the Pricefinder bookmarklet works from.
+   ?rows=1      →  both tabs, RP Data first, each row carrying the source it
+                   came from. This is what the Sold check tab reads.
+
+   ?tab=pricefinder narrows done= to that tab. */
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  if (!p.rows && !p.done) {
-    return json_({ ok: true, endpoint: 'rpdata held check', tab: TAB,
-                   sheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl() });
-  }
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TAB);
-  if (!sh || sh.getLastRow() < 2) {
-    return json_(p.done ? { ok: true, addresses: [], count: 0 }
-                        : { ok: true, rows: [], count: 0 });
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!p.rows && !p.done && !p.todo) {
+    return json_({ ok: true, endpoint: 'rpdata held check',
+                   tabs: [TAB, TAB2], sheetUrl: ss.getUrl() });
   }
 
-  /* Read the columns the sheet actually has, not the ones this file expects —
-     a tab created before "On market" existed is narrower, and asking for more
-     columns than exist throws. It self-heals on the next run, which rebuilds
-     the tab, but until then it still has to answer. */
-  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
-               .map(function (h) { return String(h || '').trim(); });
-  var at = function (name) { return head.indexOf(name); };
-  var get = function (v, name) { var i = at(name); return i < 0 ? '' : v[i]; };
+  /* One tab, read once, as {header: value} objects. Reading by header name
+     and not by position is what lets a tab written by an older version of
+     this file still answer. */
+  function read_(name) {
+    var sh = ss.getSheetByName(name);
+    if (!sh || sh.getLastRow() < 2) return [];
+    var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+                 .map(function (h) { return String(h || '').trim(); });
+    var at = function (n) { return head.indexOf(n); };
+    var get = function (v, n) { var i = at(n); return i < 0 ? '' : v[i]; };
+    return sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues()
+      .map(function (v) {
+        return {
+          address:       fmt_(get(v, 'Address')),
+          city:          fmt_(get(v, 'City')),
+          purchased:     fmt_(get(v, 'Purchase date')),
+          purchasePrice: get(v, 'Purchase price'),
+          soldDate:      fmt_(get(v, 'Sold date')),
+          soldPrice:     get(v, 'Sold price'),
+          status:        fmt_(get(v, 'Status')),
+          onMarket:      fmt_(get(v, 'On market')),
+          lastAd:        fmt_(get(v, 'Last advertised')),
+          resolved:      fmt_(get(v, 'RP Data record')),
+          checkedAt:     fmt_(get(v, 'Checked at')),
+          source:        name === TAB2 ? 'Pricefinder' : 'RP Data'
+        };
+      });
+  }
 
-  /* The resume question is only "which addresses are in here already", and
-     reading one column of 600 rows is a fraction of reading nine. */
   if (p.done) {
-    var ci = at('Address');
-    if (ci < 0) return json_({ ok: true, addresses: [], count: 0 });
-    var col = sh.getRange(2, ci + 1, sh.getLastRow() - 1, 1).getValues()
-                .map(function (r) { return String(r[0] || '').trim(); })
-                .filter(function (s) { return s; });
-    return json_({ ok: true, addresses: col, count: col.length });
+    var mine = read_(tabName_(p.tab))
+      .map(function (r) { return r.address; })
+      .filter(function (s) { return s; });
+    return json_({ ok: true, addresses: mine, count: mine.length });
   }
 
-  var values = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-  var rows = values.map(function (v) {
-    return {
-      address:       fmt_(get(v, 'Address')),
-      city:          fmt_(get(v, 'City')),
-      purchased:     fmt_(get(v, 'Purchase date')),
-      purchasePrice: get(v, 'Purchase price'),
-      soldDate:      fmt_(get(v, 'Sold date')),
-      soldPrice:     get(v, 'Sold price'),
-      status:        fmt_(get(v, 'Status')),
-      onMarket:      fmt_(get(v, 'On market')),
-      lastAd:        fmt_(get(v, 'Last advertised')),
-      resolved:      fmt_(get(v, 'RP Data record')),
-      checkedAt:     fmt_(get(v, 'Checked at'))
-    };
+  if (p.todo) {
+    var settled = {};
+    read_(TAB2).forEach(function (r) {
+      if (r.address && resolved_(r.status)) settled[r.address] = 1;
+    });
+    var todo = read_(TAB).filter(function (r) {
+      return r.address && !resolved_(r.status) && !settled[r.address];
+    });
+    return json_({ ok: true, rows: todo, count: todo.length });
+  }
+
+  /* RP Data first, then anything Pricefinder settled that RP Data could not.
+     A property never appears twice: the second pass only ever runs on what
+     the first one left open, and where it answered, its answer is the one
+     that counts. */
+  var pf = read_(TAB2);
+  var answered = {};
+  pf.forEach(function (r) { if (resolved_(r.status)) answered[r.address] = r; });
+  var rows = read_(TAB).map(function (r) {
+    return (!resolved_(r.status) && answered[r.address]) ? answered[r.address] : r;
+  });
+  pf.forEach(function (r) {              // Pricefinder-only rows, if any
+    if (!rows.some(function (x) { return x.address === r.address; })) rows.push(r);
   });
   return json_({ ok: true, rows: rows, count: rows.length });
 }
