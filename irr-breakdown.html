@@ -2162,12 +2162,45 @@ window.stopCheck=false;
   const results = [];
   let misses = 0;
   let peeked = 0;          // how many shape reports have been logged
+  /* A property whose check straddled the tab being hidden has not been
+     answered, it has been interrupted. Noted, so the result can be thrown
+     away rather than written down as a finding. */
+  let sawHidden = false, redone = -1;
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) sawHidden = true;
+  });
   for (let i = 0; i < held.length; i++) {
     if (window.stopCheck) { console.warn('stopped at', i, 'of', held.length); break; }
+
+    /* Chrome clamps a hidden tab's timers to roughly once a minute. That
+       does not pause this run — it makes every wait expire before the page
+       has answered, so properties come back "did not open" and "no
+       confident match" having never been given a chance. Those look like
+       findings and they are not. So: wait for the tab to come back. */
+    if (document.hidden) {
+      console.warn('%cPaused — this tab is in the background. Chrome slows it ' +
+        'down so much that the checks fail for no reason. Nothing is lost; ' +
+        'bring this tab back to the front and it carries on.',
+        'font-weight:bold;font-size:13px;color:#b9770e');
+      while (document.hidden) await sleep(1000);
+      await sleep(3000);          // let the page catch up before asking again
+      console.log('%cResumed.', 'font-weight:bold;color:#2b7');
+    }
     const p = held[i];
     let r;
+    sawHidden = false;
     try { r = await check(p); }
     catch (e) { r = { status: 'error: ' + e.message }; }
+
+    /* Interrupted, not answered. Give it one clean go before believing it. */
+    if (sawHidden && !/still held|SOLD SINCE PURCHASE/.test(r.status) && redone !== i) {
+      redone = i;
+      console.warn(`retrying ${p.name.slice(0, 18)}… — the tab was in the background for part of it`);
+      while (document.hidden) await sleep(1000);
+      await sleep(3000);
+      i--;
+      continue;
+    }
 
     r.address       = p.name;
     r.city          = (p.category || '').trim();
