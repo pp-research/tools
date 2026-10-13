@@ -1062,10 +1062,9 @@ details .body strong{color:var(--text)}
             <div class="card-head">
               <h2 id="chk-h">Sold check</h2>
               <div class="btns" style="margin:0">
-                <button type="button" class="btn-primary btn-sm" id="btnChkFile">Load a sales export</button>
                 <!-- Only appears once this browser knows where the sheet is.
-                     The URL is a capability, so it is never in this file. -->
-                <button type="button" class="btn-ghost btn-sm" id="btnChkSheet" hidden>From Google Sheet</button>
+                     The address is a capability, so it is never in this file. -->
+                <button type="button" class="btn-primary btn-sm" id="btnChkSheet" hidden>From Google Sheet</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkHelp">How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
@@ -1080,61 +1079,65 @@ details .body strong{color:var(--text)}
                  The javascript: URL is assembled in the browser by buildBm().
                  It is never written into this file, because it carries that
                  browser's own Google Sheet address — a capability anyone
-                 holding it can write to — and this file is public. -->
+                 holding it can write to — and this file is public. The same
+                 goes for the link to the sheet itself. -->
             <details id="chkBm" hidden>
-              <summary>Check RP Data directly — bookmarklet</summary>
+              <summary>Check RP Data directly — the bookmarklet</summary>
               <div class="body">
-                <p>This does by itself what the export does by hand: for every
-                   property still held in one city it types the address into
-                   RP Data's own search box, opens the property, and reads the
-                   last sale. <strong>A last sale newer than your purchase is
-                   the whole signal</strong> — the property has changed hands
-                   since you bought it.</p>
-                <p>It runs in <em>your</em> browser, on <em>your</em> RP Data
-                   sign-in, at about eight seconds a property. Nothing about it
-                   passes through this page.</p>
-
-                <div class="field">
-                  <label for="bmCity">Which city to check</label>
-                  <select id="bmCity"></select>
-                  <p class="hint" id="bmCityWhy">One run does one city. Build a
-                     second bookmark for the other.</p>
-                </div>
-
-                <div class="field">
-                  <label for="bmSheet">Google Sheet address — optional</label>
-                  <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
-                         autocapitalize="off" placeholder="https://script.google.com/macros/s/…/exec">
-                  <p class="hint">Optional. Take
-                     <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>,
-                     paste it into a new sheet's <em>Extensions → Apps Script</em>,
-                     deploy it as a web app, and put the address it gives you here.
-                     Every row is then written the moment it is found — a run that
-                     dies at property 180 keeps the first 179 — and <strong>From
-                     Google Sheet</strong> above reads them straight back in here.
-                     Leave it empty and you get a CSV download at the end instead.
-                     The address is kept in this browser and goes nowhere but your
-                     own sheet.</p>
-                </div>
-
-                <div class="bm-row">
-                  <a class="bm-drag" id="bmLink" href="#" draggable="true">RP Data held check</a>
-                  <span class="hint" id="bmNote" style="margin:0">Drag it to your bookmarks bar</span>
-                </div>
+                <p>One button checks <strong>every held property in the book</strong>,
+                   whatever capital it is in. For each one it types the address into
+                   RP Data's own search box, opens the property, and reads the last
+                   sale and the listing status. <strong>A last sale newer than your
+                   purchase is the signal</strong> — it has changed hands since you
+                   bought it.</p>
+                <p>It runs in <em>your</em> browser on <em>your</em> RP Data sign-in,
+                   about eight seconds a property, and writes each row to the sheet
+                   as it finds it. <strong>It resumes</strong>: stop whenever you
+                   like and click it again later, and it carries on from where it
+                   stopped rather than starting the book again.</p>
 
                 <ol class="bm-steps">
                   <li>Show the bookmarks bar if it is hidden — <code>Ctrl+Shift+B</code>.</li>
-                  <li><strong>Drag</strong> the button onto it. Clicking it here does
-                      nothing: this page is not RP Data.</li>
-                  <li>Open <code>rpp.corelogic.com.au</code>, signed in, and click the
-                      bookmark. Keep that tab in front — Chrome freezes background
-                      tabs and the run stalls.</li>
-                  <li>To stop early: <code>F12</code>, then <code>stopCheck = true</code>.
-                      Whatever has already been found is kept.</li>
+                  <li><strong>Drag the button below onto it.</strong> Dragging,
+                      not clicking — clicking it here does nothing, this page is not
+                      RP Data.</li>
+                  <li>Open <code>rpp.corelogic.com.au</code> and sign in.</li>
+                  <li>Click the bookmark. <strong>Leave that tab in front</strong> —
+                      Chrome freezes background tabs and the run stalls.</li>
+                  <li>Watch it in the sheet, or press <code>F12</code> to watch the
+                      console. To stop: <code>stopCheck = true</code> in the console,
+                      or just close the tab. Everything found so far is already saved.</li>
                 </ol>
 
-                <p>Change the city or the sheet address above and the button
-                   rebuilds itself — drag it again to replace the old bookmark.</p>
+                <div class="bm-row">
+                  <a class="bm-drag" id="bmLink" href="#" draggable="true">RP Data held check</a>
+                  <span class="hint" id="bmNote" style="margin:0">Drag me to your bookmarks bar</span>
+                </div>
+                <p class="hint" id="bmSheetLine" hidden style="margin-top:var(--sp-3)"></p>
+
+                <details id="chkBmSheet">
+                  <summary>Where the results go</summary>
+                  <div class="body">
+                    <div class="field">
+                      <label for="bmSheet">Google Sheet address</label>
+                      <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
+                             autocapitalize="off" placeholder="https://script.google.com/macros/s/…/exec">
+                      <p class="hint">The <code>/exec</code> address of the Apps Script
+                         behind the sheet — not the sheet's own link. Already set up?
+                         Paste it once and it is remembered in this browser only; it is
+                         never written into this page and never sent anywhere but your
+                         own sheet. Setting one up from scratch:
+                         <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>
+                         tells you how, in about three minutes.</p>
+                    </div>
+                    <p>Each row lands the moment it is found, so a run that dies at
+                       property 180 keeps the first 179 — and <strong>From Google
+                       Sheet</strong> above reads them straight back in here, where you
+                       can mark the sales onto the register.</p>
+                    <p>With no address set you get a CSV download at the end instead,
+                       and the run cannot resume.</p>
+                  </div>
+                </details>
               </div>
             </details>
 
@@ -1169,10 +1172,11 @@ details .body strong{color:var(--text)}
             <p class="count-line" id="chkCount"></p>
             <div id="chkBody">
               <div class="empty">
-                <h3>No export loaded</h3>
-                <p>Drop an RP Data or Pricefinder sales export here — CSV or Excel — and every
-                   property in the register that has not been sold yet is matched against it
-                   by address.</p>
+                <h3>Nothing loaded yet</h3>
+                <p>Drag the bookmarklet above to your bookmarks bar and run it on RP Data.
+                   It checks every held property in the book and writes what it finds to your
+                   Google Sheet. Then press <strong>From Google Sheet</strong> and the sales
+                   it found come up here to be marked onto the register.</p>
               </div>
             </div>
           </section>
@@ -1287,53 +1291,53 @@ details .body strong{color:var(--text)}
             <button type="button" class="modal-x" id="chkHelpClose" aria-label="Close">&times;</button>
           </div>
           <div class="modal-body">
-            <p>Give it a list of sales and it matches them to the register by address,
-               then tells you which of your properties the list says have sold — or, where
-               a sale is already recorded, whether the two agree.</p>
+            <p>The bookmarklet asks RP Data about every held property in the register,
+               one at a time, and writes what it finds to a Google Sheet. This tab reads
+               that sheet back and tells you which of your properties have sold — or,
+               where a sale is already recorded, whether the two agree.</p>
 
-            <h3>From RP Data</h3>
+            <h3>Setting it up, once</h3>
             <ol class="howto">
-              <li>Run a <strong>Recent Sale</strong> export for the suburbs or councils you
-                want. <em>Where to look</em> on the Sold check tab is the list to work from:
-                switch it to Suburb or Council, click one to copy it, paste it into RP Data's
-                filter.</li>
-              <li>Set the date range to cover the period you are checking. There is a
-                export covering more than you need is fine — the check only ever looks at
-                the properties on your register, so the rest of the file is ignored.</li>
-              <li>Make sure the column set includes <strong>Street Address</strong>,
-                <strong>Suburb</strong>, <strong>Sale Price</strong> and
-                <strong>Sale Date</strong>. Keep <strong>Council Area</strong> in as well —
-                it is how the council counts here fill in. <strong>Open in RPData</strong>
-                gives each row a link back, which gets saved onto the property.</li>
-              <li>Export as CSV or Excel and drop the file on this page.</li>
+              <li>Open <strong>Check RP Data directly</strong> on this tab and put the
+                Google Sheet address in. <em>sheet-endpoint.gs</em>, linked there, says
+                how to make one — about three minutes.</li>
+              <li><strong>Drag</strong> the button onto your bookmarks bar.
+                <code>Ctrl+Shift+B</code> shows the bar if it is hidden.</li>
             </ol>
 
-            <h3>From Pricefinder</h3>
+            <h3>Each time</h3>
             <ol class="howto">
-              <li>Export a sales result for the suburbs you want, as CSV or Excel.</li>
-              <li>It needs an address, a sale price and a sale date. Pricefinder calls the
-                suburb <strong>Locality</strong> and the buyer <strong>Purchaser</strong> —
-                the tool reads either name, and uses those two to recognise the file as
-                Pricefinder's and tag the sales accordingly.</li>
-              <li>Drop the file on this page. If it names no council the Council list stays
-                uncounted; everything else works the same.</li>
+              <li>Open <strong>rpp.corelogic.com.au</strong>, signed in, and click the
+                bookmark. It works through every held property, about eight seconds
+                each, and writes each row to the sheet as it goes.</li>
+              <li><strong>Leave that tab in front.</strong> Chrome freezes background
+                tabs and the run stalls. You can use another window.</li>
+              <li>Stop whenever you like — close the tab, or <code>stopCheck = true</code>
+                in the console. <strong>It resumes</strong>: click the bookmark again
+                later and it carries on from where it stopped.</li>
+              <li>Come back here and press <strong>From Google Sheet</strong>.</li>
             </ol>
 
-            <h3>From any other sheet</h3>
-            <p>Anything with an address, a sale price and a sale date in columns named so.
-               The headings do not have to be on the first row — a title and the filters the
-               report was run with are fine above them. If a column is named something it
-               does not recognise, <strong>Columns used</strong> lets you point it at the
-               right one.</p>
-            <p class="count-line">Columns named <strong>Owner</strong>, <strong>Vendor</strong>,
-               <strong>Purchaser</strong> or <strong>Agent</strong> are names of people and are
-               never read. The window lists them back so you can see they were skipped.</p>
+            <h3>What it tells you</h3>
+            <ol class="howto">
+              <li><strong>Sold since purchase.</strong> RP Data's last sale is newer than
+                your purchase date, so it has changed hands. These are the ones that come
+                through to the list below to be marked on.</li>
+              <li><strong>On the market.</strong> For Sale, Under Offer, Under Contract,
+                Auction, For Rent or Withdrawn, with the date it was last advertised. A
+                listing is not a sale, so none of this is ever written onto a property —
+                it is a conversation to have, and it is counted separately at the top
+                of this tab.</li>
+              <li><strong>Needs a second look.</strong> RP Data returned no suggestion,
+                the page did not open, or it opened with no sale on record. The sheet
+                says which.</li>
+            </ol>
 
             <h3>Once it is loaded</h3>
             <ol class="howto">
               <li><strong>Choose what to check.</strong> <em>Not sold yet</em> asks "has this
                 sold?" of the properties with no sale recorded. <em>Every property</em> turns
-                the same export into a check on the sale prices already in the book. With
+                the same answer into a check on the sale prices already in the book. With
                 almost nothing waiting on a sale it opens on <em>Every property</em> and says
                 so.</li>
               <li><strong>Read what it found.</strong>
@@ -1373,7 +1377,7 @@ details .body strong{color:var(--text)}
             </div>
           </div>
           <div class="modal-foot">
-            <button type="button" class="btn-primary" id="chkHelpGo">Load a sales export</button>
+            <button type="button" class="btn-primary" id="chkHelpGo">Show me the bookmarklet</button>
             <button type="button" class="btn-ghost" id="chkHelpDone" style="margin-left:auto">Close</button>
           </div>
         </div>
@@ -1618,7 +1622,6 @@ details .body strong{color:var(--text)}
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
         <!-- the sold check reads a sales export, not a property list, so it has
              its own picker rather than sharing the import one -->
-        <input type="file" id="chkInput" accept=".xlsx,.xls,.csv,.txt,.tsv" class="sr-only" tabindex="-1" aria-hidden="true">
       </dialog>
 
       <!-- ══════════ PROMPT — used to rename a category ══════════ -->
@@ -1679,11 +1682,17 @@ window.stopCheck=false;
   'use strict';
 
   /* ── settings ───────────────────────────────────────────────────────── */
-  /* The city is chosen where the bookmarklet is built — in the Sold check tab,
-     or from CITY when mkbm.pl runs. Pasted straight into a console the
-     placeholder survives, so it falls back to Adelaide rather than matching
-     nothing and reporting an empty register. */
-  const CITY      = '__CITY__'.charAt(0) === '_' ? 'Adelaide' : '__CITY__';
+  /* Every held property in the book, whatever capital it is in. One run and
+     one tab, with the city as a column: a tab per city would have to be
+     stitched back together to answer "what sold", and filtering a column
+     does that for free.
+
+     It is long — roughly eight seconds a property — so it RESUMES. Before
+     starting it asks the sheet what it has already checked and skips those.
+     Stop whenever you like and click the bookmark again tomorrow.
+
+     Set CITY to one capital to narrow it; empty means all of them. */
+  const CITY      = '__CITY__'.charAt(0) === '_' ? '' : '__CITY__';
   /* Set this once, in the console on any RP Data page, and every later run
      picks it up:   localStorage.ppSheetUrl = 'https://script.google.com/...'
      Leave it unset and you get the CSV / clipboard buttons instead. */
@@ -1708,13 +1717,44 @@ window.stopCheck=false;
     .then(r => r.json()).then(rows => rows[0] && rows[0].body);
   if (!book) { console.error('Could not read the shared list.'); return; }
 
-  const held = (book.properties || []).filter(p =>
-    p.name && !p.outside && p.category === CITY &&
+  const all = (book.properties || []).filter(p =>
+    p.name && !p.outside &&
+    (!CITY || (p.category || '').trim() === CITY) &&
     !(p.soldDate && p.soldPrice));
 
-  console.log(`%c${held.length} held ${CITY} properties to check` +
+  /* ── 1b. what the sheet already holds ───────────────────────────────── */
+  /* Matched on the address exactly as the register spells it, which is also
+     exactly what was written. No tidying, so no chance of a near-match
+     quietly skipping a property that was never actually checked. */
+  let done = new Set();
+  if (SHEET_URL) {
+    try {
+      const d = await fetch(SHEET_URL + (SHEET_URL.includes('?') ? '&' : '?') + 'done=1')
+        .then(r => r.json());
+      (d && d.addresses || []).forEach(a => done.add(a));
+    } catch (e) {
+      console.warn('Could not ask the sheet what it already has, so this is a ' +
+                   'full run: ' + e.message);
+    }
+  }
+  const held = all.filter(p => !done.has(p.name));
+  const skipped = all.length - held.length;
+
+  if (!held.length) {
+    console.log('%cNothing left to check — all ' + all.length +
+      ' are already in the sheet. To start over, delete the rows in the ' +
+      '"RP Data check" tab and click the bookmark again.',
+      'font-weight:bold;font-size:13px');
+    return;
+  }
+  console.log(`%c${held.length} propert${held.length === 1 ? 'y' : 'ies'} to check` +
+    (CITY ? ` in ${CITY}` : ' across every capital') +
+    (skipped ? ` — ${skipped} already in the sheet, skipped` : '') +
     (SHEET_URL ? ' — writing to your Google Sheet' : ' — CSV at the end'),
     'font-weight:bold;font-size:13px');
+  console.log(`About ${Math.round(held.length * 9.5 / 60)} minutes. ` +
+    'Keep this tab in front. Stop any time with  stopCheck = true  — ' +
+    'clicking the bookmark again carries on from where it stopped.');
 
   /* ── 2. the sheet ───────────────────────────────────────────────────── */
   /* Apps Script redirects to a different host on the way back, which kills
@@ -1734,7 +1774,6 @@ window.stopCheck=false;
       console.warn('sheet write failed:', e.message);
     }
   }
-  if (SHEET_URL) await send([], true);          // start the tab clean
 
   /* ── 3. page helpers ────────────────────────────────────────────────── */
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1796,12 +1835,15 @@ window.stopCheck=false;
     const from = sub.indexOf('Copy');           // end of the address heading
     const head = sub.slice(from < 0 ? 0 : from, (from < 0 ? 0 : from) + 700);
 
-    const seen = [];
-    (head.match(/For Sale|For Rent|Under Offer|Under Contract|Auction|Withdrawn/gi) || [])
-      .forEach(function (w) {
-        const k = w.replace(/\s+/g, ' ').toLowerCase();
-        if (seen.indexOf(k) < 0) seen.push(k);
-      });
+    /* Reported as RP Data writes them — "Under Offer", not "under offer" —
+       because this column is read by someone deciding whether to ring the
+       owner, and the words are the whole message. Whitespace is flattened
+       first: the status sits in its own block, so "Under" and "Offer" can
+       arrive on separate lines. */
+    const WORDS = ['For Sale', 'Under Offer', 'Under Contract', 'Auction',
+                   'For Rent', 'Withdrawn'];
+    const flat = head.replace(/\s+/g, ' ').toLowerCase();
+    const seen = WORDS.filter(w => flat.indexOf(w.toLowerCase()) >= 0);
 
     let last = null;
     (sub.match(/Advertisement Date\s*(\d{2} \w{3} \d{4})/g) || []).forEach(function (a) {
@@ -1882,6 +1924,7 @@ window.stopCheck=false;
     catch (e) { r = { status: 'error: ' + e.message }; }
 
     r.address       = p.name;
+    r.city          = (p.category || '').trim();
     r.purchased     = p.purchaseDate || '';
     r.purchasePrice = p.purchasePrice || '';
     results.push(r);
@@ -1905,20 +1948,29 @@ window.stopCheck=false;
   /* ── 6. what came back ──────────────────────────────────────────────── */
   const sold    = results.filter(r => r.status === 'SOLD SINCE PURCHASE');
   const listed  = results.filter(r => r.onMarket && r.status !== 'SOLD SINCE PURCHASE');
+  /* RP Data could not answer for these: no suggestion came back, the page
+     never opened, or it opened with no sale on record. They are the second
+     pass — the list Pricefinder is for. */
   const unknown = results.filter(r => !/still held|SOLD SINCE/.test(r.status));
+  window.rpUnresolved = unknown.map(r => r.address);
 
+  const left = all.length - done.size - results.length;
   console.log(`%c\nchecked ${results.length} · ${sold.length} sold since purchase · ` +
-    `${listed.length} showing a listing · ${unknown.length} need a look by hand`,
+    `${listed.length} showing a listing · ${unknown.length} need a second look` +
+    (left > 0 ? ` · ${left} still to do — click the bookmark again` : ''),
     'font-weight:bold;font-size:13px');
-  if (sold.length)    console.table(sold,    ['address','purchased','purchasePrice','soldDate','soldPrice']);
-  if (listed.length)  console.table(listed,  ['address','onMarket','lastAd','status']);
-  if (unknown.length) console.table(unknown, ['address','status','resolved']);
+  if (sold.length)    console.table(sold,    ['address','city','purchased','purchasePrice','soldDate','soldPrice']);
+  if (listed.length)  console.table(listed,  ['address','city','onMarket','lastAd','status']);
+  if (unknown.length) {
+    console.table(unknown, ['address','city','status','resolved']);
+    console.log('These are in window.rpUnresolved, ready for the Pricefinder pass.');
+  }
 
   if (SHEET_URL) { console.log('All rows sent to your sheet.'); return; }
 
   /* ── 7. no sheet configured: CSV + clipboard ────────────────────────── */
-  const COLS = ['address','purchased','purchasePrice','soldDate','soldPrice','status','onMarket','lastAd','resolved'];
-  const HEAD = ['Address','Purchase date','Purchase price','Sold date','Sold price','Status',
+  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','onMarket','lastAd','resolved'];
+  const HEAD = ['Address','City','Purchase date','Purchase price','Sold date','Sold price','Status',
                 'On market','Last advertised','RP Data record'];
   const cell = r => COLS.map(c => r[c] === undefined ? '' : r[c]);
 
@@ -1941,7 +1993,7 @@ window.stopCheck=false;
     btn('⬇ CSV', () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-      a.download = `rpdata-held-check-${CITY.toLowerCase()}.csv`;
+      a.download = `rpdata-held-check-${CITY ? CITY.toLowerCase() : 'all'}.csv`;
       a.click();
     }),
     btn('⧉ copy for Sheets', async function () {
@@ -4029,7 +4081,7 @@ window.stopCheck=false;
   /* ══════════ SOLD CHECK ══════════
      A held property is one the book has no sale for. RP Data and Pricefinder
      both export a sales list; this matches the two by address and says, for
-     each held property, whether the export agrees that it sold.
+     each held property, whether RP Data agrees that it sold.
 
      It never writes on its own. Every change goes through Mark sold, because a
      wrong address match puts a wrong price on a client's property, and the only
@@ -4352,12 +4404,16 @@ window.stopCheck=false;
     $('chkSetup').hidden = true;
     $('btnChkClear').hidden = true;
     $('chkCount').textContent = '';
-    $('chkBody').innerHTML = '<div class="empty"><h3>No export loaded</h3>'+
-      '<p>Drop an RP Data or Pricefinder sales export here — CSV or Excel — and every '+
-      'property in the register that has not been sold yet is matched against it by address.</p></div>';
+    $('chkBody').innerHTML = '<div class="empty"><h3>Nothing loaded yet</h3>'+
+      '<p>Run the RP Data check from the bookmarklet above, then press '+
+      '<strong>From Google Sheet</strong> to bring what it found in here.</p></div>';
     chkSay('');
     drawSuburbs();
   }
+  /* Retired: the sold check is now fed from the RP Data run, not from a
+     downloaded export. Everything below still works and the machinery it
+     shares with the sheet path — the column map, the matcher, the review
+     list — is live. Put a button back on chkLoad and the import returns. */
   function chkLoad(file){
     showTab('check');
     chkSay(msg('ok','Reading '+esc(file.name || 'the file')+'…'));
@@ -4417,11 +4473,12 @@ window.stopCheck=false;
   function syncSheetBtn(){ $('btnChkSheet').hidden = !sheetUrl(); }
 
   /* ── building the bookmarklet, here in the browser ──────────────────────
-     #rpBmSrc carries the whole RP Data script as inert text. Two placeholders
-     are left in it on purpose: the city, which is a choice, and the Google
-     Sheet address, which is a capability. Substituting them here means the
-     address exists only in the browser that was given it — put it in the file
-     and it would be published to everyone who opens the tool.
+     #rpBmSrc carries the whole RP Data script as inert text. Its two
+     placeholders are left in it on purpose. The city is left empty — one
+     bookmarklet covers every capital, and the city travels as a column in
+     the sheet rather than as a tab of its own. The Google Sheet address is
+     substituted here, in the browser, because it is a capability: anyone
+     holding it can write to that sheet, and this file is public.
 
      The result is a javascript: URL on a real <a>, because dragging to the
      bookmarks bar is something browsers do for links and nothing else. */
@@ -4429,18 +4486,14 @@ window.stopCheck=false;
     var el = $('rpBmSrc');
     return el ? el.textContent : '';
   }
-  function bmCity(){
-    var sel = $('bmCity');
-    return (sel && sel.value) || 'Adelaide';
-  }
   function buildBm(){
     var src = bmSource();
     if (!src) return '';
-    var city = bmCity(), url = sheetUrl();
-    /* function replacements, not strings: a $ in either value would otherwise
-       be read as a back-reference and silently mangle the script */
+    var url = sheetUrl();
+    /* a function replacement, not a string: a $ in the address would
+       otherwise be read as a back-reference and silently mangle the script */
     src = src.replace(/__SHEET_URL__/g, function(){ return url; })
-             .replace(/__CITY__/g,      function(){ return city; });
+             .replace(/__CITY__/g,      function(){ return ''; });
     return 'javascript:' + encodeURIComponent('void function(){\n' + src + '\n}();');
   }
   var bmLast = null;             // what the href was last built from
@@ -4448,52 +4501,63 @@ window.stopCheck=false;
     var a = $('bmLink');
     if (!a) return;
     /* drawSuburbs runs on every render, and rebuilding means a regex pass and
-       a URL-encode over twelve kilobytes. Nothing has changed most times. */
-    var sig = bmCity() + ' :: ' + sheetUrl();
+       a URL-encode over fifteen kilobytes. Nothing has changed most times. */
+    var sig = sheetUrl() || '-';
     if (sig === bmLast) return;
     bmLast = sig;
-    var href = buildBm();
-    a.href = href || '#';
-    /* the bookmark is named from its link text, so the city belongs in it —
-       two cities means two bookmarks and no way to tell them apart otherwise */
-    a.textContent = 'RP Data held check — ' + bmCity();
+    a.href = buildBm() || '#';
     var n = $('bmNote');
     if (n) {
       n.textContent = sheetUrl()
-        ? 'Drag it to your bookmarks bar · writes to your sheet'
-        : 'Drag it to your bookmarks bar · gives you a CSV at the end';
+        ? 'Drag me to your bookmarks bar · results go to your sheet'
+        : 'Drag me to your bookmarks bar · no sheet set, so you get a CSV';
     }
+    bmSheetLink();
   }
-  /* Signed in only, and only once the register has a city in it to check.
+  /* The sheet's own link comes from the sheet, not from this file: the Apps
+     Script reports it, and it is kept in this browser like the address that
+     fetched it. Publishing it here would hand the register to anyone who
+     opened the page source. */
+  function bmSheetLink(){
+    var p = $('bmSheetLine');
+    if (!p) return;
+    var view = '';
+    try { view = (localStorage.getItem('ppSheetView') || '').trim(); } catch (e) {}
+    p.hidden = !view;
+    if (view) {
+      p.innerHTML = '<a href="'+esc(view)+'" target="_blank" rel="noopener">Open the sheet</a>' +
+                    ' — rows appear in it as the run finds them.';
+    }
+    var u = sheetUrl();
+    if (view || !u) return;
+    /* Asked once, cached. A plain /exec answers with the spreadsheet's own
+       address, so nobody has to paste a second link. */
+    fetch(u).then(function(r){ return r.json(); }).then(function(d){
+      if (!d || !d.sheetUrl) return;
+      try { localStorage.setItem('ppSheetView', d.sheetUrl); } catch (e) {}
+      bmSheetLink();
+    }).catch(function(){ /* older deployment, or offline: no link, no harm */ });
+  }
+  /* Signed in only, and only once there is something held to check.
      The pool is handed in where the caller already has it: loadProps() reads
      and parses the whole register, and drawSuburbs runs on every render. */
   function syncBmBox(pool){
     var box = $('chkBm');
     if (!box) return;
     if (!pool) pool = loadProps().filter(isHeld);
-    var cats = categoriesOf(pool);
-    var on = (share.canWrite === true) && !!bmSource() && cats.length > 0;
+    var on = (share.canWrite === true) && !!bmSource() && pool.length > 0;
     box.hidden = !on;
     if (!on) { box.open = false; return; }
-    var sel = $('bmCity'), keep = sel.value;
-    sel.innerHTML = cats.map(function(c){
-      return '<option value="'+esc(c)+'">'+esc(c)+'</option>';
-    }).join('');
-    /* keep what was chosen if it still has anything held in it; otherwise the
-       city with the most left to check, which is the one you would pick */
-    sel.value = [].some.call(sel.options, function(o){ return o.value === keep; })
-      ? keep : bmBusiestCity(cats, pool);
     var inp = $('bmSheet');
     if (inp && document.activeElement !== inp) inp.value = sheetUrl();
+    /* The sheet section is the setup step, so it opens itself only while
+       there is nothing set — once it is, it stays out of the way. */
+    var s = $('chkBmSheet');
+    if (s && !s.dataset.touched) s.open = !sheetUrl();
     syncBm();
-  }
-  function bmBusiestCity(cats, held){
-    var best = cats[0], n = -1;
-    cats.forEach(function(c){
-      var k = held.filter(function(e){ return (e.category||'').trim() === c; }).length;
-      if (k > n) { n = k; best = c; }
-    });
-    return best;
+    /* outside syncBm's cache: the link can arrive from the sheet long
+       after the href it was built alongside stopped changing */
+    bmSheetLink();
   }
   /* Typed in, not set from a console: the address is a plain setting to the
      person using it, and asking them to open devtools for it was a way of
@@ -4503,6 +4567,9 @@ window.stopCheck=false;
     try {
       if (v) localStorage.setItem('ppSheetUrl', v);
       else   localStorage.removeItem('ppSheetUrl');
+      /* a different endpoint is a different sheet; the old link would point
+         at the wrong book until something happened to refresh it */
+      localStorage.removeItem('ppSheetView');
     } catch (e) { /* private window: this session only, which is still useful */ }
     syncSheetBtn();
     syncBm();
@@ -4571,7 +4638,7 @@ window.stopCheck=false;
       }).join('');
     };
     $('chkColsBody').innerHTML =
-      '<p class="count-line" style="margin-top:var(--sp-3)">Change one if the export names it something this did not recognise.</p>'+
+      '<p class="count-line" style="margin-top:var(--sp-3)">Change one if a column is not the one this expected.</p>'+
       '<div class="colsel">'+ CHK_COLS.map(function(c){
         return '<label>'+c.label+'<select data-chkcol="'+c.key+'">'+opts(chk.map[c.key])+'</select></label>';
       }).join('') +'</div>';
@@ -4656,7 +4723,7 @@ window.stopCheck=false;
     setChkScope(m, m === 'all'
       ? 'Opened on every property: only ' + held + ' of ' + book.length +
         ' is waiting on a sale, so checking just those would show you almost nothing. ' +
-        'This compares the export against the sale prices already recorded. Switch back any time.'
+        'This compares what RP Data says against the sale prices already recorded. Switch back any time.'
       : null);
   }
   function setChkScope(m, why){
@@ -4665,11 +4732,11 @@ window.stopCheck=false;
       x.setAttribute('aria-pressed', x.dataset.chkscope === m ? 'true' : 'false');
     });
     $('chkScopeWhy').textContent = why || (m === 'all'
-      ? 'Every property, including the ones already sold — so the export can disagree with the book.'
+      ? 'Every property, including the ones already sold — so RP Data can disagree with the book.'
       : 'Only properties with no sale recorded yet.');
   }
   var CHK_WORD = { sold:'Sold', check:'Check', differs:'Differs',
-                   none:'No sale found', gap:'Suburb not in export', agree:'Agrees' };
+                   none:'No sale found', gap:'Suburb not checked', agree:'Agrees' };
   /* worst first: the two that want a decision, then the ones that do not */
   var CHK_ORDER = { differs:0, sold:1, check:2, none:3, gap:4, agree:5 };
   function drawCheck(){
@@ -4686,7 +4753,7 @@ window.stopCheck=false;
     if (tally.check) bits.push(tally.check + ' to check');
     if (tally.agree) bits.push(tally.agree + ' agree');
     if (tally.none) bits.push(tally.none + ' not found');
-    if (tally.gap) bits.push(tally.gap + ' outside the export');
+    if (tally.gap) bits.push(tally.gap + ' in suburbs not checked');
     $('chkCount').textContent = rs.length
       ? rs.length + (chkScope === 'all' ? ' propert' : ' held propert') + (rs.length===1?'y':'ies') +
         ' checked against ' + chk.sales + ' sale' + (chk.sales===1?'':'s') +
@@ -4728,7 +4795,7 @@ window.stopCheck=false;
            there rather than filling in a blank */
         act = many
           ? '<button type="button" class="btn-ghost btn-sm" data-pickone="'+esc(r.e.id)+'">Choose sale</button>'
-          : '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Use the export</button>';
+          : '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Use RP Data’s</button>';
       }
       /* when the two disagree, the book's own figure has to be on the row —
          otherwise "price differs" is an accusation with no evidence */
@@ -4773,11 +4840,11 @@ window.stopCheck=false;
       '<div class="tbl-scroll short"><table><thead><tr>'+
       '<th scope="col">Property</th><th scope="col">Status</th>'+
       '<th scope="col" class="num">In the book</th>'+
-      '<th scope="col" class="num">In the export</th>'+
+      '<th scope="col" class="num">In RP Data</th>'+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+body+'</tbody></table></div>'+
       (chk.undated || chk.unpriced
-        ? '<p class="count-line">'+(chk.undated ? chk.undated+' row'+(chk.undated===1?'':'s')+' in the export had no readable date. ' : '')+
+        ? '<p class="count-line">'+(chk.undated ? chk.undated+' row'+(chk.undated===1?'':'s')+' had no readable date. ' : '')+
           (chk.unpriced ? chk.unpriced+' had no readable price. ' : '')+
           'Those rows can still match, but cannot be marked sold.</p>'
         : '');
@@ -4808,7 +4875,7 @@ window.stopCheck=false;
     renderProps();
     chkRun();
     chkSay(msg('ok', done.length + ' propert' + (done.length===1?'y':'ies') +
-      ' marked sold from the export. Each one is in <strong>History</strong>.'));
+      ' marked sold. Each one is in <strong>History</strong>.'));
   }
 
   /* ── the suburb panel ──
@@ -4969,7 +5036,7 @@ window.stopCheck=false;
           'number on the property and run the check again.'
         : ' Pick the one that is yours.');
     $('pickList').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
-      '<th scope="col">In the export</th><th scope="col" class="num">Sold for</th>'+
+      '<th scope="col">In RP Data</th><th scope="col" class="num">Sold for</th>'+
       '<th scope="col">Sold on</th><th scope="col"><span class="sr-only">Choose</span></th>'+
       '</tr></thead><tbody>'+
       r.hits.map(function(s, i){
@@ -5085,7 +5152,7 @@ window.stopCheck=false;
               '<span>'+esc(n)+'</span><span class="n">'+(n0 || '')+'</span></button>';
           }
           return '<button type="button" data-copy="'+esc(n)+'">'+
-            '<span>'+esc(n)+(miss ? ' <span class="gap" title="No sale in this suburb is in the export">not in export</span>' : '')+'</span>'+
+            '<span>'+esc(n)+(miss ? ' <span class="gap" title="Nothing in this suburb has been checked yet">not checked</span>' : '')+'</span>'+
             '<span class="n">'+(n0 || '')+'</span></button>';
         }).join('') + '</div>'
       : '<p class="count-line">Every property on the register has a sale recorded.</p>';
@@ -5601,9 +5668,7 @@ window.stopCheck=false;
     ev.preventDefault();
     var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
     if (!f) return;
-    /* A file dropped while the Sold check is open is a sales export, not a list
-       of properties to add: the tab you are on says which one you meant. */
-    if (currentTab() === 'check') chkLoad(f); else handleFile(f);
+    handleFile(f);
   });
 
   // tab strip: click, plus the arrow/Home/End keys a tablist is expected to have
@@ -6168,11 +6233,10 @@ window.stopCheck=false;
   });
 
   /* ── sold check ── */
-  $('btnChkFile').addEventListener('click', function(){ $('chkInput').click(); });
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
   syncSheetBtn();
-  $('bmCity').addEventListener('change', syncBm);
   $('bmSheet').addEventListener('input', bmSaveSheet);
+  $('chkBmSheet').addEventListener('toggle', function(){ this.dataset.touched = '1'; });
   $('bmSheet').addEventListener('change', bmSaveSheet);
   /* Clicking it would run the RP Data script against this page, which is not
      RP Data: it would read the register, find no search box and throw. Say
@@ -6183,10 +6247,6 @@ window.stopCheck=false;
     if (n) n.innerHTML = '<strong>Drag</strong> it to your bookmarks bar — clicking it here does nothing.';
   });
   syncBmBox();
-  $('chkInput').addEventListener('change', function(){
-    if (this.files && this.files[0]) chkLoad(this.files[0]);
-    this.value = '';
-  });
   $('btnChkClear').addEventListener('click', chkReset);
   /* The how-to opens from its own button rather than sitting on the tab: it is
      a thing you read once, and the first time you need it you have no file to
@@ -6199,7 +6259,11 @@ window.stopCheck=false;
   $('btnChkHelp').addEventListener('click', openChkHelp);
   $('chkHelpClose').addEventListener('click', closeChkHelp);
   $('chkHelpDone').addEventListener('click', closeChkHelp);
-  $('chkHelpGo').addEventListener('click', function(){ closeChkHelp(); $('chkInput').click(); });
+  $('chkHelpGo').addEventListener('click', function(){
+    closeChkHelp();
+    var d = $('chkBm');
+    if (d && !d.hidden) { d.open = true; d.scrollIntoView({ block:'nearest' }); }
+  });
   $('chkHelpDialog').addEventListener('click', function(ev){
     if (ev.target === $('chkHelpDialog')) closeChkHelp();
   });
