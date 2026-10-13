@@ -4652,8 +4652,16 @@ window.stopCheck=false;
     if (!share.sb || share.canWrite !== true) return Promise.resolve(false);
     return share.sb.from('irr_config').select('value').eq('key', CFG_KEY).maybeSingle()
       .then(function(r){
+        if (r && r.error) return false;        // table missing: the local copy stands
         var v = r && r.data ? String(r.data.value || '').trim() : '';
-        if (!v || v === sheetUrl()) return false;
+        if (!v) {
+          /* Nothing shared yet, and this browser has one — so this is the
+             browser that set it up. Put it where everyone else will find
+             it, rather than making each of them paste it in. */
+          if (sheetUrl()) shareSheetUrl(sheetUrl());
+          return false;
+        }
+        if (v === sheetUrl()) return false;
         try {
           localStorage.setItem('ppSheetUrl', v);
           /* a different address is a different book; the cached link to the
