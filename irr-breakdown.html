@@ -1142,10 +1142,13 @@ details .body strong{color:var(--text)}
               <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
                      autocapitalize="off" placeholder="https://script.google.com/macros/s/…/exec">
               <p class="hint">The <code>/exec</code> address of the Apps Script behind the
-                 sheet, not the sheet's own link. Ask whoever set it up, or make one:
-                 <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>.
-                 Kept in this browser only — never written into this page, and nothing
-                 is sent anywhere but your own sheet.</p>
+                 sheet, not the sheet's own link. Making one:
+                 <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>,
+                 about three minutes.
+                 Set it once and it is shared with everyone who can sign in, so no
+                 one else has to. It is never written into this page, and nothing
+                 goes anywhere but your own sheet.</p>
+              <p class="hint" id="bmSheetShared" hidden></p>
             </div>
 
             <h3>1 · RP Data — every held property</h3>
@@ -4604,6 +4607,7 @@ window.stopCheck=false;
   }
   var bmLast = null;             // what the href was last built from
   var bmReady = false;           // signed in, with something to check
+  var bmShareT = null;           // debounce for sharing a typed-in address
   function syncBm(){
     var a = $('bmLink');
     if (!a) return;
@@ -4633,6 +4637,42 @@ window.stopCheck=false;
       box.hidden = !sheetUrl();
       if (!box.hidden) pf.href = buildBm('pfBmSrc') || '#';
     }
+  }
+  /* ── the sheet address, shared with whoever can sign in ─────────────────
+     It is a capability: anyone holding it can append to that sheet and read
+     what is already in it. So it is not in this file, and it is not left for
+     each person to paste in either — it lives in the database, behind the
+     same sign-in that already gates writing to the register. Readable by
+     anyone who can sign in, by nobody else.
+
+     The copy in localStorage is only a cache, so the tab works before the
+     session resolves and keeps working if the table is ever unreachable. */
+  var CFG_KEY = 'rpdata_exec';
+  function loadSharedSheet(){
+    if (!share.sb || share.canWrite !== true) return Promise.resolve(false);
+    return share.sb.from('irr_config').select('value').eq('key', CFG_KEY).maybeSingle()
+      .then(function(r){
+        var v = r && r.data ? String(r.data.value || '').trim() : '';
+        if (!v || v === sheetUrl()) return false;
+        try {
+          localStorage.setItem('ppSheetUrl', v);
+          /* a different address is a different book; the cached link to the
+             old one would send you to the wrong place */
+          localStorage.removeItem('ppSheetView');
+        } catch (e) {}
+        syncSheetBtn();
+        syncBmBox();
+        return true;
+      })
+      .catch(function(){ return false; });   // table missing: the local copy stands
+  }
+  /* Set once, by whoever sets it up. Everybody else just finds it there. */
+  function shareSheetUrl(v){
+    if (!share.sb || share.canWrite !== true || !v) return Promise.resolve(false);
+    return share.sb.from('irr_config')
+      .upsert({ key: CFG_KEY, value: v, updated_at: new Date().toISOString() })
+      .then(function(r){ return !(r && r.error); })
+      .catch(function(){ return false; });
   }
   /* The sheet's own link comes from the sheet, not from this file: the Apps
      Script reports it, and it is cached in this browser like the address that
@@ -6170,6 +6210,27 @@ window.stopCheck=false;
     } catch (e) { /* private window: this session only, still useful */ }
     syncSheetBtn();
     syncBm();
+    /* Shared the moment it looks like a finished address, because the
+       whole point is that nobody else has to do this. Debounced: this
+       fires on every keystroke and the last one is the real one. */
+    clearTimeout(bmShareT);
+    /* A plain shape test, not a regex: this only has to tell a finished
+       address from one still being typed. */
+    if (v.indexOf('https://script.google.com/macros/s/') !== 0) return;
+    if (v.slice(-5) !== '/exec') return;
+    bmShareT = setTimeout(function(){
+      shareSheetUrl(v).then(function(ok){
+        var p = $('bmSheetShared');
+        if (!p) return;
+        p.hidden = false;
+        p.innerHTML = ok
+          ? '✓ Shared — everyone signed in picks this up on their next visit. ' +
+            'Nobody else has to set it up.'
+          : 'Saved in this browser, but it could not be shared with the team. ' +
+            'The <code>irr_config</code> table is missing or not writable, so ' +
+            'everyone else will have to paste it in themselves.';
+      });
+    }, 600);
   });
   /* Delegated, because the empty state is rebuilt from scratch on every
      Clear: a listener bound to the button it shipped with would be bound
@@ -6588,6 +6649,7 @@ window.stopCheck=false;
       share.canWrite = true; applyShareMode(); authLabel();
       $('messages').innerHTML = msg('ok','Signed in as '+esc(email)+'. Saving this list for everyone…');
       share.sent = null;          /* force the first push even if nothing has changed */
+      loadSharedSheet();
       pushShared();
     }).catch(function(e){
       $('authGo').disabled = false;
@@ -6620,6 +6682,7 @@ window.stopCheck=false;
     share.sb.auth.getSession().then(function(r){
       share.canWrite = !!(r && r.data && r.data.session);
       applyShareMode(); authLabel();
+      loadSharedSheet();      // the sheet address, for anyone who can sign in
       return load();
     }).then(function(){
       /* other people's changes arrive without anyone reloading */
@@ -6640,6 +6703,7 @@ window.stopCheck=false;
       var was = share.canWrite;
       share.canWrite = !!session;
       if (was !== share.canWrite) { applyShareMode(); authLabel(); }
+      if (share.canWrite) loadSharedSheet();
     });
 
     $('authGo').addEventListener('click', shareSignInGo);
