@@ -49,6 +49,7 @@ var HEADERS = [
   'Sold date',
   'Sold price',
   'Status',
+  'Source',
   'On market',
   'Last advertised',
   'RP Data record',
@@ -124,6 +125,9 @@ function doPost(e) {
         r.soldDate || '',
         r.soldPrice || '',
         r.status || '',
+        /* Not taken from the row: the tab it is being written to IS the
+           source, so the two can never disagree. */
+        payload.tab === 'pricefinder' ? 'Pricefinder' : 'RP Data',
         r.onMarket || '',
         r.lastAd || '',
         r.resolved || '',
@@ -209,7 +213,10 @@ function doGet(e) {
           lastAd:        fmt_(get(v, 'Last advertised')),
           resolved:      fmt_(get(v, 'RP Data record')),
           checkedAt:     fmt_(get(v, 'Checked at')),
-          source:        name === TAB2 ? 'Pricefinder' : 'RP Data'
+          /* the column where there is one; the tab otherwise, so a row
+             written before the column existed still answers */
+          source:        fmt_(get(v, 'Source')) ||
+                         (name === TAB2 ? 'Pricefinder' : 'RP Data')
         };
       });
   }
