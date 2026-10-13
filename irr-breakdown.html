@@ -412,6 +412,32 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .colsel{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-3);margin-top:var(--sp-3)}
 .colsel label{display:block;font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .colsel select{margin-top:4px;width:100%}
+/* ─── the RP Data bookmarklet ───
+   The drag target has to be a real <a> with a real href: dragging something
+   onto the bookmarks bar is a browser affordance for links, and a button
+   cannot be dragged there however it is painted. So it is a link, painted as
+   the primary button it behaves like. */
+.bm-drag{
+  display:inline-block;background-color:var(--grad-accent-base);background-image:var(--grad-accent);
+  color:var(--on-accent);box-shadow:var(--glow-accent);border-radius:var(--r-md);
+  border:1px solid transparent;padding:11px 20px;text-decoration:none;
+  font:700 14px/22px 'Manrope',sans-serif;cursor:grab;user-select:none;
+}
+.bm-drag:hover{background-color:var(--grad-accent-hover-base);background-image:var(--grad-accent-hover);color:var(--on-accent-deep)}
+.bm-drag:active{cursor:grabbing}
+.bm-row{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;margin:var(--sp-3) 0 0}
+.bm-steps{margin:var(--sp-3) 0 0;padding-left:20px}
+.bm-steps li{margin-bottom:6px}
+/* the controls are short; their explanations are not, and a hint boxed to
+   the width of a dropdown wraps into a column five lines deep */
+#chkBm .field select, #chkBm .field input{max-width:430px}
+/* the sheet address is long and monospaced-ish; a 15px proportional face
+   wraps it mid-token and makes a typo impossible to spot */
+#chkBm input{font:500 12px/18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:38px;padding:8px 10px}
+#chkBm select{min-height:38px;padding:8px 38px 8px 10px;font-size:13px}
+/* nothing else on the page links out, so the one link that does has to say
+   so for itself */
+#chkBm .hint a{color:var(--accent-300);text-decoration:underline}
 /* The window's own prose and controls need room between them: a paragraph
    whose last line touches the next field reads as one run-on block. */
 #addPurchased > h3, #addSold > h3{margin:0 0 var(--sp-2)}
@@ -1046,6 +1072,72 @@ details .body strong{color:var(--text)}
             </div>
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
+            <!-- ══════════ RP DATA BOOKMARKLET ══════════
+                 Shown only to someone signed in. It reads the whole register
+                 and drives a licensed RP Data account; it is a job the team
+                 does, not a feature a reader is offered.
+
+                 The javascript: URL is assembled in the browser by buildBm().
+                 It is never written into this file, because it carries that
+                 browser's own Google Sheet address — a capability anyone
+                 holding it can write to — and this file is public. -->
+            <details id="chkBm" hidden>
+              <summary>Check RP Data directly — bookmarklet</summary>
+              <div class="body">
+                <p>This does by itself what the export does by hand: for every
+                   property still held in one city it types the address into
+                   RP Data's own search box, opens the property, and reads the
+                   last sale. <strong>A last sale newer than your purchase is
+                   the whole signal</strong> — the property has changed hands
+                   since you bought it.</p>
+                <p>It runs in <em>your</em> browser, on <em>your</em> RP Data
+                   sign-in, at about eight seconds a property. Nothing about it
+                   passes through this page.</p>
+
+                <div class="field">
+                  <label for="bmCity">Which city to check</label>
+                  <select id="bmCity"></select>
+                  <p class="hint" id="bmCityWhy">One run does one city. Build a
+                     second bookmark for the other.</p>
+                </div>
+
+                <div class="field">
+                  <label for="bmSheet">Google Sheet address — optional</label>
+                  <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
+                         autocapitalize="off" placeholder="https://script.google.com/macros/s/…/exec">
+                  <p class="hint">Optional. Take
+                     <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>,
+                     paste it into a new sheet's <em>Extensions → Apps Script</em>,
+                     deploy it as a web app, and put the address it gives you here.
+                     Every row is then written the moment it is found — a run that
+                     dies at property 180 keeps the first 179 — and <strong>From
+                     Google Sheet</strong> above reads them straight back in here.
+                     Leave it empty and you get a CSV download at the end instead.
+                     The address is kept in this browser and goes nowhere but your
+                     own sheet.</p>
+                </div>
+
+                <div class="bm-row">
+                  <a class="bm-drag" id="bmLink" href="#" draggable="true">RP Data held check</a>
+                  <span class="hint" id="bmNote" style="margin:0">Drag it to your bookmarks bar</span>
+                </div>
+
+                <ol class="bm-steps">
+                  <li>Show the bookmarks bar if it is hidden — <code>Ctrl+Shift+B</code>.</li>
+                  <li><strong>Drag</strong> the button onto it. Clicking it here does
+                      nothing: this page is not RP Data.</li>
+                  <li>Open <code>rpp.corelogic.com.au</code>, signed in, and click the
+                      bookmark. Keep that tab in front — Chrome freezes background
+                      tabs and the run stalls.</li>
+                  <li>To stop early: <code>F12</code>, then <code>stopCheck = true</code>.
+                      Whatever has already been found is kept.</li>
+                </ol>
+
+                <p>Change the city or the sheet address above and the button
+                   rebuilds itself — drag it again to replace the old bookmark.</p>
+              </div>
+            </details>
+
             <!-- everything below only exists once an export has been read -->
             <div id="chkSetup" hidden>
               <!-- A book of sold properties has almost nothing "not sold yet"
@@ -1576,6 +1668,291 @@ details .body strong{color:var(--text)}
 <script src="irr-breakdown-engine.js"></script>
 <!-- which council each suburb is in; see the file for where it comes from -->
 <script src="suburb-lga.js?v=1"></script>
+<!-- The RP Data check, carried as text so the browser never runs it here. The
+     Sold check tab reads it out, substitutes the city and the sheet address
+     from this browser's own settings, and builds the bookmarklet from that.
+     Rebuild it with mkbm.pl; do not edit it between the markers by hand. -->
+<!-- rpbm:start --><script type="text/plain" id="rpBmSrc">
+window.stopCheck=false;
+
+(async function () {
+  'use strict';
+
+  /* ── settings ───────────────────────────────────────────────────────── */
+  /* The city is chosen where the bookmarklet is built — in the Sold check tab,
+     or from CITY when mkbm.pl runs. Pasted straight into a console the
+     placeholder survives, so it falls back to Adelaide rather than matching
+     nothing and reporting an empty register. */
+  const CITY      = '__CITY__'.charAt(0) === '_' ? 'Adelaide' : '__CITY__';
+  /* Set this once, in the console on any RP Data page, and every later run
+     picks it up:   localStorage.ppSheetUrl = 'https://script.google.com/...'
+     Leave it unset and you get the CSV / clipboard buttons instead. */
+  const RAW_SHEET = (localStorage.getItem('ppSheetUrl') || '__SHEET_URL__').trim();
+  /* An unsubstituted placeholder is not an address. Treated as one it
+     would POST every row at nothing and report success. */
+  const SHEET_URL = /^https:/.test(RAW_SHEET) ? RAW_SHEET : '';
+  const PAUSE     = 7000;         // ms between properties
+  const JITTER    = 2500;         // random extra, so the pace is not robotic
+  const LONG_REST = [20, 45000];  // every 20 properties, pause 45s
+
+  /* ── 1. the register ────────────────────────────────────────────────── */
+  const cfgSrc = await fetch('https://pp-research.github.io/tools/supabase-config.js')
+    .then(r => r.text());
+  const url = (cfgSrc.match(/url:\s*'([^']+)'/) || [])[1];
+  const key = (cfgSrc.match(/key:\s*'([^']+)'/) || [])[1];
+  const row = (cfgSrc.match(/row:\s*'([^']+)'/) || [])[1] || 'adelaide';
+  if (!url || !key) { console.error('Could not read the shared-list config.'); return; }
+
+  const book = await fetch(`${url}/rest/v1/irr_book?select=body&id=eq.${row}`,
+    { headers: { apikey: key, Authorization: 'Bearer ' + key } })
+    .then(r => r.json()).then(rows => rows[0] && rows[0].body);
+  if (!book) { console.error('Could not read the shared list.'); return; }
+
+  const held = (book.properties || []).filter(p =>
+    p.name && !p.outside && p.category === CITY &&
+    !(p.soldDate && p.soldPrice));
+
+  console.log(`%c${held.length} held ${CITY} properties to check` +
+    (SHEET_URL ? ' — writing to your Google Sheet' : ' — CSV at the end'),
+    'font-weight:bold;font-size:13px');
+
+  /* ── 2. the sheet ───────────────────────────────────────────────────── */
+  /* Apps Script redirects to a different host on the way back, which kills
+     the CORS headers, so this is deliberately fire-and-forget: text/plain
+     keeps it a "simple" request (no preflight) and no-cors accepts that we
+     cannot read the reply. Confirm it is landing by watching the sheet. */
+  async function send(rows, reset) {
+    if (!SHEET_URL) return;
+    try {
+      await fetch(SHEET_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ reset: !!reset, rows })
+      });
+    } catch (e) {
+      console.warn('sheet write failed:', e.message);
+    }
+  }
+  if (SHEET_URL) await send([], true);          // start the tab clean
+
+  /* ── 3. page helpers ────────────────────────────────────────────────── */
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function searchBox() {
+    return document.getElementById('crux-multi-locality-search') ||
+      [...document.querySelectorAll('input')]
+        .find(x => /address|search/i.test(x.placeholder || ''));
+  }
+
+  // React owns this input, so set the value through the native setter and
+  // tell React about it — otherwise it reverts on the next render.
+  function typeInto(el, text) {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value').set;
+    setter.call(el, text);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  async function waitFor(test, ms = 9000, step = 250) {
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      const v = test();
+      if (v) return v;
+      await sleep(step);
+    }
+    return null;
+  }
+
+  /* The subject property's own sale sits before the nearby-comparables
+     block. Read past that marker and you start picking up the neighbours. */
+  function readLastSold() {
+    const t = document.body.innerText.replace(/\n{2,}/g, '\n');
+    let cut = t.length;
+    for (const k of ['Nearby', 'Similar']) {
+      const i = t.indexOf(k);
+      if (i >= 0 && i < cut) cut = i;
+    }
+    const m = t.slice(0, cut)
+      .match(/Last Sold on (\d{2} \w{3} \d{4}) for \$([\d,]+)/);
+    return m ? { date: m[1], price: Number(m[2].replace(/,/g, '')) } : null;
+  }
+
+  /* Is it on the market right now?
+     Deliberately best-effort. RP Data puts a status near the top of the
+     subject block and a listing HISTORY further down, and in plain text
+     "advertised in 2021" and "for sale today" look alike. So this reads only
+     the summary block — from the address line, which excludes the nav — and
+     reports the most recent advertisement date alongside it. Two facts you
+     can judge, rather than one guess dressed up as a verdict. */
+  function readOnMarket() {
+    const t = document.body.innerText.replace(/\n{2,}/g, '\n');
+    let cut = t.length;
+    for (const k of ['Nearby', 'Similar']) {
+      const i = t.indexOf(k);
+      if (i >= 0 && i < cut) cut = i;
+    }
+    const sub = t.slice(0, cut);
+    const from = sub.indexOf('Copy');           // end of the address heading
+    const head = sub.slice(from < 0 ? 0 : from, (from < 0 ? 0 : from) + 700);
+
+    const seen = [];
+    (head.match(/For Sale|For Rent|Under Offer|Under Contract|Auction|Withdrawn/gi) || [])
+      .forEach(function (w) {
+        const k = w.replace(/\s+/g, ' ').toLowerCase();
+        if (seen.indexOf(k) < 0) seen.push(k);
+      });
+
+    let last = null;
+    (sub.match(/Advertisement Date\s*(\d{2} \w{3} \d{4})/g) || []).forEach(function (a) {
+      const m = /(\d{2} \w{3} \d{4})/.exec(a);
+      const d = m && asDate(m[1]);
+      if (d && (!last || d > last)) last = d;
+    });
+
+    return { onMarket: seen.join(', '), lastAd: last ? iso(last) : '' };
+  }
+
+  const MONTHS = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,
+                   Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+  function asDate(s) {                       // "17 Dec 2015" → Date
+    const m = /^(\d{2}) (\w{3}) (\d{4})$/.exec(s);
+    return m ? new Date(+m[3], MONTHS[m[2]], +m[1]) : null;
+  }
+  function iso(d) {                          // Date → "2015-12-17"
+    return d ? d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0') : '';
+  }
+
+  /* ── 4. one property ────────────────────────────────────────────────── */
+  async function check(p) {
+    const box = searchBox();
+    if (!box) return { status: 'NO SEARCH BOX' };
+
+    box.focus();
+    typeInto(box, '');
+    await sleep(150);
+    typeInto(box, p.name);
+
+    const opts = await waitFor(() => {
+      const o = [...document.querySelectorAll('[role=option]')];
+      return o.length ? o : null;
+    }, 8000);
+    if (!opts) return { status: 'no match in RP Data' };
+
+    const before = location.pathname;
+    opts[0].click();
+
+    const moved = await waitFor(
+      () => location.pathname !== before && /\/property\//.test(location.pathname),
+      12000);
+    if (!moved) return { status: 'did not open', resolved: opts[0].innerText.trim() };
+
+    await waitFor(readLastSold, 9000);       // let the detail panel render
+    const sale = readLastSold();
+    const resolved = location.pathname.split('/')[2];
+    const mkt = readOnMarket();
+
+    if (!sale) return { status: 'no sale on record', resolved,
+                        onMarket: mkt.onMarket, lastAd: mkt.lastAd };
+
+    const sold = asDate(sale.date);
+    const bought = p.purchaseDate ? new Date(p.purchaseDate) : null;
+
+    return {
+      status: !bought              ? 'no purchase date on file'
+            : (sold && sold > bought) ? 'SOLD SINCE PURCHASE'
+                                    : 'still held',
+      soldDate: iso(sold),
+      soldPrice: sale.price,
+      onMarket: mkt.onMarket,
+      lastAd: mkt.lastAd,
+      resolved
+    };
+  }
+
+  /* ── 5. the run ─────────────────────────────────────────────────────── */
+  const results = [];
+  for (let i = 0; i < held.length; i++) {
+    if (window.stopCheck) { console.warn('stopped at', i, 'of', held.length); break; }
+    const p = held[i];
+    let r;
+    try { r = await check(p); }
+    catch (e) { r = { status: 'error: ' + e.message }; }
+
+    r.address       = p.name;
+    r.purchased     = p.purchaseDate || '';
+    r.purchasePrice = p.purchasePrice || '';
+    results.push(r);
+
+    const hit = r.status === 'SOLD SINCE PURCHASE';
+    console.log(`%c${i + 1}/${held.length}  ${p.name}  —  ${r.status}` +
+      (r.soldDate ? `  (sold ${r.soldDate} $${r.soldPrice.toLocaleString()})` : '') +
+      (r.onMarket ? `  [${r.onMarket}${r.lastAd ? ', last advertised ' + r.lastAd : ''}]` : ''),
+      hit ? 'color:#c0392b;font-weight:bold'
+          : r.onMarket ? 'color:#b9770e' : 'color:#888');
+
+    await send([r]);
+    window.rpResults = results;              // readable while it runs
+
+    if (i < held.length - 1) {
+      const rest = (i + 1) % LONG_REST[0] === 0 ? LONG_REST[1] : 0;
+      await sleep(PAUSE + Math.random() * JITTER + rest);
+    }
+  }
+
+  /* ── 6. what came back ──────────────────────────────────────────────── */
+  const sold    = results.filter(r => r.status === 'SOLD SINCE PURCHASE');
+  const listed  = results.filter(r => r.onMarket && r.status !== 'SOLD SINCE PURCHASE');
+  const unknown = results.filter(r => !/still held|SOLD SINCE/.test(r.status));
+
+  console.log(`%c\nchecked ${results.length} · ${sold.length} sold since purchase · ` +
+    `${listed.length} showing a listing · ${unknown.length} need a look by hand`,
+    'font-weight:bold;font-size:13px');
+  if (sold.length)    console.table(sold,    ['address','purchased','purchasePrice','soldDate','soldPrice']);
+  if (listed.length)  console.table(listed,  ['address','onMarket','lastAd','status']);
+  if (unknown.length) console.table(unknown, ['address','status','resolved']);
+
+  if (SHEET_URL) { console.log('All rows sent to your sheet.'); return; }
+
+  /* ── 7. no sheet configured: CSV + clipboard ────────────────────────── */
+  const COLS = ['address','purchased','purchasePrice','soldDate','soldPrice','status','onMarket','lastAd','resolved'];
+  const HEAD = ['Address','Purchase date','Purchase price','Sold date','Sold price','Status',
+                'On market','Last advertised','RP Data record'];
+  const cell = r => COLS.map(c => r[c] === undefined ? '' : r[c]);
+
+  const csv = [HEAD.join(',')].concat(results.map(r =>
+    cell(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))).join('\n');
+  const tsv = [HEAD.join('\t')].concat(results.map(r => cell(r).join('\t'))).join('\n');
+
+  const bar = document.createElement('div');
+  bar.style.cssText = 'position:fixed;z-index:99999;right:16px;bottom:16px;' +
+    'display:flex;gap:8px;font:600 14px system-ui';
+  const btn = (label, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'background:#1b3a5c;color:#fff;border:0;padding:10px 16px;' +
+      'border-radius:6px;cursor:pointer;font:inherit;box-shadow:0 2px 8px #0004';
+    b.onclick = fn;
+    return b;
+  };
+  bar.append(
+    btn('⬇ CSV', () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      a.download = `rpdata-held-check-${CITY.toLowerCase()}.csv`;
+      a.click();
+    }),
+    btn('⧉ copy for Sheets', async function () {
+      await navigator.clipboard.writeText(tsv);
+      this.textContent = '✓ copied — paste into a sheet';
+    })
+  );
+  document.body.appendChild(bar);
+  console.log('Buttons bottom-right: CSV download, or copy and paste into a sheet.');
+})();
+</script><!-- rpbm:end -->
 <!-- versioned so a browser holding the previous set fetches this one rather than
      serving its cached copy — Pages sends max-age=600 and the filename alone
      gives it no reason to look again -->
@@ -4039,6 +4416,98 @@ details .body strong{color:var(--text)}
   }
   function syncSheetBtn(){ $('btnChkSheet').hidden = !sheetUrl(); }
 
+  /* ── building the bookmarklet, here in the browser ──────────────────────
+     #rpBmSrc carries the whole RP Data script as inert text. Two placeholders
+     are left in it on purpose: the city, which is a choice, and the Google
+     Sheet address, which is a capability. Substituting them here means the
+     address exists only in the browser that was given it — put it in the file
+     and it would be published to everyone who opens the tool.
+
+     The result is a javascript: URL on a real <a>, because dragging to the
+     bookmarks bar is something browsers do for links and nothing else. */
+  function bmSource(){
+    var el = $('rpBmSrc');
+    return el ? el.textContent : '';
+  }
+  function bmCity(){
+    var sel = $('bmCity');
+    return (sel && sel.value) || 'Adelaide';
+  }
+  function buildBm(){
+    var src = bmSource();
+    if (!src) return '';
+    var city = bmCity(), url = sheetUrl();
+    /* function replacements, not strings: a $ in either value would otherwise
+       be read as a back-reference and silently mangle the script */
+    src = src.replace(/__SHEET_URL__/g, function(){ return url; })
+             .replace(/__CITY__/g,      function(){ return city; });
+    return 'javascript:' + encodeURIComponent('void function(){\n' + src + '\n}();');
+  }
+  var bmLast = null;             // what the href was last built from
+  function syncBm(){
+    var a = $('bmLink');
+    if (!a) return;
+    /* drawSuburbs runs on every render, and rebuilding means a regex pass and
+       a URL-encode over twelve kilobytes. Nothing has changed most times. */
+    var sig = bmCity() + ' :: ' + sheetUrl();
+    if (sig === bmLast) return;
+    bmLast = sig;
+    var href = buildBm();
+    a.href = href || '#';
+    /* the bookmark is named from its link text, so the city belongs in it —
+       two cities means two bookmarks and no way to tell them apart otherwise */
+    a.textContent = 'RP Data held check — ' + bmCity();
+    var n = $('bmNote');
+    if (n) {
+      n.textContent = sheetUrl()
+        ? 'Drag it to your bookmarks bar · writes to your sheet'
+        : 'Drag it to your bookmarks bar · gives you a CSV at the end';
+    }
+  }
+  /* Signed in only, and only once the register has a city in it to check.
+     The pool is handed in where the caller already has it: loadProps() reads
+     and parses the whole register, and drawSuburbs runs on every render. */
+  function syncBmBox(pool){
+    var box = $('chkBm');
+    if (!box) return;
+    if (!pool) pool = loadProps().filter(isHeld);
+    var cats = categoriesOf(pool);
+    var on = (share.canWrite === true) && !!bmSource() && cats.length > 0;
+    box.hidden = !on;
+    if (!on) { box.open = false; return; }
+    var sel = $('bmCity'), keep = sel.value;
+    sel.innerHTML = cats.map(function(c){
+      return '<option value="'+esc(c)+'">'+esc(c)+'</option>';
+    }).join('');
+    /* keep what was chosen if it still has anything held in it; otherwise the
+       city with the most left to check, which is the one you would pick */
+    sel.value = [].some.call(sel.options, function(o){ return o.value === keep; })
+      ? keep : bmBusiestCity(cats, pool);
+    var inp = $('bmSheet');
+    if (inp && document.activeElement !== inp) inp.value = sheetUrl();
+    syncBm();
+  }
+  function bmBusiestCity(cats, held){
+    var best = cats[0], n = -1;
+    cats.forEach(function(c){
+      var k = held.filter(function(e){ return (e.category||'').trim() === c; }).length;
+      if (k > n) { n = k; best = c; }
+    });
+    return best;
+  }
+  /* Typed in, not set from a console: the address is a plain setting to the
+     person using it, and asking them to open devtools for it was a way of
+     saying "this is not really for you". It still never leaves this browser. */
+  function bmSaveSheet(){
+    var v = $('bmSheet').value.trim();
+    try {
+      if (v) localStorage.setItem('ppSheetUrl', v);
+      else   localStorage.removeItem('ppSheetUrl');
+    } catch (e) { /* private window: this session only, which is still useful */ }
+    syncSheetBtn();
+    syncBm();
+  }
+
   function chkLoadSheet(){
     var u = sheetUrl();
     if (!u) return;
@@ -4545,6 +5014,7 @@ details .body strong{color:var(--text)}
        this panel answers is "where do I still need sales data", and a property
        with a sale already recorded is not part of that question. */
     var pool = loadProps().filter(isHeld);
+    syncBmBox(pool);    // the same pool decides which cities the bookmarklet offers
     /* the dropdown offers every city with something unsold in it; the list
        below then answers for the one chosen */
     syncChkCity(pool);
@@ -5701,6 +6171,18 @@ details .body strong{color:var(--text)}
   $('btnChkFile').addEventListener('click', function(){ $('chkInput').click(); });
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
   syncSheetBtn();
+  $('bmCity').addEventListener('change', syncBm);
+  $('bmSheet').addEventListener('input', bmSaveSheet);
+  $('bmSheet').addEventListener('change', bmSaveSheet);
+  /* Clicking it would run the RP Data script against this page, which is not
+     RP Data: it would read the register, find no search box and throw. Say
+     what to do instead. */
+  $('bmLink').addEventListener('click', function(ev){
+    ev.preventDefault();
+    var n = $('bmNote');
+    if (n) n.innerHTML = '<strong>Drag</strong> it to your bookmarks bar — clicking it here does nothing.';
+  });
+  syncBmBox();
   $('chkInput').addEventListener('change', function(){
     if (this.files && this.files[0]) chkLoad(this.files[0]);
     this.value = '';
@@ -6091,6 +6573,7 @@ details .body strong{color:var(--text)}
     var ab = $('btnShareAuth'); if (ab) ab.hidden = !(share.db || share.sb);
     syncEditBtn();                       // nothing to edit with when you cannot write
     if (ro) renderProps();   // drops the per-row delete and archive buttons
+    syncBmBox();             // signing out takes the bookmarklet away with it
   }
   /* ── the shared list on a published web page ──
      Reading needs nothing: the publishable key allows SELECT on this one table
