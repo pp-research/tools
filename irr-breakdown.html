@@ -2062,8 +2062,8 @@ window.stopCheck=false;
 
      So: dismiss what is there, wait for it to actually go, then type, then
      wait for a list whose first entry is not the one we started with. */
-  async function suggest(box, name, ms) {
-    const was = optionTexts()[0] || '';
+  async function suggest(box, name, ms, allowSame) {
+    const was = allowSame ? '' : (optionTexts()[0] || '');
 
     box.focus();
     typeInto(box, '');
@@ -2102,20 +2102,49 @@ window.stopCheck=false;
       return { status: 'no confident match', offered: offered.slice(0, 3).join(' | ') };
     }
 
-    /* Best candidate first, then the next. One that will not open is usually
-       the building rather than the home, and the home is the one after it. */
-    let moved = null, used = -1;
-    for (const idx of order.slice(0, 3)) {
+  /* A suggestion is a div with a role, and the thing that actually navigates is
+     usually a child of it. A bare .click() on the wrapper does nothing at all
+     in that case, and React wants the pointer events as well as the click, so
+     this sends the lot to the innermost clickable thing. */
+  function clickOption(el) {
+    try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    const target = el.querySelector('a,button,[role=button]') || el;
+    const E = window.PointerEvent || MouseEvent;
+    ['pointerover', 'pointerenter', 'pointerdown', 'mousedown',
+     'pointerup', 'mouseup', 'click'].forEach(type => {
+      const C = /^pointer/.test(type) ? E : MouseEvent;
+      target.dispatchEvent(new C(type, { bubbles: true, cancelable: true, view: window }));
+    });
+  }
+
+  /* Best candidate first, then the next, then the next. The one that will not
+     open is often the building rather than a home in it, and the home is
+     further down the list.
+
+     Each attempt re-reads the list that is actually on screen and re-ranks
+     against it. The first version kept indices from the original list and
+     re-queried between attempts — but re-querying the same address returns the
+     same suggestions, which the staleness guard then rejected as "not a new
+     list", so it gave up before trying the second candidate at all. That is
+     why a property whose right answer was third came back "did not open". */
+    let moved = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let cur = [...document.querySelectorAll('[role=option]')];
+      if (!cur.length) {
+        const again = await suggest(box, p.name, 8000, true);   // same list is fine
+        if (!again) break;
+        cur = again;
+      }
+      const curTexts = cur.map(o => (o.innerText || '').replace(/\s+/g, ' ').trim());
+      const curOrder = rank(p.name, curTexts);
+      if (attempt >= curOrder.length) break;
+
       const before = location.pathname;
-      opts[idx].click();
+      clickOption(cur[curOrder[attempt]]);
       moved = await waitFor(
         () => location.pathname !== before && /\/property\//.test(location.pathname),
         12000);
-      if (moved) { used = idx; break; }
-      /* it did not open — put the list back and try the next one */
-      const again = await suggest(box, p.name, 8000);
-      if (!again) break;
-      opts = again;
+      if (moved) break;
     }
     if (!moved) return { status: 'did not open', offered: offered[order[0]] };
 
