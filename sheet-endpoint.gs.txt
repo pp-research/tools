@@ -60,6 +60,7 @@ var HEADERS = [
   'On market',
   'Last advertised',
   'Property link',
+  'What RP Data offered',
   'Look up',
   'Checked at'
 ];
@@ -142,6 +143,10 @@ function doPost(e) {
         r.onMarket || '',
         r.lastAd || '',
         r.resolved || '',
+        /* What it put in front of us when it could not be matched. Not a
+           link — this used to go in the link column, which is how a near
+           miss came to look like a resolved property. */
+        r.offered || '',
         /* Only where there is nothing to click. A search link beside a found
            property is noise; beside a dead end it is the next thing to do. */
         r.resolved ? '' : (r.address ? PRICEFINDER_SEARCH + encodeURIComponent(r.address) : ''),
@@ -240,6 +245,7 @@ function doGet(e) {
           lastAd:        fmt_(get(v, 'Last advertised')),
           /* the old name too: a tab written before the rename still answers */
           resolved:      fmt_(get(v, 'Property link')) || fmt_(get(v, 'RP Data record')),
+          offered:       fmt_(get(v, 'What RP Data offered')),
           lookup:        fmt_(get(v, 'Look up')),
           checkedAt:     fmt_(get(v, 'Checked at')),
           /* the column where there is one; the tab otherwise, so a row
