@@ -2009,7 +2009,7 @@ window.stopCheck=false;
   function soldVerdict(sale, sold, bought, purchasePrice) {
     const since = !!(sold && bought && sold > bought);
     const paid = Number(String(purchasePrice || '').replace(/[^0-9.]/g, ''));
-    /* Four months either way on the date, because a contract date and a
+    /* Six months either way on the date, because a contract date and a
        settlement date are both "the purchase" and they are not the same day;
        or the money, to the nearest two per cent, which settles it on its own. */
     const agrees = !!(sold && bought &&
