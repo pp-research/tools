@@ -1961,19 +1961,30 @@ window.stopCheck=false;
   }
 
   /* ── 4. one property ────────────────────────────────────────────────── */
+  /* Type it and wait for the suggestion list. Twice, because once is not
+     evidence: a slow response, a moment of throttling or a re-render that
+     swallowed the keystrokes all look exactly like "this address does not
+     exist", and the second attempt tells them apart. */
+  async function suggest(box, name, ms) {
+    box.focus();
+    typeInto(box, '');
+    await sleep(150);
+    typeInto(box, name);
+    return waitFor(() => {
+      const o = [...document.querySelectorAll('[role=option]')];
+      return o.length ? o : null;
+    }, ms);
+  }
+
   async function check(p) {
     const box = searchBox();
     if (!box) return { status: 'NO SEARCH BOX' };
 
-    box.focus();
-    typeInto(box, '');
-    await sleep(150);
-    typeInto(box, p.name);
-
-    const opts = await waitFor(() => {
-      const o = [...document.querySelectorAll('[role=option]')];
-      return o.length ? o : null;
-    }, 8000);
+    let opts = await suggest(box, p.name, 8000);
+    if (!opts) {
+      await sleep(3000);                       // let whatever it was pass
+      opts = await suggest(box, p.name, 12000);
+    }
     if (!opts) return { status: 'no match in RP Data' };
 
     const before = location.pathname;
