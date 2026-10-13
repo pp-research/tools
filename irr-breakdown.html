@@ -2161,6 +2161,26 @@ window.stopCheck=false;
       return { status: 'no confident match', offered: offered.slice(0, 3).join(' | ') };
     }
 
+  /* A search does not always land on a property. Where several properties
+     share the address RP Data shows a results LIST instead — "Displaying 3 of
+     3 properties", a table, one row each. The run only ever waited for a
+     /property/ URL, so every one of those came back "did not open" when the
+     answer was sitting in front of it.
+
+     A row here is any table row that contains something shaped like an
+     address. Deliberately not tied to RP Data's class names, which are not
+     ours to depend on. */
+  function resultRows() {
+    return [...document.querySelectorAll('tr')].filter(tr => {
+      if (tr.querySelector('th')) return false;          // the header row
+      const t = (tr.innerText || '').replace(/\s+/g, ' ').trim();
+      return t && !!parts(t);
+    });
+  }
+  function rowText(tr) {
+    return (tr.innerText || '').replace(/\s+/g, ' ').trim();
+  }
+
   /* A suggestion is a div with a role, and the thing that actually navigates is
      usually a child of it. A bare .click() on the wrapper does nothing at all
      in that case, and React wants the pointer events as well as the click, so
@@ -2201,10 +2221,36 @@ window.stopCheck=false;
       const before = location.pathname;
       step('clicking candidate ' + (attempt + 1) + ' of ' + curOrder.length);
       clickOption(cur[curOrder[attempt]]);
-      moved = await waitFor(
-        () => location.pathname !== before && /\/property\//.test(location.pathname),
-        12000);
-      if (moved) break;
+
+      /* Either outcome is progress: the property itself, or a list of them. */
+      const landed = await waitFor(() => {
+        if (location.pathname !== before && /\/property\//.test(location.pathname)) return 'property';
+        if (resultRows().length > 1) return 'results';
+        return null;
+      }, 12000);
+
+      if (landed === 'property') { moved = true; break; }
+
+      if (landed === 'results') {
+        /* Several properties share this address. Pick ours out of the table
+           rather than giving up — the answer is on screen. */
+        const rows = resultRows();
+        step(rows.length + ' results listed; looking for ours');
+        const mine = rows.filter(tr => sameProperty(p.name, rowText(tr)));
+        if (!mine.length) {
+          return { status: 'several results, none matched',
+                   offered: rows.slice(0, 3).map(rowText).join(' | ').slice(0, 200) };
+        }
+        /* Last, not first. Where the same address lists more than once the
+           later row is the current title — the earlier ones are the history
+           of the land it was subdivided from. */
+        clickOption(mine[mine.length - 1]);
+        moved = await waitFor(
+          () => /\/property\//.test(location.pathname), 12000);
+        if (moved) break;
+        return { status: 'result row would not open',
+                 offered: rowText(mine[mine.length - 1]).slice(0, 120) };
+      }
     }
     if (!moved) return { status: 'did not open', offered: offered[order[0]] };
 
