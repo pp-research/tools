@@ -132,7 +132,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <summary>How this is built, and what to watch for</summary>
     <div class="notes">
       <p><b>Listings.</b> Cotality Market Trends, one workbook per month, Aug 2018 to Jun 2026. Sale listings before that come from Cotality’s older monthly history files (see <b>Earlier years</b>). Both lines are rolling 12-month totals: sale listings use “# of listings last 12 months” and rental listings use “# of rental listings in last 12 months”. Cotality does not publish a 1-month rental count, so there is no like-for-like monthly view. Capitals use Cotality’s capital-city rows (Greater Capital City areas). The 28 regional markets use their council (LGA) rows, the same split the Traffic Lights tool uses.</p>
-      <p><b>Monthly view (estimated).</b> Cotality publishes rental listings only as a 12-month total, and its 1-month sale count is not a monthly share of the 12-month count: it counts every property advertised during the month, including those still on the market from earlier months, so it runs at about 27% of the 12-month figure rather than 1/12. To put both lines on the same basis, the monthly view spreads each 12-month total across its months: month estimate = 12-month total ÷ 12 × (this month’s pattern ÷ the pattern’s average over the same 12 months). Sale listings take their pattern from Cotality’s 1-month sale count; rental listings take theirs from Cotality’s 1-month vacancy rate. Over a year the estimates add back to roughly the real 12-month total (usually within about 10% for sale and 15% for rental, more in small markets). Cotality’s own 1-month sale count is shown in the hover box as “Sale listings advertised in month”. The rental gap (Dec 2023 – Oct 2024) stays empty because there is no 12-month total to spread.</p>
+      <p><b>Monthly view.</b> Sale listings are Cotality’s published 1-month count (“# of listings last 1 months”): every property advertised for sale during the month. Cotality publishes rental listings only as a 12-month total, so the monthly rental line is an estimate: 12-month total ÷ 12 × (this month’s vacancy rate ÷ the average vacancy rate over the same 12 months), using Cotality’s 1-month vacancy rate. Over a year the rental estimates add back to roughly the real 12-month total (usually within about 15%, more in small markets). <b>The two lines are not on the same basis.</b> The sale count includes properties still on the market from earlier months, so it runs at about 27% of the 12-month count, while the rental estimate is closer to new listings per month (about 1/12 of the 12-month count). Read the monthly view for the direction and timing of each line, not for the gap between them; use the 12-month view to compare levels. The rental gap (Dec 2023 – Oct 2024) stays empty because there is no 12-month total to spread.</p>
       <p><b>Population.</b> ABS Regional Population 2024–25 (3218.0): Greater Capital City areas for the eight capitals and LGAs for the rest. Each 30 June figure matches the Traffic Lights tool exactly. Months between two June figures are interpolated in a straight line. Months after Jun 2025 (all of 2026 so far) use the Jun 2025 figure, the latest ABS estimate, until the ABS publishes 2025–26.</p>
       <p><b>Rental gap.</b> Cotality’s files carry no rental listings from Dec 2023 to Oct 2024, in every market. The gap is left empty, not filled. Treat any level change across it with caution.</p>
       <p><b>Count-method changes.</b> A 12-month total can’t move 15% or more in a single month from real activity, so a jump that size is marked as a change in how Cotality counts. The big ones are Mar 2020 (capitals), May 2020 (rentals down about 23% everywhere) and Jan 2021 (rentals back up about 33%). Nov 2024 and Jan 2026 move listings between houses and units, which is why the <b>All</b> view is steadier than Houses or Units alone. Compare levels within a stretch between markers, not across one.</p>
@@ -238,10 +238,10 @@ function series(){
       val.push(c?t:null); pp.push(q); cnt.push(c) }
     return {val,pop:pp,cnt} };
   const pop=MONTHS.map((_,i)=>ms.reduce((a,m)=>a+m.pop[i],0));
-  // Monthly: each 12-month total spread across its months (sale by Cotality's 1-month count, rental by the
-  // 1-month vacancy rate), so both lines sit on the same basis. A1 is Cotality's own 1-month sale count.
+  // Monthly: sale = Cotality's real 1-month count; rental = the 12-month total spread across its months
+  // by the 1-month vacancy rate (Cotality publishes no 1-month rental count)
   const L12=agg('l12'), R12=agg('r12'), A1=agg('l1');
-  const S1=S.win==='12'?L12:agg('s1'), R1=S.win==='12'?R12:agg('r1');
+  const S1=S.win==='12'?L12:A1, R1=S.win==='12'?R12:agg('r1');
   const sale=S1.val, rent=R1.val;
   const pc=(arr,den)=>arr.map((v,i)=>v==null||!den[i]?null:v/den[i]*100);
   // count-method breaks, read off the 12-month totals (smooth by construction); a month where the
@@ -261,7 +261,7 @@ const prevNonNull=(a,i)=>{for(;i>=0;i--) if(a[i]!=null) return i; return -1};
 
 function render(){
   const d=series(); const unitTxt=S.win==='12'?'per year':'per month';
-  document.getElementById('ctitle').textContent=`${d.name} · ${S.ptype==='A'?'houses and units':S.ptype==='H'?'houses':'units'} · ${S.view==='idx'?'indexed, May 2022 = 100':'listings as % of population, '+unitTxt+(S.win==='1'?' (estimated)':'')}`;
+  document.getElementById('ctitle').textContent=`${d.name} · ${S.ptype==='A'?'houses and units':S.ptype==='H'?'houses':'units'} · ${S.view==='idx'?'indexed, May 2022 = 100':'listings as % of population, '+unitTxt+(S.win==='1'?' (rental estimated)':'')}`;
   // readouts
   for(const [k,el,eld] of [['sale','roSale','roSaleD'],['rent','roRent','roRentD']]){
     const a=d[k], li=lastIdx(a), yi=li-12;
@@ -372,9 +372,8 @@ function draw(d){
       (S.cash?`<div class="t-r"><span><i class="key cash"></i>Cash rate</span><b>${RATES.cash[i]==null?'–':RATES.cash[i].toFixed(2)+'%'}</b></div>`:'')+
       (S.mort?`<div class="t-r"><span><i class="key mort"></i>Bank Rate</span><b>${RATES.mortDisc[i]==null?'–':RATES.mortDisc[i].toFixed(2)+'%'}</b></div>`:'')+
       `<div class="t-div"></div>`+
-      `<div class="t-r t-sub"><span>${S.win==='1'?'Sale listings (month, est.)':'Sale listings (12 mo)'}</span><span>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</span></div>`+
+      `<div class="t-r t-sub"><span>${S.win==='1'?'Sale listings (month)':'Sale listings (12 mo)'}</span><span>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</span></div>`+
       `<div class="t-r t-sub"><span>${S.win==='1'?'Rental listings (month, est.)':'Rental listings (12 mo)'}</span><span>${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()}</span></div>`+
-      (S.win==='1'?`<div class="t-r t-sub"><span>Sale listings advertised in month</span><span>${d.act1[i]==null?'–':Math.round(d.act1[i]).toLocaleString()}</span></div>`:'')+
       `<div class="t-r t-sub"><span>Population</span><span>${d.pop[i].toLocaleString()}</span></div>`+
       note.map(n=>`<div class="t-note">${n}</div>`).join('');
     tip.hidden=false;
@@ -389,7 +388,7 @@ function draw(d){
 
 function table(d){
   const u=S.win==='12'?'12-mo':'month';
-  let h=`<thead><tr><th>Month</th><th>Sale listings (${u}${S.win==='1'?', est.':''})</th><th>Rental listings (${u}${S.win==='1'?', est.':''})</th><th>Residents</th><th>Sale, % of pop.</th><th>Rent, % of pop.</th><th>Cash rate</th><th>Bank Rate</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Month</th><th>Sale listings (${u})</th><th>Rental listings (${u}${S.win==='1'?', est.':''})</th><th>Residents</th><th>Sale, % of pop.</th><th>Rent, % of pop.</th><th>Cash rate</th><th>Bank Rate</th></tr></thead><tbody>`;
   for(let i=N-1;i>=startIdx();i--) h+=`<tr><td>${lab(MONTHS[i])}</td><td>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</td><td>${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()}</td><td>${d.pop[i].toLocaleString()}</td><td>${f1(d.sale[i])}</td><td>${f1(d.rent[i])}</td><td>${RATES.cash[i]==null?'–':RATES.cash[i].toFixed(2)+'%'}</td><td>${RATES.mortDisc[i]==null?'–':RATES.mortDisc[i].toFixed(2)+'%'}</td></tr>`;
   document.getElementById('tbl').innerHTML=h+'</tbody>';
 }
