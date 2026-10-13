@@ -394,8 +394,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .panel{display:flex;flex-direction:column;gap:var(--sp-4)}
 .panel[hidden]{display:none}
 /* ═══ SOLD CHECK ═══ */
-.chk-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4)}
-@media (min-width:1024px){ .chk-grid{grid-template-columns:minmax(0,1fr) minmax(0,240px);align-items:start} }
 /* the how-to: a numbered list that can carry status chips inline without the
    chips knocking the line spacing about */
 .colsel{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-3);margin-top:var(--sp-3)}
@@ -427,6 +425,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkBm em{font-style:normal;color:var(--text);font-weight:600}
 #chkBm code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 #chkBm #bmSheetLine a{color:var(--accent-300);text-decoration:underline}
+/* the address is long; a proportional face wraps it mid-token and makes a
+   typo impossible to spot */
+#chkBm #bmSheet{font:500 12px/18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:38px;padding:8px 10px}
+#chkBm .field{margin-bottom:var(--sp-5)}
 #chkBm #bmSheetLine{margin:0 0 var(--sp-4);font-size:13px;line-height:19px}
 #chkBm .bm-row{margin-bottom:var(--sp-4)}
 #chkBmPf{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
@@ -451,30 +453,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .ok-btn:hover{background:rgba(43,196,216,.13);color:var(--accent-300)}
 :root[data-theme="light"] .ok-btn:hover{background:rgba(0,112,127,.10);color:#00646F}
 .tallies b{font-variant-numeric:tabular-nums lining-nums}
-.sub-h{font-size:12px;
-line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:var(--sp-4) 0 var(--sp-1)}
-/* one per row, because they are read down the list and clicked, not scanned */
-.copy-list{display:flex;flex-direction:column;gap:2px}
-.copy-list button{
-  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);width:100%;
-  text-align:left;border:1px solid transparent;background:transparent;color:var(--text);
-  border-radius:7px;padding:5px 8px;font:500 12px/17px 'Manrope',sans-serif;cursor:pointer;
-}
-.copy-list button:hover{background:var(--panel-2);border-color:var(--border)}
-.copy-list button:focus-visible{outline:2px solid var(--accent-300);outline-offset:1px}
-.copy-list .n{color:var(--faint);font-variant-numeric:tabular-nums lining-nums;flex:none}
-.copy-list .gap{color:var(--note-ink);font-weight:700}
-/* a row with nothing to copy: the same shape, none of the affordance */
-.copy-list .copy-none{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);
-  padding:5px 8px;font:500 12px/17px 'Manrope',sans-serif;color:var(--faint)}
-/* The "not known yet" bucket. It carries a count like any other row, but it is
-   a state rather than a place, so it opens a window naming what is in it
-   instead of copying a filter term. Dashed, to say it does something else. */
-.copy-list button.bucket-open{color:var(--faint);border-style:dashed;
-  border-color:var(--border)}
-.copy-list button.bucket-open:hover{color:var(--text);border-color:var(--border-hover)}
-.copy-list button.copied{background:rgba(113,179,87,.14);border-color:rgba(113,179,87,.4)}
-:root[data-theme="light"] .copy-list button.copied{background:rgba(63,125,46,.12);border-color:rgba(63,125,46,.34)}
 /* The four answers a check can give. Each carries its word as well as its
    colour, so the status survives being printed, photocopied or read by
    somebody who cannot tell the green from the amber. */
@@ -1045,11 +1023,10 @@ details .body strong{color:var(--text)}
       </div>
 
       <!-- ══════════ SOLD CHECK — has a held property actually sold? ══════════
-           Two columns on a wide screen, stacked under 1024px. The suburb list
-           is the thing you work from while you are in RP Data, so it wants to
-           be beside the results rather than under them. -->
+           One column. The suburb list beside it used to say where to run an
+           export; the bookmarklet works through the whole book, so there is
+           nothing left to choose between. -->
       <div class="panel" id="panel-check" role="tabpanel" aria-labelledby="tab-check" hidden>
-        <div class="chk-grid">
           <section class="card" aria-labelledby="chk-h">
             <div class="card-head">
               <h2 id="chk-h">Sold check</h2>
@@ -1065,34 +1042,6 @@ details .body strong{color:var(--text)}
             </div>
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
-            <!-- everything below only exists once an export has been read -->
-            <div id="chkSetup" hidden>
-              <!-- A book of sold properties has almost nothing "not sold yet"
-                   in it, so checking only those finds one row and looks broken.
-                   Checking every property turns the same export into a check on
-                   the prices already recorded. -->
-              <div class="field">
-                <label id="chkScopeLbl">Check</label>
-                <div class="seg-btns" role="group" aria-labelledby="chkScopeLbl">
-                  <button type="button" data-chkscope="held" aria-pressed="true">Not sold yet</button>
-                  <button type="button" data-chkscope="all" aria-pressed="false">Every property</button>
-                </div>
-                <p class="hint" id="chkScopeWhy"></p>
-              </div>
-              <div class="field">
-                <label for="chkSource">Sold price verified by</label>
-                <select id="chkSource">
-                  <option value="RPData import">RPData import</option>
-                  <option value="Pricefinder import">Pricefinder import</option>
-                </select>
-                <p class="hint" id="chkSourceWhy"></p>
-              </div>
-              <details id="chkCols">
-                <summary>Columns used</summary>
-                <div id="chkColsBody"></div>
-              </details>
-            </div>
-
             <p class="count-line" id="chkCount"></p>
             <div id="chkBody">
               <div class="empty">
@@ -1103,28 +1052,6 @@ details .body strong{color:var(--text)}
               </div>
             </div>
           </section>
-
-          <section class="card" aria-labelledby="chk-sub-h">
-            <div class="card-head">
-              <h2 id="chk-sub-h">Where to look</h2>
-              <span class="badge" id="chkGapBadge" hidden>0</span>
-            </div>
-            <!-- One capital city at a time, because an export is run for one
-                 state's suburbs at a time. Hidden only when the register has no
-                 capital city on anything. -->
-            <div class="field" id="chkCityField" style="margin-bottom:var(--sp-3)" hidden>
-              <label for="chkCity">Capital city</label>
-              <select id="chkCity"><option value="">All capital cities</option></select>
-            </div>
-            <!-- RP Data filters by either, so the list answers in either -->
-            <div class="seg-btns seg-fill" role="group" aria-label="List by" style="margin-bottom:var(--sp-2)">
-              <button type="button" data-chkby="suburb" aria-pressed="true">Suburb</button>
-              <button type="button" data-chkby="council" aria-pressed="false">Council</button>
-            </div>
-            <p class="count-line" id="chkByWhy"></p>
-            <div id="chkList"></div>
-          </section>
-        </div>
       </div>
 
       <!-- ══════════ HISTORY — append-only: what moved, which way, who, when ══════════ -->
@@ -1141,26 +1068,6 @@ details .body strong{color:var(--text)}
           <div id="histBody"></div>
         </section>
       </div>
-
-      <!-- ══════════ WHAT IS IN THE "NOT KNOWN YET" BUCKET ══════════
-           A count you cannot act on is only a worry. This names the properties
-           behind it and puts their Edit next to them, because the cause is
-           nearly always one misspelt suburb. -->
-      <dialog class="modal" id="bucketDialog" aria-labelledby="bucket-h">
-        <div class="modal-inner">
-          <div class="modal-head">
-            <h2 id="bucket-h">Not known yet</h2>
-            <button type="button" class="modal-x" id="bucketClose" aria-label="Close">&times;</button>
-          </div>
-          <div class="modal-body">
-            <p class="count-line" id="bucketWhy"></p>
-            <div id="bucketList"></div>
-          </div>
-          <div class="modal-foot">
-            <button type="button" class="btn-ghost" id="bucketDone" style="margin-left:auto">Close</button>
-          </div>
-        </div>
-      </dialog>
 
       <!-- Several sales can share one street number — a block of units against
            a record with no unit on it. Marking it sold without asking writes
@@ -1225,6 +1132,21 @@ details .body strong{color:var(--text)}
           </div>
           <div class="modal-body" id="chkBm">
             <p class="hint" id="bmSheetLine" hidden></p>
+
+            <!-- Shown only while this browser has no address. Once one is set it
+                 goes away and stays away: it is a thing you do once, not a
+                 setting to keep an eye on. Without it a new browser — a new
+                 person signing in — has no way to point the tool anywhere. -->
+            <div class="field" id="bmSheetField" hidden>
+              <label for="bmSheet">Google Sheet address</label>
+              <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
+                     autocapitalize="off" placeholder="https://script.google.com/macros/s/…/exec">
+              <p class="hint">The <code>/exec</code> address of the Apps Script behind the
+                 sheet, not the sheet's own link. Ask whoever set it up, or make one:
+                 <a href="sheet-endpoint.gs.txt" target="_blank" rel="noopener">sheet-endpoint.gs</a>.
+                 Kept in this browser only — never written into this page, and nothing
+                 is sent anywhere but your own sheet.</p>
+            </div>
 
             <h3>1 · RP Data — every held property</h3>
             <p>One button checks <strong>every held property in the book</strong>,
@@ -1598,6 +1520,9 @@ window.stopCheck=false;
   'use strict';
 
   const RAW_SHEET = (localStorage.getItem('ppSheetUrl') || '__SHEET_URL__').trim();
+  /* Whoever was signed in to the tool when this was built. The sheet is
+     shared, so a row has to say who put it there. */
+  const WHO       = '__WHO__'.charAt(0) === '_' ? '' : '__WHO__';
   const SHEET_URL = /^https:/.test(RAW_SHEET) ? RAW_SHEET : '';
   const PAUSE     = 7000;         // ms between properties
   const JITTER    = 2500;         // random extra, so the pace is not robotic
@@ -1813,7 +1738,7 @@ window.stopCheck=false;
 
     await send([{ address: r.address, city: r.city, purchased: r.purchased,
                   purchasePrice: r.purchasePrice, soldDate: r.soldDate || '',
-                  soldPrice: r.soldPrice || '', status: r.status,
+                  soldPrice: r.soldPrice || '', status: r.status, who: WHO,
                   onMarket: '', lastAd: '', resolved: r.resolved || '' }]);
     window.pfResults = results;
 
@@ -1853,6 +1778,11 @@ window.stopCheck=false;
 
      Set CITY to one capital to narrow it; empty means all of them. */
   const CITY      = '__CITY__'.charAt(0) === '_' ? '' : '__CITY__';
+  /* Whoever was signed in to the tool when this bookmarklet was built. The
+     sheet is shared, so a row has to say who put it there — two people
+     running this on different days otherwise produce one indistinguishable
+     pile. Blank if it was built outside the tool. */
+  const WHO       = '__WHO__'.charAt(0) === '_' ? '' : '__WHO__';
   /* Set this once, in the console on any RP Data page, and every later run
      picks it up:   localStorage.ppSheetUrl = 'https://script.google.com/...'
      Leave it unset and you get the CSV / clipboard buttons instead. */
@@ -2086,6 +2016,7 @@ window.stopCheck=false;
     r.address       = p.name;
     r.city          = (p.category || '').trim();
     r.source        = 'RP Data';
+    r.who           = WHO;
     r.purchased     = p.purchaseDate || '';
     r.purchasePrice = p.purchasePrice || '';
     results.push(r);
@@ -2130,9 +2061,9 @@ window.stopCheck=false;
   if (SHEET_URL) { console.log('All rows sent to your sheet.'); return; }
 
   /* ── 7. no sheet configured: CSV + clipboard ────────────────────────── */
-  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','source','onMarket','lastAd','resolved'];
+  const COLS = ['address','city','purchased','purchasePrice','soldDate','soldPrice','status','source','who','onMarket','lastAd','resolved'];
   const HEAD = ['Address','City','Purchase date','Purchase price','Sold date','Sold price','Status',
-                'Source','On market','Last advertised','RP Data record'];
+                'Source','Checked by','On market','Last advertised','RP Data record'];
   const cell = r => COLS.map(c => r[c] === undefined ? '' : r[c]);
 
   const csv = [HEAD.join(',')].concat(results.map(r =>
@@ -2408,7 +2339,7 @@ window.stopCheck=false;
     /* The how-to shows itself the first time this browser opens the tab —
        it is a setup you do once, and a window you have to go looking for
        is one nobody reads. After that it waits behind its button. */
-    if (name === 'check') { drawSuburbs(); if (chk) chkRun(); maybeOpenChkHelp(); }
+    if (name === 'check') { syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp(); }
   }
   function currentTab(){
     for (var i=0;i<TABS.length;i++) if ($('tab-'+TABS[i]).getAttribute('aria-selected')==='true') return TABS[i];
@@ -3521,7 +3452,7 @@ window.stopCheck=false;
     renderProps();
     /* an edit is how a misspelt suburb gets fixed, so the panel that flagged it
        has to be told — otherwise the count it is still showing is yesterday's */
-    drawSuburbs();
+    syncCheckTab();
     loadIntoForm(e.name, e, e.category);
     $('messages').innerHTML = changes.length
       ? msg('ok','Saved — '+esc(changes.join(', '))+' updated on '+esc(e.name)+'.')
@@ -4564,8 +4495,6 @@ window.stopCheck=false;
   function chkSay(html){ $('chkMsg').innerHTML = html || ''; }
   function chkReset(){
     chk = null;
-    applyDefaultScope();
-    $('chkSetup').hidden = true;
     $('btnChkClear').hidden = true;
     $('chkCount').textContent = '';
     /* The same empty state the page ships with, rebuilt rather than
@@ -4576,7 +4505,7 @@ window.stopCheck=false;
       'style="margin-top:var(--sp-4)">Load sold check records from Google Sheet</button></div>';
     chkSay('');
     syncSheetBtn();
-    drawSuburbs();
+    syncCheckTab();
   }
   /* Retired: the sold check is now fed from the RP Data run, not from a
      downloaded export. Everything below still works and the machinery it
@@ -4607,10 +4536,6 @@ window.stopCheck=false;
       var det = detectSource(head);
       chk = { name:g.name, head:head, rows:rows, map:cm.map, skipped:cm.skipped,
               source:det.src, why:det.why };
-      applyDefaultScope();          // the book may have changed since the page loaded
-      $('chkSource').value = det.src;
-      $('chkSourceWhy').textContent = det.why;
-      $('chkSetup').hidden = false;
       $('btnChkClear').hidden = false;
       chkSay(msg('ok','Read '+chk.rows.length+' row'+(chk.rows.length===1?'':'s')+' from <strong>'+esc(g.name)+'</strong>.'+
         (cm.skipped.length ? ' Not read, because they are people’s names: <strong>'+
@@ -4623,7 +4548,6 @@ window.stopCheck=false;
           ' Learned the council for ' + learned + ' suburb' + (learned===1?'':'s') +
           ' from this file.</div>');
       }
-      renderColMap();
       chkRun();
     }).catch(function(e){ chkSay(msg('err', esc(e.message))); });
   }
@@ -4668,8 +4592,14 @@ window.stopCheck=false;
     var url = sheetUrl();
     /* a function replacement, not a string: a $ in the address would
        otherwise be read as a back-reference and silently mangle the script */
+    /* The sheet is shared, so a row has to say who put it there. The
+       bookmarklet cannot ask — it runs on RP Data, signed in to nothing of
+       ours — so the answer is baked in here, where the sign-in is known. */
+    var who = '';
+    try { who = (localStorage.getItem('pp-irr-email') || '').trim(); } catch (e) {}
     src = src.replace(/__SHEET_URL__/g, function(){ return url; })
-             .replace(/__CITY__/g,      function(){ return ''; });
+             .replace(/__CITY__/g,      function(){ return ''; })
+             .replace(/__WHO__/g,       function(){ return who; });
     return 'javascript:' + encodeURIComponent('void function(){\n' + src + '\n}();');
   }
   var bmLast = null;             // what the href was last built from
@@ -4681,10 +4611,12 @@ window.stopCheck=false;
        the sheet link arrives from the Apps Script well after the address it
        was fetched with stopped changing. Outside the cache for that reason. */
     bmSheetLink();
-    /* drawSuburbs runs on every render, and rebuilding the bookmarklets means
+    /* syncCheckTab runs on every render, and rebuilding the bookmarklets means
        a regex pass and a URL-encode over twenty-five kilobytes. Nothing has
        changed most times. */
-    var sig = sheetUrl() || '-';
+    var who = '';
+    try { who = localStorage.getItem('pp-irr-email') || ''; } catch (e) {}
+    var sig = (sheetUrl() || '-') + ' :: ' + who;
     if (sig === bmLast) return;
     bmLast = sig;
     a.href = buildBm('rpBmSrc') || '#';
@@ -4713,6 +4645,9 @@ window.stopCheck=false;
     var view = '';
     try { view = (localStorage.getItem('ppSheetView') || '').trim(); } catch (e) {}
 
+    /* One or the other: the address, or where its results go. */
+    var field = $('bmSheetField');
+    if (field) field.hidden = !!u;
     p.hidden = !u;
     if (!p.hidden) {
       p.innerHTML = view
@@ -4777,10 +4712,6 @@ window.stopCheck=false;
         chk.listed = all.filter(function(r){
           return r.onMarket && String(r.status || '') !== 'SOLD SINCE PURCHASE';
         });
-        applyDefaultScope();
-        $('chkSource').value = chk.source;
-        $('chkSourceWhy').textContent = chk.why;
-        $('chkSetup').hidden = false;
         $('btnChkClear').hidden = false;
         syncSheetBtn();          // the reload moves up to the head now there is something to reload
         var viaPf = sold.filter(function(r){ return /pricefinder/i.test(r.source || ''); }).length;
@@ -4792,7 +4723,6 @@ window.stopCheck=false;
               (all.length - sold.length === 1 ? ' is' : ' are')+' still held, so '+
               (all.length - sold.length === 1 ? 'it is' : 'they are')+' not in the match.'
             : '')));
-        renderColMap();
         chkRun();
       })
       .catch(function(e){
@@ -4802,20 +4732,42 @@ window.stopCheck=false;
       });
   }
 
-  function renderColMap(){
-    if (!chk) return;
-    var opts = function(sel){
-      return '<option value="">— none —</option>' + chk.head.map(function(h, i){
-        return '<option value="'+i+'"'+(sel === i ? ' selected' : '')+'>'+esc(h || ('column '+(i+1)))+'</option>';
-      }).join('');
-    };
-    $('chkColsBody').innerHTML =
-      '<p class="count-line" style="margin-top:var(--sp-3)">Change one if a column is not the one this expected.</p>'+
-      '<div class="colsel">'+ CHK_COLS.map(function(c){
-        return '<label>'+c.label+'<select data-chkcol="'+c.key+'">'+opts(chk.map[c.key])+'</select></label>';
-      }).join('') +'</div>';
-  }
 
+  var pickId = null;
+  function openPick(id){
+    var r = (chk && chk.results || []).filter(function(x){ return x.e.id === id; })[0];
+    if (!r || !r.hits || r.hits.length < 2) return;
+    pickId = id;
+    var mine = r.a || {};
+    var allUnits = r.hits.every(function(s){ return s.a && s.a.unit; });
+    $('pickWhy').innerHTML =
+      '<strong>'+esc(r.e.name)+'</strong> matched '+r.hits.length+' sales on number, street and suburb.'+
+      (!mine.unit && allUnits
+        ? ' The record has no unit number on it and every one of these does, so '+
+          'this is a block of units — pick the one that is yours, or put the unit '+
+          'number on the property and run the check again.'
+        : ' Pick the one that is yours.');
+    $('pickList').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
+      '<th scope="col">In RP Data</th><th scope="col" class="num">Sold for</th>'+
+      '<th scope="col">Sold on</th><th scope="col"><span class="sr-only">Choose</span></th>'+
+      '</tr></thead><tbody>'+
+      r.hits.map(function(s, i){
+        var can = s.price && s.date;
+        return '<tr><td class="name">'+esc(s.raw || '—')+'</td>'+
+          '<td class="pd"><b>'+(s.price ? aud(s.price) : '—')+'</b></td>'+
+          '<td>'+(s.date ? dLabel(new Date(s.date+'T00:00:00Z')) : '<span class="faint">no date</span>')+'</td>'+
+          '<td class="acts">'+(can
+            ? '<button type="button" class="btn-ghost btn-sm" data-pickhit="'+i+'">This one</button>'
+            : '<span class="faint">no price or date</span>')+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+    var d = $('pickDialog');
+    if (d.showModal) d.showModal(); else d.setAttribute('open','');
+  }
+  function closePick(){
+    var d = $('pickDialog');
+    if (d.open) d.close(); else d.removeAttribute('open');
+    pickId = null;
+  }
   /* ── the match ── */
   function chkRun(){
     if (!chk) return;
@@ -4844,7 +4796,7 @@ window.stopCheck=false;
     });
 
     var book = loadProps();
-    var pool = (chkScope === 'all') ? book : book.filter(isHeld);
+    var pool = book.filter(isHeld);     // held only; see above
     var results = pool.map(function(e){
       var a = splitAddr(e.name);
       var out = { e:e, a:a, status:'none', hit:null, hits:[], held:isHeld(e) };
@@ -4874,43 +4826,15 @@ window.stopCheck=false;
     chk.unpriced = unpriced;
     chk.sales = sales.length;
     drawCheck();
-    drawSuburbs();
+    syncCheckTab();
   }
 
   /* Which properties the check looks at. "Not sold yet" is the question the
      tab was built for; "every property" turns the same export into a check on
      the sale prices already in the book, which is what a sold book needs. */
-  var chkScope = 'held';
-  /* Which scope to open on. "Not sold yet" is the question the tab was built
-     for, but in a book where 596 of 597 properties already have a sale price it
-     answers with one row, and a 5,595-row export looks like it did nothing. So
-     when there is barely anything waiting on a sale, the tab opens on the scope
-     that has something to say — and says on screen that it chose. */
-  function chkDefaultScope(){
-    var book = loadProps();
-    if (!book.length) return 'held';
-    var held = book.filter(isHeld).length;
-    return (held / book.length < 0.05) ? 'all' : 'held';
-  }
-  /* Choosing for her is only acceptable if the page says it chose and why. */
-  function applyDefaultScope(){
-    var m = chkDefaultScope();
-    var book = loadProps(), held = book.filter(isHeld).length;
-    setChkScope(m, m === 'all'
-      ? 'Opened on every property: only ' + held + ' of ' + book.length +
-        ' is waiting on a sale, so checking just those would show you almost nothing. ' +
-        'This compares what RP Data says against the sale prices already recorded. Switch back any time.'
-      : null);
-  }
-  function setChkScope(m, why){
-    chkScope = m;
-    Array.prototype.forEach.call(document.querySelectorAll('button[data-chkscope]'), function(x){
-      x.setAttribute('aria-pressed', x.dataset.chkscope === m ? 'true' : 'false');
-    });
-    $('chkScopeWhy').textContent = why || (m === 'all'
-      ? 'Every property, including the ones already sold — so RP Data can disagree with the book.'
-      : 'Only properties with no sale recorded yet.');
-  }
+  /* Held only. The bookmarklet is asked about properties with no sale
+     recorded, so a property that is already sold is not in the answer and
+     there is nothing to choose between. */
   var CHK_WORD = { sold:'Sold', check:'Check', differs:'Differs',
                    none:'No sale found', gap:'Suburb not checked', agree:'Agrees' };
   /* What each chip means, on the chip. These used to live in a window you
@@ -4942,7 +4866,7 @@ window.stopCheck=false;
     if (tally.none) bits.push(tally.none + ' not found');
     if (tally.gap) bits.push(tally.gap + ' in suburbs not checked');
     $('chkCount').textContent = rs.length
-      ? rs.length + (chkScope === 'all' ? ' propert' : ' held propert') + (rs.length===1?'y':'ies') +
+      ? rs.length + ' held propert' + (rs.length===1?'y':'ies') +
         ' checked against ' + chk.sales + ' sale' + (chk.sales===1?'':'s') +
         (bits.length ? ' · ' + bits.join(' · ') : '')
       : '';
@@ -4950,8 +4874,8 @@ window.stopCheck=false;
       var total = loadProps().length;
       $('chkBody').innerHTML = '<div class="empty"><h3>Nothing is waiting on a sale</h3>'+
         '<p>All '+total+' propert'+(total===1?'y':'ies')+' in the register already '+
-        'ha'+(total===1?'s':'ve')+' a sale recorded. Switch <strong>Check</strong> to '+
-        '<strong>Every property</strong> to compare those sales against this export instead.</p></div>';
+        'ha'+(total===1?'s':'ve')+' a sale recorded, so there is nothing for the check '+
+        'to ask about.</p></div>';
       return;
     }
     var canWrite = (share.canWrite !== false);
@@ -4984,19 +4908,17 @@ window.stopCheck=false;
           ? '<button type="button" class="btn-ghost btn-sm" data-pickone="'+esc(r.e.id)+'">Choose sale</button>'
           : '<button type="button" class="btn-ghost btn-sm" data-marksold="'+esc(r.e.id)+'">Use RP Data’s</button>';
       }
-      /* when the two disagree, the book's own figure has to be on the row —
-         otherwise "price differs" is an accusation with no evidence */
-      var mine = (r.status === 'differs' || r.status === 'agree')
-        ? '<td class="pd"><b>'+(Number(r.e.soldPrice) > 0 ? aud(r.e.soldPrice) : '—')+'</b>'+
-          '<span>'+(r.e.soldDate ? dLabel(new Date(r.e.soldDate+'T00:00:00Z')) : 'no date')+'</span></td>'
-        : '<td class="pd"><span class="faint">'+(r.held ? 'not sold yet' : '—')+'</span></td>';
+      /* Which site answered for this one. The sheet carries it per row, so a
+         price and the name of where it came from stay together all the way to
+         the property record. */
+      var src = (h && h.src) ? esc(h.src) : '<span class="faint">—</span>';
       return '<tr>'+
         '<td class="name">'+esc(r.e.name)+
           ((r.e.category||'').trim() ? '<br><span class="cat">'+esc(r.e.category)+'</span>' : '')+'</td>'+
         '<td><span class="st st-'+r.status+'" title="'+esc(CHK_WHY[r.status]||'')+'">'+CHK_WORD[r.status]+'</span>'+
           (r.why ? '<br><span class="cat">'+esc(r.why)+'</span>' : '')+'</td>'+
-        mine +
         '<td class="pd">'+found+'</td>'+
+        '<td>'+src+'</td>'+
         '<td class="acts">'+act+'</td></tr>';
     }).join('');
     /* Only the sheet knows about listings; a sales export cannot. Nothing here
@@ -5026,8 +4948,8 @@ window.stopCheck=false;
         : '')+
       '<div class="tbl-scroll short"><table><thead><tr>'+
       '<th scope="col">Property</th><th scope="col">Status</th>'+
-      '<th scope="col" class="num">In the book</th>'+
-      '<th scope="col" class="num">In RP Data</th>'+
+      '<th scope="col" class="num">Sold for</th>'+
+      '<th scope="col">Source</th>'+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+body+'</tbody></table></div>'+
       (chk.undated || chk.unpriced
@@ -5059,7 +4981,7 @@ window.stopCheck=false;
       /* The row knows which site answered; the dropdown is only the fallback
          for a list that does not say. Recording "RPData import" against a
          price Pricefinder found would be a lie on the record. */
-      e.soldVerified = srcOf(r.hit) || $('chkSource').value || undefined;
+      e.soldVerified = srcOf(r.hit) || (chk && chk.source) || undefined;
       e.soldLink = /^https?:\/\//i.test(r.hit.link) ? r.hit.link : undefined;
       e.soldCheck = 'Sold';
       done.push(e);
@@ -5181,207 +5103,12 @@ window.stopCheck=false;
   }
   function titleCase(s){ return String(s).replace(/\b[a-z]/g, function(c){ return c.toUpperCase(); }); }
 
-  var chkBy = 'suburb';
-  var chkCity = '';
-  /* what the bucket is made of, kept from the last draw so the window it opens
-     shows the same thing the count was counting */
-  var bucketState = { rows: [], by: 'suburb', label: '' };
-  function openBucket(){
-    var s = bucketState;
-    if (!s.rows.length) return;
-    $('bucketWhy').innerHTML = (s.by === 'council')
-      ? 'These have no council. The council is looked up by the spelling of the '+
-        'suburb, so this is nearly always a misspelt one — correct it here and it '+
-        'resolves on its own.'
-      : 'No suburb could be read out of these addresses. That is a different '+
-        'fault from a misspelling: there is nothing in the address to look up. '+
-        'The form it expects is <strong>number street, suburb STATE postcode</strong>.';
-    $('bucketList').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
-      '<th scope="col">Property</th><th scope="col">Capital city</th>'+
-      '<th scope="col"><span class="sr-only">Edit</span></th>'+
-      '</tr></thead><tbody>'+
-      s.rows.map(function(e){
-        return '<tr><td class="name">'+esc(e.name)+'</td>'+
-          '<td>'+(e.cat ? esc(e.cat) : '<span class="faint">not set</span>')+'</td>'+
-          '<td class="acts"><button type="button" class="btn-ghost btn-sm" '+
-            'data-bucketedit="'+esc(e.id)+'">Edit</button></td></tr>';
-      }).join('')+'</tbody></table></div>';
-    var d = $('bucketDialog');
-    if (d.showModal) d.showModal(); else d.setAttribute('open','');
-  }
-  function closeBucket(){
-    var d = $('bucketDialog');
-    if (d.open) d.close(); else d.removeAttribute('open');
-  }
-
-  /* ── choosing between several sales at one street number ──────────────────
-     The register says "22 Kenilworth Road"; the export has 1/22, 3/22 and
-     7/22. All three match on number, street and suburb, so the old one-click
-     Mark sold wrote whichever came first — a neighbour's price, onto her
-     property, and straight into the shared list. */
-  var pickId = null;
-  function openPick(id){
-    var r = (chk && chk.results || []).filter(function(x){ return x.e.id === id; })[0];
-    if (!r || !r.hits || r.hits.length < 2) return;
-    pickId = id;
-    var mine = r.a || {};
-    var allUnits = r.hits.every(function(s){ return s.a && s.a.unit; });
-    $('pickWhy').innerHTML =
-      '<strong>'+esc(r.e.name)+'</strong> matched '+r.hits.length+' sales on number, street and suburb.'+
-      (!mine.unit && allUnits
-        ? ' The record has no unit number on it and every one of these does, so '+
-          'this is a block of units — pick the one that is yours, or put the unit '+
-          'number on the property and run the check again.'
-        : ' Pick the one that is yours.');
-    $('pickList').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
-      '<th scope="col">In RP Data</th><th scope="col" class="num">Sold for</th>'+
-      '<th scope="col">Sold on</th><th scope="col"><span class="sr-only">Choose</span></th>'+
-      '</tr></thead><tbody>'+
-      r.hits.map(function(s, i){
-        var can = s.price && s.date;
-        return '<tr><td class="name">'+esc(s.raw || '—')+'</td>'+
-          '<td class="pd"><b>'+(s.price ? aud(s.price) : '—')+'</b></td>'+
-          '<td>'+(s.date ? dLabel(new Date(s.date+'T00:00:00Z')) : '<span class="faint">no date</span>')+'</td>'+
-          '<td class="acts">'+(can
-            ? '<button type="button" class="btn-ghost btn-sm" data-pickhit="'+i+'">This one</button>'
-            : '<span class="faint">no price or date</span>')+'</td></tr>';
-      }).join('')+'</tbody></table></div>';
-    var d = $('pickDialog');
-    if (d.showModal) d.showModal(); else d.setAttribute('open','');
-  }
-  function closePick(){
-    var d = $('pickDialog');
-    if (d.open) d.close(); else d.removeAttribute('open');
-    pickId = null;
-  }
-  /* The dropdown is rebuilt from whatever is actually unsold, so a city with
-     nothing left to look up stops offering itself. */
-  function syncChkCity(pool){
-    var sel = $('chkCity'), keep = sel.value;
-    var cats = categoriesOf(pool);
-    var hasUncat = pool.some(function(e){ return !(e.category||'').trim(); });
-    sel.innerHTML = '<option value="">All capital cities</option>' +
-      cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('') +
-      (hasUncat ? '<option value="'+NO_CAT+'">Not set</option>' : '');
-    sel.value = [].some.call(sel.options, function(o){ return o.value === keep; }) ? keep : '';
-    chkCity = sel.value;
-    /* Shown whenever there is anything to pick. One city is a trivial choice,
-       but a filter that disappears is one you go looking for. */
-    $('chkCityField').hidden = !(cats.length + (hasUncat ? 1 : 0));
-  }
-  function inChkCity(e){
-    if (!chkCity) return true;
-    var c = (e.category || '').trim();
-    return chkCity === NO_CAT ? !c : c === chkCity;
-  }
-  function drawSuburbs(){
-    /* Always the unsold ones, whatever the check above is set to. The question
-       this panel answers is "where do I still need sales data", and a property
-       with a sale already recorded is not part of that question. */
-    var pool = loadProps().filter(isHeld);
-    syncBmBox(pool);    // the same pool decides which cities the bookmarklet offers
-    /* the dropdown offers every city with something unsold in it; the list
-       below then answers for the one chosen */
-    syncChkCity(pool);
-    pool = pool.filter(inChkCity);
-
-    /* the gap badge is about the export's coverage, which is a question about
-       suburbs however the list is grouped */
-    var gaps = 0;
-    pool.forEach(function(e){
-      var s = tidy(splitAddr(e.name).suburb || '');
-      if (s && chk && chk.subs && chk.subs[s] === undefined) gaps++;
-    });
-
-    /* The bucket keeps its own properties, not just a count. A count you cannot
-       act on is only a worry, and the cause is nearly always one misspelt
-       suburb — so the window it opens has to be able to name them. */
-    var tally = {}, missingIn = {}, bucket = [];
-    pool.forEach(function(e){
-      var s = tidy(splitAddr(e.name).suburb || '');
-      var key;
-      if (chkBy === 'council') key = councilFor(e) || '— not known yet';
-      else key = s ? titleCase(s) : '—';
-      tally[key] = (tally[key] || 0) + 1;
-      if (key.charAt(0) === '—') bucket.push({ id:e.id, name:e.name, cat:e.category || '' });
-      if (chkBy !== 'council' && s && chk && chk.subs && chk.subs[s] === undefined) missingIn[key] = 1;
-    });
-
-    /* Both lists answer the same question — where is there still a sale to find
-       — so both list only the places with an unsold property in them. A council
-       you have nothing unsold in is not an answer to it. */
-    var names = Object.keys(tally).sort(function(a, b){
-      /* "not known yet" is a bucket, not a place, so it sits at the bottom */
-      var an = a.charAt(0) === '—', bn = b.charAt(0) === '—';
-      if (an !== bn) return an ? 1 : -1;
-      return tally[b] - tally[a] || a.localeCompare(b);
-    });
-
-    var known = Object.keys(councilBySuburb).length +
-                (window.PP_SUBURB_LGA ? Object.keys(window.PP_SUBURB_LGA).length : 0);
-    var unsold = pool.length;
-    /* Three different reasons for an uncounted list, and one message for all of
-       them told you nothing about which you were looking at. */
-    var noCouncilCol = !!(chk && chk.map && chk.map.council === undefined);
-    $('chkByWhy').textContent = (chkBy === 'council')
-      ? (known
-          ? 'Councils, numbered by how many properties in them have no sale recorded yet. '
-            + 'Click one to copy it into the export’s filter.'
-            + (tally['— not known yet'] ? ' The suburbs under “not known yet” are '
-                + 'ones the council list does not have — often a misspelt suburb.' : '')
-          : noCouncilCol
-            ? 'The export you loaded has no Council Area column, so the councils are not known '
-              + 'yet. Include it next time and they fill in.'
-            : 'No export with a Council Area column has been read yet, so the councils are not '
-              + 'known yet. Load one and they fill in.')
-      : (unsold
-          ? 'Suburbs with properties that have no sale recorded yet, and how many. Click one to copy it.'
-          : 'Every property on the register has a sale recorded, so there is nothing to look up.');
-
-    $('chkList').innerHTML = names.length
-      ? '<div class="copy-list">' + names.map(function(n){
-          var miss = !!missingIn[n];
-          var n0 = tally[n] || 0;
-          /* the "not known yet" bucket is a state, not a place: there is
-             nothing to paste into a filter, so it opens the list of what is in
-             it instead — too wide a thing to read in a column this narrow */
-          if (n.charAt(0) === '—') {
-            return '<button type="button" class="bucket-open" data-bucket="1">'+
-              '<span>'+esc(n)+'</span><span class="n">'+(n0 || '')+'</span></button>';
-          }
-          return '<button type="button" data-copy="'+esc(n)+'">'+
-            '<span>'+esc(n)+(miss ? ' <span class="gap" title="Nothing in this suburb has been checked yet">not checked</span>' : '')+'</span>'+
-            '<span class="n">'+(n0 || '')+'</span></button>';
-        }).join('') + '</div>'
-      : '<p class="count-line">Every property on the register has a sale recorded.</p>';
-
-    /* held for the window the bucket opens: what is in it, and which fault it
-       is, since the two modes bucket for different reasons */
-    bucketState = { rows: bucket, by: chkBy,
-                    label: bucket.length ? (chkBy === 'council' ? '— not known yet' : '—') : '' };
-
-    var b = $('chkGapBadge');
-    b.hidden = !gaps; b.textContent = gaps;
-    b.title = gaps ? gaps + ' unsold propert' + (gaps===1?'y is':'ies are') +
-                     ' in a suburb the export does not cover' : '';
-  }
-  function copyText(t, btn){
-    var done = function(){
-      btn.classList.add('copied');
-      setTimeout(function(){ btn.classList.remove('copied'); }, 900);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(t).then(done, function(){ fallback(); });
-    } else fallback();
-    function fallback(){
-      /* a page served over plain http has no clipboard API */
-      var ta = document.createElement('textarea');
-      ta.value = t; ta.setAttribute('readonly','');
-      ta.style.cssText = 'position:fixed;top:-100px';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); done(); } catch (e) {}
-      document.body.removeChild(ta);
-    }
+  /* "Where to look" is gone: it listed the suburbs to run an export for,
+     and there are no exports any more — the bookmarklet works through the
+     whole book by itself. All that survives of it is keeping the how-to
+     in step with what is actually held. */
+  function syncCheckTab(){
+    syncBmBox(loadProps().filter(isHeld));
   }
 
   /* ══════════ CSV OUT ══════════ */
@@ -6432,6 +6159,18 @@ window.stopCheck=false;
 
   /* ── sold check ── */
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
+  /* Typed in, never in this file. Saved as it is typed so there is no
+     button to forget to press. */
+  $('bmSheet').addEventListener('input', function(){
+    var v = this.value.trim();
+    try {
+      if (v !== sheetUrl()) localStorage.removeItem('ppSheetView');
+      if (v) localStorage.setItem('ppSheetUrl', v);
+      else   localStorage.removeItem('ppSheetUrl');
+    } catch (e) { /* private window: this session only, still useful */ }
+    syncSheetBtn();
+    syncBm();
+  });
   /* Delegated, because the empty state is rebuilt from scratch on every
      Clear: a listener bound to the button it shipped with would be bound
      to a node that is no longer in the page. */
@@ -6472,6 +6211,7 @@ window.stopCheck=false;
        the button, the backdrop or Escape, and the one event that would catch
        all four does not fire dependably — so what gets recorded is "this
        browser has been shown it", which is what the flag is for. */
+    if (!bmReady) return;          // nothing to show yet; ask again next visit
     try { localStorage.setItem('ppChkHelpSeen', '1'); } catch (e) {}
     openChkHelp();
   }
@@ -6483,22 +6223,6 @@ window.stopCheck=false;
   });
   syncBmBox();
   $('btnChkClear').addEventListener('click', chkReset);
-  $('chkSource').addEventListener('change', function(){
-    if (chk) { chk.source = this.value; $('chkSourceWhy').textContent = 'Chosen by hand.'; }
-  });
-  document.querySelector('[data-chkscope]').parentNode.addEventListener('click', function(ev){
-    var b = ev.target.closest && ev.target.closest('button[data-chkscope]');
-    if (!b || b.getAttribute('aria-pressed') === 'true') return;
-    setChkScope(b.dataset.chkscope);
-    chkRun();
-  });
-  $('chkColsBody').addEventListener('change', function(ev){
-    var s = ev.target;
-    if (!chk || !s || !s.dataset.chkcol) return;
-    if (s.value === '') delete chk.map[s.dataset.chkcol];
-    else chk.map[s.dataset.chkcol] = Number(s.value);
-    chkRun();
-  });
   $('chkBody').addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button');
     if (!b) return;
@@ -6533,40 +6257,6 @@ window.stopCheck=false;
     closePick();
     markSold([id]);
   });
-  $('chkCity').addEventListener('change', function(){
-    chkCity = this.value;
-    drawSuburbs();
-  });
-  /* one handler for both copy lists */
-  $('chkList').addEventListener('click', function(ev){
-    var b = ev.target.closest && ev.target.closest('button[data-copy]');
-    if (b) { copyText(b.dataset.copy, b); return; }
-    if (ev.target.closest && ev.target.closest('button[data-bucket]')) openBucket();
-  });
-  $('bucketClose').addEventListener('click', closeBucket);
-  $('bucketDone').addEventListener('click', closeBucket);
-  $('bucketDialog').addEventListener('click', function(ev){
-    if (ev.target === $('bucketDialog')) closeBucket();
-  });
-  /* Its own attribute rather than data-edit: two modal dialogs stacked is a
-     trap to get out of, so this one steps aside before the editor opens. */
-  $('bucketDialog').addEventListener('click', function(ev){
-    var b = ev.target.closest && ev.target.closest('button[data-bucketedit]');
-    if (!b) return;
-    var id = b.dataset.bucketedit;
-    closeBucket();
-    openEntryId = id; syncEditBtn(); openEdit();
-  });
-  document.querySelector('[data-chkby]').parentNode.addEventListener('click', function(ev){
-    var b = ev.target.closest && ev.target.closest('button[data-chkby]');
-    if (!b || b.getAttribute('aria-pressed') === 'true') return;
-    chkBy = b.dataset.chkby;
-    Array.prototype.forEach.call(this.querySelectorAll('button[data-chkby]'), function(x){
-      x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
-    });
-    drawSuburbs();
-  });
-
   $('btnEditDet').addEventListener('click', openEdit);
   $('btnEditSave').addEventListener('click', saveEdit);
   $('btnEditClose').addEventListener('click', closeEdit);
@@ -6679,8 +6369,7 @@ window.stopCheck=false;
   syncShowChrome();
   renderProps();
   calc();
-  drawSuburbs();      // the Sold check panel is readable before any export
-  applyDefaultScope();
+  syncCheckTab();
   setAddMode('purchased');
   showTab('register');
   // deliberately no auto-open: a modal appearing unprompted on load is jarring,
