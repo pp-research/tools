@@ -1815,6 +1815,7 @@ window.stopCheck=false;
      writing "no match" to all of them is worse than stopping at 8: it fills
      the sheet with rows that look like answers. */
   const GIVE_UP_AFTER = 8;        // consecutive failures
+  const RUN_MARK = 'rpRunEndedAt'; // where a run was when the page went
 
   /* ── 1. the register ────────────────────────────────────────────────── */
   const cfgSrc = await fetch('https://pp-research.github.io/tools/supabase-config.js')
@@ -2471,6 +2472,21 @@ window.stopCheck=false;
       'will stop part way. Settings → System → Power & battery → ' +
       'Screen and sleep.');
 
+  /* Read back from the last run, if the last run ended by the page going
+     somewhere. Cleared as soon as it is said out loud, so it is never
+     reported twice. */
+  try {
+    const last = JSON.parse(sessionStorage.getItem(RUN_MARK) || 'null');
+    if (last) {
+      console.warn('%cThe last run ended at ' + last.at + ' of ' + last.of +
+        ' (' + last.when + ') because this tab navigated away or was closed. ' +
+        'That is not a verdict about that property — it is in the list again ' +
+        'below, and nothing before it is lost.',
+        'font-weight:bold;font-size:13px;color:#b9770e');
+      sessionStorage.removeItem(RUN_MARK);
+    }
+  } catch (e) {}
+
   const results = [];
   let misses = 0;
   let peeked = 0;          // how many shape reports have been logged
@@ -2480,6 +2496,25 @@ window.stopCheck=false;
   let sawHidden = false, redone = -1, slowRetried = -1;
   document.addEventListener('visibilitychange', function(){
     if (document.hidden) sawHidden = true;
+  });
+
+  /* A full page load takes this script with it, and the console with it as
+     well, so afterwards there is nothing left to say what happened: the run
+     just stopped somewhere in the middle. The note is therefore left BEFORE
+     it happens, and read back at the start of the next run.
+
+     It says nothing a stop needs to be interpreted from. Either the next run
+     opens with "the page navigated away at 144 of 312", which is a different
+     problem to solve, or it does not — and then the tab was discarded, the
+     machine slept, or Chrome ran out of memory. */
+  let nowAt = 0, finished = false;
+  window.addEventListener('pagehide', function () {
+    if (finished || !nowAt) return;
+    try {
+      sessionStorage.setItem(RUN_MARK, JSON.stringify(
+        { at: nowAt, of: held.length,
+          when: new Date().toTimeString().slice(0, 5) }));
+    } catch (e) {}
   });
   for (let i = 0; i < held.length; i++) {
     if (window.stopCheck) { console.warn('stopped at', i, 'of', held.length); break; }
@@ -2499,6 +2534,7 @@ window.stopCheck=false;
       console.log('%cResumed.', 'font-weight:bold;color:#2b7');
     }
     const p = held[i];
+    nowAt = i + 1;
     let r;
     sawHidden = false;
     try { r = await check(p); }
@@ -2561,7 +2597,12 @@ window.stopCheck=false;
       continue;
     }
     const hit = r.status === 'SOLD SINCE PURCHASE';
-    console.log(`%c${i + 1}/${held.length}  ${p.name}  —  ${r.status}` +
+    /* The clock on every line, because a run is three quarters of an hour
+       and the question afterwards is always "where did it get to, and
+       when" — a stop at 144 of 312 says nothing on its own, and the gap
+       between the last few lines says whether it was being slowed down. */
+    const clock = new Date().toTimeString().slice(0, 5);
+    console.log(`%c${clock}  ${i + 1}/${held.length}  ${p.name}  —  ${r.status}` +
       (r.soldDate ? `  (sold ${r.soldDate} $${r.soldPrice.toLocaleString()})` : '') +
       (r.onMarket ? `  [${r.onMarket}${r.lastAd ? ', last advertised ' + r.lastAd : ''}]` : ''),
       hit ? 'color:#c0392b;font-weight:bold'
@@ -2585,6 +2626,8 @@ window.stopCheck=false;
       await sleep(PAUSE + Math.random() * JITTER + rest);
     }
   }
+
+  finished = true;                 // a clean end leaves no note behind
 
   /* The screen is ours no longer. */
   if (wake && !wake.released) { try { await wake.release(); } catch (e) {} }
