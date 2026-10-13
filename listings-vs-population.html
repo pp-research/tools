@@ -295,7 +295,8 @@ function draw(d){
   const yA=dual?scale(A,true):scale(A.concat(B),!idx), yB=dual?scale(B,true):yA;
   const x=i=>m.l+(i-i0)/(N-1-i0)*pw, yf=s=>v=>m.t+ph-(v-s.lo)/(s.hi-s.lo)*ph, ya=yf(yA), yb=yf(yB);
   const path=(arr,y)=>{let p='',on=false; arr.forEach((v,i)=>{ if(v==null){on=false;return} p+=(on?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1); on=true}); return p};
-  const fmtT=t=>t.toFixed(t%1?1:0)+'%';
+  const tStep=yA.ticks.length>1?yA.ticks[1]-yA.ticks[0]:1, tDp=tStep>=1?0:Math.min(3,Math.ceil(-Math.log10(tStep)-1e-9)+(Math.abs(Math.round(tStep*10**Math.ceil(-Math.log10(tStep)-1e-9))-tStep*10**Math.ceil(-Math.log10(tStep)-1e-9))>1e-6?1:0));
+  const fmtT=t=>t.toFixed(tDp)+'%';
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line chart of sale and rental listings as a percentage of population for ${d.name}">`;
   s+=`<defs><pattern id="hp" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="none"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--hatch)" stroke-width="2"/></pattern></defs>`;
   // where the older Cotality files meet the monthly ones
