@@ -198,7 +198,7 @@ const N=MONTHS.length, iOf=m=>MONTHS.indexOf(m);
 const BASE=iOf('2022-05'), J=iOf(JOIN);
 const S={market:'all',ptype:'A',win:'12',view:'act'};
 try{const s=JSON.parse(localStorage.getItem('lpc-state')||'null'); if(s) Object.assign(S,s)}catch(e){}
-S.view='act'; if(S.win!=='1') S.win='12'; if(!['12m','2001','2008','2018'].includes(S.range)) S.range='2018'; if(S.scaled!=='u') S.scaled='r';
+S.view='act'; if(S.win!=='1') S.win='12'; S.range='12m';   // always opens on the last 12 months if(S.scaled!=='u') S.scaled='r';
 const startIdx=()=>S.range==='12m'?N-12:S.range==='2001'?0:S.range==='2008'?iOf('2008-01'):J; S.cash=false; S.mort=false;   // overlays always start unticked
 for(const [id,key] of [['showCash','cash'],['showMort','mort']]){
   const c=document.getElementById(id); c.checked=S[key];
@@ -290,9 +290,9 @@ function draw(d){
   if(idx){ const ia=A[BASE], ib=B[BASE]; A=A.map(v=>v==null||!ia?null:v/ia*100); B=B.map(v=>v==null||!ib?null:v/ib*100) }
   const nice=(mx)=>{const e=Math.pow(10,Math.floor(Math.log10(mx||1))); const s=[1,2,2.5,5,10].find(s=>s*e>=mx)||10; return s*e};
   const scale=(vals,zero)=>{const v=vals.filter(x=>x!=null); let lo=zero?0:Math.min(...v), hi=Math.max(...v);
-    if(!zero){const pad=(hi-lo)*.08; lo-=pad; hi+=pad} const st=nice((hi-lo)/1.0)/ (zero?1:1); const step=nice((hi-lo)/6)/1;
+    if(!zero){const pad=Math.max((hi-lo)*.08,hi*.02,1e-4); lo=Math.max(0,lo-pad); hi+=pad} const st=nice((hi-lo)/1.0)/ (zero?1:1); const step=nice((hi-lo)/6)/1;
     const s0=Math.floor(lo/step)*step, s1=Math.ceil(hi/step)*step; const ticks=[]; for(let t=s0;t<=s1+1e-9;t+=step) ticks.push(+t.toFixed(6)); return {lo:s0,hi:s1,ticks}};
-  const yA=dual?scale(A,true):scale(A.concat(B),!idx), yB=dual?scale(B,true):yA;
+  const yA=dual?scale(A,true):scale(A.concat(B),false), yB=dual?scale(B,true):yA;
   const x=i=>m.l+(i-i0)/(N-1-i0)*pw, yf=s=>v=>m.t+ph-(v-s.lo)/(s.hi-s.lo)*ph, ya=yf(yA), yb=yf(yB);
   const path=(arr,y)=>{let p='',on=false; arr.forEach((v,i)=>{ if(v==null){on=false;return} p+=(on?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1); on=true}); return p};
   const tStep=yA.ticks.length>1?yA.ticks[1]-yA.ticks[0]:1, tDp=tStep>=1?0:Math.min(3,Math.ceil(-Math.log10(tStep)-1e-9)+(Math.abs(Math.round(tStep*10**Math.ceil(-Math.log10(tStep)-1e-9))-tStep*10**Math.ceil(-Math.log10(tStep)-1e-9))>1e-6?1:0));
