@@ -121,7 +121,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <div class="chart-title" id="ctitle"></div>
       <div class="legend">
         <span><i class="key"></i>Sale listing</span><span><i class="key rent"></i>Rental listing</span>
-        <span id="lgOld"><i class="key faded"></i><span id="lgOldTxt">Before Aug 2018 (rescaled)</span></span><span><i class="sw-hatch"></i>No rental data</span><span id="lgCash" hidden><i class="key cash"></i>Cash rate</span><span id="lgMort" hidden><i class="key mort"></i>Bank Rate</span>
+        <span id="lgOld"><i class="key faded"></i><span id="lgOldTxt">Before Aug 2018 (rescaled)</span></span><span id="lgGap"><i class="sw-hatch"></i>No rental data</span><span id="lgCash" hidden><i class="key cash"></i>Cash rate</span><span id="lgMort" hidden><i class="key mort"></i>Bank Rate</span>
       </div>
     </div>
     <div id="chart" aria-describedby="ctitle"></div>
@@ -282,7 +282,7 @@ function draw(d){
   document.getElementById('lgCash').hidden=!S.cash; document.getElementById('lgMort').hidden=!S.mort;
   const m={t:26,r:(narrow?40:52)+(rates?(narrow?30:40)+10:0),b:30,l:(narrow?36:48)+10};
   const pw=W-m.l-m.r, ph=H-m.t-m.b;
-  const i0=startIdx(); document.getElementById('lgOld').hidden=i0>=J; document.getElementById('rangeNote').hidden=i0>=J; document.getElementById('scaleCtl').hidden=i0>=J;
+  const i0=startIdx(); document.getElementById('lgOld').hidden=i0>=J; document.getElementById('rangeNote').hidden=i0>=J; document.getElementById('scaleCtl').hidden=i0>=J; document.getElementById('lgGap').hidden=!d.gaps.some(g=>g[1]>=i0);
   document.getElementById('lgOldTxt').textContent=S.scaled==='u'?'Before Aug 2018 (as published)':'Before Aug 2018 (rescaled)';
   document.getElementById('rangeNoteScale').textContent=S.scaled==='u'?'The figures are shown as Cotality’s older files published them, without rescaling, so the lines step at Aug 2018 where the older files meet the current ones. The lighter line colour marks the older files.':'The figures come from Cotality’s older files and are rescaled to join the current series, hence the lighter line colour.';
   const vis=a=>a.map((v,i)=>i<i0?null:v);
