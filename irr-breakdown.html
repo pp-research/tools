@@ -438,7 +438,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkBm > h3:first-of-type{margin-top:var(--sp-4)}
 #chkBm .note{margin-bottom:var(--sp-3)}
 #chkBm #bmSheetLine{margin:0 0 var(--sp-3)}
-#chkBm #bmSheetLine a{color:var(--accent-300);text-decoration:underline}
+#chkBm #bmSheetLine a, #chkBm #bmSheetChange a{color:var(--accent-300);text-decoration:underline}
+/* the foot of the block, well clear of the instructions */
+#chkBm #bmSheetChange{margin:var(--sp-5) 0 0}
 /* The window's own prose and controls need room between them: a paragraph
    whose last line touches the next field reads as one run-on block. */
 #addPurchased > h3, #addSold > h3{margin:0 0 var(--sp-2)}
@@ -1162,6 +1164,12 @@ details .body strong{color:var(--text)}
                    the page said — instead of working through the list finding nothing.
                    Send that text back and it is a one-line fix.</p>
               </div>
+
+              <!-- Not in the line above: that line says where results go, and a
+                   second thing to click beside it reads as a thing to do. This
+                   is only ever needed when the deployment is replaced, which is
+                   what you do if the address ever leaks. -->
+              <p class="hint" id="bmSheetChange" hidden><a href="#" data-bmedit="1">Change the Google Sheet address</a></p>
             </div>
 
             <!-- everything below only exists once an export has been read -->
@@ -4669,8 +4677,13 @@ window.stopCheck=false;
   function syncBm(){
     var a = $('bmLink');
     if (!a) return;
-    /* drawSuburbs runs on every render, and rebuilding means a regex pass and
-       a URL-encode over fifteen kilobytes. Nothing has changed most times. */
+    /* Cheap, and the thing most likely to have changed since the last call:
+       the sheet link arrives from the Apps Script well after the address it
+       was fetched with stopped changing. Outside the cache for that reason. */
+    bmSheetLink();
+    /* drawSuburbs runs on every render, and rebuilding the bookmarklets means
+       a regex pass and a URL-encode over twenty-five kilobytes. Nothing has
+       changed most times. */
     var sig = sheetUrl() || '-';
     if (sig === bmLast) return;
     bmLast = sig;
@@ -4688,7 +4701,6 @@ window.stopCheck=false;
       box.hidden = !sheetUrl();
       if (!box.hidden) pf.href = buildBm('pfBmSrc') || '#';
     }
-    bmSheetLink();
   }
   /* The sheet's own link comes from the sheet, not from this file: the Apps
      Script reports it, and it is kept in this browser like the address that
@@ -4712,11 +4724,14 @@ window.stopCheck=false;
     if (field) field.hidden = !!u && !editing;
     var dn = $('bmSheetDone');
     if (dn) dn.hidden = !(u && editing);
+    var ch = $('bmSheetChange');
+    if (ch) ch.hidden = !u || editing;
     p.hidden = !u || editing;
     if (!p.hidden) {
-      p.innerHTML = 'Results go to your Google Sheet' +
-        (view ? ' — <a href="'+esc(view)+'" target="_blank" rel="noopener">open it</a>' : '') +
-        ' · <a href="#" data-bmedit="1">change the address</a>';
+      /* One thing in this line, and it is the sheet itself. */
+      p.innerHTML = view
+        ? 'Results go to <a href="'+esc(view)+'" target="_blank" rel="noopener">your Google Sheet</a>, as the run finds them.'
+        : 'Results go to your Google Sheet as the run finds them.';
     }
 
     if (view || !u) return;
@@ -4740,9 +4755,6 @@ window.stopCheck=false;
     var inp = $('bmSheet');
     if (inp && document.activeElement !== inp) inp.value = sheetUrl();
     syncBm();
-    /* outside syncBm's cache: the link can arrive from the sheet long
-       after the href it was built alongside stopped changing */
-    bmSheetLink();
   }
   /* Typed in, not set from a console: the address is a plain setting to the
      person using it, and asking them to open devtools for it was a way of
@@ -4750,11 +4762,12 @@ window.stopCheck=false;
   function bmSaveSheet(){
     var v = $('bmSheet').value.trim();
     try {
+      /* This runs on every keystroke, so the cached sheet link is dropped
+         only when the address genuinely changed. Dropping it every time
+         meant re-asking the Apps Script for it letter by letter. */
+      if (v !== sheetUrl()) localStorage.removeItem('ppSheetView');
       if (v) localStorage.setItem('ppSheetUrl', v);
       else   localStorage.removeItem('ppSheetUrl');
-      /* a different endpoint is a different sheet; the old link would point
-         at the wrong book until something happened to refresh it */
-      localStorage.removeItem('ppSheetView');
     } catch (e) { /* private window: this session only, which is still useful */ }
     syncSheetBtn();
     syncBm();
@@ -6461,7 +6474,7 @@ window.stopCheck=false;
     var open = t.hasAttribute('data-bmedit');
     $('bmSheetField').dataset.editing = open ? '1' : '';
     bmSheetLink();
-    if (open) $('bmSheet').focus();
+    if (open) { $('bmSheet').scrollIntoView({ block:'center' }); $('bmSheet').focus(); }
   });
   $('bmSheet').addEventListener('change', bmSaveSheet);
   /* Clicking it would run the RP Data script against this page, which is not
