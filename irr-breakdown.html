@@ -1931,9 +1931,33 @@ window.stopCheck=false;
       localStorage.setItem(ASKED, JSON.stringify(o));
     } catch (e) {}
   }
+  /* Deleting a row in the sheet is how you say "ask this one again", so this
+     note must not out-live the row it was taken alongside. Anything the sheet
+     no longer holds a row for is forgotten here.
+
+     Guarded twice, because this throws away the reason to skip. It runs only
+     when the sheet actually answered — a failed fetch leaves `seen` null and
+     the note stands — and only when that answer had rows in it, so an empty
+     reply, a renamed tab or a deleted one cannot quietly wipe a week's work.
+
+     Mutates `note` and reports how many went, so the caller can decide
+     whether it is worth writing back and saying out loud. */
+  function forgetDeleted(names, seen, note) {
+    if (!seen || !seen.size) return 0;
+    let n = 0;
+    names.forEach(name => {
+      const k = key_(name);
+      if (note[k] && !seen.has(name)) { delete note[k]; n++; }
+    });
+    return n;
+  }
   const askedBefore = loadAsked();
 
   let done = new Set(), askedThisWeek = new Set();
+  /* Every address the sheet still holds an RP Data row for, whatever it says
+     about it. Null while the sheet has not answered, which is the difference
+     between "no row for this one" and "no answer from the sheet at all". */
+  let sheetSeen = null;
   if (SHEET_URL) {
     try {
       const d = await withTimeout(
@@ -1942,8 +1966,10 @@ window.stopCheck=false;
       /* Both sides are yyyy-mm-dd, so a string compare IS a date compare and
          nothing has to be parsed back into a Date to be got wrong. */
       const monday = ymd(weekStart());
+      sheetSeen = new Set();
       ((d && d.rows) || []).forEach(r => {
         if (!r.address || !/^RP Data/.test(r.source || '')) return;
+        sheetSeen.add(r.address);
         if (/still held|SOLD SINCE PURCHASE/.test(r.status || '')) done.add(r.address);
         else if (String(r.checkedAt || '').slice(0, 10) >= monday) askedThisWeek.add(r.address);
       });
@@ -1951,6 +1977,14 @@ window.stopCheck=false;
       console.warn('Could not ask the sheet what it already has, so this is a ' +
                    'full run: ' + e.message);
     }
+  }
+  /* A row deleted in the sheet is a property to ask about again, so the note
+     taken alongside it goes too. See forgetDeleted(). */
+  const forgot = forgetDeleted(all.map(p => p.name), sheetSeen, askedBefore);
+  if (forgot) {
+    try { localStorage.setItem(ASKED, JSON.stringify(askedBefore)); } catch (e) {}
+    console.log(forgot + ' propert' + (forgot === 1 ? 'y has' : 'ies have') +
+      ' had their row deleted since the last run, so they are being asked again.');
   }
   /* Whichever of the two noticed it. The sheet's set reaches across browsers
      and machines; the browser's own reaches across a reload the sheet never
