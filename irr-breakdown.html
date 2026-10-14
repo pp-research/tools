@@ -2377,10 +2377,16 @@ window.stopCheck=false;
     if (/\/property\//.test(location.pathname)) return false;
     if (/(search|result|list)/i.test(location.pathname + location.search)) return true;
     /* "Displaying 3 of 3 properties" is what the one we have seen says, but
-       a count of properties in any wording is the same evidence. */
+       a count of properties in any wording is the same evidence.
+
+       On the same LINE, though. An ordinary property page carries its own
+       record number above the word Property — "2101\n\nProperty" — and \s+
+       spans newlines, so the loose version read every property page in RP
+       Data as a list of properties. It was only ever saved by the /property/
+       test above it, which does not hold while the app is between views. */
     const txt = (document.body.innerText || '').slice(0, 6000);
     return /displaying\s+\d+\s+of\s+\d+/i.test(txt) ||
-           /\b\d+\s+propert(?:y|ies)\b/i.test(txt);
+           /\b\d+[ \t]+propert(?:y|ies)\b/i.test(txt);
   }
   function blockOf(a) {
     /* Up from the link to the smallest thing around it that reads as a whole
@@ -2421,6 +2427,34 @@ window.stopCheck=false;
            ' tr=' + n('tr') + ' ariarow=' + n('[role=row]') + ' li=' + n('li') +
            ' proplinks=' + n('a[href*="/property/"]') +
            ' resultsPage=' + resultsPage();
+  }
+  /* Where a click landed: the property itself, a list of properties, or not
+     yet anywhere. Polled, so it is called many times for one click and keeps
+     its count in `state`.
+
+     The list is only believed where the page says it is one — see
+     resultsPage() — because a page of addresses is also what we are standing
+     on until the click takes effect.
+
+     And not on first sight. This is a single-page app: between the click and
+     the new view there is a moment where the URL has left the old property
+     but the old property's DOM is still mounted, and that DOM reads as a
+     list — a table of nearby sales is a dozen rows of addresses, none of
+     them the one being asked about. Scanned in that moment it produced
+     "several results, none matched" for a property that was about to load
+     perfectly well.
+
+     So the verdict has to survive a second of polling. A real list goes on
+     being one; a page in transition does not. The property is still answered
+     the instant it is true — only the list is made to wait. */
+  const LIST_STEADY = 4;               // polls, at waitFor's 250ms step
+  function landing(before, state) {
+    if (location.pathname !== before && /\/property\//.test(location.pathname)) return 'property';
+    if (resultsPage() && resultRows().length) {
+      return (++state.steady >= LIST_STEADY) ? 'results' : null;
+    }
+    state.steady = 0;
+    return null;
   }
   /* Opening a row is not the same as clicking it. Which element listens is
      not ours to know: it may be a link in the address cell, a handler on the
@@ -2505,11 +2539,14 @@ window.stopCheck=false;
      same suggestions, which the staleness guard then rejected as "not a new
      list", so it gave up before trying the second candidate at all. That is
      why a property whose right answer was third came back "did not open". */
-    let moved = null;
+    let moved = null, noMatch = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       let cur = [...document.querySelectorAll('[role=option]')];
       if (!cur.length) {
-        const again = await suggest(box, p.name, 8000, true);   // same list is fine
+        /* Re-read the box rather than reusing the one from the top of the
+           check: a results page is a different view, and the input we typed
+           into may not be the input that is on screen now. */
+        const again = await suggest(searchBox() || box, p.name, 8000, true);
         if (!again) break;
         cur = again;
       }
@@ -2522,14 +2559,9 @@ window.stopCheck=false;
       clickOption(cur[curOrder[attempt]]);
 
       /* Either outcome is progress: the property itself, or a list of them.
-         The list is only believed where the page says it is one — see
-         resultsPage() — because a page of addresses is also what we are
-         standing on until the click takes effect. */
-      const landed = await waitFor(() => {
-        if (location.pathname !== before && /\/property\//.test(location.pathname)) return 'property';
-        if (resultsPage() && resultRows().length) return 'results';
-        return null;
-      }, 12000);
+         See landing(). */
+      const st = { steady: 0 };
+      const landed = await waitFor(() => landing(before, st), 12000);
 
       if (landed === 'property') { moved = true; break; }
 
@@ -2540,8 +2572,12 @@ window.stopCheck=false;
         step(rows.length + ' results listed; looking for ours');
         const mine = rows.filter(tr => sameProperty(p.name, rowText(tr)));
         if (!mine.length) {
-          return { status: 'several results, none matched', shape: shape(),
-                   offered: rows.slice(0, 3).map(rowText).join(' | ').slice(0, 200) };
+          /* Not the end of it. This list belongs to the candidate we clicked,
+             and the next candidate may lead somewhere else entirely. Keep the
+             verdict in case there is no next one, and carry on. */
+          noMatch = { status: 'several results, none matched', shape: shape(),
+                      offered: rows.slice(0, 3).map(rowText).join(' | ').slice(0, 200) };
+          continue;
         }
         /* Last, not first. Where the same address lists more than once the
            later row is the current title — the earlier ones are the history
@@ -2551,8 +2587,10 @@ window.stopCheck=false;
                  offered: rowText(mine[mine.length - 1]).slice(0, 120) };
       }
     }
-    if (!moved) return { status: 'did not open', shape: shape(),
-                         offered: offered[order[0]] };
+    /* A list we could not find ourselves in is a more specific answer than
+       "did not open", so it wins where both happened. */
+    if (!moved) return noMatch || { status: 'did not open', shape: shape(),
+                                    offered: offered[order[0]] };
 
     await waitFor(readLastSold, 9000);       // let the detail panel render
 
