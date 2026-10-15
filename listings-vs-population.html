@@ -77,6 +77,8 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 .chart-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;padding-inline:6px}
 .chart-title{font-weight:600;font-size:15px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-2);align-items:center}
+.bar-legend{padding-inline:6px;margin:0 0 6px}
+#lgBars{display:contents}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .sw-band{width:14px;height:10px;background:var(--band);border:1px solid var(--band-ink);opacity:.8}
 .sw-hatch{width:14px;height:10px;background:repeating-linear-gradient(45deg,var(--hatch) 0 2px,transparent 2px 5px)}
@@ -226,17 +228,17 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
   <div class="chart-card" id="barCard">
     <div class="chart-top">
       <div class="chart-title" id="btitle"></div>
-      <div class="legend">
-        <span id="lgBars"></span>
-        <span id="lgDH"><i class="key domh"></i>Days on market, houses</span><span id="lgDU"><i class="key domu"></i>Days on market, units</span>
-        <span id="lgVH" hidden><i class="key vac"></i>Vacancy, houses</span><span id="lgVU" hidden><i class="key vacu"></i>Vacancy, units</span>
-      </div>
     </div>
     <div class="ctl overlays"><span>Overlays (right axis)</span><div class="checks">
       <label class="chk"><input type="checkbox" id="showCash"><i class="key cash"></i>Cash rate</label>
       <label class="chk"><input type="checkbox" id="showMort"><i class="key mort"></i>Bank Rate</label>
       <label class="chk"><input type="checkbox" id="showDom"><i class="key domh"></i>Days on market</label>
       <label class="chk"><input type="checkbox" id="showVac"><i class="key vac"></i>Vacancy rate</label></div></div>
+    <div class="legend bar-legend">
+      <span id="lgBars"></span>
+      <span id="lgDH"><i class="key domh"></i>Days on market, houses</span><span id="lgDU"><i class="key domu"></i>Days on market, units</span>
+      <span id="lgVH" hidden><i class="key vac"></i>Vacancy, houses</span><span id="lgVU" hidden><i class="key vacu"></i>Vacancy, units</span>
+    </div>
     <div id="bars" aria-describedby="btitle"></div>
     <p class="range-note" id="domNote" hidden>Days on market starts in Aug 2018, when Cotality’s monthly Market Trends files begin. It is Cotality’s median days on market for properties sold over the previous 12 months (private treaty sales with an advertised price), so it moves slowly.</p>
   </div>
