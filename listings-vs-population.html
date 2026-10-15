@@ -13,14 +13,14 @@
   --bg:#F5F7F7; --surface:#FFFFFF; --ink:#171B24; --ink-2:#3E434B; --muted:#63666A; --rule:#DDE2E2; --grid:#E8ECEC;
   --sale:#00879A; --rent:#B87100; --band:rgba(0,160,180,.07); --band-ink:#2D6F78; --hatch:#C9CFD0; --break:#A5122D;
   --chip:#EAF1F2; --chip-on:#171B24; --chip-on-ink:#FFFFFF; --cash:#4A4F57; --mort:#8C2C8C; --note-ink:#8F5800; --note-bg:#FFF4E0; --note-rule:#F5C46B;
-  --unit:#86C5CE; --rent-u:#E2B86F; --dom:#3E434B; --vac:#2E7D4F;
+  --unit:#86C5CE; --rent-u:#E2B86F; --dom:#2F5FB3; --vac:#2E7D4F;
   --ov-bg:#EAF3FB; --ov-rule:#CFE2F3;
   --ctl-bg:#00616E; --ctl-ink:#FFFFFF; --ctl-label:#D2ECEF; --ctl-seg:rgba(255,255,255,.14); --ctl-on:#FFFFFF; --ctl-on-ink:#00616E;
   --f-display:"Montserrat",Arial,Helvetica,sans-serif; --f-body:"Montserrat",Arial,Helvetica,sans-serif;
   --leave:#B3261E; --leave-bg:rgba(179,38,30,.09); --shift:#1F6FB2; --shift-bg:rgba(31,111,178,.09); --buy:#6A4C9C; --buy-bg:rgba(106,76,156,.09); --tight:#2E7D4F; --tight-bg:rgba(46,125,79,.09); --dl-band:rgba(99,102,106,.10);
 }
 :root[data-theme="dark"]{
-  --unit:#2D8A96; --rent-u:#9C6A1C; --dom:#C9CED3; --vac:#7BCB98;
+  --unit:#2D8A96; --rent-u:#9C6A1C; --dom:#8DB4F2; --vac:#7BCB98;
   --ov-bg:rgba(121,180,234,.10); --ov-rule:rgba(121,180,234,.25);
   --ctl-bg:#0B5964; --ctl-ink:#FFFFFF; --ctl-label:#BFE6EB; --ctl-seg:rgba(255,255,255,.12); --ctl-on:#EEF1F2; --ctl-on-ink:#0B5964;
   --leave:#F2867E; --leave-bg:rgba(242,134,126,.12); --shift:#79B4EA; --shift-bg:rgba(121,180,234,.12); --buy:#B9A0E4; --buy-bg:rgba(185,160,228,.12); --tight:#7BCB98; --tight-bg:rgba(123,203,152,.12); --dl-band:rgba(154,161,168,.12);
@@ -77,7 +77,6 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 .chart-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;padding-inline:6px}
 .chart-title{font-weight:600;font-size:15px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-2);align-items:center}
-.bar-legend{padding-inline:6px;margin:0 0 6px}
 #lgBars{display:contents}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .sw-band{width:14px;height:10px;background:var(--band);border:1px solid var(--band-ink);opacity:.8}
@@ -228,17 +227,15 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
   <div class="chart-card" id="barCard">
     <div class="chart-top">
       <div class="chart-title" id="btitle"></div>
+      <div class="legend">
+        <span id="lgBars"></span>
+      </div>
     </div>
     <div class="ctl overlays"><span>Overlays (right axis)</span><div class="checks">
       <label class="chk"><input type="checkbox" id="showCash"><i class="key cash"></i>Cash rate</label>
       <label class="chk"><input type="checkbox" id="showMort"><i class="key mort"></i>Bank Rate</label>
       <label class="chk"><input type="checkbox" id="showDom"><i class="key domh"></i>Days on market</label>
       <label class="chk"><input type="checkbox" id="showVac"><i class="key vac"></i>Vacancy rate</label></div></div>
-    <div class="legend bar-legend">
-      <span id="lgBars"></span>
-      <span id="lgDH"><i class="key domh"></i>Days on market, houses</span><span id="lgDU"><i class="key domu"></i>Days on market, units</span>
-      <span id="lgVH" hidden><i class="key vac"></i>Vacancy, houses</span><span id="lgVU" hidden><i class="key vacu"></i>Vacancy, units</span>
-    </div>
     <div id="bars" aria-describedby="btitle"></div>
     <p class="range-note" id="domNote" hidden>Days on market starts in Aug 2018, when Cotality’s monthly Market Trends files begin. It is Cotality’s median days on market for properties sold over the previous 12 months (private treaty sales with an advertised price), so it moves slowly.</p>
   </div>
@@ -607,8 +604,6 @@ function drawBars(d){
   const SW={S:{H:'',U:' u'}, R:{H:' r',U:' ru'}}, FL={S:{H:'--sale',U:'--unit'}, R:{H:'--rent',U:'--rent-u'}}, ptN={H:'houses',U:'units'};
   const sl=isRea()?'Sale (REA)':'Sale', all=pts.length>1;
   document.getElementById('lgBars').innerHTML=pts.map(p=>`<span><i class="sw-bar${SW.S[p]}"></i>${sl}${all?', '+ptN[p]:' listings'}</span>`).join('')+pts.map(p=>`<span><i class="sw-bar${SW.R[p]}"></i>Rental${all?', '+ptN[p]:' listings'}</span>`).join('');
-  document.getElementById('lgDH').hidden=!dom||!pts.includes('H'); document.getElementById('lgDU').hidden=!dom||!pts.includes('U');
-  document.getElementById('lgVH').hidden=!S.vac||!pts.includes('H'); document.getElementById('lgVU').hidden=!S.vac||!pts.includes('U');
   document.getElementById('domNote').hidden=i0>=J||!dom;
   // bars: the sale and rental counts behind the line chart (markets reporting that month, dwellings added up)
   const V={S:d.saleN, R:d.rentN}, BK=['S','R'];
