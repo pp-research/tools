@@ -205,8 +205,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <button type="button" data-v="A" aria-pressed="true">All</button><button type="button" data-v="H" aria-pressed="false">Houses</button><button type="button" data-v="U" aria-pressed="false">Units</button></div></div>
     <div class="ctl"><span>Overlay (right axis, %)</span><div class="checks">
       <label class="chk"><input type="checkbox" id="showCash"><i class="key cash"></i>Cash rate</label>
-      <label class="chk"><input type="checkbox" id="showMort"><i class="key mort"></i>Bank Rate</label>
-      <label class="chk"><input type="checkbox" id="showVac"><i class="key vac"></i>Vacancy rate</label></div></div>  </div>
+      <label class="chk"><input type="checkbox" id="showMort"><i class="key mort"></i>Bank Rate</label></div></div>  </div>
 
   <div class="chart-card" id="barCard">
     <div class="chart-top">
@@ -214,6 +213,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <div class="legend">
         <span id="lgBH"><i class="sw-bar"></i>Houses for sale</span><span id="lgBU"><i class="sw-bar u"></i>Units for sale</span>
         <span id="lgDH"><i class="key domh"></i>Days on market, houses</span><span id="lgDU"><i class="key domu"></i>Days on market, units</span>
+        <label class="chk"><input type="checkbox" id="showVac"><i class="key vac"></i>Vacancy rate</label>
       </div>
     </div>
     <div id="bars" aria-describedby="btitle"></div>
@@ -230,7 +230,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <div class="chart-title" id="ctitle"></div>
       <div class="legend">
         <span><i class="key"></i><span id="lgSaleTxt">Sale listing</span></span><span><i class="key rent"></i>Rental listing</span>
-        <span id="lgOld"><i class="key faded"></i><span id="lgOldTxt">Before Aug 2018 (rescaled)</span></span><span id="lgGap"><i class="sw-hatch"></i>No rental data</span><span id="lgCash" hidden><i class="key cash"></i>Cash rate</span><span id="lgMort" hidden><i class="key mort"></i>Bank Rate</span><span id="lgVac" hidden><i class="key vac"></i>Vacancy rate</span>
+        <span id="lgOld"><i class="key faded"></i><span id="lgOldTxt">Before Aug 2018 (rescaled)</span></span><span id="lgGap"><i class="sw-hatch"></i>No rental data</span><span id="lgCash" hidden><i class="key cash"></i>Cash rate</span><span id="lgMort" hidden><i class="key mort"></i>Bank Rate</span>
       </div>
     </div>
     <div id="chart" aria-describedby="ctitle"></div>
@@ -294,7 +294,8 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <p><b>Earlier years.</b> Jan 2001 to Jun 2018 come from Cotality’s older history files: the capital-city file and the ten LGA files. The old files count more listings than the monthly files at the same date, by different amounts in each market. For houses the old sale count runs from 5% lower (Newcastle) to 68% higher (Perth). So each market’s houses and units, sale and rental, are rescaled separately, so that Jun 2018 meets the Aug 2018 level, and that scale is held for every earlier month. Both lines are drawn lighter before Aug 2018. Switch <b>Before Aug 2018</b> to <b>As published</b> to see the older files’ own figures without rescaling; the lines then step at Aug 2018.</p>
       <p><b>Early rental listings are understated.</b> Cotality’s rental coverage kept growing until about 2016. Capitals’ rental listings went from 1.5% of population in 2008 to 3.7% in 2016 before levelling off, which is far more than the rental market itself moved. Some regional markets barely register before 2010 (Launceston houses: 7 rental listings a year in 2008). Treat the rental line before about 2016 as showing direction only, not level. Sale listing coverage settled around 2008: regional sale listings more than doubled from 2004 to 2008, then flattened. The chart can go back to Jan 2001 at most, because that is where the ABS population estimates start (30 June 2001, held for Jan–May 2001). Before about 2006 many markets have no rental count, and some none for sale (Launceston has no sale count until Feb 2008). The <b>All 36 markets</b> line therefore adds up only the markets reporting each month and divides by those markets’ population, so a missing market drops out of both sides. The mix of markets changes as each one starts reporting; the hover note gives the count for each month.</p>
       <p><b>Jul 2018.</b> The month Cotality switched council boundaries. Merged councils are missing (Central Coast shows 423 sale listings), and the older files end in Jun 2018, so the month is left empty.</p>
-      <p><b>Rate overlay.</b> Both rates come from the RBA. <b>Cash rate</b> is the cash rate target at month end, drawn as steps (table F1; before 2011 the RBA file holds monthly averages, so a month with a change takes the new rate). <b>Bank Rate</b> (from mid-2004, when the RBA series starts) is the banks’ discounted variable rate for owner-occupier housing loans (table F5, indicator lending rates). It sits close to what new borrowers actually pay; the standard variable rate runs about 2 points higher. Both read off the right-hand % axis. <b>Vacancy rate</b> is Cotality’s 1-month vacancy rate (rental listings ÷ rental stock) for the market and dwellings chosen; markets and dwelling types are combined by rental stock, and only markets reporting that month are included. It is drawn lighter before Aug 2018, when Cotality’s rental counts were still incomplete, so early vacancy reads low. It is always Cotality, whichever sale-listings source is chosen.</p>
+      <p><b>Rate overlay.</b> Both rates come from the RBA. <b>Cash rate</b> is the cash rate target at month end, drawn as steps (table F1; before 2011 the RBA file holds monthly averages, so a month with a change takes the new rate). <b>Bank Rate</b> (from mid-2004, when the RBA series starts) is the banks’ discounted variable rate for owner-occupier housing loans (table F5, indicator lending rates). It sits close to what new borrowers actually pay; the standard variable rate runs about 2 points higher. Both read off the right-hand % axis.</p>
+      <p><b>Vacancy rate (sale listings chart).</b> Tick <b>Vacancy rate</b> on the sale listings chart to add Cotality’s 1-month vacancy rate (rental listings ÷ rental stock) for the market and dwellings chosen, on its own % axis at the far right. Markets and dwelling types are combined by rental stock, and only markets reporting that month are included. It is drawn lighter before Aug 2018, when Cotality’s rental counts were still incomplete, so early vacancy reads low. It is always Cotality, whichever sale-listings source is chosen.</p>
     </div>
   </details>
 
@@ -501,6 +502,9 @@ for(const [id,key] of [['ptype','ptype'],['scaled','scaled'],['window','win'],['
   g.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||b.disabled) return; S[key]=b.dataset.v; if(isRea()) S.win='1'; segSync.forEach(f=>f()); save(); render()});
 }
 
+// Cotality 1-month vacancy rate for a set of markets and dwellings, combined by rental stock
+function vacOf(ms,pts){ return MONTHS.map((_,i)=>{ let a=0,b=0; for(const m of ms){ const z=VAC[m.slug]; if(!z) continue;
+  for(const p of pts){ const v=z[p].v[i], q=z[p].q[i]; if(v!=null&&q){ a+=v*q; b+=q } } } return b?a/b:null }) }
 // series assembly: raw counts summed over chosen markets/dwellings, then as a % of population
 function series(){
   const ms=S.market==='all'?MARKETS:MARKETS.filter(m=>m.slug===S.market);
@@ -530,8 +534,7 @@ function series(){
   R1.val.forEach((v,i)=>{ if(i<J) return; if(v==null&&st<0) st=i; if(v!=null&&st>=0){gaps.push([st,i-1]);st=-1} }); if(st>=0) gaps.push([st,N-1]);
   // Cotality 1-month vacancy rate; markets and dwellings combined by rental stock (sum of vacant ÷ sum of stock),
   // using only the markets reporting that month
-  const vac=MONTHS.map((_,i)=>{ let a=0,b=0; for(const m of ms){ const z=VAC[m.slug]; if(!z) continue;
-    for(const p of pts){ const v=z[p].v[i], q=z[p].q[i]; if(v!=null&&q){ a+=v*q; b+=q } } } return b?a/b:null });
+  const vac=vacOf(ms,pts);
   const name=S.market==='all'?'All 36 markets':ms[0].name;
   return {name,pop,vac,sale:pc(sale,S1.pop),rent:pc(rent,R1.pop),saleN:sale,rentN:rent,act1:A1.val,saleCnt:S1.cnt,rentCnt:R1.cnt,nMk:ms.length,breaks:[...br].sort((a,b)=>a-b),gaps};
 }
@@ -578,8 +581,9 @@ function drawBars(){
       for(const m of ms){ let v=isRea()?m.rea[p][i]:m[p][k][i]; if(v!=null){ if(raw&&i<J) v=v/m.k[p][0]; t+=v; c++ }
         const dd=m[p].d[i], w=m[p].l12[i]; if(dd!=null&&w) { dv+=dd*w; dw+=w } }
       V[p].push(c?t:null); D[p].push(dw?dv/dw:null) } }
+  const VR=vacOf(ms,pts);
   const W=Math.max(320,barsEl.clientWidth), narrow=W<560, H=narrow?240:300;
-  const m={t:16,r:(narrow?40:52)+10,b:30,l:(narrow?44:58)+10}, pw=W-m.l-m.r, ph=H-m.t-m.b, bw=pw/n;
+  const m={t:16,r:(narrow?40:52)+10+(S.vac?(narrow?44:54):0),b:30,l:(narrow?44:58)+10}, pw=W-m.l-m.r, ph=H-m.t-m.b, bw=pw/n;
   const nice=x=>{const e=10**Math.floor(Math.log10(x||1)); return ([1,2,2.5,5,10].find(s=>s*e>=x)||10)*e};
   const vmax=Math.max(1,...pts.flatMap(p=>V[p].slice(i0).filter(v=>v!=null))), vs=nice(vmax/5), vhi=Math.ceil(vmax/vs)*vs;
   const dvals=pts.flatMap(p=>D[p].slice(i0).filter(v=>v!=null)), dmax=dvals.length?Math.max(...dvals):10, ds=nice(dmax/5), dhi=Math.ceil(dmax/ds)*ds;
@@ -597,6 +601,13 @@ function drawBars(){
   // days on market lines
   const path=a=>{let q='',on=false; for(let i=i0;i<N;i++){ const v=a[i]; if(v==null){on=false;continue} q+=(on?'L':'M')+cx(i).toFixed(1)+','+yd(v).toFixed(1); on=true } return q};
   for(const p of pts) s+=`<path d="${path(D[p])}" fill="none" stroke="var(--dom)" stroke-width="2" ${p==='U'?'stroke-dasharray="5 3"':''} stroke-linejoin="round"/>`;
+  // vacancy rate on its own % axis, outside the days-on-market axis; lighter before Aug 2018
+  if(S.vac){ const vv=VR.slice(i0).filter(v=>v!=null), vmx=vv.length?Math.max(...vv):1, vst=vmx>4?1:.5, vtop=Math.ceil(vmx/vst)*vst||1, yv=v=>m.t+ph-v/vtop*ph, rx=m.l+pw+(narrow?48:60);
+    for(let t=0;t<=vtop+1e-9;t+=vst) s+=`<text x="${rx}" y="${yv(t)+4}" font-size="11" fill="var(--vac)">${+t.toFixed(1)}%</text>`;
+    s+=`<text transform="translate(${rx+(narrow?32:38)} ${m.t+ph/2}) rotate(90)" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink-2)">Vacancy (%)</text>`;
+    const vp=sel=>{let q='',on=false; for(let i=i0;i<N;i++){ const v=sel(i)?VR[i]:null; if(v==null){on=false;continue} q+=(on?'L':'M')+cx(i).toFixed(1)+','+yv(v).toFixed(1); on=true } return q};
+    s+=`<path d="${vp(i=>i<J)}" fill="none" stroke="var(--vac)" stroke-width="1.75" stroke-dasharray="5 3" stroke-linejoin="round" opacity=".55"/>`;
+    s+=`<path d="${vp(i=>i>=J)}" fill="none" stroke="var(--vac)" stroke-width="2.25" stroke-dasharray="5 3" stroke-linejoin="round"/>` }
   // month / year labels, same spacing rules as the chart above
   if(n<=24){ const every=narrow?3:(n>12?2:1);
     for(let i=i0;i<N;i++){ if((N-1-i)%every) continue; const mm=MONTHS[i]; s+=`<text x="${cx(i)}" y="${m.t+ph+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${MON[+mm.slice(5,7)-1]} ${mm.slice(2,4)}</text>` } }
@@ -615,6 +626,7 @@ function drawBars(){
       pts.map(p=>`<div class="t-r"><span><i class="sw-bar${p==='U'?' u':''}"></i>${p==='H'?'Houses':'Units'} for sale</span><b>${fmt(V[p][i])}</b></div>`).join('')+
       `<div class="t-div"></div>`+
       pts.map(p=>`<div class="t-r t-sub"><span>Days on market, ${p==='H'?'houses':'units'}</span><span>${D[p][i]==null?'–':Math.round(D[p][i])+' days'}</span></div>`).join('')+
+      (S.vac?`<div class="t-r"><span><i class="key vac"></i>Vacancy rate</span><b>${VR[i]==null?'–':VR[i].toFixed(2)+'%'}</b></div>`:'')+
       (S.market==='all'?'<div class="t-note">All 36: listings added up; days on market is the average across markets, weighted by each market’s 12-month Cotality listings.</div>':'')+
       (isRea()&&i<REA0?'<div class="t-note">No realestate.com.au counts before Jan 2025.</div>':'')+
       (isRea()&&S.market==='all'&&V[pts[0]][i]!=null?'<div class="t-note">Listings from realestate.com.au; days on market from Cotality.</div>':'')+
@@ -630,15 +642,15 @@ let tip=null;
 function draw(d){
   const W=Math.max(320,chartEl.clientWidth), narrow=W<560, H=narrow?300:400;
   const dual=false, idx=S.view==='idx';
-  const rates=S.cash||S.mort||S.vac;
-  document.getElementById('lgCash').hidden=!S.cash; document.getElementById('lgMort').hidden=!S.mort; document.getElementById('lgVac').hidden=!S.vac;
+  const rates=S.cash||S.mort;
+  document.getElementById('lgCash').hidden=!S.cash; document.getElementById('lgMort').hidden=!S.mort;
   const m={t:26,r:(narrow?40:52)+(rates?(narrow?30:40)+10:0),b:30,l:(narrow?36:48)+10};
   const pw=W-m.l-m.r, ph=H-m.t-m.b;
   const i0=startIdx(); document.getElementById('lgOld').hidden=i0>=J; document.getElementById('rangeNote').hidden=i0>=J; document.getElementById('scaleCtl').hidden=i0>=J; document.getElementById('lgGap').hidden=!d.gaps.some(g=>g[1]>=i0);
   document.getElementById('lgOldTxt').textContent=S.scaled==='u'?'Before Aug 2018 (as published)':'Before Aug 2018 (rescaled)';
   document.getElementById('rangeNoteScale').textContent=S.scaled==='u'?'The figures are shown as Cotality’s older files published them, without rescaling, so the lines step at Aug 2018 where the older files meet the current ones. The lighter line colour marks the older files.':'The figures come from Cotality’s older files and are rescaled to join the current series, hence the lighter line colour.';
   const vis=a=>a.map((v,i)=>i<i0?null:v);
-  let A=vis(d.sale), B=vis(d.rent); const RC=vis(RATES.cash), RM=vis(RATES.mortDisc), RV=vis(d.vac);
+  let A=vis(d.sale), B=vis(d.rent); const RC=vis(RATES.cash), RM=vis(RATES.mortDisc);
   if(idx){ const ia=A[BASE], ib=B[BASE]; A=A.map(v=>v==null||!ia?null:v/ia*100); B=B.map(v=>v==null||!ib?null:v/ib*100) }
   const nice=(mx)=>{const e=Math.pow(10,Math.floor(Math.log10(mx||1))); const s=[1,2,2.5,5,10].find(s=>s*e>=mx)||10; return s*e};
   const scale=(vals,zero)=>{const v=vals.filter(x=>x!=null); let lo=zero?0:Math.min(...v), hi=Math.max(...v);
@@ -681,15 +693,12 @@ function draw(d){
   // rate overlay on its own % axis (right); cash rate drawn as steps since the target moves in jumps
   let yr=null;
   if(rates){
-    const rv=[].concat(S.cash?RC:[],S.mort?RM:[],S.vac?RV:[]).filter(v=>v!=null);
+    const rv=[].concat(S.cash?RC:[],S.mort?RM:[]).filter(v=>v!=null);
     const step=Math.max(...rv)>6?2:1, hi=Math.ceil(Math.max(...rv)/step)*step;
     yr=v=>m.t+ph-v/hi*ph;
     const rx=m.l+pw+(narrow?36:46);
     for(let t=0;t<=hi+1e-9;t+=step) s+=`<text x="${rx}" y="${yr(t)+4}" font-size="11" fill="var(--muted)">${t}%</text>`;
     s+=`<text transform="translate(${rx+34} ${m.t+ph/2}) rotate(90)" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink-2)">Rate (%)</text>`;
-    // vacancy: lighter before Aug 2018, like the listings lines
-    if(S.vac){ s+=`<path d="${path(RV.map((v,i)=>i<J?v:null),yr)}" fill="none" stroke="var(--vac)" stroke-width="1.75" stroke-dasharray="5 3" stroke-linejoin="round" opacity=".55"/>`;
-      s+=`<path d="${path(RV.map((v,i)=>i>=J?v:null),yr)}" fill="none" stroke="var(--vac)" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round"/>` }
     if(S.mort) s+=`<path d="${path(RM,yr)}" fill="none" stroke="var(--mort)" stroke-width="2" stroke-dasharray="1.5 3" stroke-linecap="round"/>`;
     if(S.cash){ let p=''; RC.forEach((v,i)=>{ if(v==null) return; p+=(p?'H'+x(i).toFixed(1)+'V':'M'+x(i).toFixed(1)+',')+yr(v).toFixed(1) });
       s+=`<path d="${p}" fill="none" stroke="var(--cash)" stroke-width="1.75"/>` }
@@ -731,7 +740,6 @@ function draw(d){
       `<div class="t-r"><span><i class="key rent"></i>Rental listing</span><b>${v(B)}</b></div>`+
       (S.cash?`<div class="t-r"><span><i class="key cash"></i>Cash rate</span><b>${RATES.cash[i]==null?'–':RATES.cash[i].toFixed(2)+'%'}</b></div>`:'')+
       (S.mort?`<div class="t-r"><span><i class="key mort"></i>Bank Rate</span><b>${RATES.mortDisc[i]==null?'–':RATES.mortDisc[i].toFixed(2)+'%'}</b></div>`:'')+
-      (S.vac?`<div class="t-r"><span><i class="key vac"></i>Vacancy rate</span><b>${d.vac[i]==null?'–':d.vac[i].toFixed(2)+'%'}</b></div>`:'')+
       `<div class="t-div"></div>`+
       `<div class="t-r t-sub"><span>${isRea()?'Sale listings (month, REA)':S.win==='1'?'Sale listings (month)':'Sale listings (12 mo)'}</span><span>${d.saleN[i]==null?'–':Math.round(d.saleN[i]).toLocaleString()}</span></div>`+
       `<div class="t-r t-sub"><span>${S.win==='1'?(i<J?'Rental listings (month, est.)':'Rental listings (month)'):'Rental listings (12 mo)'}</span><span>${d.rentN[i]==null?'–':Math.round(d.rentN[i]).toLocaleString()}</span></div>`+
