@@ -197,7 +197,8 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 #tabDemand tr.sel td{background:var(--chip)}
 #tabDemand .up{color:var(--ink)}
 #tabDemand .dn{color:var(--ink)}
-#tabDemand .warn{font-size:12.5px;color:var(--ink-2);background:var(--chip);border-radius:8px;padding:8px 12px;margin:0}
+.warn{font-size:12.5px;color:var(--ink-2);background:var(--chip);border-radius:8px;padding:8px 12px;margin:0}
+#barCard .warn{margin:8px 6px 0}
 #tabDemand details.notes{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px 16px}
 #tabDemand details.notes summary{cursor:pointer;font-weight:600}
 #tabDemand .notes-body{display:grid;gap:10px;margin-top:10px;color:var(--ink-2);max-width:80ch}
@@ -241,6 +242,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <label class="chk"><input type="checkbox" id="showDom"><i class="key domh"></i>Days on market</label>
       <label class="chk"><input type="checkbox" id="showVac"><i class="key vac"></i>Vacancy rate</label></div></div>
     <div id="bars" aria-describedby="btitle"></div>
+    <p class="warn" id="huWarn" hidden>Cotality moved some properties from houses to units in Jan 2026. That month unit sale listings jump about 6% and house sale listings dip about 6% (rental listings aren’t affected). It is a change in how Cotality classifies homes, not a market move, and it also pushes the 12-month unit sale trend up and the house sale trend down in the demand section below. Use All dwellings for readings across Jan 2026.</p>
     <p class="range-note" id="domNote" hidden>Days on market starts in Aug 2018, when Cotality’s monthly Market Trends files begin. It is Cotality’s median days on market for properties sold over the previous 12 months (private treaty sales with an advertised price), so it moves slowly.</p>
   </div>
 
@@ -268,7 +270,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <p class="lede">Sale listings and rental listings, each traced over the last 12 months. If both are rising, demand is leaving the market. If sale listings are rising while rental listings fall, the demand is still there but has moved to renting.</p>
   </header>
 
-  <p class="warn" id="dl-huWarn" hidden>Cotality moved some properties from houses to units in Jan 2026, inside this 12-month window, so unit listings jump and house listings dip that month. The houses and units trends overstate both; use All dwellings for the reading.</p>
 
   <section class="verdicts" id="dl-verdicts" aria-label="Markets by verdict"></section>
 
@@ -602,6 +603,7 @@ function drawBars(d){
   const SW={S:{H:'',U:' u'}, R:{H:' r',U:' ru'}}, FL={S:{H:'--sale',U:'--unit'}, R:{H:'--rent',U:'--rent-u'}}, ptN={H:'houses',U:'units'};
   const sl=isRea()?'Sale (REA)':'Sale', all=pts.length>1;
   document.getElementById('lgBars').innerHTML=pts.map(p=>`<span><i class="sw-bar${SW.S[p]}"></i>${sl}${all?', '+ptN[p]:' listings'}</span>`).join('')+pts.map(p=>`<span><i class="sw-bar${SW.R[p]}"></i>Rental${all?', '+ptN[p]:' listings'}</span>`).join('');
+  document.getElementById('huWarn').hidden=S.ptype==='A'||i0>iOf('2026-01');
   document.getElementById('domNote').hidden=i0>=J||!dom;
   // bars: the sale and rental counts behind the line chart (markets reporting that month, dwellings added up)
   const V={S:d.saleN, R:d.rentN}, BK=['S','R'];
@@ -845,7 +847,6 @@ const fp=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(0)+'%';
 const fn=v=>Math.round(v).toLocaleString();
 
 function render(){
-  document.getElementById('dl-huWarn').hidden=DS.pt==='A';
   const rows=DL.map(calc);
   // verdict counts
   document.getElementById('dl-verdicts').innerHTML=Object.entries(VERD).map(([k,o])=>{
