@@ -13,6 +13,7 @@
   --bg:#F5F7F7; --surface:#FFFFFF; --ink:#171B24; --ink-2:#3E434B; --muted:#63666A; --rule:#DDE2E2; --grid:#E8ECEC;
   --sale:#00879A; --rent:#B87100; --band:rgba(0,160,180,.07); --band-ink:#2D6F78; --hatch:#C9CFD0; --break:#A5122D;
   --chip:#EAF1F2; --chip-on:#171B24; --chip-on-ink:#FFFFFF; --cash:#4A4F57; --mort:#8C2C8C; --note-ink:#8F5800; --note-bg:#FFF4E0; --note-rule:#F5C46B;
+  --title-region:#00616E;
   --unit:#86C5CE; --rent-u:#E2B86F; --dom:#2F5FB3; --vac:#2E7D4F;
   --ov-bg:#EAF3FB; --ov-rule:#CFE2F3;
   --ctl-bg:#00616E; --ctl-ink:#FFFFFF; --ctl-label:#D2ECEF; --ctl-seg:rgba(255,255,255,.14); --ctl-on:#FFFFFF; --ctl-on-ink:#00616E;
@@ -20,6 +21,7 @@
   --leave:#B3261E; --leave-bg:rgba(179,38,30,.09); --shift:#1F6FB2; --shift-bg:rgba(31,111,178,.09); --buy:#6A4C9C; --buy-bg:rgba(106,76,156,.09); --tight:#2E7D4F; --tight-bg:rgba(46,125,79,.09); --dl-band:rgba(99,102,106,.10);
 }
 :root[data-theme="dark"]{
+  --title-region:#7FD3DE;
   --unit:#2D8A96; --rent-u:#9C6A1C; --dom:#8DB4F2; --vac:#7BCB98;
   --ov-bg:rgba(121,180,234,.10); --ov-rule:rgba(121,180,234,.25);
   --ctl-bg:#0B5964; --ctl-ink:#FFFFFF; --ctl-label:#BFE6EB; --ctl-seg:rgba(255,255,255,.12); --ctl-on:#EEF1F2; --ctl-on-ink:#0B5964;
@@ -75,7 +77,9 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 .ro-d b{color:var(--ink);font-weight:600}
 .chart-card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:16px 12px 10px;display:grid;gap:8px;min-width:0}
 .chart-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;padding-inline:6px}
-.chart-title{font-weight:600;font-size:15px}
+.chart-title{font-weight:600;font-size:15px;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
+.chart-title .ct-r{font-family:var(--f-display);font-size:19px;font-weight:700;color:var(--title-region);letter-spacing:-.01em}
+.chart-title .ct-d{font-size:14px;font-weight:500;color:var(--ink-2)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-2);align-items:center}
 #lgBars{display:contents}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -577,7 +581,8 @@ function render(){
   document.getElementById('lgSaleTxt').textContent=isRea()?'Sale listing (realestate.com.au)':'Sale listing';
   document.getElementById('roSaleH').textContent=isRea()?'Sale listings (realestate.com.au) as % of population':'Sale listings as % of population';
   const d=series(); const unitTxt=S.win==='12'?'per year':'per month';
-  document.getElementById('ctitle').textContent=`${d.name} · ${S.ptype==='A'?'houses and units':S.ptype==='H'?'houses':'units'} · ${S.view==='idx'?'indexed, May 2022 = 100':'listings as % of population, '+unitTxt}${isRea()?' · sale listings from realestate.com.au':''}`;
+  // e.g. "Perth  Total listings as % of population per month"
+  document.getElementById('ctitle').innerHTML=`<span class="ct-r">${d.name}</span> <span class="ct-d">${S.ptype==='A'?'Total':S.ptype==='H'?'House':'Unit'} listings as % of population per month${isRea()?' (sale: REA)':''}</span>`;
   // readouts
   for(const [k,el,eld] of [['sale','roSale','roSaleD'],['rent','roRent','roRentD']]){
     const a=d[k], li=lastIdx(a), yi=li-12;
@@ -599,7 +604,7 @@ function drawBars(d){
   const name=S.market==='all'?'All 36 markets':ms[0].name;
   const dom=S.dom, pct=S.cash||S.mort||S.vac;
   // e.g. "Melbourne | Total Sale and Rental Listings per month"
-  document.getElementById('btitle').textContent=`${name} | ${S.ptype==='A'?'Total':S.ptype==='H'?'House':'Unit'} Sale and Rental Listings ${S.win==='12'?'per year':'per month'}${isRea()?' (sale: REA)':''}`;
+  document.getElementById('btitle').innerHTML=`<span class="ct-r">${name}</span> <span class="ct-d">${S.ptype==='A'?'Total':S.ptype==='H'?'House':'Unit'} sale and rental listings per month${isRea()?' (sale: REA)':''}</span>`;
   // bar colours: houses dark, units the lighter shade; All stacks units on top of houses
   const SW={S:{H:'',U:' u'}, R:{H:' r',U:' ru'}}, FL={S:{H:'--sale',U:'--unit'}, R:{H:'--rent',U:'--rent-u'}}, ptN={H:'houses',U:'units'};
   const sl=isRea()?'Sale (REA)':'Sale', all=pts.length>1;
