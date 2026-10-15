@@ -865,10 +865,7 @@ function render(){
 function quad(rows){
   const box=document.getElementById('dl-quad'), W=Math.max(320,Math.min(1080,box.clientWidth||900)), narrow=W<600, H=narrow?420:580;
   const m={t:18,r:18,b:42,l:52}, pw=W-m.l-m.r, ph=H-m.t-m.b;
-  // axis limit: covers the spread of most markets; a market far outside it is pinned to the edge and labelled with its value
-  const lim=v=>{ const a=v.filter(x=>x!=null).map(Math.abs).sort((p,q)=>p-q), p90=a[Math.floor(a.length*.9)]||15;
-    return Math.ceil(Math.max(15,Math.min(a[a.length-1],p90*1.5))/10)*10 };
-  const X=lim(rows.map(r=>r.sc)), Y=lim(rows.map(r=>r.rc));
+  const X=60, Y=80;   // fixed for every trend window, so dots can be compared across windows; anything beyond is pinned to the edge and labelled
   const x=v=>m.l+(v+X)/(2*X)*pw, y=v=>m.t+(Y-v)/(2*Y)*ph;
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Scatter of sale listings change against rental listings change for 36 markets">`;
   // quadrant tints
@@ -878,7 +875,7 @@ function quad(rows){
     s+=`<text x="${ha==='end'?x(x1)-8:x(x0)+8}" y="${va==='start'?y(y1)+16:y(y0)-8}" text-anchor="${ha}" font-size="12" font-weight="700" fill="var(${qc[c]})">${t}</text>` }
   s+=`<rect x="${x(-BAND)}" y="${m.t}" width="${x(BAND)-x(-BAND)}" height="${ph}" fill="var(--dl-band)"/><rect x="${m.l}" y="${y(BAND)}" width="${pw}" height="${y(-BAND)-y(BAND)}" fill="var(--dl-band)"/>`;
   // grid + ticks
-  const st=X>60?20:10, sty=Y>60?20:10, cl=(v,L)=>Math.max(-L,Math.min(L,v));
+  const st=20, sty=20, cl=(v,L)=>Math.max(-L,Math.min(L,v));
   for(let v=-Math.floor(X/st)*st;v<=X;v+=st){ s+=`<line x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${m.t+ph}" stroke="var(--rule)" stroke-width="${v===0?1.5:1}"/><text x="${x(v)}" y="${m.t+ph+16}" text-anchor="middle" font-size="11" fill="var(--muted)">${v>0?'+':''}${v}%</text>` }
   for(let v=-Math.floor(Y/sty)*sty;v<=Y;v+=sty){ s+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)" stroke-width="${v===0?1.5:1}"/><text x="${m.l-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v>0?'+':''}${v}%</text>` }
   s+=`<text x="${m.l+pw/2}" y="${H-6}" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink-2)">${saleLab()}, ${tl()}</text>`;
