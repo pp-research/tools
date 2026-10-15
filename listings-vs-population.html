@@ -202,7 +202,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 #tabDemand details.notes summary{cursor:pointer;font-weight:600}
 #tabDemand .notes-body{display:grid;gap:10px;margin-top:10px;color:var(--ink-2);max-width:80ch}
 #tabDemand .notes-body p{margin:0}
-#tabDemand .dl-follow{margin:-6px 0 0;font-size:12.5px;color:var(--muted)}
 #dl-tip{position:fixed;pointer-events:none;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:5;max-width:240px}
 @media (max-width:560px){
 #tabDemand .vd .n{font-size:22px} }
@@ -269,13 +268,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <p class="lede">Sale listings and rental listings, each traced over the last 12 months. If both are rising, demand is leaving the market. If sale listings are rising while rental listings fall, the demand is still there but has moved to renting.</p>
   </header>
 
-  <div class="controls">
-    <div class="ctl"><span>Market</span><div class="period" id="dl-mktName"></div></div>
-    <div class="ctl"><span>Dwellings</span><div class="period" id="dl-dw"></div></div>
-    <div class="ctl"><span>Period</span><div class="period" id="dl-period"></div></div>
-    <div class="ctl"><span>Sale listings</span><div class="period" id="dl-src"></div></div>
-  </div>
-  <p class="dl-follow">Set by the controls at the top of the page. Click any market in the chart or table below to switch the whole page to it.</p>
   <p class="warn" id="dl-huWarn" hidden>Cotality moved some properties from houses to units in Jan 2026, inside this 12-month window, so unit listings jump and house listings dip that month. The houses and units trends overstate both; use All dwellings for the reading.</p>
 
   <section class="verdicts" id="dl-verdicts" aria-label="Markets by verdict"></section>
@@ -853,12 +845,7 @@ const fp=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(0)+'%';
 const fn=v=>Math.round(v).toLocaleString();
 
 function render(){
-  const cur=DL.find(m=>m.slug===DS.mkt);
-  document.getElementById('dl-mktName').textContent=cur?cur.name:'';
-  document.getElementById('dl-dw').textContent=DS.pt==='A'?'All':DS.pt==='H'?'Houses':'Units';
   document.getElementById('dl-huWarn').hidden=DS.pt==='A';
-  document.getElementById('dl-period').textContent=`${mLab(DL_MONTHS[F])} – ${mLab(DL_MONTHS[N-1])}, 12-month trend`;
-  document.getElementById('dl-src').textContent=SRC==='rea'?'realestate.com.au (rentals: Cotality)':'Cotality';
   const rows=DL.map(calc);
   // verdict counts
   document.getElementById('dl-verdicts').innerHTML=Object.entries(VERD).map(([k,o])=>{
