@@ -677,9 +677,10 @@ function drawBars(d){
     const i=snap(Math.max(i0,Math.min(N-1,i0+Math.floor((px-m.l)/bw))),i0), sw=yearly()?gw+6:bw;
     sel.style.display=''; sel.setAttribute('x',cx(i)-sw/2); sel.setAttribute('width',sw);
     btip.innerHTML=`<div class="t-m">${tLab(i)}</div>`+
-      `<div class="t-r"><span><i class="sw-bar${all?'':SW.S[pts[0]]}"></i>Sale listings${isRea()?' (REA)':''}</span><b>${fmt(V.S[i])}</b></div>`+
+      `<div class="t-r"><span>Sale listings${isRea()?' (REA)':''}</span><b>${fmt(V.S[i])}</b></div>`+
       (all?pts.map(p=>`<div class="t-r t-sub"><span><i class="sw-bar${SW.S[p]}"></i>${ptN[p]}</span><span>${fmt(P.S[p][i])}</span></div>`).join(''):'')+
-      `<div class="t-r"><span><i class="sw-bar${all?' r':SW.R[pts[0]]}"></i>Rental listings${S.win==='1'&&i<J?' (est.)':''}</span><b>${fmt(V.R[i])}</b></div>`+
+      `<div class="t-div"></div>`+
+      `<div class="t-r"><span>Rental listings${S.win==='1'&&i<J?' (est.)':''}</span><b>${fmt(V.R[i])}</b></div>`+
       (all?pts.map(p=>`<div class="t-r t-sub"><span><i class="sw-bar${SW.R[p]}"></i>${ptN[p]}</span><span>${fmt(P.R[p][i])}</span></div>`).join(''):'')+
       (V.R[i]==null&&i>=J?'<div class="t-note">Cotality published no rental listings this month.</div>':'')+
       (dom?`<div class="t-div"></div>`+pts.map(p=>`<div class="t-r t-sub"><span>Days on market, ${p==='H'?'houses':'units'}</span><span>${D[p][i]==null?'–':Math.round(D[p][i])+' days'}</span></div>`).join(''):'')+
