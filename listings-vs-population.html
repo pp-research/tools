@@ -592,7 +592,8 @@ function drawBars(d){
   const dw=S.ptype==='A'?'houses and units':S.ptype==='H'?'houses':'units', per=S.win==='12'?'over 12 months':'per month';
   const name=S.market==='all'?'All 36 markets':ms[0].name;
   const dom=S.dom, pct=S.cash||S.mort||S.vac;
-  document.getElementById('btitle').textContent=`${name} · ${dw} · sale and rental listings ${per}${isRea()?' (sale: realestate.com.au)':''}${dom?' and median days on market':''}`;
+  // e.g. "Melbourne | Total Sale and Rental Listings per month"
+  document.getElementById('btitle').textContent=`${name} | ${S.ptype==='A'?'Total':S.ptype==='H'?'House':'Unit'} Sale and Rental Listings ${S.win==='12'?'over 12 months':'per month'}${isRea()?' (sale: REA)':''}`;
   document.getElementById('lgBS').textContent=isRea()?'Sale listings (realestate.com.au)':'Sale listings';
   document.getElementById('lgDH').hidden=!dom||!pts.includes('H'); document.getElementById('lgDU').hidden=!dom||!pts.includes('U');
   document.getElementById('domNote').hidden=i0>=J||!dom;
