@@ -33,6 +33,8 @@ h1{font-family:var(--f-display);font-size:clamp(22px,3.2vw,30px);font-weight:700
 .lede{margin:0;max-width:68ch;color:var(--ink-2)}
 .controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:end;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
 .ctl{display:grid;gap:5px;min-width:0}
+#topCtl{position:sticky;top:8px;z-index:20;box-shadow:0 6px 16px -10px rgba(0,0,0,.35)}
+@media (max-width:560px){ #topCtl{position:static;box-shadow:none} }
 .ctl>span{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 select.sm{min-width:0}
 select{font:inherit;font-weight:500;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:7px;padding:7px 30px 7px 10px;min-width:210px;max-width:100%}
@@ -178,6 +180,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 #tabDemand details.notes summary{cursor:pointer;font-weight:600}
 #tabDemand .notes-body{display:grid;gap:10px;margin-top:10px;color:var(--ink-2);max-width:80ch}
 #tabDemand .notes-body p{margin:0}
+#tabDemand .dl-follow{margin:-6px 0 0;font-size:12.5px;color:var(--muted)}
 #dl-tip{position:fixed;pointer-events:none;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:5;max-width:240px}
 @media (max-width:560px){
 #tabDemand .vd .n{font-size:22px} }
@@ -194,7 +197,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <p class="lede">Sale listings and rental listings, each divided by population, on one timeline.</p>
   </header>
 
-  <div class="controls" role="group" aria-label="Chart settings">
+  <div class="controls" id="topCtl" role="group" aria-label="Settings for the whole page">
     <label class="ctl"><span>Market</span><select id="market"></select></label>
     <label class="ctl"><span>Range</span><select id="range" class="sm"><option value="12m">Last 12 months</option><option value="24m">Last 24 months</option><option value="2018">From 2018</option><option value="2008">From 2008</option><option value="2001">From 2001</option></select></label>
     <div class="ctl"><span>Sale listings</span><div class="seg" id="src">
@@ -248,11 +251,12 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
   </header>
 
   <div class="controls">
-    <label class="ctl"><span>Dwellings</span><div class="seg" id="dl-ptSeg"><button type="button" data-v="A" aria-pressed="true">All</button><button type="button" data-v="H" aria-pressed="false">Houses</button><button type="button" data-v="U" aria-pressed="false">Units</button></div></label>
-    <label class="ctl"><span>Market</span><select id="dl-mkt"></select></label>
+    <div class="ctl"><span>Market</span><div class="period" id="dl-mktName"></div></div>
+    <div class="ctl"><span>Dwellings</span><div class="period" id="dl-dw"></div></div>
     <div class="ctl"><span>Period</span><div class="period" id="dl-period"></div></div>
     <div class="ctl"><span>Sale listings</span><div class="period" id="dl-src"></div></div>
   </div>
+  <p class="dl-follow">Set by the controls at the top of the page. Click any market in the chart or table below to switch the whole page to it.</p>
   <p class="warn" id="dl-huWarn" hidden>Cotality moved some properties from houses to units in Jan 2026, inside this 12-month window, so unit stock jumps and house stock dips that month. The houses and units trends overstate both; use All dwellings for the reading.</p>
 
   <section class="verdicts" id="dl-verdicts" aria-label="Markets by verdict"></section>
@@ -275,6 +279,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <summary>How the demand reading is built</summary>
     <div class="notes-body">
       <p><b>Sale stock on market.</b> Cotality Market Trends, “# of listings last 1 months”: every property advertised for sale during the month, including ones still on the market from earlier months. Capitals use Greater Capital City areas; the 28 regional markets use their council area.</p>
+      <p><b>Controls.</b> The bar at the top of the page sets the market, dwellings and sale-listings source for this section too. Range and Count do not apply here: the reading always uses the last 12 monthly counts. With the top market on <b>All 36 markets</b>, the detail shows the last market picked.</p>
       <p><b>realestate.com.au.</b> With <b>Sale listings</b> set to realestate.com.au at the top of the page, the sale side uses REA’s monthly counts from the Analytics Hub instead (houses, and REA’s combined count minus houses for units). The rental side, vacancy rate and the 12-month window stay the same, so the two readings can be compared market by market. REA’s Brisbane covers a narrower area than Greater Brisbane.</p>
       <p><b>Rental stock on market.</b> The rental listings count behind Cotality’s 1-month vacancy rate. Cotality publishes the rate, not the count, but the rate is stored as an exact fraction (rental listings ÷ rental stock), so both numbers can be recovered. In Townsville, Jul 2026, RP Data’s own rental count agrees within about 7%. The vacancy rate shown is the same count ÷ rental stock.</p>
       <p><b>The trend.</b> A straight-line trend fitted through the last 12 monthly counts (on a log scale, so a market of any size reads in percent), expressed as the change from the start of the trend line to its end. It uses every month in the window rather than just the first and last, so one unusual month moves it less. The 12 months run winter to winter, so the seasonal dip over summer and rise into spring roughly balance out, but a market with a strong seasonal swing can still lean one way. A trend within ±5% is marked borderline: the reading follows the direction, but the move is small.</p>
@@ -495,6 +500,7 @@ sel.innerHTML='<option value="all">All 36 markets combined</option>'+
 if(![...sel.options].some(o=>o.value===S.market)) S.market='all';
 sel.value=S.market;
 sel.addEventListener('change',()=>{S.market=sel.value;save();render()});
+window.setMarket=sl=>{ S.market=sl; sel.value=sl; save(); render() };   // used by the demand section's chart and table
 const rsel=document.getElementById('range'); rsel.value=S.range;
 rsel.addEventListener('change',()=>{S.range=rsel.value;save();render()});
 // REA publishes no 12-month total, so choosing it switches the count to monthly
@@ -549,7 +555,7 @@ const lastIdx=a=>{for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return i; return
 const prevNonNull=(a,i)=>{for(;i>=0;i--) if(a[i]!=null) return i; return -1};
 
 function render(){
-  if(window.dlSync) window.dlSync(S.market!=='all'?S.market:null, S.src);
+  if(window.dlSync) window.dlSync(S.market!=='all'?S.market:null, S.src, S.ptype);
   const w12=document.querySelector('#window [data-v="12"]'); w12.disabled=isRea(); w12.title=isRea()?'realestate.com.au has no 12-month total':'';
   document.getElementById('reaNote').hidden=!isRea();
   document.getElementById('lgSaleTxt').textContent=isRea()?'Sale listing (realestate.com.au)':'Sale listing';
@@ -776,8 +782,8 @@ const VERD={leave:{t:'Demand leaving',d:'Sale stock rising and rental stock risi
   shift:{t:'Shifting to renting',d:'Sale stock rising, rental stock falling',c:'shift'},
   buy:{t:'Shifting to buying',d:'Sale stock falling, rental stock rising',c:'buy'},
   tight:{t:'Tightening',d:'Sale stock falling and rental stock falling',c:'tight'}};
-const DS={pt:'A', mkt:'gold-coast'};
-try{const v=JSON.parse(localStorage.getItem('lpc-demand')||'{}'); if(v.mkt) DS.mkt=v.mkt}catch(e){}   // always opens on All dwellings
+const DS={pt:'A', mkt:'gold-coast'};   // dwellings come from the top controls
+try{const v=JSON.parse(localStorage.getItem('lpc-demand')||'{}'); if(v.mkt) DS.mkt=v.mkt}catch(e){}
 const save=()=>{try{localStorage.setItem('lpc-demand',JSON.stringify(DS))}catch(e){}};
 
 // sale source follows the switch at the top of the page; realestate.com.au counts laid on these months
@@ -800,7 +806,9 @@ const fp=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(0)+'%';
 const fn=v=>Math.round(v).toLocaleString();
 
 function render(){
-  document.querySelectorAll('#dl-ptSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===DS.pt));
+  const cur=DL.find(m=>m.slug===DS.mkt);
+  document.getElementById('dl-mktName').textContent=cur?cur.name:'';
+  document.getElementById('dl-dw').textContent=DS.pt==='A'?'All':DS.pt==='H'?'Houses':'Units';
   document.getElementById('dl-huWarn').hidden=DS.pt==='A';
   document.getElementById('dl-period').textContent=`${mLab(DL_MONTHS[F])} – ${mLab(DL_MONTHS[N-1])}, 12-month trend`;
   document.getElementById('dl-src').textContent=SRC==='rea'?'realestate.com.au (rentals: Cotality)':'Cotality';
@@ -859,7 +867,7 @@ function quad(rows){
 const tip=document.getElementById('dl-tip');
 function tipShow(ev,h){ tip.innerHTML=h; tip.hidden=false; const w=tip.offsetWidth; tip.style.left=Math.min(innerWidth-w-8,ev.clientX+14)+'px'; tip.style.top=(ev.clientY+14)+'px' }
 function tipHide(){ tip.hidden=true }
-function pick(sl){ DS.mkt=sl; save(); document.getElementById('dl-mkt').value=sl; render() }
+function pick(sl){ DS.mkt=sl; save(); if(window.setMarket) window.setMarket(sl); else render() }
 
 function mini(cur,fit,col,label){
   const W=520,H=190,m={t:12,r:12,b:24,l:48}, pw=W-m.l-m.r, ph=H-m.t-m.b, n=cur.length;
@@ -897,18 +905,14 @@ function table(rows){
   t.querySelectorAll('tr[tabindex]').forEach(tr=>{ tr.addEventListener('click',()=>pick(tr.dataset.s)); tr.addEventListener('keydown',ev=>{ if(ev.key==='Enter'){pick(tr.dataset.s)} }) });
 }
 
-const mkSel=document.getElementById('dl-mkt');
-mkSel.innerHTML=[...DL].sort((a,b)=>a.name.localeCompare(b.name)).map(m=>`<option value="${m.slug}">${m.name}</option>`).join('');
 if(!DL.some(m=>m.slug===DS.mkt)) DS.mkt='gold-coast';
-mkSel.value=DS.mkt; mkSel.addEventListener('change',()=>pick(mkSel.value));
-document.getElementById('dl-ptSeg').addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return; DS.pt=b.dataset.v; save(); render() });
 
-// follows the chart above: picking a single market there carries down here. Dwellings stay on their own setting:
-// the Jan 2026 house/unit reclassification sits inside this 12-month window, so All is the default.
+// follows the top controls: market (All 36 keeps the last market picked for the detail), dwellings and sale source.
+// Houses or Units shows a warning: the Jan 2026 house/unit reclassification sits inside this 12-month window.
 let last='';
-window.dlSync=(slug,src)=>{ const k=slug+'|'+src; if(k===last) return; last=k; SRC=src==='rea'?'rea':'cot';
-  if(slug&&DL.some(m=>m.slug===slug)){DS.mkt=slug; mkSel.value=slug} render() };
-window.dlSync(S.market!=='all'?S.market:null, S.src);
+window.dlSync=(slug,src,pt)=>{ const k=slug+'|'+src+'|'+pt; if(k===last) return; last=k; SRC=src==='rea'?'rea':'cot'; DS.pt=pt||'A';
+  if(slug&&DL.some(m=>m.slug===slug)){DS.mkt=slug; save()} render() };
+window.dlSync(S.market!=='all'?S.market:null, S.src, S.ptype);
 let rt2; addEventListener('resize',()=>{ clearTimeout(rt2); rt2=setTimeout(render,150) });
 })();
 </script>
