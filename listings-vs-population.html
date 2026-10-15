@@ -182,6 +182,16 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 #tabDemand .p-tight{color:var(--tight);background:var(--tight-bg)}
 #tabDemand .p-border{color:var(--muted);background:var(--chip)}
 #tabDemand .tbl-wrap{overflow-x:auto}
+#dl-grid{display:grid;gap:16px}
+@media (min-width:900px){
+  #dl-grid{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:stretch}
+  #dl-grid .dl-tcard{contain:size;display:flex;flex-direction:column;gap:10px}
+  #dl-grid .dl-tcard .tbl-wrap{flex:1 1 0;min-height:0;overflow:auto}
+  #dl-grid thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+  /* half width: trends and vacancy only; borderline as an asterisk */
+  #dl-grid .col-n,#dl-grid .col-b,#dl-grid .col-pop{display:none}
+  #dl-grid .b-star{display:inline} #dl-grid .b-note{display:block} #dl-grid td.col-vr{white-space:normal}
+}
 #tabDemand table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
 #tabDemand th{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:right;padding:8px 6px;border-bottom:1px solid var(--rule);white-space:normal;vertical-align:bottom;line-height:1.3}
 #tabDemand th:first-child,#tabDemand td:first-child{text-align:left}
@@ -271,27 +281,25 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
   </header>
 
 
-  <section class="verdicts" id="dl-verdicts" aria-label="Markets by verdict"></section>
-
+  <div id="dl-grid">
   <section class="card quad">
     <div><h2>Sale listings against rental listings, 12-month trend</h2>
     <p class="sub">Each dot is a market. Right means sale listings have been rising over the last 12 months; up means rental listings have been rising. The shaded band is within ±5%, too small a move to call.</p></div>
     <div id="dl-quad"></div>
   </section>
 
-  <section class="card" id="dl-detail"></section>
-
-  <section class="card">
+  <section class="card dl-tcard">
     <h2>All 36 markets</h2>
     <div class="tbl-wrap"><table id="dl-tbl"></table></div>
     <p class="b-note">* Borderline: a 12-month trend within ±5%.</p>
   </section>
+  </div>
 
   <details class="notes">
     <summary>How the demand reading is built</summary>
     <div class="notes-body">
       <p><b>Sale listings.</b> Cotality Market Trends, “# of listings last 1 months”: every property advertised for sale during the month, including ones still on the market from earlier months. Capitals use Greater Capital City areas; the 28 regional markets use their council area.</p>
-      <p><b>Controls.</b> The bar at the top of the page sets the market, dwellings and sale-listings source for this section too. Range does not apply here: the reading always uses the last 12 monthly counts. With the top market on <b>All 36 markets</b>, the detail shows the last market picked.</p>
+      <p><b>Controls.</b> The bar at the top of the page sets the market, dwellings and sale-listings source for this section too. Range does not apply here: the reading always uses the last 12 monthly counts.</p>
       <p><b>realestate.com.au.</b> With <b>Sale listings</b> set to realestate.com.au at the top of the page, the sale side uses REA’s monthly counts from the Analytics Hub instead (houses, and REA’s combined count minus houses for units). The rental side, vacancy rate and the 12-month window stay the same, so the two readings can be compared market by market. REA’s Brisbane covers a narrower area than Greater Brisbane.</p>
       <p><b>Rental listings.</b> The rental listings count behind Cotality’s 1-month vacancy rate. Cotality publishes the rate, not the count, but the rate is stored as an exact fraction (rental listings ÷ rental stock), so both numbers can be recovered. In Townsville, Jul 2026, RP Data’s own rental count agrees within about 7%. The vacancy rate shown is the same count ÷ rental stock.</p>
       <p><b>The trend.</b> A straight-line trend fitted through the last 12 monthly counts (on a log scale, so a market of any size reads in percent), expressed as the change from the start of the trend line to its end. It uses every month in the window rather than just the first and last, so one unusual month moves it less. The 12 months run winter to winter, so the seasonal dip over summer and rise into spring roughly balance out, but a market with a strong seasonal swing can still lean one way. A trend within ±5% is marked borderline: the reading follows the direction, but the move is small.</p>
@@ -848,15 +856,11 @@ const fn=v=>Math.round(v).toLocaleString();
 
 function render(){
   const rows=DL.map(calc);
-  // verdict counts
-  document.getElementById('dl-verdicts').innerHTML=Object.entries(VERD).map(([k,o])=>{
-    const ms=rows.filter(x=>x.v===k).sort((a,b)=>(b.sc+b.rc)-(a.sc+a.rc));
-    return `<div class="vd v-${o.c}"><h3><i class="dot"></i>${o.t}</h3><div class="n">${ms.length}</div><p>${o.d}</p><div class="names">${ms.map(x=>x.m.name).join(', ')||'None'}</div></div>`}).join('');
-  quad(rows); detail(rows.find(x=>x.m.slug===DS.mkt)||rows[0]); table(rows);
+  quad(rows); table(rows);
 }
 
 function quad(rows){
-  const box=document.getElementById('dl-quad'), W=Math.max(320,Math.min(1080,box.clientWidth||900)), narrow=W<600, H=narrow?420:580;
+  const box=document.getElementById('dl-quad'), W=Math.max(320,Math.min(1080,box.clientWidth||900)), narrow=W<500, H=narrow?420:Math.min(580,Math.round(W*.85));
   const m={t:18,r:18,b:42,l:52}, pw=W-m.l-m.r, ph=H-m.t-m.b;
   // axis limit: covers the spread of most markets; a market far outside it is pinned to the edge and labelled with its value
   const lim=v=>{ const a=v.filter(x=>x!=null).map(Math.abs).sort((p,q)=>p-q), p90=a[Math.floor(a.length*.9)]||15;
@@ -932,7 +936,7 @@ function detail(r){
     </div>`;
 }
 function table(rows){
-  let h=`<thead><tr><th>Market</th><th class="col-n">Sale listings${SRC==='rea'?' (REA)':''}, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th class="col-n">Rental listings, ${mShort(DL_MONTHS[N-1])}</th><th>12-mo trend</th><th>Vacancy rate ${mShort(DL_MONTHS[F])} → ${mShort(DL_MONTHS[N-1])}</th><th class="col-pop">Population 2024–25</th><th class="col-b"></th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Market</th><th class="col-n">Sale listings${SRC==='rea'?' (REA)':''}, ${mShort(DL_MONTHS[N-1])}</th><th>Sale trend</th><th class="col-n">Rental listings, ${mShort(DL_MONTHS[N-1])}</th><th>Rental trend</th><th>Vacancy rate ${mShort(DL_MONTHS[F])} → ${mShort(DL_MONTHS[N-1])}</th><th class="col-pop">Population 2024–25</th><th class="col-b"></th></tr></thead><tbody>`;
   for(const [k,o] of Object.entries(VERD)){ const ms=rows.filter(x=>x.v===k).sort((a,b)=>(b.sc+b.rc)-(a.sc+a.rc)); if(!ms.length) continue;
     h+=`<tr class="grp"><td colspan="8"><span class="pill p-${o.c}">${o.t}</span> ${ms.length} markets</td></tr>`;
     for(const r of ms) h+=`<tr tabindex="0" data-s="${r.m.slug}" class="${r.m.slug===DS.mkt?'sel':''}"><td>${r.m.name}${r.border?'<span class="b-star">*</span>':''}</td><td class="col-n">${fn(r.s1)}</td><td>${fp(r.sc)}</td><td class="col-n">${fn(r.r1)}</td><td>${fp(r.rc)}</td><td class="col-vr">${r.vr0.toFixed(1)}% → ${r.vr1.toFixed(1)}%</td><td class="col-pop">${r.pop>=0?'+':'−'}${Math.abs(r.pop).toFixed(1)}%</td><td class="col-b">${r.border?'<span class="pill p-border">Borderline</span>':''}</td></tr>` }
