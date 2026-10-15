@@ -14,11 +14,13 @@
   --sale:#00879A; --rent:#B87100; --band:rgba(0,160,180,.07); --band-ink:#2D6F78; --hatch:#C9CFD0; --break:#A5122D;
   --chip:#EAF1F2; --chip-on:#171B24; --chip-on-ink:#FFFFFF; --cash:#4A4F57; --mort:#8C2C8C; --note-ink:#8F5800; --note-bg:#FFF4E0; --note-rule:#F5C46B;
   --unit:#86C5CE; --dom:#3E434B; --vac:#2E7D4F;
+  --ctl-bg:#00616E; --ctl-ink:#FFFFFF; --ctl-label:#D2ECEF; --ctl-seg:rgba(255,255,255,.14); --ctl-on:#FFFFFF; --ctl-on-ink:#00616E;
   --f-display:"Montserrat",Arial,Helvetica,sans-serif; --f-body:"Montserrat",Arial,Helvetica,sans-serif;
   --leave:#B3261E; --leave-bg:rgba(179,38,30,.09); --shift:#1F6FB2; --shift-bg:rgba(31,111,178,.09); --buy:#6A4C9C; --buy-bg:rgba(106,76,156,.09); --tight:#2E7D4F; --tight-bg:rgba(46,125,79,.09); --dl-band:rgba(99,102,106,.10);
 }
 :root[data-theme="dark"]{
   --unit:#2D8A96; --dom:#C9CED3; --vac:#7BCB98;
+  --ctl-bg:#0B5964; --ctl-ink:#FFFFFF; --ctl-label:#BFE6EB; --ctl-seg:rgba(255,255,255,.12); --ctl-on:#EEF1F2; --ctl-on-ink:#0B5964;
   --leave:#F2867E; --leave-bg:rgba(242,134,126,.12); --shift:#79B4EA; --shift-bg:rgba(121,180,234,.12); --buy:#B9A0E4; --buy-bg:rgba(185,160,228,.12); --tight:#7BCB98; --tight-bg:rgba(123,203,152,.12); --dl-band:rgba(154,161,168,.12);
   --bg:#12161E; --surface:#1A2029; --ink:#EEF1F2; --ink-2:#C9CED3; --muted:#9AA1A8; --rule:#2B333F; --grid:#232A35;
   --sale:#38C6D8; --rent:#FFB947; --band:rgba(56,198,216,.08); --band-ink:#8FD6DF; --hatch:#3A4350; --break:#F17E93;
@@ -35,6 +37,14 @@ h1{font-family:var(--f-display);font-size:clamp(22px,3.2vw,30px);font-weight:700
 .ctl{display:grid;gap:5px;min-width:0}
 #topCtl{position:sticky;top:8px;z-index:20;box-shadow:0 6px 16px -10px rgba(0,0,0,.35)}
 @media (max-width:560px){ #topCtl{position:static;box-shadow:none} }
+/* the page-wide control bar in brand teal so it stands apart from the chart cards */
+#topCtl{background:var(--ctl-bg);border-color:var(--ctl-bg)}
+#topCtl .ctl>span{color:var(--ctl-label)}
+#topCtl .seg{background:var(--ctl-seg)}
+#topCtl .seg button{color:var(--ctl-ink)}
+#topCtl .seg button[aria-pressed="true"]{background:var(--ctl-on);color:var(--ctl-on-ink);font-weight:600}
+#topCtl select{background:var(--surface);color:var(--ink);border-color:transparent}
+#topCtl button:focus-visible,#topCtl select:focus-visible{outline-color:#FFFFFF}
 .ctl>span{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 select.sm{min-width:0}
 select{font:inherit;font-weight:500;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:7px;padding:7px 30px 7px 10px;min-width:210px;max-width:100%}
