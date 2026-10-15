@@ -61,7 +61,8 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 .key.faded{opacity:.55}
 .key.cash{border-top:2px solid var(--cash)}
 .key.mort{border-top:2px dotted var(--mort)}
-.key.vac{border-top:2px dashed var(--vac)}
+.key.vac{border-top:2px solid var(--vac)}
+.key.vacu{border-top:2px dashed var(--vac)}
 .checks{display:flex;flex-wrap:wrap;gap:4px 14px;padding-block:5px}
 .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer}
 .chk input{width:16px;height:16px;margin:0;accent-color:var(--sale);cursor:pointer}
@@ -225,6 +226,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <div class="legend">
         <span><i class="sw-bar"></i><span id="lgBS">Sale listings</span></span><span><i class="sw-bar r"></i>Rental listings</span>
         <span id="lgDH"><i class="key domh"></i>Days on market, houses</span><span id="lgDU"><i class="key domu"></i>Days on market, units</span>
+        <span id="lgVH" hidden><i class="key vac"></i>Vacancy, houses</span><span id="lgVU" hidden><i class="key vacu"></i>Vacancy, units</span>
       </div>
     </div>
     <div class="ctl overlays"><span>Overlays (right axis)</span><div class="checks">
@@ -315,7 +317,7 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <p><b>12-month total = yearly.</b> With <b>Count</b> on <b>12-month total</b>, both charts and the data table show one figure a year: each past year’s December 12-month total (its Jan–Dec total), and for the current year the latest month’s 12-month total (for example, 12 months to Jul 2026). The readouts compare the latest 12 months with the same 12 months a year earlier. The overlays stay monthly.</p>
       <p><b>Sale and rental listings chart.</b> One bar for sale listings and one for rental listings each month, as counts: the same figures the line chart divides by population. Each bar is already the total for the dwellings chosen (<b>All</b> adds houses and units), and follows <b>Count</b> (monthly or 12-month total). Rental bars are missing where Cotality published no rental count.</p>
       <p><b>Overlays.</b> The tick boxes on the sale listings chart add days on market, cash rate, Bank Rate and vacancy rate. Days on market has its own right-hand axis; the three rates share a % axis beyond it. Both rates come from the RBA. <b>Cash rate</b> is the cash rate target at month end, drawn as steps (table F1; before 2011 the RBA file holds monthly averages, so a month with a change takes the new rate). <b>Bank Rate</b> (from mid-2004, when the RBA series starts) is the banks’ discounted variable rate for owner-occupier housing loans (table F5, indicator lending rates). It sits close to what new borrowers actually pay; the standard variable rate runs about 2 points higher. Both read off the right-hand % axis.</p>
-      <p><b>Vacancy rate (sale listings chart).</b> Tick <b>Vacancy rate</b> on the sale listings chart to add Cotality’s 1-month vacancy rate (rental listings ÷ rental stock) for the market and dwellings chosen, on the % axis it shares with the interest rates. Markets and dwelling types are combined by rental stock, and only markets reporting that month are included. It is drawn lighter before Aug 2018, when Cotality’s rental counts were still incomplete, so early vacancy reads low. It is always Cotality, whichever sale-listings source is chosen.</p>
+      <p><b>Vacancy rate (sale listings chart).</b> Tick <b>Vacancy rate</b> on the sale listings chart to add Cotality’s 1-month vacancy rate (rental listings ÷ rental stock), one line for houses (solid) and one for units (dashed), or just the one chosen under <b>Dwellings</b>, on the % axis it shares with the interest rates. Markets are combined by rental stock, and only markets reporting that month are included. It is drawn lighter before Aug 2018, when Cotality’s rental counts were still incomplete, so early vacancy reads low. It is always Cotality, whichever sale-listings source is chosen.</p>
     </div>
   </details>
 
@@ -601,6 +603,7 @@ function drawBars(d){
   document.getElementById('btitle').textContent=`${name} | ${S.ptype==='A'?'Total':S.ptype==='H'?'House':'Unit'} Sale and Rental Listings ${S.win==='12'?'per year':'per month'}${isRea()?' (sale: REA)':''}`;
   document.getElementById('lgBS').textContent=isRea()?'Sale listings (realestate.com.au)':'Sale listings';
   document.getElementById('lgDH').hidden=!dom||!pts.includes('H'); document.getElementById('lgDU').hidden=!dom||!pts.includes('U');
+  document.getElementById('lgVH').hidden=!S.vac||!pts.includes('H'); document.getElementById('lgVU').hidden=!S.vac||!pts.includes('U');
   document.getElementById('domNote').hidden=i0>=J||!dom;
   // bars: the sale and rental counts behind the line chart (markets reporting that month, dwellings added up)
   const V={S:d.saleN, R:d.rentN}, BK=['S','R'];
@@ -610,14 +613,14 @@ function drawBars(d){
     for(let i=0;i<N;i++){ let dw=0,dv=0;
       for(const m of ms){ const dd=m[p].d[i], w=m[p].l12[i]; if(dd!=null&&w) { dv+=dd*w; dw+=w } }
       D[p].push(dw?dv/dw:null) } }
-  const VR=vacOf(ms,pts), RC=RATES.cash, RM=RATES.mortDisc;
+  const VR={}, RC=RATES.cash, RM=RATES.mortDisc; for(const p of pts) VR[p]=vacOf(ms,[p]);
   const W=Math.max(320,barsEl.clientWidth), narrow=W<560, H=narrow?240:300, aw=narrow?44:54;   // aw: room for each right-hand axis
   const m={t:16,r:10+(dom?aw:0)+(pct?aw:0)+(dom||pct?0:6),b:30,l:(narrow?44:58)+10}, pw=W-m.l-m.r, ph=H-m.t-m.b, bw=pw/n;
   const nice=x=>{const e=10**Math.floor(Math.log10(x||1)); return ([1,2,2.5,5,10].find(s=>s*e>=x)||10)*e};
   const vmax=Math.max(1,...BK.flatMap(b=>V[b].slice(i0).filter((v,j)=>v!=null&&(!yearly()||keep(i0+j))))), vs=nice(vmax/5), vhi=Math.ceil(vmax/vs)*vs;
   const dvals=dom?pts.flatMap(p=>D[p].slice(i0).filter(v=>v!=null)):[], dmax=dvals.length?Math.max(...dvals):10, ds=nice(dmax/5), dhi=Math.ceil(dmax/ds)*ds;
   // one % axis shared by cash rate, Bank Rate and vacancy rate
-  const pv=[].concat(S.cash?RC.slice(i0):[],S.mort?RM.slice(i0):[],S.vac?VR.slice(i0):[]).filter(v=>v!=null);
+  const pv=[].concat(S.cash?RC.slice(i0):[],S.mort?RM.slice(i0):[],S.vac?pts.flatMap(p=>VR[p].slice(i0)):[]).filter(v=>v!=null);
   const pmx=pv.length?Math.max(...pv):1, pst=pmx>6?2:pmx>3?1:.5, ptop=Math.ceil(pmx/pst)*pst||1;
   const cx=i=>m.l+(i-i0+.5)*bw, y=v=>m.t+ph-v/vhi*ph, yd=v=>m.t+ph-v/dhi*ph, yp=v=>m.t+ph-v/ptop*ph;
   const pX=m.l+pw+(dom?aw+4:7);
@@ -640,8 +643,9 @@ function drawBars(d){
   // days on market (Cotality): houses solid, units dashed
   if(dom) for(const p of pts) s+=`<path d="${path(D[p],yd)}" fill="none" stroke="var(--dom)" stroke-width="2" ${p==='U'?'stroke-dasharray="5 3"':''} stroke-linejoin="round"/>`;
   // vacancy rate: lighter before Aug 2018, when rental counts were incomplete
-  if(S.vac){ s+=`<path d="${path(VR,yp,i=>i<J)}" fill="none" stroke="var(--vac)" stroke-width="1.75" stroke-dasharray="5 3" stroke-linejoin="round" opacity=".55"/>`;
-    s+=`<path d="${path(VR,yp,i=>i>=J)}" fill="none" stroke="var(--vac)" stroke-width="2.25" stroke-dasharray="5 3" stroke-linejoin="round"/>` }
+  if(S.vac) for(const p of pts){ const da=p==='U'?' stroke-dasharray="5 3"':'';
+    s+=`<path d="${path(VR[p],yp,i=>i<J)}" fill="none" stroke="var(--vac)" stroke-width="1.75"${da} stroke-linejoin="round" opacity=".55"/>`;
+    s+=`<path d="${path(VR[p],yp,i=>i>=J)}" fill="none" stroke="var(--vac)" stroke-width="2.25"${da} stroke-linejoin="round"/>` }
   if(S.mort) s+=`<path d="${path(RM,yp)}" fill="none" stroke="var(--mort)" stroke-width="2" stroke-dasharray="1.5 3" stroke-linecap="round"/>`;
   // cash rate as steps across each month, since the target moves in jumps
   if(S.cash){ let p=''; for(let i=i0;i<N;i++){ const v=RC[i]; if(v==null) continue; const xl=(cx(i)-bw/2).toFixed(1); p+=(p?'H'+xl+'V':'M'+xl+',')+yp(v).toFixed(1) }
@@ -670,7 +674,7 @@ function drawBars(d){
       (pct?`<div class="t-div"></div>`:'')+
       (S.cash?`<div class="t-r"><span><i class="key cash"></i>Cash rate</span><b>${RC[i]==null?'–':RC[i].toFixed(2)+'%'}</b></div>`:'')+
       (S.mort?`<div class="t-r"><span><i class="key mort"></i>Bank Rate</span><b>${RM[i]==null?'–':RM[i].toFixed(2)+'%'}</b></div>`:'')+
-      (S.vac?`<div class="t-r"><span><i class="key vac"></i>Vacancy rate</span><b>${VR[i]==null?'–':VR[i].toFixed(2)+'%'}</b></div>`:'')+
+      (S.vac?pts.map(p=>`<div class="t-r"><span><i class="key ${p==='U'?'vacu':'vac'}"></i>Vacancy, ${p==='H'?'houses':'units'}</span><b>${VR[p][i]==null?'–':VR[p][i].toFixed(2)+'%'}</b></div>`).join(''):'')+
       (S.market==='all'?'<div class="t-note">All 36: listings added up across the markets reporting that month; days on market is the average across markets, weighted by each market’s 12-month Cotality listings.</div>':'')+
       (isRea()&&i<REA0?'<div class="t-note">No realestate.com.au counts before Jan 2025.</div>':'')+
       (isRea()&&S.market==='all'&&V.S[i]!=null?'<div class="t-note">Listings from realestate.com.au; days on market from Cotality.</div>':'')+
