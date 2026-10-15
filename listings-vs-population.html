@@ -206,6 +206,18 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
       <label class="chk"><input type="checkbox" id="showCash"><i class="key cash"></i>Cash rate</label>
       <label class="chk"><input type="checkbox" id="showMort"><i class="key mort"></i>Bank Rate</label></div></div>  </div>
 
+  <div class="chart-card" id="barCard">
+    <div class="chart-top">
+      <div class="chart-title" id="btitle"></div>
+      <div class="legend">
+        <span id="lgBH"><i class="sw-bar"></i>Houses for sale</span><span id="lgBU"><i class="sw-bar u"></i>Units for sale</span>
+        <span id="lgDH"><i class="key domh"></i>Days on market, houses</span><span id="lgDU"><i class="key domu"></i>Days on market, units</span>
+      </div>
+    </div>
+    <div id="bars" aria-describedby="btitle"></div>
+    <p class="range-note" id="domNote" hidden>Days on market starts in Aug 2018, when Cotality’s monthly Market Trends files begin. It is Cotality’s median days on market for properties sold over the previous 12 months (private treaty sales with an advertised price), so it moves slowly.</p>
+  </div>
+
   <div class="readouts">
     <div class="ro"><div class="ro-h"><i class="key"></i><span id="roSaleH">Sale listings as % of population</span></div><div class="ro-v" id="roSale"></div><div class="ro-d" id="roSaleD"></div></div>
     <div class="ro"><div class="ro-h"><i class="key rent"></i>Rental listings as % of population</div><div class="ro-v" id="roRent"></div><div class="ro-d" id="roRentD"></div></div>
@@ -222,18 +234,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
     <div id="chart" aria-describedby="ctitle"></div>
     <p class="range-note" id="reaNote" hidden><b>Sale listings from realestate.com.au:</b> houses and units for sale on REA, excluding those under offer, as recorded each month for the Demand Score in the Analytics Hub (Jan 2025 on). Each figure is the number of properties on the site on the day it was recorded, so it is close to, but not the same as, Cotality’s count of everything advertised during the month. Units are REA’s combined count (retirement, townhouse, unit, apartment, villa and house) minus houses. REA has no 12-month total, so the chart shows monthly figures only. REA’s Brisbane covers a narrower area than Greater Brisbane, so its share of population reads low. Rental listings, days on market and population are still Cotality and ABS. The hub also holds Aug–Oct 2026, after the last Cotality month shown here.</p>
     <p class="range-note" id="rangeNote" hidden><b>Before Aug 2018:</b> sale and rental listing data are not reliable for this earlier period. Cotality was still building its listings coverage, so early counts are understated, rental listings most of all; before about 2006 many markets have no rental count at all, so the all-markets line covers only the markets reporting each month (hover to see how many). <span id="rangeNoteScale"></span></p>
-  </div>
-
-  <div class="chart-card" id="barCard">
-    <div class="chart-top">
-      <div class="chart-title" id="btitle"></div>
-      <div class="legend">
-        <span id="lgBH"><i class="sw-bar"></i>Houses for sale</span><span id="lgBU"><i class="sw-bar u"></i>Units for sale</span>
-        <span id="lgDH"><i class="key domh"></i>Days on market, houses</span><span id="lgDU"><i class="key domu"></i>Days on market, units</span>
-      </div>
-    </div>
-    <div id="bars" aria-describedby="btitle"></div>
-    <p class="range-note" id="domNote" hidden>Days on market starts in Aug 2018, when Cotality’s monthly Market Trends files begin. It is Cotality’s median days on market for properties sold over the previous 12 months (private treaty sales with an advertised price), so it moves slowly.</p>
   </div>
 
   <section id="tabDemand" aria-labelledby="dl-h">
