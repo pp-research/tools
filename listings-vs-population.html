@@ -183,15 +183,6 @@ thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);font
 #tabDemand .p-border{color:var(--muted);background:var(--chip)}
 #tabDemand .tbl-wrap{overflow-x:auto}
 #dl-grid{display:grid;gap:16px}
-@media (min-width:900px){
-  #dl-grid{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:stretch}
-  #dl-grid .dl-tcard{contain:size;display:flex;flex-direction:column;gap:10px}
-  #dl-grid .dl-tcard .tbl-wrap{flex:1 1 0;min-height:0;overflow:auto}
-  #dl-grid thead th{position:sticky;top:0;background:var(--surface);z-index:1}
-  /* half width: trends and vacancy only; borderline as an asterisk */
-  #dl-grid .col-n,#dl-grid .col-b,#dl-grid .col-pop{display:none}
-  #dl-grid .b-star{display:inline} #dl-grid .b-note{display:block} #dl-grid td.col-vr{white-space:normal}
-}
 #tabDemand table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
 #tabDemand th{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:right;padding:8px 6px;border-bottom:1px solid var(--rule);white-space:normal;vertical-align:bottom;line-height:1.3}
 #tabDemand th:first-child,#tabDemand td:first-child{text-align:left}
@@ -860,7 +851,7 @@ function render(){
 }
 
 function quad(rows){
-  const box=document.getElementById('dl-quad'), W=Math.max(320,Math.min(1080,box.clientWidth||900)), narrow=W<500, H=narrow?420:Math.min(580,Math.round(W*.85));
+  const box=document.getElementById('dl-quad'), W=Math.max(320,Math.min(1080,box.clientWidth||900)), narrow=W<600, H=narrow?420:580;
   const m={t:18,r:18,b:42,l:52}, pw=W-m.l-m.r, ph=H-m.t-m.b;
   // axis limit: covers the spread of most markets; a market far outside it is pinned to the edge and labelled with its value
   const lim=v=>{ const a=v.filter(x=>x!=null).map(Math.abs).sort((p,q)=>p-q), p90=a[Math.floor(a.length*.9)]||15;
