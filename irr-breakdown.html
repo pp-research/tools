@@ -167,9 +167,15 @@ header img{height:40px;width:auto;display:block}
      padding — so the table fills the screen whatever is beside it. */
   .cols{grid-template-columns:330px minmax(0,1fr);min-height:calc(100vh - 170px)}
   .panel{flex:1 1 auto;min-height:0}
-  #propsCard{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
-  #propsBody{flex:1 1 0;min-height:220px;display:flex;flex-direction:column}
-  #propsBody .tbl-scroll{flex:1 1 0;max-height:none;min-height:0}
+  /* The register runs down the page rather than scrolling inside a window of
+     its own. A box the height of the screen holds about eight of these rows —
+     they are two and three lines tall — so working through a few hundred
+     properties to find the middle of a sort meant dragging a short inner
+     scrollbar. The page scrolls instead and the column headers stick to the
+     top of the window on the way, so the sort you are reading stays named. */
+  #propsCard{flex:0 0 auto;display:flex;flex-direction:column}
+  #propsBody{flex:0 0 auto;display:flex;flex-direction:column}
+  #propsBody .tbl-scroll{flex:0 0 auto;max-height:none;min-height:0;overflow:visible}
   #propsBody .empty{margin:auto}
 }
 /* ═══ FORM ═══ */
@@ -591,7 +597,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 /* ═══ TABLES ═══ */
 .tbl-scroll{overflow:auto;max-height:520px;background:var(--well);border:1px solid var(--border);border-radius:var(--r-md)}
-.tbl-scroll.short{max-height:440px}
+/* Below 1024px the register keeps a window of its own — a phone would
+   otherwise get a page tens of thousands of pixels long — but a tall one. */
+.tbl-scroll.short{max-height:min(75vh, 900px)}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;line-height:18px}
 th,td{padding:9px 12px;text-align:left;white-space:nowrap}
 thead th{
@@ -633,6 +641,10 @@ td.city{color:var(--muted);font-weight:600}
 .sync-ok{color:var(--money-pos)}
 td.pick,th:first-child:has(.sr-only){width:1%}
 td.pick{padding-right:0}
+/* the row number: present but quiet, and never wider than it needs to be */
+th.rownum,td.rownum{width:1%;text-align:right;padding-left:8px;padding-right:10px;
+  color:var(--faint);font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
+th.rownum{font-size:11px;font-weight:700;letter-spacing:.05em}
 td.pick input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
 td.pick input:disabled{cursor:not-allowed;opacity:.35}
 tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
@@ -3815,15 +3827,52 @@ window.stopCheck=false;
       var s = a.slice().sort(function(x,y){ return x-y; });
       return fmt(s[0]) + ' – ' + fmt(s[s.length-1]);
     };
-    /* How many values a median was struck over, then the range they covered.
-       An even count is flagged, because an even median is the mean of the two
-       middle values and so matches no property in the register — which is the
-       one thing that makes a median look wrong when it is not. */
-    var basisNote = function(n, one, many, rest){
-      if (!n) return '';
-      return n + ' ' + (n === 1 ? one : many) + (n % 2 ? '' : ' · even, so it falls between two') +
-             (rest ? ' · ' + rest : '');
+    /* How many values a median was struck over. Each of the four is struck
+       over its own count, not the property count on the card above: a price
+       nobody has filled in is left out, and a held property has no sale price
+       or sale date at all. */
+    var countOf = function(n, one, many){
+      return n ? n + ' ' + (n === 1 ? one : many) : '';
     };
+    var joinNote = function(){
+      return [].slice.call(arguments).filter(Boolean).join(' · ');
+    };
+    /* ── which property the median price actually is ──
+       A median is a number; it only sometimes belongs to a property. On an
+       even count it is the mean of the two middle ones and belongs to neither,
+       and on any count several properties can share the middle price. Rather
+       than leave that to be discovered by counting rows in the register, the
+       card names the date it changed hands — or both dates, or how many share
+       the price — so the figure can be checked against the list. */
+    var medianRow = function(rows, pk, dk){
+      var r = rows.map(function(d){ return d.e; })
+        .filter(function(e){ var v = Number(e[pk]); return isFinite(v) && v > 0; })
+        .sort(function(a, b){ return Number(a[pk]) - Number(b[pk]); });
+      if (!r.length) return null;
+      var i = Math.floor(r.length / 2), out = { n:r.length, even:!(r.length % 2) };
+      if (out.even) {
+        out.median = (Number(r[i-1][pk]) + Number(r[i][pk])) / 2;
+        out.at = [r[i-1], r[i]];
+      } else {
+        out.median = Number(r[i][pk]);
+        /* every property on the middle price, not only the one that happened
+           to land in the middle slot once sorted */
+        out.at = r.filter(function(e){ return Number(e[pk]) === out.median; });
+      }
+      out.days = out.at.map(function(e){ return dayStamp(e[dk]); })
+        .filter(function(v){ return v !== null; })
+        .sort(function(a, b){ return a - b; });
+      return out;
+    };
+    var whenNote = function(m, verb){
+      if (!m || !m.days.length) return '';
+      var first = new Date(m.days[0]), last = new Date(m.days[m.days.length - 1]);
+      if (m.even) return 'between ' + dLabel(first) + ' and ' + dLabel(last);
+      if (m.days.length === 1) return verb + ' ' + dLabel(first);
+      return m.days.length + ' share this price, ' + mLabel(first) + ' – ' + mLabel(last);
+    };
+    var buyMid  = medianRow(data, 'purchasePrice', 'purchaseDate');
+    var sellMid = medianRow(data, 'soldPrice', 'soldDate');
 
     /* Ten cards: two full rows of four and a closing pair, with each date
        beside the price it belongs to so purchase and sale read as one thing
@@ -3849,17 +3898,21 @@ window.stopCheck=false;
          lands on the wrong row unless you know which number it was struck
          over, so every one of them says. */
       card('Median purchase price', buys.length ? aud(median(buys)) : '—',
-           basisNote(buys.length, 'price', 'prices',
-                     span(buys, function(v){ return audShort(v); })))+
+           joinNote(countOf(buys.length, 'price', 'prices'),
+                    span(buys, function(v){ return audShort(v); }),
+                    whenNote(buyMid, 'bought')))+
       card('Median purchase date', buyDates.length ? dLabel(medianDate(buyDates)) : '—',
-           basisNote(buyDates.length, 'date', 'dates',
-                     span(buyDates, function(v){ return mLabel(new Date(v)); })))+
+           joinNote(countOf(buyDates.length, 'date', 'dates'),
+                    buyDates.length % 2 ? '' : 'even, so it falls between two',
+                    span(buyDates, function(v){ return mLabel(new Date(v)); })))+
       card('Median sale price', sells.length ? aud(median(sells)) : '—',
-           basisNote(sells.length, 'sale', 'sales',
-                     span(sells, function(v){ return audShort(v); })))+
+           joinNote(countOf(sells.length, 'sale', 'sales'),
+                    span(sells, function(v){ return audShort(v); }),
+                    whenNote(sellMid, 'sold')))+
       card('Median sale date', sellDates.length ? dLabel(medianDate(sellDates)) : '—',
-           basisNote(sellDates.length, 'date', 'dates',
-                     span(sellDates, function(v){ return mLabel(new Date(v)); })))+
+           joinNote(countOf(sellDates.length, 'date', 'dates'),
+                    sellDates.length % 2 ? '' : 'even, so it falls between two',
+                    span(sellDates, function(v){ return mLabel(new Date(v)); })))+
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
@@ -4080,7 +4133,11 @@ window.stopCheck=false;
       });
     }
 
-    var rowHtml = function(d){
+    /* `i` is the second argument map() already passes. The number is the row's
+       place in the order on screen, so sorting by price makes it the rank by
+       price — which is how you walk to the middle of the list and find the
+       property a median belongs to. */
+    var rowHtml = function(d, i){
       var e = d.e;
       var irr = d.irr === null ? '—' : pct(d.irr);
       var net = d.net === null ? '—' : signed(d.net);
@@ -4090,6 +4147,7 @@ window.stopCheck=false;
         '<td class="pick"><input type="checkbox" data-pick="'+e.id+'"'+
           (on?' checked':'')+
           ' aria-label="Select '+esc(e.name||'this property')+'"></td>'+
+        '<td class="rownum">'+(i + 1)+'</td>'+
         /* No capital city here, as a column or as a chip: the register is one
            city at a time and the header says which. The chips that are left
            are the ones with nothing else to carry them: a note, what the sold
@@ -4171,7 +4229,8 @@ window.stopCheck=false;
     $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
       '<th scope="col" class="pick-all"><input type="checkbox" id="selAll"'+
         (onNow && onNow === shown.length ? ' checked' : '')+
-        ' aria-label="Select every property shown"></th>'+head+
+        ' aria-label="Select every property shown"></th>'+
+      '<th scope="col" class="rownum" title="Place in the order on screen">#</th>'+head+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+data.map(rowHtml).join('')+'</tbody></table></div>';
     /* indeterminate is a property, not an attribute, so it can only be set
