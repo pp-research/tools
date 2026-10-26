@@ -3604,20 +3604,52 @@ window.stopCheck=false;
     var s = nums.slice().sort(function(a,b){ return a-b; }), m = Math.floor(s.length/2);
     return s.length % 2 ? s[m] : (s[m-1]+s[m]) / 2;
   }
-  /* A median date is the median of the timestamps read back as a date. Dates
-     are stored as YYYY-MM-DD and parse to UTC midnight, so on an even-sized
-     book the midpoint of two neighbouring days lands at noon — floored to the
-     day it belongs to rather than carrying a time nobody asked for. */
+  /* Dates are stored as YYYY-MM-DD and parse to UTC midnight, so a midpoint
+     between two neighbouring days lands at noon — floored to the day it
+     belongs to rather than carrying a time nobody asked for. */
   var DAY_MS = 86400000;
   function dayStamp(s){
     if (!s) return null;
     var t = Date.parse(String(s).slice(0,10) + 'T00:00:00Z');
     return isFinite(t) ? t : null;
   }
-  function medianDate(stamps){
-    var m = median(stamps);
-    if (m === null) return null;
-    var d = new Date(Math.floor(m / DAY_MS) * DAY_MS);
+  /* ── which properties a median PRICE was read off, and when ──
+     A median is a number and only sometimes belongs to a property: on an even
+     count it is the mean of the two middle ones and belongs to neither, and on
+     any count several can share the middle price. Both shapes come back in
+     `at`, each with its own date, so the figure can be shown with its working
+     instead of taken on trust. Out here rather than inside the Overview
+     because the CSV has to say the same thing the screen does. */
+  function medianRow(rows, pk, dk){
+    var r = rows.map(function(d){ return d.e; })
+      .filter(function(e){ var v = Number(e[pk]); return isFinite(v) && v > 0; })
+      .sort(function(a, b){ return Number(a[pk]) - Number(b[pk]); });
+    if (!r.length) return null;
+    var i = Math.floor(r.length / 2), out = { n:r.length, even:!(r.length % 2) }, pick;
+    if (out.even) {
+      out.median = (Number(r[i-1][pk]) + Number(r[i][pk])) / 2;
+      pick = [r[i-1], r[i]];
+    } else {
+      out.median = Number(r[i][pk]);
+      /* every property on the middle price, not only the one that happened to
+         land in the middle slot once sorted */
+      pick = r.filter(function(e){ return Number(e[pk]) === out.median; });
+    }
+    /* each carried with its own date, so a priced property with no date still
+       shows up in the list rather than silently thinning it */
+    out.at = pick.map(function(e){ return { e:e, t:dayStamp(e[dk]) }; })
+      .sort(function(a, b){ return (a.t === null) - (b.t === null) || a.t - b.t; });
+    out.days = out.at.map(function(x){ return x.t; })
+      .filter(function(v){ return v !== null; });
+    return out;
+  }
+  /* The date behind a median price. One property → its own date. Two or more
+     → the midpoint of the span they cover, the same rule the median itself
+     follows when the count is even. */
+  function midDay(m){
+    if (!m || !m.days.length) return null;
+    var a = m.days[0], b = m.days[m.days.length - 1];
+    var d = new Date(Math.floor(((a + b) / 2) / DAY_MS) * DAY_MS);
     return isFinite(d.getTime()) ? d : null;
   }
   var IRR_BINS = [
@@ -3804,11 +3836,6 @@ window.stopCheck=false;
     }
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
-    /* When the book was bought and when it sold, as two more medians. Kept as
-       timestamps until the card is written so the median is a number and not a
-       string comparison. A held property contributes a purchase date and no
-       sale date, exactly as it contributes a purchase price and no sale one. */
-    var buyDates = [], sellDates = [];
     /* Still held is not the same as "we could not work it out": it is counted
        on its own so the gap between the property count and the profitable
        count has a stated reason rather than looking like a failure. */
@@ -3820,8 +3847,6 @@ window.stopCheck=false;
       var b = Number(d.e.purchasePrice), s = Number(d.e.soldPrice);
       if (isFinite(b) && b > 0) buys.push(b);
       if (isFinite(s) && s > 0) sells.push(s);
-      var bt = dayStamp(d.e.purchaseDate); if (bt !== null) buyDates.push(bt);
-      var st = dayStamp(d.e.soldDate);     if (st !== null) sellDates.push(st);
       if (isFinite(b) && b > 0 && isFinite(s) && s > 0) {
         rets.push(s/b - 1);
         if (d.hold > 0) cagrs.push(Math.pow(s/b, 1/d.hold) - 1);
@@ -3852,68 +3877,25 @@ window.stopCheck=false;
        than leave that to be discovered by counting rows in the register, the
        card names the date it changed hands — or both dates, or how many share
        the price — so the figure can be checked against the list. */
-    var medianRow = function(rows, pk, dk){
-      var r = rows.map(function(d){ return d.e; })
-        .filter(function(e){ var v = Number(e[pk]); return isFinite(v) && v > 0; })
-        .sort(function(a, b){ return Number(a[pk]) - Number(b[pk]); });
-      if (!r.length) return null;
-      var i = Math.floor(r.length / 2), out = { n:r.length, even:!(r.length % 2) };
-      if (out.even) {
-        out.median = (Number(r[i-1][pk]) + Number(r[i][pk])) / 2;
-        out.at = [r[i-1], r[i]];
-      } else {
-        out.median = Number(r[i][pk]);
-        /* every property on the middle price, not only the one that happened
-           to land in the middle slot once sorted */
-        out.at = r.filter(function(e){ return Number(e[pk]) === out.median; });
-      }
-      out.days = out.at.map(function(e){ return dayStamp(e[dk]); })
-        .filter(function(v){ return v !== null; })
-        .sort(function(a, b){ return a - b; });
-      return out;
-    };
-    var whenNote = function(m, verb){
+    var whenNote = function(m, noun){
       if (!m || !m.days.length) return '';
-      var first = new Date(m.days[0]), last = new Date(m.days[m.days.length - 1]);
-      if (m.even) return 'between ' + dLabel(first) + ' and ' + dLabel(last);
-      if (m.days.length === 1) return verb + ' ' + dLabel(first);
-      return m.days.length + ' share this price, ' + mLabel(first) + ' – ' + mLabel(last);
+      if (m.at.length === 1) return 'when the median ' + noun + ' happened';
+      return m.even
+        ? 'midpoint — the median price sits between these two'
+        : 'midpoint — ' + m.at.length + ' share the median price';
     };
-    var buyMid  = medianRow(data, 'purchasePrice', 'purchaseDate');
-    var sellMid = medianRow(data, 'soldPrice', 'soldDate');
-    /* ── and the other way round: which properties a median DATE came from ──
-       The same three shapes as a median price. One date sits in the middle;
-       several properties can share that date; or the count is even and the
-       middle falls between the two either side of it. The card lists whichever
-       applies, with each one's price beside it, so the figure above can be
-       read back against the register instead of taken on trust. */
-    var medianDateRow = function(rows, dk){
-      var r = rows.map(function(d){ return { e:d.e, t:dayStamp(d.e[dk]) }; })
-        .filter(function(x){ return x.t !== null; })
-        .sort(function(a, b){ return a.t - b.t; });
-      if (!r.length) return null;
-      var i = Math.floor(r.length / 2), out = { n:r.length, even:!(r.length % 2) };
-      if (out.even) { out.at = [r[i-1], r[i]]; }
-      else { var t = r[i].t; out.at = r.filter(function(x){ return x.t === t; }); }
-      return out;
-    };
+    /* date — price, one line each, for every property the median price was
+       read off. This is the working behind the figure, so nothing is dropped. */
     var dateList = function(m, pk){
       if (!m) return '';
       return m.at.map(function(x){
         var v = Number(x.e[pk]);
-        return '<li>' + dLabel(new Date(x.t)) + ' — ' +
-               ((isFinite(v) && v > 0) ? aud(v) : '<span class="faint">no price</span>') + '</li>';
+        return '<li>' + (x.t === null ? '<span class="faint">no date</span>' : dLabel(new Date(x.t))) +
+               ' — ' + ((isFinite(v) && v > 0) ? aud(v) : '<span class="faint">no price</span>') + '</li>';
       }).join('');
     };
-    var dateNote = function(m, n){
-      var c = countOf(n, 'date', 'dates');
-      if (!m) return c;
-      return joinNote(c, m.even ? 'even, so it sits between these two'
-                      : m.at.length > 1 ? m.at.length + ' share the middle date'
-                      : 'the middle one');
-    };
-    var buyDateMid  = medianDateRow(data, 'purchaseDate');
-    var sellDateMid = medianDateRow(data, 'soldDate');
+    var buyMid  = medianRow(data, 'purchasePrice', 'purchaseDate');
+    var sellMid = medianRow(data, 'soldPrice', 'soldDate');
 
     /* Ten cards: two full rows of four and a closing pair, with each date
        beside the price it belongs to so purchase and sale read as one thing
@@ -3940,23 +3922,23 @@ window.stopCheck=false;
          at all. Counting to the middle row of the register to check a median
          lands on the wrong row unless you know which number it was struck
          over, so every one of them says. */
+      /* Each price card gives the figure and the range it came out of; the
+         date card beside it answers "and when was that", off the SAME
+         properties — the ones the median price was read from — and lists them
+         so the pairing can be checked. The two used to be independent medians,
+         which meant the date on screen belonged to no property on screen. */
       card('Median purchase price', buys.length ? aud(median(buys)) : '—',
            joinNote(countOf(buys.length, 'price', 'prices'),
-                    span(buys, function(v){ return audShort(v); }),
-                    whenNote(buyMid, 'bought')))+
-      /* The range is dropped from these two notes now the list under them
-         names the actual dates — the card would otherwise say the same thing
-         twice and run too tall. */
-      card('Median purchase date', buyDates.length ? dLabel(medianDate(buyDates)) : '—',
-           dateNote(buyDateMid, buyDates.length),
-           '', dateList(buyDateMid, 'purchasePrice'))+
+                    span(buys, function(v){ return audShort(v); })))+
+      card('Median purchase date', midDay(buyMid) ? dLabel(midDay(buyMid)) : '—',
+           whenNote(buyMid, 'purchase'),
+           '', dateList(buyMid, 'purchasePrice'))+
       card('Median sale price', sells.length ? aud(median(sells)) : '—',
            joinNote(countOf(sells.length, 'sale', 'sales'),
-                    span(sells, function(v){ return audShort(v); }),
-                    whenNote(sellMid, 'sold')))+
-      card('Median sale date', sellDates.length ? dLabel(medianDate(sellDates)) : '—',
-           dateNote(sellDateMid, sellDates.length),
-           '', dateList(sellDateMid, 'soldPrice'))+
+                    span(sells, function(v){ return audShort(v); })))+
+      card('Median sale date', midDay(sellMid) ? dLabel(midDay(sellMid)) : '—',
+           whenNote(sellMid, 'sale'),
+           '', dateList(sellMid, 'soldPrice'))+
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
@@ -6975,7 +6957,6 @@ window.stopCheck=false;
     if (!data.length) { $('messages').innerHTML = msg('warn','Nothing matches the filters, so there is nothing to export.'); return; }
 
     var irrs=[], nets=[], holds=[], buys=[], sells=[], rets=[], cagrs=[];
-    var buyDates=[], sellDates=[];
     data.forEach(function(d){
       if (d.irr !== null && isFinite(d.irr)) irrs.push(d.irr);
       if (d.net !== null && isFinite(d.net)) nets.push(d.net);
@@ -6983,8 +6964,6 @@ window.stopCheck=false;
       var b = Number(d.e.purchasePrice), s = Number(d.e.soldPrice);
       if (isFinite(b) && b > 0) buys.push(b);
       if (isFinite(s) && s > 0) sells.push(s);
-      var bt = dayStamp(d.e.purchaseDate); if (bt !== null) buyDates.push(bt);
-      var st = dayStamp(d.e.soldDate);     if (st !== null) sellDates.push(st);
       if (isFinite(b) && b > 0 && isFinite(s) && s > 0) {
         rets.push(s/b - 1);
         if (d.hold > 0) cagrs.push(Math.pow(s/b, 1/d.hold) - 1);
@@ -7009,12 +6988,16 @@ window.stopCheck=false;
     L.push(['Properties', data.length]);
     L.push(['Profitable', nets.filter(function(v){ return v>0; }).length, 'of', nets.length]);
     L.push(['Median IRR', median(irrs)]);
+    /* The same pairing the tab shows: the median price, then the date the
+       properties it was read off changed hands. Dates written plain ISO so the
+       column sorts in a spreadsheet instead of reading as text. */
+    var buyMid = medianRow(data, 'purchasePrice', 'purchaseDate');
+    var sellMid = medianRow(data, 'soldPrice', 'soldDate');
+    var midIso = function(m){ var d = midDay(m); return d ? iso(d) : ''; };
     L.push(['Median purchase price', median(buys)]);
-    /* Written as a plain ISO date so the column sorts in a spreadsheet instead
-       of reading as text, which "14 Jun 2021" would. */
-    L.push(['Median purchase date', medianDate(buyDates) ? iso(medianDate(buyDates)) : '']);
+    L.push(['Median purchase date', midIso(buyMid)]);
     L.push(['Median sale price', median(sells)]);
-    L.push(['Median sale date', medianDate(sellDates) ? iso(medianDate(sellDates)) : '']);
+    L.push(['Median sale date', midIso(sellMid)]);
     L.push(['Median hold period (yrs)', median(holds)]);
     L.push(['Median CAGR', median(cagrs)]);
     L.push(['Median return', median(rets)]);
