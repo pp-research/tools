@@ -888,20 +888,23 @@ details .body strong{color:var(--text)}
     <div class="main">
       <div id="messages" role="status" aria-live="polite"></div>
 
+      <div class="tabs" role="tablist" aria-label="Sections">
+        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
+        <button type="button" role="tab" id="tab-register" aria-controls="panel-register" aria-selected="true">Register <span class="badge" id="badgeProps">0</span></button>
+        <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
+        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check</button>
+        <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
+      </div>
+
       <!-- ══ FILTERS ══
-           Above the tab strip, not beside it, because the Register and the
-           Overview both read these and a control only one of them can see is a
-           control that narrows the other one invisibly. It hides itself on the
-           three tabs that do not read it rather than sitting there doing
-           nothing. Show properties is NOT here: the Overview overrides it with
-           its own In advice / Archived / Both, so it belongs to the Register
-           and lives in the Register's own head. -->
+           Under the tab strip and on the Register alone — it reads as the
+           Register's own row of controls, which is what it is used as.
+           It still narrows the Overview's numbers, because both tabs read one
+           filter set; the Overview's scope line names whatever is on so a
+           figure is never quietly smaller than the book with nothing on that
+           tab to say why. -->
       <div class="filter-bar" id="filterBar" hidden>
         <div class="fb-row">
-          <!-- Search belongs here and not in the Register's head, where it used
-               to sit: it narrows the Overview too, so a search typed over there
-               was changing this tab's numbers with no control on screen to say
-               so. -->
           <div class="fb-field fb-search">
             <label for="fSearch">Search</label>
             <input id="fSearch" type="search" placeholder="Name or address" autocomplete="off">
@@ -910,10 +913,9 @@ details .body strong{color:var(--text)}
                archived are three states one property can be in, so this is
                tickboxes rather than one choice — and the archive stopped
                needing a tab of its own the moment it became one of them.
-               It is the one control in this bar the Overview does not read:
-               the Overview answers the same question with its own In advice /
-               Archived / Both, so this drops out of the row over there rather
-               than sitting on a tab it has no effect on. -->
+               It is the one control here the Overview does not read at all:
+               that tab answers the same question with its own In advice /
+               Archived / Both. -->
           <div class="fb-field fb-show" id="fbShow">
             <label for="btnShow" id="showLbl">Show</label>
             <div class="dd" id="showDrop">
@@ -949,14 +951,6 @@ details .body strong{color:var(--text)}
           </div>
           <button type="button" class="btn-ghost btn-sm fb-clear" id="btnClearFilters" hidden>Clear</button>
         </div>
-      </div>
-
-      <div class="tabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
-        <button type="button" role="tab" id="tab-register" aria-controls="panel-register" aria-selected="true">Register <span class="badge" id="badgeProps">0</span></button>
-        <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
-        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check</button>
-        <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
       </div>
 
       <!-- ── RESULT ── -->
@@ -3221,12 +3215,10 @@ window.stopCheck=false;
       btn.tabIndex = on ? 0 : -1;
       panel.hidden = !on;
     });
-    /* The bar narrows the Register and the Overview and nothing else, so on
-       the other three it goes away rather than sitting there implying it is
-       doing something to what you are looking at. */
-    $('filterBar').hidden = !(name === 'register' || name === 'overview');
-    /* Show is the one control in the bar the Overview does not read. */
-    $('fbShow').hidden = (name !== 'register');
+    /* The bar belongs to the Register and shows with it. What it is set to
+       still reaches the Overview, which reads the same filters — that tab
+       names them in its scope line rather than leaving them invisible. */
+    $('filterBar').hidden = (name !== 'register');
     if (name === 'history') showHistory();   // always the live log, never a stale one
     if (name === 'overview' && ovStale) drawOverview();
     /* The how-to shows itself the first time this browser opens the tab —
@@ -3491,6 +3483,20 @@ window.stopCheck=false;
       band: irrBand
     };
   }
+  /* The filter bar lives on the Register, so the Overview can be narrowed by
+     controls that are not on screen there. This names them for its scope line.
+     f.show is left out: the Overview overrides it with its own switch. */
+  function filterPhrase(f){
+    var bits = [];
+    if (f.q) bits.push('search "' + f.q + '"');
+    if (f.soldFrom || f.soldTo)
+      bits.push('sold ' + (f.soldFrom || 'any') + ' to ' + (f.soldTo || 'any'));
+    if (f.holdMin !== null || f.holdMax !== null)
+      bits.push('hold ' + (f.holdMin === null ? 'any' : f.holdMin) + '–' +
+                (f.holdMax === null ? 'any' : f.holdMax) + ' yrs');
+    if (f.band !== null) bits.push('IRR ' + IRR_BINS[f.band].full);
+    return bits.join(' · ');
+  }
   /* f.cat is not in here on purpose: the city is the scope, not a filter, and
      counting it would leave Clear showing permanently with nothing to clear. */
   function anyFilterOn(f){
@@ -3703,11 +3709,15 @@ window.stopCheck=false;
       return;
     }
     /* The city is named here as well as lit in the header, because this line
-       is what goes out on the export and into a report. */
+       is what goes out on the export and into a report — and so is whatever
+       the Register's filter bar is set to, which narrows these numbers from a
+       tab you cannot see from here. */
+    var narrow = filterPhrase(readFilters());
     scope.textContent = (data.length === totalSaved
       ? 'All ' + totalSaved + ' propert' + (totalSaved===1?'y':'ies')
       : data.length + ' of ' + totalSaved + ' properties') +
-      (activeCity ? ' in ' + cityLabel() : '') + ' · ' + basisText();
+      (activeCity ? ' in ' + cityLabel() : '') + ' · ' + basisText() +
+      (narrow ? ' · narrowed by ' + narrow : '');
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
     /* When the book was bought and when it sold, as two more medians. Kept as
