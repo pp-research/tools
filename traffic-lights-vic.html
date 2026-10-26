@@ -532,7 +532,8 @@ table.calc.pvr tr.shade td:first-child{box-shadow:inset 3px 0 0 rgba(0,160,180,.
 table.calc.pvr tr.shade.active td{background:rgba(0,160,180,.22)}
 .pvr-shadekey{display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(0,160,180,.18);box-shadow:inset 3px 0 0 var(--teal);vertical-align:-1px;margin-right:6px}
 #pane-dfd > .dfd{display:flex;flex-direction:column;gap:22px}
-.dfd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+#pane-dfd > .dfd{width:min(1400px,calc(100vw - 64px));margin-left:calc(50% - min(700px,calc(50vw - 32px)))}
+.dfd-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}   /* one chart per row, full width (Shaene 2026-10-27) */
 .dfd-card{gap:8px}
 .dfd-card h3{font-size:15px;font-weight:800;margin:0;color:var(--text)}
 .dfd-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;font-weight:700;color:var(--text-dim)}
@@ -2388,7 +2389,7 @@ const DFD={
 const DFDCOL=['var(--teal)','var(--orange)','var(--text-dim)'];
 // one line chart: years across, the three areas (or price solid + rent dashed for the index); hover shows the year's values
 function dfdChart(el,cfg){
-  const n=cfg.series[0].v.length, W=Math.max(420,Math.round(el.clientWidth||560)), H=Math.round(W*0.56), X0=58, X1=W-16, YT=16, YB=H-34;
+  const n=cfg.series[0].v.length, W=Math.max(420,Math.round(el.clientWidth||560)), H=Math.round(W>800?W*0.34:W*0.56), X0=58, X1=W-16, YT=16, YB=H-34;
   const all=[].concat(...cfg.series.map(s=>s.v)).filter(v=>v!=null);
   let lo=Math.min(...all), hi=Math.max(...all); if(cfg.zero||lo>0&&lo<hi*0.35) lo=Math.min(0,lo); const pad=(hi-lo)*0.06; hi+=pad; if(lo<0) lo-=pad;
   const mag=Math.pow(10,Math.floor(Math.log10((hi-lo)/4))), stp=[1,2,2.5,5,10].map(k=>k*mag).find(k=>(hi-lo)/k<=6);
