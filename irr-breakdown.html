@@ -757,6 +757,22 @@ th .sortbtn:hover{color:var(--text)}
 th[aria-sort] .sortbtn{color:var(--accent-300)}
 th .arrow{font-size:9px;line-height:1;opacity:0}
 th[aria-sort] .arrow{opacity:1}
+/* ── a header with two sort targets ──
+   Purchased and Sold hold a price and a date, stacked in the cell, so the
+   header stacks too: the column's name, then the two things you can sort it
+   by. The whole-column lighting has to be undone inside the pair, or sorting
+   by price would light "date" as well and say nothing. */
+th .col-h{display:block;font:700 11px/14px 'Manrope',sans-serif;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+th.num .col-h{text-align:right}
+th .col-pair{display:flex;gap:10px}
+th.num .col-pair{justify-content:flex-end}
+th .col-pair .sortbtn{width:auto;font-weight:600;font-size:11px;letter-spacing:.02em;text-transform:none}
+th[aria-sort] .col-pair .sortbtn{color:var(--muted)}
+th[aria-sort] .col-pair .arrow{opacity:0}
+th .col-pair .sortbtn.is-on{color:var(--accent-300)}
+th .col-pair .sortbtn.is-on .arrow{opacity:1}
+th .col-pair .sortbtn:hover{color:var(--text)}
 
 .sum{width:100%;font-size:14px}
 .sum td{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -4025,6 +4041,13 @@ window.stopCheck=false;
         category: function(d){ return (d.e.category||'').trim().toLowerCase() || null; },
         purchase: function(d){ return d.e.purchaseDate; },
         sold:     function(d){ return d.e.soldDate; },
+        /* The price is the bold figure in those two cells and the date is the
+           small one under it, so both are sortable rather than only the date.
+           A missing or zero price is not a cheap property — it is a property
+           nobody has filled in — so it sorts to the bottom like every other
+           empty value rather than leading an ascending list. */
+        purchasePrice: function(d){ var v = Number(d.e.purchasePrice); return (isFinite(v) && v > 0) ? v : null; },
+        soldPrice:     function(d){ var v = Number(d.e.soldPrice);     return (isFinite(v) && v > 0) ? v : null; },
         hold:     function(d){ return d.hold; },
         net:      function(d){ return d.net; },
         irr:      function(d){ return d.irr; }
@@ -4091,20 +4114,37 @@ window.stopCheck=false;
       '</tr>';
     };
 
+    /* Purchased and Sold each hold two numbers, so each gets two sort
+       targets stacked the way the cell under them is: the price on top, the
+       date beneath. The other columns hold one number and keep one button. */
     var cols = [
-      { key:'name',     label:'Property',     cls:'' },
-      { key:'purchase', label:'Purchased',    cls:'num' },
-      { key:'sold',     label:'Sold',       cls:'num' },
-      { key:'hold',     label:'Hold',       cls:'num' },
-      { key:'net',      label:'Net profit', cls:'num' },
-      { key:'irr',      label:'IRR',        cls:'num' }
+      { key:'name', label:'Property', cls:'' },
+      { label:'Purchased', cls:'num',
+        pair:[{ key:'purchasePrice', label:'price' }, { key:'purchase', label:'date' }] },
+      { label:'Sold', cls:'num',
+        pair:[{ key:'soldPrice', label:'price' }, { key:'sold', label:'date' }] },
+      { key:'hold', label:'Hold',       cls:'num' },
+      { key:'net',  label:'Net profit', cls:'num' },
+      { key:'irr',  label:'IRR',        cls:'num' }
     ];
+    var arrow = function(on){
+      return '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span>';
+    };
     var head = cols.map(function(c){
-      var on = (sortKey === c.key);
+      var keys = c.pair ? c.pair.map(function(p){ return p.key; }) : [c.key];
+      var on = keys.indexOf(sortKey) >= 0;
+      var inner = c.pair
+        ? '<span class="col-h">'+c.label+'</span><span class="col-pair">'+
+            c.pair.map(function(p){
+              var lit = (sortKey === p.key);
+              return '<button type="button" class="sortbtn'+(lit?' is-on':'')+'" data-sortby="'+p.key+'" '+
+                     'aria-label="Sort by '+esc(c.label.toLowerCase()+' '+p.label)+'">'+
+                     p.label+arrow(lit)+'</button>';
+            }).join('')+'</span>'
+        : '<button type="button" class="sortbtn'+(on?' is-on':'')+'" data-sortby="'+c.key+'">'+
+          c.label+arrow(on)+'</button>';
       return '<th scope="col"'+(c.cls?' class="'+c.cls+'"':'')+
-        (on ? ' aria-sort="'+(sortDir===1?'ascending':'descending')+'"' : '')+'>'+
-        '<button type="button" class="sortbtn" data-sortby="'+c.key+'">'+c.label+
-        '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span></button></th>';
+        (on ? ' aria-sort="'+(sortDir===1?'ascending':'descending')+'"' : '')+'>'+inner+'</th>';
     }).join('');
     /* Select-all covers what is on screen, not the whole store: with a filter
        running, "all" can only honestly mean the rows the filter left. */
