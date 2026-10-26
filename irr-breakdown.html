@@ -552,6 +552,25 @@ tbody tr.is-sale:hover{background:rgba(var(--accent-rgb),.22)}
 tbody tr.fy-end td{border-bottom:1px solid var(--row-line-strong)}
 td.name{white-space:normal;min-width:150px;font-weight:600}
 td.city{color:var(--muted);font-weight:600}
+/* ── the register split into a block per capital city ──
+   A band across the table rather than a table per city, so there is still one
+   sort, one selection and one scroll. */
+tbody tr.grp>th{
+  text-align:left;white-space:nowrap;padding:8px 12px;
+  background-color:var(--panel-2);background-image:var(--grad-recess);
+  border-top:1px solid var(--border-strong);border-bottom:1px solid var(--border-strong);
+}
+table.grouped tbody:first-of-type tr.grp>th{border-top:0}
+.grp-name{font-size:13px;font-weight:700;color:var(--text)}
+.grp-note{margin-left:10px;font-size:11px;font-weight:600;color:var(--muted);
+  font-variant-numeric:tabular-nums lining-nums}
+/* The zebra counts children of a tbody, so it restarts in every block — the
+   band is child one, which would otherwise shade the first row of each city.
+   These four say it again past that, in the order the base rules say it. */
+table.grouped tbody tr:nth-child(even){background:transparent}
+table.grouped tbody tr:nth-child(odd):not(.grp){background:var(--row-alt)}
+table.grouped tbody tr.is-picked:not(.grp){background:rgba(var(--accent-rgb),.10)}
+table.grouped tbody tr:hover:not(.grp){background:rgba(var(--accent-rgb),.10)}
 /* One baseline across the row. The chips under a name and the source chip
    under a sold date make rows two and three lines tall, and middle-aligned
    cells then sit at different heights in the same row — the address floating
@@ -972,6 +991,15 @@ details .body strong{color:var(--text)}
               </div>
             </div>
             <div class="btns" style="margin:0">
+              <!-- The book spans several capital cities and reads as one long
+                   list. This breaks it into a block per city without taking
+                   away the sort, the selection or the one scroll — the city
+                   filter on the left still answers the other question, which
+                   is "show me only this one". -->
+              <div class="seg-btns" id="regGroupSeg" role="group" aria-label="How to lay the register out">
+                <button type="button" data-reggroup="flat" aria-pressed="true">One list</button>
+                <button type="button" data-reggroup="city" aria-pressed="false">By city</button>
+              </div>
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
@@ -1012,7 +1040,7 @@ details .body strong{color:var(--text)}
               <!-- The overview answers a question about the book, not about the
                    list you happen to be looking at, so it carries its own side
                    of the advice line rather than inheriting the tab's. -->
-              <div class="seg-btns" role="group" aria-label="Which properties to summarise">
+              <div class="seg-btns" id="ovScopeSeg" role="group" aria-label="Which properties to summarise">
                 <button type="button" data-ovscope="in"  aria-pressed="true">In advice</button>
                 <button type="button" data-ovscope="out" aria-pressed="false">Archived</button>
                 <button type="button" data-ovscope="all" aria-pressed="false">Both</button>
@@ -3308,6 +3336,35 @@ window.stopCheck=false;
     renderProps();
   }
 
+  /* Whether the register is one list or a block per capital city. Remembered
+     for the same reason the sort is: it is how you read the book, and losing
+     it on every reload is the sort of thing you stop bothering to set. Its own
+     key, and a view preference — it never rides inside the book. */
+  var REG_GROUP_KEY = 'pp-irr-reggroup-v1';
+  var regGroupBy = 'flat';
+  try {
+    if (localStorage.getItem(REG_GROUP_KEY) === 'city') regGroupBy = 'city';
+  } catch (e) { /* storage blocked — it just starts as one list */ }
+  function setRegGroup(mode){
+    if (mode !== 'city') mode = 'flat';
+    if (mode === regGroupBy) return;
+    regGroupBy = mode;
+    try { localStorage.setItem(REG_GROUP_KEY, regGroupBy); }
+    catch (e) { /* storage blocked — it just won't be remembered */ }
+    syncRegGroupSeg();
+    renderProps();
+  }
+  function syncRegGroupSeg(){
+    var seg = $('regGroupSeg'); if (!seg) return;
+    Array.prototype.forEach.call(seg.querySelectorAll('button[data-reggroup]'), function(b){
+      b.setAttribute('aria-pressed', b.dataset.reggroup === regGroupBy ? 'true' : 'false');
+    });
+  }
+  /* The capital city a row is filed under. Blank is a real answer — a property
+     can be on the register before anybody has filed it — so it gets a named
+     block at the end rather than vanishing out of the split. */
+  function cityOf(e){ return String(e.category||'').trim(); }
+
   /* The suburb isn't stored — it's whatever follows the last comma in the
      address, which is how every row in the book is written. Rows without one
      group under "—" rather than disappearing. */
@@ -3435,6 +3492,22 @@ window.stopCheck=false;
     if (!nums.length) return null;
     var s = nums.slice().sort(function(a,b){ return a-b; }), m = Math.floor(s.length/2);
     return s.length % 2 ? s[m] : (s[m-1]+s[m]) / 2;
+  }
+  /* A median date is the median of the timestamps read back as a date. Dates
+     are stored as YYYY-MM-DD and parse to UTC midnight, so on an even-sized
+     book the midpoint of two neighbouring days lands at noon — floored to the
+     day it belongs to rather than carrying a time nobody asked for. */
+  var DAY_MS = 86400000;
+  function dayStamp(s){
+    if (!s) return null;
+    var t = Date.parse(String(s).slice(0,10) + 'T00:00:00Z');
+    return isFinite(t) ? t : null;
+  }
+  function medianDate(stamps){
+    var m = median(stamps);
+    if (m === null) return null;
+    var d = new Date(Math.floor(m / DAY_MS) * DAY_MS);
+    return isFinite(d.getTime()) ? d : null;
   }
   var IRR_BINS = [
     { lo:-Infinity, hi:-0.30,    label:'under −30%',  full:'under −30%' },
@@ -3565,6 +3638,11 @@ window.stopCheck=false;
       : data.length + ' of ' + totalSaved + ' properties') + ' · ' + basisText();
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
+    /* When the book was bought and when it sold, as two more medians. Kept as
+       timestamps until the card is written so the median is a number and not a
+       string comparison. A held property contributes a purchase date and no
+       sale date, exactly as it contributes a purchase price and no sale one. */
+    var buyDates = [], sellDates = [];
     /* Still held is not the same as "we could not work it out": it is counted
        on its own so the gap between the property count and the profitable
        count has a stated reason rather than looking like a failure. */
@@ -3576,6 +3654,8 @@ window.stopCheck=false;
       var b = Number(d.e.purchasePrice), s = Number(d.e.soldPrice);
       if (isFinite(b) && b > 0) buys.push(b);
       if (isFinite(s) && s > 0) sells.push(s);
+      var bt = dayStamp(d.e.purchaseDate); if (bt !== null) buyDates.push(bt);
+      var st = dayStamp(d.e.soldDate);     if (st !== null) sellDates.push(st);
       if (isFinite(b) && b > 0 && isFinite(s) && s > 0) {
         rets.push(s/b - 1);
         if (d.hold > 0) cagrs.push(Math.pow(s/b, 1/d.hold) - 1);
@@ -3590,8 +3670,9 @@ window.stopCheck=false;
       return fmt(s[0]) + ' – ' + fmt(s[s.length-1]);
     };
 
-    /* Eight cards, so the grid fills two clean rows of four rather than leaving
-       an orphan. "Profitable" rides along as the note on the count. */
+    /* Ten cards: two full rows of four and a closing pair, with each date
+       beside the price it belongs to so purchase and sale read as one thing
+       each. "Profitable" rides along as the note on the count. */
     var card = function(label, value, note, cls){
       return '<div class="kpi'+(cls?' '+cls:'')+'">'+
         '<div class="k-label">'+label+'</div>'+
@@ -3608,8 +3689,14 @@ window.stopCheck=false;
               ? ' · ' + (sold - nets.length - heldN) + ' with no sale price' : ''))+
       card('Median purchase price', buys.length ? aud(median(buys)) : '—',
            span(buys, function(v){ return audShort(v); }))+
+      card('Median purchase date', buyDates.length ? dLabel(medianDate(buyDates)) : '—',
+           buyDates.length === 1 ? 'the only purchase date on record'
+                                 : span(buyDates, function(v){ return mLabel(new Date(v)); }))+
       card('Median sale price', sells.length ? aud(median(sells)) : '—',
            span(sells, function(v){ return audShort(v); }))+
+      card('Median sale date', sellDates.length ? dLabel(medianDate(sellDates)) : '—',
+           sellDates.length === 1 ? 'the only sale date on record'
+                                  : span(sellDates, function(v){ return mLabel(new Date(v)); }))+
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
@@ -3804,7 +3891,22 @@ window.stopCheck=false;
       });
     }
 
-    var rows = data.map(function(d){
+    /* ── split by capital city ──
+       A second pass in front of the sort the header is showing, so the rows
+       keep the order you asked for inside the city they belong to. Array sort
+       is stable, which is what makes one pass on top of the other work. */
+    var grouped = (regGroupBy === 'city');
+    if (grouped) {
+      data.sort(function(a,b){
+        var x = cityOf(a.e), y = cityOf(b.e);
+        if (x === y) return 0;
+        if (!x) return 1;       // unfiled sits at the end, like every empty value
+        if (!y) return -1;
+        return x.localeCompare(y);
+      });
+    }
+
+    var rowHtml = function(d){
       var e = d.e;
       var irr = d.irr === null ? '—' : pct(d.irr);
       var net = d.net === null ? '—' : signed(d.net);
@@ -3855,7 +3957,7 @@ window.stopCheck=false;
            'aria-label="Delete '+esc(e.name)+'" title="Delete">'+TRASH+'</button>')+
           '</td>'+
       '</tr>';
-    }).join('');
+    };
 
     var cols = [
       { key:'name',     label:'Property',     cls:'' },
@@ -3878,12 +3980,48 @@ window.stopCheck=false;
     var shown = data.map(function(d){ return d.e.id; });
     var onNow = shown.filter(function(id){ return picked.indexOf(id) >= 0; }).length;
 
-    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
+    /* One <tbody> per city rather than one band row loose in a single body:
+       the grouping is then something the markup says and not only something
+       the shading implies, and the zebra restarts inside each block. */
+    var GRP_SPAN = cols.length + 2;   // the tick column and the actions column
+    function cityBand(city, block){
+      var irrs = [], net = 0, netN = 0;
+      block.forEach(function(d){
+        if (d.irr !== null && isFinite(d.irr)) irrs.push(d.irr);
+        if (d.net !== null && isFinite(d.net)) { net += d.net; netN++; }
+      });
+      var mi = median(irrs);
+      return '<tr class="grp"><th scope="rowgroup" colspan="'+GRP_SPAN+'">'+
+        '<span class="grp-name">'+(city ? esc(city) : 'Not set')+'</span>'+
+        '<span class="grp-note">'+block.length+' propert'+(block.length===1?'y':'ies')+
+          (mi === null ? '' : ' · median IRR ' + pct(mi)) +
+          (netN ? ' · net ' + '<span class="'+(net<0?'neg':'pos')+'" title="'+esc(aud(net))+'">'+
+                  audShort(net)+'</span>' : '')+
+        '</span></th></tr>';
+    }
+    var body;
+    if (grouped) {
+      var parts = [], i = 0;
+      while (i < data.length) {
+        var c = cityOf(data[i].e), j = i;
+        while (j < data.length && cityOf(data[j].e) === c) j++;
+        var block = data.slice(i, j);
+        parts.push('<tbody>' + cityBand(c, block) +
+                   block.map(rowHtml).join('') + '</tbody>');
+        i = j;
+      }
+      body = parts.join('');
+    } else {
+      body = '<tbody>' + data.map(rowHtml).join('') + '</tbody>';
+    }
+
+    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table'+
+      (grouped ? ' class="grouped"' : '')+'><thead><tr>'+
       '<th scope="col" class="pick-all"><input type="checkbox" id="selAll"'+
         (onNow && onNow === shown.length ? ' checked' : '')+
         ' aria-label="Select every property shown"></th>'+head+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
-      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '</tr></thead>'+body+'</table></div>';
     /* indeterminate is a property, not an attribute, so it can only be set
        once the element exists */
     $('selAll').indeterminate = onNow > 0 && onNow < shown.length;
@@ -6556,6 +6694,7 @@ window.stopCheck=false;
     if (!data.length) { $('messages').innerHTML = msg('warn','Nothing matches the filters, so there is nothing to export.'); return; }
 
     var irrs=[], nets=[], holds=[], buys=[], sells=[], rets=[], cagrs=[];
+    var buyDates=[], sellDates=[];
     data.forEach(function(d){
       if (d.irr !== null && isFinite(d.irr)) irrs.push(d.irr);
       if (d.net !== null && isFinite(d.net)) nets.push(d.net);
@@ -6563,6 +6702,8 @@ window.stopCheck=false;
       var b = Number(d.e.purchasePrice), s = Number(d.e.soldPrice);
       if (isFinite(b) && b > 0) buys.push(b);
       if (isFinite(s) && s > 0) sells.push(s);
+      var bt = dayStamp(d.e.purchaseDate); if (bt !== null) buyDates.push(bt);
+      var st = dayStamp(d.e.soldDate);     if (st !== null) sellDates.push(st);
       if (isFinite(b) && b > 0 && isFinite(s) && s > 0) {
         rets.push(s/b - 1);
         if (d.hold > 0) cagrs.push(Math.pow(s/b, 1/d.hold) - 1);
@@ -6585,7 +6726,11 @@ window.stopCheck=false;
     L.push(['Profitable', nets.filter(function(v){ return v>0; }).length, 'of', nets.length]);
     L.push(['Median IRR', median(irrs)]);
     L.push(['Median purchase price', median(buys)]);
+    /* Written as a plain ISO date so the column sorts in a spreadsheet instead
+       of reading as text, which "14 Jun 2021" would. */
+    L.push(['Median purchase date', medianDate(buyDates) ? iso(medianDate(buyDates)) : '']);
     L.push(['Median sale price', median(sells)]);
+    L.push(['Median sale date', medianDate(sellDates) ? iso(medianDate(sellDates)) : '']);
     L.push(['Median hold period (yrs)', median(holds)]);
     L.push(['Median CAGR', median(cagrs)]);
     L.push(['Median return', median(rets)]);
@@ -7290,7 +7435,10 @@ window.stopCheck=false;
   });
 
   TABS.forEach(function(t){ $('tab-'+t).addEventListener('click', function(){ showTab(t); }); });
-  document.querySelector('.seg-btns').addEventListener('click', function(ev){
+  /* By id, not by class: the register has a segmented control of its own now
+     and it comes first in the document, so querySelector('.seg-btns') would
+     hand this listener the wrong one. */
+  $('ovScopeSeg').addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button[data-ovscope]');
     if (!b || b.getAttribute('aria-pressed') === 'true') return;
     ovScopeSel = b.dataset.ovscope;
@@ -7299,6 +7447,11 @@ window.stopCheck=false;
     });
     drawOverview();
   });
+  $('regGroupSeg').addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('button[data-reggroup]');
+    if (b) setRegGroup(b.dataset.reggroup);
+  });
+  syncRegGroupSeg();
   $('tab-register').parentNode.addEventListener('keydown', function(ev){
     var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
     if (ev.key === 'ArrowRight') to = TABS[(i+1)%n];
