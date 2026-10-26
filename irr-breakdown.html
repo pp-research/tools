@@ -543,6 +543,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .kpi .k-label{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.26;font-weight:800;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.03em;overflow-wrap:anywhere}
 .kpi .k-note{font-size:12px;line-height:16px;color:var(--faint);margin-top:2px}
+/* The rows a median was actually read off. Every one of them is listed — a
+   date several properties share can carry a few — so the list scrolls rather
+   than stretching the whole row of cards to the height of the longest one. */
+.kpi .k-list{list-style:none;margin:var(--sp-2) 0 0;padding:var(--sp-2) 0 0;
+  border-top:1px solid var(--border);max-height:116px;overflow-y:auto;
+  font-size:11px;line-height:18px;color:var(--muted);
+  font-variant-numeric:tabular-nums lining-nums}
+.kpi .k-list li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi.lead{border-color:rgba(43,196,216,.42);background-color:var(--grad-lead-base);background-image:var(--grad-lead)}
 .kpi.lead .k-value{color:var(--accent-300)}
 .pos{color:var(--money-pos)} .neg{color:var(--money-neg)}
@@ -3873,15 +3881,50 @@ window.stopCheck=false;
     };
     var buyMid  = medianRow(data, 'purchasePrice', 'purchaseDate');
     var sellMid = medianRow(data, 'soldPrice', 'soldDate');
+    /* ── and the other way round: which properties a median DATE came from ──
+       The same three shapes as a median price. One date sits in the middle;
+       several properties can share that date; or the count is even and the
+       middle falls between the two either side of it. The card lists whichever
+       applies, with each one's price beside it, so the figure above can be
+       read back against the register instead of taken on trust. */
+    var medianDateRow = function(rows, dk){
+      var r = rows.map(function(d){ return { e:d.e, t:dayStamp(d.e[dk]) }; })
+        .filter(function(x){ return x.t !== null; })
+        .sort(function(a, b){ return a.t - b.t; });
+      if (!r.length) return null;
+      var i = Math.floor(r.length / 2), out = { n:r.length, even:!(r.length % 2) };
+      if (out.even) { out.at = [r[i-1], r[i]]; }
+      else { var t = r[i].t; out.at = r.filter(function(x){ return x.t === t; }); }
+      return out;
+    };
+    var dateList = function(m, pk){
+      if (!m) return '';
+      return m.at.map(function(x){
+        var v = Number(x.e[pk]);
+        return '<li>' + dLabel(new Date(x.t)) + ' — ' +
+               ((isFinite(v) && v > 0) ? aud(v) : '<span class="faint">no price</span>') + '</li>';
+      }).join('');
+    };
+    var dateNote = function(m, n){
+      var c = countOf(n, 'date', 'dates');
+      if (!m) return c;
+      return joinNote(c, m.even ? 'even, so it sits between these two'
+                      : m.at.length > 1 ? m.at.length + ' share the middle date'
+                      : 'the middle one');
+    };
+    var buyDateMid  = medianDateRow(data, 'purchaseDate');
+    var sellDateMid = medianDateRow(data, 'soldDate');
 
     /* Ten cards: two full rows of four and a closing pair, with each date
        beside the price it belongs to so purchase and sale read as one thing
        each. "Profitable" rides along as the note on the count. */
-    var card = function(label, value, note, cls){
+    var card = function(label, value, note, cls, list){
       return '<div class="kpi'+(cls?' '+cls:'')+'">'+
         '<div class="k-label">'+label+'</div>'+
         '<div class="k-value">'+value+'</div>'+
-        '<div class="k-note">'+(note||'')+'</div></div>';
+        '<div class="k-note">'+(note||'')+'</div>'+
+        (list ? '<ul class="k-list">'+list+'</ul>' : '')+
+      '</div>';
     };
     var h = '<div class="kpis">'+
       card('Median IRR', irrs.length ? pct(median(irrs)) : '—',
@@ -3901,18 +3944,19 @@ window.stopCheck=false;
            joinNote(countOf(buys.length, 'price', 'prices'),
                     span(buys, function(v){ return audShort(v); }),
                     whenNote(buyMid, 'bought')))+
+      /* The range is dropped from these two notes now the list under them
+         names the actual dates — the card would otherwise say the same thing
+         twice and run too tall. */
       card('Median purchase date', buyDates.length ? dLabel(medianDate(buyDates)) : '—',
-           joinNote(countOf(buyDates.length, 'date', 'dates'),
-                    buyDates.length % 2 ? '' : 'even, so it falls between two',
-                    span(buyDates, function(v){ return mLabel(new Date(v)); })))+
+           dateNote(buyDateMid, buyDates.length),
+           '', dateList(buyDateMid, 'purchasePrice'))+
       card('Median sale price', sells.length ? aud(median(sells)) : '—',
            joinNote(countOf(sells.length, 'sale', 'sales'),
                     span(sells, function(v){ return audShort(v); }),
                     whenNote(sellMid, 'sold')))+
       card('Median sale date', sellDates.length ? dLabel(medianDate(sellDates)) : '—',
-           joinNote(countOf(sellDates.length, 'date', 'dates'),
-                    sellDates.length % 2 ? '' : 'even, so it falls between two',
-                    span(sellDates, function(v){ return mLabel(new Date(v)); })))+
+           dateNote(sellDateMid, sellDates.length),
+           '', dateList(sellDateMid, 'soldPrice'))+
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
