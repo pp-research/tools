@@ -559,25 +559,6 @@ tbody tr.is-sale:hover{background:rgba(var(--accent-rgb),.22)}
 tbody tr.fy-end td{border-bottom:1px solid var(--row-line-strong)}
 td.name{white-space:normal;min-width:150px;font-weight:600}
 td.city{color:var(--muted);font-weight:600}
-/* ── the register split into a block per capital city ──
-   A band across the table rather than a table per city, so there is still one
-   sort, one selection and one scroll. */
-tbody tr.grp>th{
-  text-align:left;white-space:nowrap;padding:8px 12px;
-  background-color:var(--panel-2);background-image:var(--grad-recess);
-  border-top:1px solid var(--border-strong);border-bottom:1px solid var(--border-strong);
-}
-table.grouped tbody:first-of-type tr.grp>th{border-top:0}
-.grp-name{font-size:13px;font-weight:700;color:var(--text)}
-.grp-note{margin-left:10px;font-size:11px;font-weight:600;color:var(--muted);
-  font-variant-numeric:tabular-nums lining-nums}
-/* The zebra counts children of a tbody, so it restarts in every block — the
-   band is child one, which would otherwise shade the first row of each city.
-   These four say it again past that, in the order the base rules say it. */
-table.grouped tbody tr:nth-child(even){background:transparent}
-table.grouped tbody tr:nth-child(odd):not(.grp){background:var(--row-alt)}
-table.grouped tbody tr.is-picked:not(.grp){background:rgba(var(--accent-rgb),.10)}
-table.grouped tbody tr:hover:not(.grp){background:rgba(var(--accent-rgb),.10)}
 /* One baseline across the row. The chips under a name and the source chip
    under a sold date make rows two and three lines tall, and middle-aligned
    cells then sit at different heights in the same row — the address floating
@@ -777,12 +758,13 @@ details .body strong{color:var(--text)}
     </div>
     <div class="head-right">
       <!-- ══ WHICH BOOK YOU ARE IN ══
-           One capital city at a time. Overview, Register, Calculation, Sold
-           check and History all answer about whichever city is lit here, so it
-           sits in the header beside signing out rather than down in Filters:
-           it is not a filter that narrows a view, it is which book the whole
-           tool is open on. Built from the cities actually in the register, and
-           absent entirely while there is only one of them. -->
+           One capital city at a time, and only ever one: there is no "all of
+           them". Overview, Register, Calculation, Sold check and History all
+           answer about whichever city is lit here, so it sits in the header
+           beside signing out rather than down in Filters — it is not a filter
+           that narrows a view, it is which book the whole tool is open on.
+           Built from the cities actually in the register, and absent entirely
+           while there is only one of them to be in. -->
       <div class="seg-btns city-tabs" id="cityTabs" role="group" aria-label="Capital city"></div>
       <button type="button" class="btn-primary" id="btnShareAuth" hidden></button>
       <button type="button" class="btn-ghost icon-btn theme-btn" id="btnTheme"
@@ -894,7 +876,7 @@ details .body strong{color:var(--text)}
         <div class="field">
           <span class="lbl" id="catNowLbl">Capital city</span>
           <div class="cat-cell">
-            <span class="cat-now" id="catNow" aria-labelledby="catNowLbl">All capital cities</span>
+            <span class="cat-now" id="catNow" aria-labelledby="catNowLbl">—</span>
             <button type="button" class="btn-ghost btn-sm" id="btnRenameCat"
                     title="Rename the capital city in force">Rename</button>
           </div>
@@ -1009,15 +991,6 @@ details .body strong{color:var(--text)}
               </div>
             </div>
             <div class="btns" style="margin:0">
-              <!-- The book spans several capital cities and reads as one long
-                   list. This breaks it into a block per city without taking
-                   away the sort, the selection or the one scroll — the city
-                   filter on the left still answers the other question, which
-                   is "show me only this one". -->
-              <div class="seg-btns" id="regGroupSeg" role="group" aria-label="How to lay the register out">
-                <button type="button" data-reggroup="flat" aria-pressed="true">One list</button>
-                <button type="button" data-reggroup="city" aria-pressed="false">By city</button>
-              </div>
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
@@ -3303,10 +3276,12 @@ window.stopCheck=false;
   var NO_CAT = '__uncategorised__';
 
   /* ══════════ THE ACTIVE CAPITAL CITY ══════════
-     Not a filter — the book the whole tool is open on. '' means every city at
-     once, a name means that one, and NO_CAT means the ones nobody has filed.
-     Remembered per browser, like the sort: which city you work in is a fact
-     about you, not about the book, so it never rides inside the shared store.
+     Not a filter — the book the whole tool is open on, and always exactly one
+     of them. A name means that city and NO_CAT means the ones nobody has
+     filed; '' only ever happens while the register is empty and there is no
+     city to be in. Remembered per browser, like the sort: which city you work
+     in is a fact about you, not about the book, so it never rides inside the
+     shared store.
 
      It is deliberately NOT applied inside loadProps(): everything that writes
      reads the whole list first and writes it back whole, and a loadProps() that
@@ -3326,7 +3301,7 @@ window.stopCheck=false;
     return list.filter(function(e){ return (e.category||'').trim() === activeCity; });
   }
   function cityLabel(){
-    return !activeCity ? 'All capital cities'
+    return !activeCity ? 'None yet'
          : activeCity === NO_CAT ? 'Not set' : activeCity;
   }
   /* Switching city is switching books, so anything on screen that belongs to
@@ -3354,19 +3329,19 @@ window.stopCheck=false;
     var cats = categoriesOf(list);
     var hasUncat = list.some(function(e){ return !(e.category||'').trim(); });
 
-    /* The tabs are the cities that exist plus the two ways of saying "the rest
-       of them". A city that has just been renamed away under your feet drops
-       the scope back to all of them rather than leaving you on an empty book. */
-    var choices = [{ v:'', t:'All cities' }]
-      .concat(cats.map(function(c){ return { v:c, t:c }; }))
+    /* The tabs are the cities that exist, plus the unfiled ones under their
+       own name when there are any. There is no "all of them": the tool is one
+       city at a time, so a city that has just been renamed away under your
+       feet lands you on the first city rather than on nothing. */
+    var choices = cats.map(function(c){ return { v:c, t:c }; })
       .concat(hasUncat ? [{ v:NO_CAT, t:'Not set' }] : []);
-    if (activeCity && !choices.some(function(o){ return o.v === activeCity; })) {
-      activeCity = '';
-      try { localStorage.setItem(CITY_KEY, ''); } catch (e) {}
+    if (!choices.some(function(o){ return o.v === activeCity; })) {
+      activeCity = choices.length ? choices[0].v : '';
+      try { localStorage.setItem(CITY_KEY, activeCity); } catch (e) {}
     }
     /* One city is not a choice, so the switcher stays out of the header until
        there is a second thing it could be set to. */
-    $('cityTabs').innerHTML = choices.length > 2
+    $('cityTabs').innerHTML = choices.length > 1
       ? choices.map(function(o){
           return '<button type="button" data-city="'+esc(o.v)+'" aria-pressed="'+
                  (o.v === activeCity ? 'true' : 'false')+'">'+esc(o.t)+'</button>';
@@ -3420,35 +3395,6 @@ window.stopCheck=false;
     catch (e) { /* storage blocked — it just won't be remembered */ }
     renderProps();
   }
-
-  /* Whether the register is one list or a block per capital city. Remembered
-     for the same reason the sort is: it is how you read the book, and losing
-     it on every reload is the sort of thing you stop bothering to set. Its own
-     key, and a view preference — it never rides inside the book. */
-  var REG_GROUP_KEY = 'pp-irr-reggroup-v1';
-  var regGroupBy = 'flat';
-  try {
-    if (localStorage.getItem(REG_GROUP_KEY) === 'city') regGroupBy = 'city';
-  } catch (e) { /* storage blocked — it just starts as one list */ }
-  function setRegGroup(mode){
-    if (mode !== 'city') mode = 'flat';
-    if (mode === regGroupBy) return;
-    regGroupBy = mode;
-    try { localStorage.setItem(REG_GROUP_KEY, regGroupBy); }
-    catch (e) { /* storage blocked — it just won't be remembered */ }
-    syncRegGroupSeg();
-    renderProps();
-  }
-  function syncRegGroupSeg(){
-    var seg = $('regGroupSeg'); if (!seg) return;
-    Array.prototype.forEach.call(seg.querySelectorAll('button[data-reggroup]'), function(b){
-      b.setAttribute('aria-pressed', b.dataset.reggroup === regGroupBy ? 'true' : 'false');
-    });
-  }
-  /* The capital city a row is filed under. Blank is a real answer — a property
-     can be on the register before anybody has filed it — so it gets a named
-     block at the end rather than vanishing out of the split. */
-  function cityOf(e){ return String(e.category||'').trim(); }
 
   /* The suburb isn't stored — it's whatever follows the last comma in the
      address, which is how every row in the book is written. Rows without one
@@ -3612,9 +3558,10 @@ window.stopCheck=false;
   /* The book is realised deals, so the dimensions that matter are when it sold
      and how long it was held — neither of which the old category-only table
      could show. Sold year and hold sort by their own order; the rest by size. */
+  /* No "capital city" cut any more: the whole overview is one city, so that
+     breakdown could only ever draw a single row restating the header. Suburb
+     is the cut that means something inside one city, so it leads. */
   var OV_GROUPS = {
-    category: { label:'Capital city',    byCount:true,
-      of:function(d){ return (d.e.category||'').trim() || 'Not set'; } },
     suburb:   { label:'Suburb',      byCount:true,
       of:function(d){ return suburbOf(d.e) || '—'; } },
     soldYear: { label:'Sold year',   byCount:false,
@@ -3627,7 +3574,7 @@ window.stopCheck=false;
              : y < 8 ? '6–8 yrs' : y < 10 ? '8–10 yrs' : '10 yrs +';
       } }
   };
-  var ovGroupBy = 'category';
+  var ovGroupBy = 'suburb';
 
   function groupRows(data){
     var g = OV_GROUPS[ovGroupBy], buckets = {};
@@ -3916,17 +3863,14 @@ window.stopCheck=false;
     $('badgeProps').textContent = scoped.length;
 
     syncFilterChrome(f);
-    /* Splitting by city inside one city is a heading over the whole table, so
-       the switch goes away and the list reads flat while a city is in force. */
-    $('regGroupSeg').hidden = !!activeCity;
 
     if (!book.length || !all.length) {
       $('propCount').textContent = '';
       $('filtCount').textContent = '';
       $('propsBody').innerHTML = book.length
         ? '<div class="empty"><h3>Nothing in '+esc(cityLabel())+'</h3>'+
-          '<p>No property is filed under this capital city. Choose <strong>All cities</strong> '+
-          'in the header, or tick a few over there and use <strong>Move city</strong> to file them here.</p></div>'
+          '<p>No property is filed under this capital city. Choose another one in the header, '+
+          'or tick a few over there and use <strong>Move city</strong> to file them here.</p></div>'
         : '<div class="empty"><h3>No properties yet</h3>'+
           '<p>Choose <strong>+ Add properties</strong> to paste rows or upload a spreadsheet — or work out a deal with <strong>Quick IRR</strong> and save it.</p></div>';
       syncSelBar();
@@ -4005,37 +3949,20 @@ window.stopCheck=false;
       });
     }
 
-    /* ── split by capital city ──
-       A second pass in front of the sort the header is showing, so the rows
-       keep the order you asked for inside the city they belong to. Array sort
-       is stable, which is what makes one pass on top of the other work. */
-    var grouped = (regGroupBy === 'city') && !activeCity;
-    if (grouped) {
-      data.sort(function(a,b){
-        var x = cityOf(a.e), y = cityOf(b.e);
-        if (x === y) return 0;
-        if (!x) return 1;       // unfiled sits at the end, like every empty value
-        if (!y) return -1;
-        return x.localeCompare(y);
-      });
-    }
-
-    var cityCol = !activeCity;
     var rowHtml = function(d){
       var e = d.e;
       var irr = d.irr === null ? '—' : pct(d.irr);
       var net = d.net === null ? '—' : signed(d.net);
       var hold = d.hold === null ? '—' : d.hold.toFixed(2);
-      var cat = (e.category||'').trim();
       var on = picked.indexOf(e.id) >= 0;
       return '<tr'+(on?' class="is-picked"':'')+'>'+
         '<td class="pick"><input type="checkbox" data-pick="'+e.id+'"'+
           (on?' checked':'')+
           ' aria-label="Select '+esc(e.name||'this property')+'"></td>'+
-        /* The capital city has its own column now, so it is no longer a chip
-           under the name. The chips that are left are the ones with no column
-           of their own: a note, what the sold check said, and the reason a
-           property is outside the advice. */
+        /* No capital city here, as a column or as a chip: the register is one
+           city at a time and the header says which. The chips that are left
+           are the ones with nothing else to carry them: a note, what the sold
+           check said, and the reason a property is outside the advice. */
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
           ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +
           ((e.soldCheck||'').trim() ? '<br><span class="cat check-chip">Sold check: '+esc(e.soldCheck)+'</span>' : '') +
@@ -4052,9 +3979,6 @@ window.stopCheck=false;
             ? '<br><span class="cat aside-chip">outside of advice'+
               ((e.outsideReason||'').trim() ? ' — '+esc(e.outsideReason) : '')+'</span>'
             : '') +'</td>'+
-        /* Inside one city the column says the same word on every row, so it
-           goes — the header already states which book you are in. */
-        (cityCol ? '<td class="city">'+(cat ? esc(cat) : '<span class="faint">—</span>')+'</td>' : '')+
         pdCell(e.purchasePrice, new Date(e.purchaseDate))+ (d.held ? heldCell() : soldCell(e))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
@@ -4078,13 +4002,12 @@ window.stopCheck=false;
 
     var cols = [
       { key:'name',     label:'Property',     cls:'' },
-      { key:'category', label:'Capital city', cls:'', only:'all' },
       { key:'purchase', label:'Purchased',    cls:'num' },
       { key:'sold',     label:'Sold',       cls:'num' },
       { key:'hold',     label:'Hold',       cls:'num' },
       { key:'net',      label:'Net profit', cls:'num' },
       { key:'irr',      label:'IRR',        cls:'num' }
-    ].filter(function(c){ return c.only !== 'all' || cityCol; });
+    ];
     var head = cols.map(function(c){
       var on = (sortKey === c.key);
       return '<th scope="col"'+(c.cls?' class="'+c.cls+'"':'')+
@@ -4097,48 +4020,12 @@ window.stopCheck=false;
     var shown = data.map(function(d){ return d.e.id; });
     var onNow = shown.filter(function(id){ return picked.indexOf(id) >= 0; }).length;
 
-    /* One <tbody> per city rather than one band row loose in a single body:
-       the grouping is then something the markup says and not only something
-       the shading implies, and the zebra restarts inside each block. */
-    var GRP_SPAN = cols.length + 2;   // the tick column and the actions column
-    function cityBand(city, block){
-      var irrs = [], net = 0, netN = 0;
-      block.forEach(function(d){
-        if (d.irr !== null && isFinite(d.irr)) irrs.push(d.irr);
-        if (d.net !== null && isFinite(d.net)) { net += d.net; netN++; }
-      });
-      var mi = median(irrs);
-      return '<tr class="grp"><th scope="rowgroup" colspan="'+GRP_SPAN+'">'+
-        '<span class="grp-name">'+(city ? esc(city) : 'Not set')+'</span>'+
-        '<span class="grp-note">'+block.length+' propert'+(block.length===1?'y':'ies')+
-          (mi === null ? '' : ' · median IRR ' + pct(mi)) +
-          (netN ? ' · net ' + '<span class="'+(net<0?'neg':'pos')+'" title="'+esc(aud(net))+'">'+
-                  audShort(net)+'</span>' : '')+
-        '</span></th></tr>';
-    }
-    var body;
-    if (grouped) {
-      var parts = [], i = 0;
-      while (i < data.length) {
-        var c = cityOf(data[i].e), j = i;
-        while (j < data.length && cityOf(data[j].e) === c) j++;
-        var block = data.slice(i, j);
-        parts.push('<tbody>' + cityBand(c, block) +
-                   block.map(rowHtml).join('') + '</tbody>');
-        i = j;
-      }
-      body = parts.join('');
-    } else {
-      body = '<tbody>' + data.map(rowHtml).join('') + '</tbody>';
-    }
-
-    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table'+
-      (grouped ? ' class="grouped"' : '')+'><thead><tr>'+
+    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
       '<th scope="col" class="pick-all"><input type="checkbox" id="selAll"'+
         (onNow && onNow === shown.length ? ' checked' : '')+
         ' aria-label="Select every property shown"></th>'+head+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
-      '</tr></thead>'+body+'</table></div>';
+      '</tr></thead><tbody>'+data.map(rowHtml).join('')+'</tbody></table></div>';
     /* indeterminate is a property, not an attribute, so it can only be set
        once the element exists */
     $('selAll').indeterminate = onNow > 0 && onNow < shown.length;
@@ -7212,7 +7099,7 @@ window.stopCheck=false;
         if (!rows.length) {
           $('histBody').innerHTML = '<div class="empty"><h3>Nothing logged yet</h3>'+
             '<p>'+(activeCity
-              ? 'Nothing has changed in ' + esc(cityLabel()) + '. Choose <strong>All cities</strong> in the header for the whole log.'
+              ? 'Nothing has changed in ' + esc(cityLabel()) + '. Another city in the header may have a log of its own.'
               : 'Changes are recorded from now on — archiving, restoring, re-filing and deleting.')+'</p></div>';
           return;
         }
@@ -7621,11 +7508,6 @@ window.stopCheck=false;
     });
     drawOverview();
   });
-  $('regGroupSeg').addEventListener('click', function(ev){
-    var b = ev.target.closest && ev.target.closest('button[data-reggroup]');
-    if (b) setRegGroup(b.dataset.reggroup);
-  });
-  syncRegGroupSeg();
   $('tab-register').parentNode.addEventListener('keydown', function(ev){
     var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
     if (ev.key === 'ArrowRight') to = TABS[(i+1)%n];
