@@ -208,37 +208,46 @@ header img{height:40px;width:auto;display:block}
 /* Sized to sit beside the heading rather than stretch across the card: the
    heading is small, and an input three times its width stops reading as its
    companion and starts competing with it. */
-/* The Show dropdown sits in a card head now, beside a heading and a search
-   box, so it is sized to them rather than to a panel column: it takes its own
-   width instead of filling one, and matches the search box's height. */
-#showDrop{flex:0 0 auto}
-.dd-btn.dd-inline{
-  width:auto;min-height:36px;padding:7px 12px;font-size:14px;line-height:20px;
-  border-radius:var(--r-md);white-space:nowrap;
-}
-.dd-btn.dd-inline .dd-pre{color:var(--muted);font-weight:600}
-#showDrop .dd-menu{left:auto;right:0;min-width:180px}
 
 /* ═══ THE FILTER BAR ═══
-   One strip above the tabs, read by the Register and the Overview alike. The
-   fields are laid out in a row and wrap on a narrow screen; the Clear button
-   is pushed to the far end so it never sits mid-row looking like a field. */
+   One strip above the tabs, read by the Register and the Overview alike, and
+   one row: six fields side by side, every one of them in sight.
+
+   They grow from a basis of zero rather than from a width, which is what
+   keeps them on one line: a wrapping flex row decides where to break on the
+   flex-basis, BEFORE any shrinking, so six fields each asking for their
+   comfortable width wrap at 1280 even though they would all have fitted once
+   shrunk. From zero the break is decided on the min-widths instead, and the
+   grow numbers then share out the slack in proportion — an address gets more
+   of it than a number of years. They wrap at about 1200px, where six across
+   genuinely stops fitting. */
 .filter-bar{
   background-color:var(--panel);background-image:var(--grad-sheen);
   border:1px solid var(--border);border-radius:var(--r-md);
   padding:var(--sp-3) var(--sp-4);box-shadow:var(--edge);
 }
 .fb-row{display:flex;align-items:flex-end;gap:var(--sp-3);flex-wrap:wrap}
-.fb-row.fb-sub{margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--border)}
-.fb-field{flex:0 1 190px;min-width:140px;margin:0}
-.fb-field.fb-search{flex:0 1 260px}
-.fb-field label{margin-bottom:4px}
-.fb-field input,.fb-field select{min-height:36px;padding:7px 12px;font-size:14px}
+.fb-field{margin:0;flex:22 1 0;min-width:130px}
+.fb-field.fb-search{flex:30 1 0;min-width:150px}
+.fb-field.fb-show{flex:18 1 0;min-width:116px}
+.fb-field.fb-date{flex:24 1 0;min-width:142px}
+.fb-field.fb-yrs{flex:14 1 0;min-width:92px}
+.fb-field label{margin-bottom:4px;white-space:nowrap}
+/* the tickbox dropdown wears the same shape as the fields beside it */
+.fb-show .dd-btn{height:36px;min-height:0;padding:7px 10px;font-size:14px;line-height:20px}
+.fb-show .dd-menu{min-width:170px}
+/* an explicit height, not a floor: a date input is a couple of pixels taller
+   than a text one, and the row is aligned on its bottom edge, so the floor
+   left the two date labels sitting higher than the other four */
+.fb-field input,.fb-field select{height:36px;min-height:0;padding:7px 10px;font-size:14px}
+.fb-field.fb-yrs input{padding-right:30px}
+.fb-field.fb-yrs .suffix span{right:9px;font-size:12px}
 /* the buttons line up with the bottom of the fields, not with their labels */
-.filter-bar .fb-more,.filter-bar .fb-clear,.filter-bar .band-chip{min-height:36px;flex:none}
-.filter-bar .fb-more{display:inline-flex;align-items:center;gap:var(--sp-2)}
-.filter-bar .fb-clear{margin-left:auto}
-@media (max-width:520px){ .fb-field{flex:1 1 100%} .filter-bar .fb-clear{margin-left:0} }
+.filter-bar .fb-clear,.filter-bar .band-chip{min-height:36px;flex:none}
+@media (max-width:520px){
+  .fb-field,.fb-field.fb-search,.fb-field.fb-date{flex:1 1 100%}
+  .fb-field.fb-yrs{flex:1 1 calc(50% - var(--sp-3));min-width:0}
+}
 label{display:block;font-size:12px;line-height:16px;font-weight:600;color:var(--muted);margin-bottom:6px}
 input,select,textarea{
   width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border-strong);
@@ -897,34 +906,48 @@ details .body strong{color:var(--text)}
             <label for="fSearch">Search</label>
             <input id="fSearch" type="search" placeholder="Name or address" autocomplete="off">
           </div>
-          <div class="fb-field">
-            <label for="fSuburb">Suburb</label>
-            <select id="fSuburb"><option value="">All suburbs</option></select>
+          <!-- Which kinds of property the list is about. Sold, held and
+               archived are three states one property can be in, so this is
+               tickboxes rather than one choice — and the archive stopped
+               needing a tab of its own the moment it became one of them.
+               It is the one control in this bar the Overview does not read:
+               the Overview answers the same question with its own In advice /
+               Archived / Both, so this drops out of the row over there rather
+               than sitting on a tab it has no effect on. -->
+          <div class="fb-field fb-show" id="fbShow">
+            <label for="btnShow" id="showLbl">Show</label>
+            <div class="dd" id="showDrop">
+              <button type="button" class="dd-btn" id="btnShow" aria-expanded="false"
+                      aria-controls="showMenu" aria-describedby="showLbl">
+                <span id="showText">Sold</span>
+                <span class="dd-chev" aria-hidden="true">&#9662;</span>
+              </button>
+              <div class="dd-menu" id="showMenu" role="group" aria-labelledby="showLbl" hidden>
+                <label><input type="checkbox" data-show="sold" checked><span>Sold</span></label>
+                <label><input type="checkbox" data-show="held"><span>Held</span></label>
+                <label><input type="checkbox" data-show="archived"><span>Archived</span></label>
+                <label class="dd-sep"><input type="checkbox" data-show="all"><span>All</span></label>
+              </div>
+            </div>
           </div>
-          <!-- Sold dates and hold length are the occasional cuts, so they fold
-               away — but a filter hidden behind a closed dropper is the very
-               thing this bar exists to prevent, so the button counts what is
-               set inside it and the row opens itself when anything is. -->
-          <button type="button" class="btn-ghost btn-sm fb-more" id="btnRefine"
-                  aria-expanded="false" aria-controls="refineRow">
-            <span id="refineText">Refine</span><span class="dd-chev" aria-hidden="true">&#9662;</span>
-          </button>
+          <!-- Everything on one line. These four were behind a Refine dropper
+               and a filter folded out of sight is one you forget is on, so
+               they are simply here — narrower than the two above, because a
+               date and a number need less room than an address. -->
+          <div class="fb-field fb-date"><label for="fSoldFrom">Sold from</label>
+            <input id="fSoldFrom" type="date"></div>
+          <div class="fb-field fb-date"><label for="fSoldTo">Sold to</label>
+            <input id="fSoldTo" type="date"></div>
+          <div class="fb-field fb-yrs"><label for="fHoldMin">Hold min</label>
+            <div class="suffix"><input id="fHoldMin" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
+          <div class="fb-field fb-yrs"><label for="fHoldMax">Hold max</label>
+            <div class="suffix"><input id="fHoldMax" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
           <div id="bandChipWrap" hidden>
             <button type="button" class="band-chip" id="bandChip">
               <span id="bandChipText"></span><span aria-hidden="true">×</span>
             </button>
           </div>
           <button type="button" class="btn-ghost btn-sm fb-clear" id="btnClearFilters" hidden>Clear</button>
-        </div>
-        <div class="fb-row fb-sub" id="refineRow" hidden>
-          <div class="fb-field"><label for="fSoldFrom">Sold from</label>
-            <input id="fSoldFrom" type="date"></div>
-          <div class="fb-field"><label for="fSoldTo">Sold to</label>
-            <input id="fSoldTo" type="date"></div>
-          <div class="fb-field"><label for="fHoldMin">Hold min</label>
-            <div class="suffix"><input id="fHoldMin" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
-          <div class="fb-field"><label for="fHoldMax">Hold max</label>
-            <div class="suffix"><input id="fHoldMax" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
         </div>
       </div>
 
@@ -999,27 +1022,6 @@ details .body strong{color:var(--text)}
                  third, unrelated control. -->
             <div class="head-left">
               <h2 id="props-h">Register</h2>
-              <!-- Which kinds of property the list is about. Sold, held and
-                   archived are three states one property can be in, so this is
-                   tickboxes rather than one choice — and the archive stopped
-                   needing a tab of its own the moment it became one of them.
-                   It sits on the Register because only the Register reads it;
-                   the Overview answers the same question for itself. -->
-              <div class="dd" id="showDrop">
-                <label for="btnShow" class="sr-only" id="showLbl">Show properties</label>
-                <button type="button" class="dd-btn dd-inline" id="btnShow" aria-expanded="false"
-                        aria-controls="showMenu" aria-describedby="showLbl">
-                  <span class="dd-pre">Show</span>
-                  <span id="showText">Sold</span>
-                  <span class="dd-chev" aria-hidden="true">&#9662;</span>
-                </button>
-                <div class="dd-menu" id="showMenu" role="group" aria-labelledby="showLbl" hidden>
-                  <label><input type="checkbox" data-show="sold" checked><span>Sold</span></label>
-                  <label><input type="checkbox" data-show="held"><span>Held</span></label>
-                  <label><input type="checkbox" data-show="archived"><span>Archived</span></label>
-                  <label class="dd-sep"><input type="checkbox" data-show="all"><span>All</span></label>
-                </div>
-              </div>
             </div>
             <div class="btns" style="margin:0">
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
@@ -3223,6 +3225,8 @@ window.stopCheck=false;
        the other three it goes away rather than sitting there implying it is
        doing something to what you are looking at. */
     $('filterBar').hidden = !(name === 'register' || name === 'overview');
+    /* Show is the one control in the bar the Overview does not read. */
+    $('fbShow').hidden = (name !== 'register');
     if (name === 'history') showHistory();   // always the live log, never a stale one
     if (name === 'overview' && ovStale) drawOverview();
     /* The how-to shows itself the first time this browser opens the tab —
@@ -3353,7 +3357,6 @@ window.stopCheck=false;
     }
     leaveCompare();
     picked = [];
-    $('fSuburb').value = '';
     irrBand = null;
     renderProps();
     if (chk) chkRun(); else syncCheckTab();
@@ -3393,48 +3396,24 @@ window.stopCheck=false;
         : 'Rename ' + cityLabel() + ' across every property filed under it';
     }
 
-    /* The suburbs are the ones in the book you are in. Left on the whole store
-       you could pick a suburb from Brisbane while looking at Adelaide and the
-       register would simply go blank with nothing saying why. */
-    var sub = $('fSuburb'), keepSub = sub.value, subs = suburbsOf(cityProps(list));
-    sub.innerHTML = '<option value="">All suburbs</option>' +
-      subs.map(function(s){ return '<option value="'+esc(s)+'">'+esc(s)+'</option>'; }).join('');
-    sub.value = [].some.call(sub.options, function(o){ return o.value === keepSub; }) ? keepSub : '';
-
     $('catList').innerHTML = cats.map(function(c){ return '<option value="'+esc(c)+'"></option>'; }).join('');
   }
   /* The band is set from the chart, so the panel shows it as a chip you can
      clear — otherwise a filter set elsewhere would be invisible from here. */
-  var REFINE_IDS = ['fSoldFrom','fSoldTo','fHoldMin','fHoldMax'];
-  function refineOn(){
-    return REFINE_IDS.filter(function(id){ return String($(id).value).trim() !== ''; }).length;
-  }
-  function openRefine(open){
-    $('refineRow').hidden = !open;
-    $('btnRefine').setAttribute('aria-expanded', open ? 'true' : 'false');
-  }
   function syncFilterChrome(f){
     var on = f.band !== null;
     $('bandChipWrap').hidden = !on;
     if (on) $('bandChipText').textContent = 'IRR ' + IRR_BINS[f.band].full;
     $('btnClearFilters').hidden = !anyFilterOn(f);
-    /* A filter folded out of sight is the thing this bar exists to prevent, so
-       the button carries a count and the row shows itself whenever one of the
-       four is set. It can still be closed by hand once they are cleared. */
-    var n = refineOn();
-    $('refineText').textContent = n ? 'Refine · ' + n : 'Refine';
-    if (n && $('refineRow').hidden) openRefine(true);
   }
   /* Clear clears the filters. It does not change which city you are in — that
      is the header's job, and a Clear that quietly moved you to another book
      would be the most surprising button on the page. */
   function clearFilters(){
     ['fSearch','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){ $(id).value = ''; });
-    $('fSuburb').value = '';
     showKinds = { sold:true, held:false, archived:false };
     syncShowChrome();
     irrBand = null;
-    openRefine(false);     // nothing left inside it to see
     renderProps();
   }
   /* sorting — null means the order they were added in.
@@ -3457,15 +3436,11 @@ window.stopCheck=false;
 
   /* The suburb isn't stored — it's whatever follows the last comma in the
      address, which is how every row in the book is written. Rows without one
-     group under "—" rather than disappearing. */
+     group under "—" rather than disappearing. There is no suburb filter any
+     more; this is what the Overview groups its breakdown by. */
   function suburbOf(e){
     var n = String(e.name||''), i = n.lastIndexOf(',');
     return i < 0 ? '' : n.slice(i+1).trim();
-  }
-  function suburbsOf(list){
-    var seen = {}, out = [];
-    list.forEach(function(e){ var s = suburbOf(e); if (s && !seen[s]) { seen[s]=1; out.push(s); } });
-    return out.sort(function(a,b){ return a.localeCompare(b); });
   }
   var irrBand = null;        // index into IRR_BINS, set by clicking a bar
   /* Which side of the advice you are looking at. It stopped being a filter the
@@ -3508,7 +3483,6 @@ window.stopCheck=false;
       /* the city comes from the header, so every view that reads the filters
          is scoped to it without each one having to remember to ask */
       cat: activeCity,
-      suburb: $('fSuburb').value,
       soldFrom: $('fSoldFrom').value,
       soldTo: $('fSoldTo').value,
       holdMin: numOrNull($('fHoldMin').value),
@@ -3520,7 +3494,7 @@ window.stopCheck=false;
   /* f.cat is not in here on purpose: the city is the scope, not a filter, and
      counting it would leave Clear showing permanently with nothing to clear. */
   function anyFilterOn(f){
-    return !!(!showIsDefault() || f.q || f.suburb || f.soldFrom || f.soldTo ||
+    return !!(!showIsDefault() || f.q || f.soldFrom || f.soldTo ||
               f.holdMin !== null || f.holdMax !== null ||
               f.band !== null);
   }
@@ -3534,7 +3508,6 @@ window.stopCheck=false;
       if (!f.show[kindOf(e)]) return false;
       if (sentinel && f.cat === NO_CAT) { if ((e.category||'').trim()) return false; }
       else if (f.cat && (e.category||'').trim() !== f.cat) return false;
-      if (f.suburb && suburbOf(e) !== f.suburb) return false;
       if (f.q && String(e.name||'').toLowerCase().indexOf(f.q) < 0) return false;
       /* a held property has no sold date: a date filter in use excludes it,
          an unused one must not */
@@ -6634,13 +6607,12 @@ window.stopCheck=false;
   });
 
   // filters
-  ['fSearch','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
+  ['fSearch','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
     var el = $(id);
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', renderProps);
   });
   $('btnClearFilters').addEventListener('click', clearFilters);
   $('bandChip').addEventListener('click', function(){ irrBand = null; renderProps(); });
-  $('btnRefine').addEventListener('click', function(){ openRefine($('refineRow').hidden); });
 
   // the selection checkboxes live in a table that is rebuilt on every render
   document.addEventListener('change', function(ev){
@@ -6807,7 +6779,6 @@ window.stopCheck=false;
     L.push(['Capital city', cityLabel()]);
     L.push(['Scope', data.length + ' of ' + all.length + ' properties']);
     L.push(['Basis', basisText()]);
-    if (f.suburb) L.push(['Suburb filter', f.suburb]);
     if (f.q) L.push(['Search', f.q]);
     if (f.soldFrom || f.soldTo) L.push(['Sold between', (f.soldFrom||'any') + ' and ' + (f.soldTo||'any')]);
     if (f.holdMin !== null || f.holdMax !== null) L.push(['Hold between', (f.holdMin===null?'any':f.holdMin) + ' and ' + (f.holdMax===null?'any':f.holdMax) + ' yrs']);
