@@ -846,7 +846,6 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
     <div class="pvr">
       <div class="pvr-top">
         <div class="pvr-hero-txt"><h2 class="pvr-h1">Price vs. Rent</h2><p class="pvr-lede">Every Victorian LGA measured from its own price peak, so markets with different histories compare fairly.</p></div>
-        <section class="pvr-kpis" id="pvrKpis" aria-label="Headline figures"></section>
       </div>
       <section class="pvr-card pvr-controls" aria-label="Controls">
         <div class="pvr-seg" id="pvrSeg" role="group" aria-label="Segment"><button data-s="house" aria-pressed="true">Houses</button><button data-s="unit" aria-pressed="false">Units</button></div>
@@ -1639,15 +1638,9 @@ function renderPVR(){
   const FILT={all:'across Victoria',metro:'in metro Melbourne',near:'within 2 hours of Melbourne',far:'beyond 2 hours of Melbourne'}[PVRF];
   const AREA={metro:'Metro',near:'Regional',far:'Regional'};
   const tot=out.length+skip.flat+skip.norent+skip.thin+skip.rentdown;
-  const byGap=rows.slice().sort((a,b)=>b.gap-a.gap), byGpy=rows.slice().sort((a,b)=>b.gpy-a.gpy);
   const near=out.filter(r=>r.area==='near').sort((a,b)=>b.gap-a.gap);
 
-  // ---- headline figures (qualifying markets)
-  const kv=(label,value,sub,teal,dark)=>'<div class="pvr-kpi'+(dark?' dark':'')+'"><div class="k">'+label+'</div><div class="v'+(teal?' t':'')+'">'+value+'</div><div class="s">'+sub+'</div></div>';
-  const g0=byGap[0], y0=byGpy[0];
-  document.getElementById('pvrKpis').innerHTML=
-    kv('Widest gap', g0?((g0.gap>0?'+':'')+g0.gap.toFixed(1)+' pts'):'&ndash;', g0?(pvrNm(g0.l)+' &middot; price '+pvrPC(g0.price)+', rent '+pvrPC(g0.rent)):'none '+FILT, true)+
-    kv('Fastest yield lift', y0?((y0.gpy>0?'+':'')+y0.gpy.toFixed(1)+'% a yr'):'&ndash;', y0?(pvrNm(y0.l)+' &middot; over '+y0.stag+' years'):'none '+FILT, true);
+  // Widest gap / Fastest yield lift cards removed (Shaene 2026-10-27)
 
   // ---- price and rent for the selected market: whole history, or since the last peak
   const G=GROWTH[cur]&&GROWTH[cur][seg], idx=document.getElementById('pvrIdx');
