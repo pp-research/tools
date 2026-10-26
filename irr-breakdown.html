@@ -397,11 +397,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
 /* The Overview's scope line is a sentence, so it wraps — and it sits on a
    pale teal so it reads as a statement about the figures below rather than as
-   another caption among them. Drawn from --accent-rgb rather than a fixed
-   colour, so it follows the theme's teal in both light and dark instead of
-   needing a second rule to correct it. */
+   another caption among them. Full card width, squared off against the row of
+   cards under it. Drawn from --accent-rgb rather than a fixed colour, so it
+   follows the theme's teal in both light and dark instead of needing a second
+   rule to correct it. */
 #ovScope{
-  max-width:84ch;font-size:13px;line-height:19px;color:var(--text);
+  font-size:13px;line-height:19px;color:var(--text);
   background:rgba(var(--accent-rgb),.10);
   border:1px solid rgba(var(--accent-rgb),.30);
   border-radius:var(--r-md);padding:9px 12px;margin-bottom:var(--sp-4);
