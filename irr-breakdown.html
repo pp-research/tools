@@ -389,8 +389,19 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .filters input,.filters select{min-height:40px;padding:8px 12px;font-size:14px}
 .filters select{padding-right:34px}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
-/* the Overview's scope line is a sentence now, so it is allowed to wrap */
-#ovScope{max-width:84ch}
+/* The Overview's scope line is a sentence, so it wraps — and it sits on a
+   pale blue so it reads as a statement about the figures below rather than as
+   another caption among them. Blue, not the teal accent: the accent means
+   "this is on" everywhere else on the page, and this is not a control. */
+#ovScope{
+  max-width:84ch;font-size:13px;line-height:19px;color:var(--text);
+  background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.28);
+  border-radius:var(--r-md);padding:9px 12px;margin-bottom:var(--sp-4);
+}
+:root[data-theme="light"] #ovScope{
+  background:rgba(37,99,235,.07);border-color:rgba(37,99,235,.22);
+}
+#ovScope:empty{display:none}
 /* the banner sits between the card head and the filters, so the container
    owns the spacing on both sides and the inner note drops its own */
 #parseMsg:not(:empty){margin-top:var(--sp-4);margin-bottom:var(--sp-6)}
@@ -1056,15 +1067,14 @@ details .body strong{color:var(--text)}
         <section class="card" aria-labelledby="ov-h">
           <div class="card-head">
             <h2 id="ov-h">Overview</h2>
+            <!-- No scope switch of its own any more. It used to carry In
+                 advice / Archived / Both, which was the same question as the
+                 Register's Show asked in coarser words — so setting Show to
+                 "Sold and Held" changed the Register and left this tab alone,
+                 which is exactly what it looked like it should not do. One
+                 control now, on the Register, and this tab says what it is
+                 set to. Archived is still reachable: tick it in Show. -->
             <div class="btns" style="margin:0">
-              <!-- The overview answers a question about the book, not about the
-                   list you happen to be looking at, so it carries its own side
-                   of the advice line rather than inheriting the tab's. -->
-              <div class="seg-btns" id="ovScopeSeg" role="group" aria-label="Which properties to summarise">
-                <button type="button" data-ovscope="in"  aria-pressed="true">In advice</button>
-                <button type="button" data-ovscope="out" aria-pressed="false">Archived</button>
-                <button type="button" data-ovscope="all" aria-pressed="false">Both</button>
-              </div>
               <button type="button" class="btn-ghost btn-sm" id="btnOvCsv">Export CSV</button>
             </div>
           </div>
@@ -3657,18 +3667,6 @@ window.stopCheck=false;
     var undo = $('btnDiscardAssump'); if (undo) undo.hidden = !dirty;
   }
 
-  /* Which side of the advice line the overview is summarising. It is the
-     overview's own, not the tab's: you read the archive to check a decision and
-     the advice to report on one, and wanting both at once is normal. */
-  var ovScopeSel = 'in';
-  /* The overview's switch is still In advice / Archived / Both — a different
-     question from the list's, which is about sold versus held. Mapped into the
-     same three kinds so there is only one filter shape in the code. */
-  function ovShowKinds(){
-    if (ovScopeSel === 'out') return { sold:false, held:false, archived:true };
-    if (ovScopeSel === 'all') return { sold:true, held:true, archived:true };
-    return { sold:true, held:true, archived:false };
-  }
   var ovStale = true;
   /* Striking 597 breakdowns on every tick of a checkbox would cost more than
      the whole list render does, so the overview is worked out when it is on
@@ -3680,8 +3678,9 @@ window.stopCheck=false;
   function drawOverview(){
     var all = cityProps(loadProps());
     if (!all.length) { ovStale = false; renderOverview([], [], 0); return; }
+    /* No override on f.show any more: Show is the only answer to "which
+       kinds", and this tab reads it like the Register does. */
     var f = readFilters();
-    f.show = ovShowKinds();         // the one filter the overview overrides
     var opts = readOpts();
     var derived = filterEntries(all, f).map(function(e){ return deriveOne(e, opts); });
     var spread = derived.filter(function(d){ return passDerived(d, f, false); });
@@ -3690,11 +3689,16 @@ window.stopCheck=false;
     ovStale = false;
     renderOverview(data, spread, scoped.length);
   }
-  /* Which side of the advice line these numbers are, in words. */
-  /* "or", not "and": one property is on one side of the line, and Both means
-     the line is being ignored rather than that a property is on both sides. */
-  var OV_KIND = { in:'in advice', out:'set outside of advice',
-                  all:'in advice or archived' };
+  /* Which kinds Show is set to, shouted. The kind is the thing most easily
+     misread off a page of numbers — a median over sold and held is not the
+     same figure as a median over sold — so it is the one word in the line
+     that is allowed to raise its voice. */
+  function showWordsCaps(){
+    var on = SHOW_KINDS.filter(function(k){ return showKinds[k]; });
+    if (!on.length) return 'NO';
+    if (on.length === SHOW_KINDS.length) return 'ALL';
+    return on.map(function(k){ return k.toUpperCase(); }).join(' and ');
+  }
   /* A date the way the rest of the tool writes one, not the way the input
      stores it: 14 Jun 2021, never 2021-06-14. */
   function dmy(s){
@@ -3710,20 +3714,29 @@ window.stopCheck=false;
      than the defaults should say so wherever it is read. */
   function ovLine(shown, totalSaved){
     var f = readFilters(), all = (shown === totalSaved);
-    var kind = OV_KIND[ovScopeSel] || OV_KIND.in, city = activeCity ? ' ' + cityLabel() : '';
-    /* "all 0 properties" is not a sentence, so an empty scope says so plainly
-       — and still goes on to list the filters, because one of them may be the
-       reason there is nothing here. */
+    var kind = showWordsCaps(), city = activeCity ? ' ' + cityLabel() : '';
+    /* ALL already carries the "every one of them" sense, so it stands in for
+       the leading "all" rather than being said twice.
+       "all 0 properties" is not a sentence either, so an empty scope says so
+       plainly — and still goes on to list the filters, because one of them
+       may be the reason there is nothing here. */
+    /* "all 1 property" is not something anyone says */
+    var count = !all ? shown + ' of ' + totalSaved
+              : totalSaved === 1 ? '1'
+              : (kind === 'ALL' ? 'ALL ' : 'all ') + totalSaved;
+    var head = kind === 'ALL' ? count : count + ' ' + kind;
     var s = totalSaved
-      ? 'Overview for ' + (all ? 'all ' + totalSaved : shown + ' of ' + totalSaved) + city +
-        ' propert' + ((all && totalSaved === 1) ? 'y' : 'ies') + ' ' + kind + '.'
-      : 'No' + city + ' property is ' + kind + '.';
+      ? 'Overview for ' + head + city + ' propert' +
+        ((all && totalSaved === 1) ? 'y' : 'ies') + '.'
+      : 'No ' + (kind === 'ALL' ? '' : kind + ' ') + city.trim() +
+        (city ? ' ' : '') + 'property to summarise.';
     if (f.soldFrom && f.soldTo) s += ' Sold from ' + dmy(f.soldFrom) + ' to ' + dmy(f.soldTo) + '.';
     else if (f.soldFrom)        s += ' Sold from ' + dmy(f.soldFrom) + '.';
     else if (f.soldTo)          s += ' Sold up to ' + dmy(f.soldTo) + '.';
-    if (f.holdMin !== null && f.holdMax !== null) s += ' Held ' + f.holdMin + ' to ' + f.holdMax + ' yrs.';
-    else if (f.holdMin !== null)                  s += ' Held ' + f.holdMin + ' yrs and over.';
-    else if (f.holdMax !== null)                  s += ' Held up to ' + f.holdMax + ' yrs.';
+    if (f.holdMin !== null && f.holdMax !== null)
+      s += ' With a ' + f.holdMin + ' to ' + f.holdMax + ' year hold period.';
+    else if (f.holdMin !== null) s += ' With a hold period of ' + f.holdMin + ' years or more.';
+    else if (f.holdMax !== null) s += ' With a hold period of up to ' + f.holdMax + ' years.';
     if (f.band !== null) s += ' IRR ' + IRR_BINS[f.band].full + '.';
     var q = $('fSearch').value.trim();
     if (q) s += ' Search “' + q + '”.';
@@ -3737,14 +3750,18 @@ window.stopCheck=false;
     scope.textContent = ovLine(data.length, totalSaved);
     if (!data.length) {
       /* Three different silences. The filters emptied it; the city has
-         properties but none on this side of the advice line; or the city is
+         properties but none of the kinds Show is set to; or the city is
          empty. Only the last one is "add some properties". */
       var inCity = cityProps(loadProps()).length;
       body.innerHTML = '<div class="empty"><h3>Nothing to summarise</h3><p>'+
         (totalSaved ? 'No property matches the current search and filters.'
+         /* "or", not showPhrase()'s "and": no single property is both sold
+            and held, so "none of them are sold and held" reads as a riddle. */
          : inCity ? 'None of the ' + inCity + ' propert' + (inCity===1?'y':'ies') + ' in ' +
                     esc(cityLabel()) + ' ' + (inCity===1?'is':'are') + ' ' +
-                    (OV_KIND[ovScopeSel] || OV_KIND.in) + '.'
+                    esc(SHOW_KINDS.filter(function(k){ return showKinds[k]; }).join(' or ') ||
+                        'of any kind — nothing is ticked in Show') +
+                    '. Change <strong>Show</strong> on the Register.'
          : activeCity ? 'Nothing is filed under ' + esc(cityLabel()) + ' yet.'
                       : 'Add some properties and this fills in.')+'</p></div>';
       return;
@@ -6792,7 +6809,6 @@ window.stopCheck=false;
     if (!all.length) { $('messages').innerHTML = msg('warn', activeCity
       ? 'Nothing is filed under ' + cityLabel() + ' yet.' : 'There are no properties yet.'); return; }
     var f = readFilters(), opts = readOpts();
-    f.show = ovShowKinds();         // the same override the overview itself makes
     var derived = filterEntries(all, f).map(function(e){ return deriveOne(e, opts); });
     var spread = derived.filter(function(d){ return passDerived(d, f, false); });
     var data   = spread.filter(function(d){ return passDerived(d, f, true); });
@@ -6818,6 +6834,10 @@ window.stopCheck=false;
     var L = [['Performance Property — IRR Calculator, overview']];
     L.push(['Exported', new Date().toISOString().slice(0,10)]);
     L.push(['Capital city', cityLabel()]);
+    /* Which kinds, in the file as well as on the tab: a median over sold and
+       held is a different number from a median over sold, and a spreadsheet
+       that does not say which it is cannot be checked. */
+    L.push(['Showing', showPhrase() || 'nothing']);
     L.push(['Scope', data.length + ' of ' + all.length + ' properties']);
     L.push(['Basis', basisText()]);
     if (f.q) L.push(['Search', f.q]);
@@ -7569,18 +7589,6 @@ window.stopCheck=false;
   });
 
   TABS.forEach(function(t){ $('tab-'+t).addEventListener('click', function(){ showTab(t); }); });
-  /* By id, not by class: the register has a segmented control of its own now
-     and it comes first in the document, so querySelector('.seg-btns') would
-     hand this listener the wrong one. */
-  $('ovScopeSeg').addEventListener('click', function(ev){
-    var b = ev.target.closest && ev.target.closest('button[data-ovscope]');
-    if (!b || b.getAttribute('aria-pressed') === 'true') return;
-    ovScopeSel = b.dataset.ovscope;
-    Array.prototype.forEach.call(this.querySelectorAll('button[data-ovscope]'), function(x){
-      x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
-    });
-    drawOverview();
-  });
   $('tab-register').parentNode.addEventListener('keydown', function(ev){
     var i = TABS.indexOf(currentTab()), n = TABS.length, to = null;
     if (ev.key === 'ArrowRight') to = TABS[(i+1)%n];
