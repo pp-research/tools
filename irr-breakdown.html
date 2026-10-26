@@ -396,17 +396,17 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .filters select{padding-right:34px}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
 /* The Overview's scope line is a sentence, so it wraps — and it sits on a
-   pale blue so it reads as a statement about the figures below rather than as
-   another caption among them. Blue, not the teal accent: the accent means
-   "this is on" everywhere else on the page, and this is not a control. */
+   pale teal so it reads as a statement about the figures below rather than as
+   another caption among them. Drawn from --accent-rgb rather than a fixed
+   colour, so it follows the theme's teal in both light and dark instead of
+   needing a second rule to correct it. */
 #ovScope{
   max-width:84ch;font-size:13px;line-height:19px;color:var(--text);
-  background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.28);
+  background:rgba(var(--accent-rgb),.10);
+  border:1px solid rgba(var(--accent-rgb),.30);
   border-radius:var(--r-md);padding:9px 12px;margin-bottom:var(--sp-4);
 }
-:root[data-theme="light"] #ovScope{
-  background:rgba(37,99,235,.07);border-color:rgba(37,99,235,.22);
-}
+:root[data-theme="light"] #ovScope{background:rgba(var(--accent-rgb),.07)}
 #ovScope:empty{display:none}
 /* the banner sits between the card head and the filters, so the container
    owns the spacing on both sides and the inner note drops its own */
@@ -3810,7 +3810,8 @@ window.stopCheck=false;
     if (f.band !== null) s += ' IRR ' + IRR_BINS[f.band].full + '.';
     var q = $('fSearch').value.trim();
     if (q) s += ' Search “' + q + '”.';
-    if (assumptionsEdited()) s += ' Assumptions edited.';
+    /* Not "assumptions edited" — the Settings panel carries that flag on its
+       own summary, where the toggles that caused it are. */
     return s;
   }
   function renderOverview(data, spread, totalSaved){
