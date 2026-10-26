@@ -3815,6 +3815,15 @@ window.stopCheck=false;
       var s = a.slice().sort(function(x,y){ return x-y; });
       return fmt(s[0]) + ' – ' + fmt(s[s.length-1]);
     };
+    /* How many values a median was struck over, then the range they covered.
+       An even count is flagged, because an even median is the mean of the two
+       middle values and so matches no property in the register — which is the
+       one thing that makes a median look wrong when it is not. */
+    var basisNote = function(n, one, many, rest){
+      if (!n) return '';
+      return n + ' ' + (n === 1 ? one : many) + (n % 2 ? '' : ' · even, so it falls between two') +
+             (rest ? ' · ' + rest : '');
+    };
 
     /* Ten cards: two full rows of four and a closing pair, with each date
        beside the price it belongs to so purchase and sale read as one thing
@@ -3833,16 +3842,24 @@ window.stopCheck=false;
            (heldN ? ' · ' + heldN + ' held' : '') +
            (sold - nets.length - heldN > 0
               ? ' · ' + (sold - nets.length - heldN) + ' with no sale price' : ''))+
+      /* Each of these four is struck over its OWN count, not over the property
+         count on the card above: a property with no price filled in is left
+         out of a price median, and a held one has no sale price or sale date
+         at all. Counting to the middle row of the register to check a median
+         lands on the wrong row unless you know which number it was struck
+         over, so every one of them says. */
       card('Median purchase price', buys.length ? aud(median(buys)) : '—',
-           span(buys, function(v){ return audShort(v); }))+
+           basisNote(buys.length, 'price', 'prices',
+                     span(buys, function(v){ return audShort(v); })))+
       card('Median purchase date', buyDates.length ? dLabel(medianDate(buyDates)) : '—',
-           buyDates.length === 1 ? 'the only purchase date on record'
-                                 : span(buyDates, function(v){ return mLabel(new Date(v)); }))+
+           basisNote(buyDates.length, 'date', 'dates',
+                     span(buyDates, function(v){ return mLabel(new Date(v)); })))+
       card('Median sale price', sells.length ? aud(median(sells)) : '—',
-           span(sells, function(v){ return audShort(v); }))+
+           basisNote(sells.length, 'sale', 'sales',
+                     span(sells, function(v){ return audShort(v); })))+
       card('Median sale date', sellDates.length ? dLabel(medianDate(sellDates)) : '—',
-           sellDates.length === 1 ? 'the only sale date on record'
-                                  : span(sellDates, function(v){ return mLabel(new Date(v)); }))+
+           basisNote(sellDates.length, 'date', 'dates',
+                     span(sellDates, function(v){ return mLabel(new Date(v)); })))+
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
