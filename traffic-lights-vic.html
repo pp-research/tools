@@ -537,6 +537,9 @@ table.calc.pvr tr.shade.active td{background:rgba(0,160,180,.22)}
 .dfd-card h3{font-size:15px;font-weight:800;margin:0;color:var(--text)}
 .dfd-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;font-weight:700;color:var(--text-dim)}
 .dfd-legend span{display:flex;align-items:center;gap:6px}
+.dfd-tick{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.dfd-tick input{margin:0;width:14px;height:14px;accent-color:var(--teal);cursor:pointer}
+.dfd-tick:has(input:not(:checked)){opacity:.5}
 .dfd-legend i{width:12px;height:3px;border-radius:2px;display:block}
 .dfd-legend i.ln{background:var(--text-dim)}
 .dfd-legend i.ln.dash{background:repeating-linear-gradient(90deg,var(--text-dim) 0 4px,transparent 4px 7px)}
@@ -2412,6 +2415,16 @@ function dfdChart(el,cfg){
     tip.style.left=Math.max(4,Math.min(host.width-tw-4,px+(px+14+tw>host.width?-tw-14:14)))+'px'; tip.style.top='8px'; };
   svg.onpointermove=e=>show(pick(e)); svg.onpointerdown=e=>show(pick(e)); svg.onpointerleave=()=>{ tip.hidden=true; gl.setAttribute('visibility','hidden'); };
 }
+// price vs rent index: a tick box per area; the y-axis rescales to the areas shown
+let DFDIDX=[true,true,true];
+function dfdIdx(){
+  const c=DFD.idx, leg=document.getElementById('dfdLeg-idx'); if(!leg) return;
+  leg.innerHTML=DFD.names.map((nm,i)=>'<label class="dfd-tick"><input type="checkbox" data-i="'+i+'"'+(DFDIDX[i]?' checked':'')+'><i style="background:'+DFDCOL[i]+'"></i>'+nm+'</label>').join('')+
+    '<span><i class="ln"></i>price</span><span><i class="ln dash"></i>rent</span>';
+  leg.querySelectorAll('input').forEach(b=>b.onchange=()=>{ if(!b.checked&&DFDIDX.filter(Boolean).length===1){ b.checked=true; return; } DFDIDX[+b.dataset.i]=b.checked; dfdIdx(); });
+  const series=[0,1,2].filter(i=>DFDIDX[i]).flatMap(i=>[{n:DFD.names[i]+' price',c:DFDCOL[i],v:c.p[i]},{n:DFD.names[i]+' rent',c:DFDCOL[i],v:c.r[i],dash:true,w:2}]);
+  dfdChart(document.getElementById('dfdPlot-idx'),{y0:c.y0,last:c.last,t:c.t,u:c.u,series});
+}
 function renderDfd(){
   const host=document.getElementById('dfdCharts'); if(!host) return;
   const area=(k,ser)=>ser.map((v,i)=>v?{n:DFD.names[i],c:DFDCOL[i],v}:null).filter(Boolean);
@@ -2420,8 +2433,8 @@ function renderDfd(){
   host.innerHTML=cards.map(([k,t])=>'<section class="pvr-card dfd-card"><h3>'+t+'</h3><div class="dfd-legend" id="dfdLeg-'+k+'"></div><div class="dfd-plot" id="dfdPlot-'+k+'"></div>'+
     (k==='vac'?'<p class="dfd-note">No vacancy series is published for Daylesford itself.</p>':k==='idx'?'<p class="dfd-note">Solid = price, dashed = rent. Where the dashed line sits above the solid one, rents have outgrown prices since 2006 and yields have risen.</p>':'')+'</section>').join('');
   cards.forEach(([k])=>{ const c=DFD[k]; let series;
-    if(k==='idx') series=[0,1,2].flatMap(i=>[{n:DFD.names[i]+' price',c:DFDCOL[i],v:c.p[i]},{n:DFD.names[i]+' rent',c:DFDCOL[i],v:c.r[i],dash:true,w:2}]);
-    else series=area(k,c.s);
+    if(k==='idx'){ dfdIdx(); return; }
+    series=area(k,c.s);
     document.getElementById('dfdLeg-'+k).innerHTML=(k==='idx'?DFD.names.map((nm,i)=>'<span><i style="background:'+DFDCOL[i]+'"></i>'+nm+'</span>').join('')+'<span><i class="ln"></i>price</span><span><i class="ln dash"></i>rent</span>':
       series.map(sr=>'<span><i style="background:'+sr.c+'"></i>'+sr.n+'</span>').join(''));
     dfdChart(document.getElementById('dfdPlot-'+k),{y0:c.y0,last:c.last,t:c.t,u:c.u,zero:c.zero,series}); });
