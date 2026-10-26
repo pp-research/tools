@@ -389,6 +389,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .filters input,.filters select{min-height:40px;padding:8px 12px;font-size:14px}
 .filters select{padding-right:34px}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
+/* the note under the Overview's scope line: a sentence, so it is allowed to
+   wrap and sits closer to the line it explains than to what follows */
+.ov-follows{max-width:72ch;margin-top:calc(var(--sp-2) * -1)}
 /* the banner sits between the card head and the filters, so the container
    owns the spacing on both sides and the inner note drops its own */
 #parseMsg:not(:empty){margin-top:var(--sp-4);margin-bottom:var(--sp-6)}
@@ -1067,6 +1070,10 @@ details .body strong{color:var(--text)}
             </div>
           </div>
           <p class="count-line" id="ovScope"></p>
+          <!-- The filter bar is on the Register and these numbers obey it, so
+               this tab says so itself rather than leaving a figure quietly
+               smaller than the book with no control in sight to explain it. -->
+          <p class="count-line ov-follows" id="ovFollows"></p>
           <div id="ovBody"></div>
         </section>
       </div>
@@ -3698,26 +3705,44 @@ window.stopCheck=false;
     ovStale = false;
     renderOverview(data, spread, scoped.length);
   }
+  /* Which side of the advice line these numbers are, in words. The three-way
+     switch is lit a few inches away, but the note reads as a sentence and a
+     sentence cannot point at a button. */
+  /* each carries its own connector, so "in Adelaide" is not followed by a
+     second bare "in advice" */
+  var OV_SCOPE_WORD = { in:' that is in advice', out:' that is set outside of advice',
+                        all:', in advice and archived alike' };
   function renderOverview(data, spread, totalSaved){
-    var scope = $('ovScope'), body = $('ovBody');
+    var scope = $('ovScope'), body = $('ovBody'), follows = $('ovFollows');
+
+    /* Said whether or not there is anything to summarise — when a filter has
+       emptied the tab, knowing where the filter is set is the whole answer. */
+    var narrow = filterPhrase(readFilters());
+    var where = activeCity ? cityLabel() : 'the register';
+    follows.textContent = narrow
+      ? 'This follows the Register tab — the same search and filters narrow both. '+
+        'Set now: ' + narrow + '. Clear them on the Register to see all ' +
+        totalSaved + ' in ' + where + '.'
+      : 'Every property in ' + where + (OV_SCOPE_WORD[ovScopeSel] || OV_SCOPE_WORD.in) +
+        '. This follows the Register tab — the same search and filters narrow '+
+        'both — and none of them are set.';
+
     if (!data.length) {
       scope.textContent = '';
       body.innerHTML = '<div class="empty"><h3>Nothing to summarise</h3><p>'+
         (totalSaved ? 'No property matches the current search and filters.'
                     : (activeCity ? 'Nothing is filed under ' + esc(cityLabel()) + ' yet.'
                                   : 'Add some properties and this fills in.'))+'</p></div>';
+      if (!totalSaved) follows.textContent = '';
       return;
     }
     /* The city is named here as well as lit in the header, because this line
-       is what goes out on the export and into a report — and so is whatever
-       the Register's filter bar is set to, which narrows these numbers from a
-       tab you cannot see from here. */
-    var narrow = filterPhrase(readFilters());
+       is what goes out on the export and into a report. What the filters are
+       set to is on the note below rather than here, so it is said once. */
     scope.textContent = (data.length === totalSaved
       ? 'All ' + totalSaved + ' propert' + (totalSaved===1?'y':'ies')
       : data.length + ' of ' + totalSaved + ' properties') +
-      (activeCity ? ' in ' + cityLabel() : '') + ' · ' + basisText() +
-      (narrow ? ' · narrowed by ' + narrow : '');
+      (activeCity ? ' in ' + cityLabel() : '') + ' · ' + basisText();
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
     /* When the book was bought and when it sold, as two more medians. Kept as
