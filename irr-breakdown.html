@@ -3644,12 +3644,14 @@ window.stopCheck=false;
     return out;
   }
   /* The date behind a median price. One property → its own date. Two or more
-     → the midpoint of the span they cover, the same rule the median itself
-     follows when the count is even. */
+     → the earliest of them. A midpoint would be a day nothing happened on,
+     which is no use as an anchor for reading a market figure off; the earliest
+     is a real transaction date, and the list under the card shows the others
+     so the span it was picked from is never hidden. `days` is already sorted
+     ascending and already at UTC midnight, so the first one needs no work. */
   function midDay(m){
     if (!m || !m.days.length) return null;
-    var a = m.days[0], b = m.days[m.days.length - 1];
-    var d = new Date(Math.floor(((a + b) / 2) / DAY_MS) * DAY_MS);
+    var d = new Date(m.days[0]);
     return isFinite(d.getTime()) ? d : null;
   }
   var IRR_BINS = [
@@ -3881,8 +3883,8 @@ window.stopCheck=false;
       if (!m || !m.days.length) return '';
       if (m.at.length === 1) return 'when the median ' + noun + ' happened';
       return m.even
-        ? 'midpoint — the median price sits between these two'
-        : 'midpoint — ' + m.at.length + ' share the median price';
+        ? 'earliest — the median price sits between these two'
+        : 'earliest — ' + m.at.length + ' share the median price';
     };
     /* date — price, one line each, for every property the median price was
        read off. This is the working behind the figure, so nothing is dropped. */
