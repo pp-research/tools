@@ -389,9 +389,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .filters input,.filters select{min-height:40px;padding:8px 12px;font-size:14px}
 .filters select{padding-right:34px}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
-/* the note under the Overview's scope line: a sentence, so it is allowed to
-   wrap and sits closer to the line it explains than to what follows */
-.ov-follows{max-width:72ch;margin-top:calc(var(--sp-2) * -1)}
+/* the Overview's scope line is a sentence now, so it is allowed to wrap */
+#ovScope{max-width:84ch}
 /* the banner sits between the card head and the filters, so the container
    owns the spacing on both sides and the inner note drops its own */
 #parseMsg:not(:empty){margin-top:var(--sp-4);margin-bottom:var(--sp-6)}
@@ -1069,11 +1068,11 @@ details .body strong{color:var(--text)}
               <button type="button" class="btn-ghost btn-sm" id="btnOvCsv">Export CSV</button>
             </div>
           </div>
+          <!-- One line: what this tab is covering, then each filter that is
+               narrowing it as its own short sentence. The filter bar is on the
+               Register, so without this a figure could sit quietly smaller
+               than the book with no control in sight to explain it. -->
           <p class="count-line" id="ovScope"></p>
-          <!-- The filter bar is on the Register and these numbers obey it, so
-               this tab says so itself rather than leaving a figure quietly
-               smaller than the book with no control in sight to explain it. -->
-          <p class="count-line ov-follows" id="ovFollows"></p>
           <div id="ovBody"></div>
         </section>
       </div>
@@ -3490,20 +3489,6 @@ window.stopCheck=false;
       band: irrBand
     };
   }
-  /* The filter bar lives on the Register, so the Overview can be narrowed by
-     controls that are not on screen there. This names them for its scope line.
-     f.show is left out: the Overview overrides it with its own switch. */
-  function filterPhrase(f){
-    var bits = [];
-    if (f.q) bits.push('search "' + f.q + '"');
-    if (f.soldFrom || f.soldTo)
-      bits.push('sold ' + (f.soldFrom || 'any') + ' to ' + (f.soldTo || 'any'));
-    if (f.holdMin !== null || f.holdMax !== null)
-      bits.push('hold ' + (f.holdMin === null ? 'any' : f.holdMin) + '–' +
-                (f.holdMax === null ? 'any' : f.holdMax) + ' yrs');
-    if (f.band !== null) bits.push('IRR ' + IRR_BINS[f.band].full);
-    return bits.join(' · ');
-  }
   /* f.cat is not in here on purpose: the city is the scope, not a filter, and
      counting it would leave Clear showing permanently with nothing to clear. */
   function anyFilterOn(f){
@@ -3705,44 +3690,65 @@ window.stopCheck=false;
     ovStale = false;
     renderOverview(data, spread, scoped.length);
   }
-  /* Which side of the advice line these numbers are, in words. The three-way
-     switch is lit a few inches away, but the note reads as a sentence and a
-     sentence cannot point at a button. */
-  /* each carries its own connector, so "in Adelaide" is not followed by a
-     second bare "in advice" */
-  var OV_SCOPE_WORD = { in:' that is in advice', out:' that is set outside of advice',
-                        all:', in advice and archived alike' };
+  /* Which side of the advice line these numbers are, in words. */
+  /* "or", not "and": one property is on one side of the line, and Both means
+     the line is being ignored rather than that a property is on both sides. */
+  var OV_KIND = { in:'in advice', out:'set outside of advice',
+                  all:'in advice or archived' };
+  /* A date the way the rest of the tool writes one, not the way the input
+     stores it: 14 Jun 2021, never 2021-06-14. */
+  function dmy(s){
+    var d = new Date(String(s).slice(0,10) + 'T00:00:00Z');
+    return isFinite(d.getTime()) ? dLabel(d) : String(s);
+  }
+  /* ── the line that says what this tab is showing ──
+     What it covers, then every filter narrowing it as its own short sentence.
+     The assumptions are deliberately not restated: they are three toggles
+     away on the left and carry their own "edited" flag on the panel, so
+     repeating them here only pushed the numbers down the page. The one thing
+     kept from them is that flag, because a figure struck on something other
+     than the defaults should say so wherever it is read. */
+  function ovLine(shown, totalSaved){
+    var f = readFilters(), all = (shown === totalSaved);
+    var kind = OV_KIND[ovScopeSel] || OV_KIND.in, city = activeCity ? ' ' + cityLabel() : '';
+    /* "all 0 properties" is not a sentence, so an empty scope says so plainly
+       — and still goes on to list the filters, because one of them may be the
+       reason there is nothing here. */
+    var s = totalSaved
+      ? 'Overview for ' + (all ? 'all ' + totalSaved : shown + ' of ' + totalSaved) + city +
+        ' propert' + ((all && totalSaved === 1) ? 'y' : 'ies') + ' ' + kind + '.'
+      : 'No' + city + ' property is ' + kind + '.';
+    if (f.soldFrom && f.soldTo) s += ' Sold from ' + dmy(f.soldFrom) + ' to ' + dmy(f.soldTo) + '.';
+    else if (f.soldFrom)        s += ' Sold from ' + dmy(f.soldFrom) + '.';
+    else if (f.soldTo)          s += ' Sold up to ' + dmy(f.soldTo) + '.';
+    if (f.holdMin !== null && f.holdMax !== null) s += ' Held ' + f.holdMin + ' to ' + f.holdMax + ' yrs.';
+    else if (f.holdMin !== null)                  s += ' Held ' + f.holdMin + ' yrs and over.';
+    else if (f.holdMax !== null)                  s += ' Held up to ' + f.holdMax + ' yrs.';
+    if (f.band !== null) s += ' IRR ' + IRR_BINS[f.band].full + '.';
+    var q = $('fSearch').value.trim();
+    if (q) s += ' Search “' + q + '”.';
+    if (assumptionsEdited()) s += ' Assumptions edited.';
+    return s;
+  }
   function renderOverview(data, spread, totalSaved){
-    var scope = $('ovScope'), body = $('ovBody'), follows = $('ovFollows');
-
+    var scope = $('ovScope'), body = $('ovBody');
     /* Said whether or not there is anything to summarise — when a filter has
-       emptied the tab, knowing where the filter is set is the whole answer. */
-    var narrow = filterPhrase(readFilters());
-    var where = activeCity ? cityLabel() : 'the register';
-    follows.textContent = narrow
-      ? 'This follows the Register tab — the same search and filters narrow both. '+
-        'Set now: ' + narrow + '. Clear them on the Register to see all ' +
-        totalSaved + ' in ' + where + '.'
-      : 'Every property in ' + where + (OV_SCOPE_WORD[ovScopeSel] || OV_SCOPE_WORD.in) +
-        '. This follows the Register tab — the same search and filters narrow '+
-        'both — and none of them are set.';
-
+       emptied the tab, knowing which filter did it is the whole answer. */
+    scope.textContent = ovLine(data.length, totalSaved);
     if (!data.length) {
-      scope.textContent = '';
+      /* Three different silences. The filters emptied it; the city has
+         properties but none on this side of the advice line; or the city is
+         empty. Only the last one is "add some properties". */
+      var inCity = cityProps(loadProps()).length;
       body.innerHTML = '<div class="empty"><h3>Nothing to summarise</h3><p>'+
         (totalSaved ? 'No property matches the current search and filters.'
-                    : (activeCity ? 'Nothing is filed under ' + esc(cityLabel()) + ' yet.'
-                                  : 'Add some properties and this fills in.'))+'</p></div>';
-      if (!totalSaved) follows.textContent = '';
+         : inCity ? 'None of the ' + inCity + ' propert' + (inCity===1?'y':'ies') + ' in ' +
+                    esc(cityLabel()) + ' ' + (inCity===1?'is':'are') + ' ' +
+                    (OV_KIND[ovScopeSel] || OV_KIND.in) + '.'
+         : activeCity ? 'Nothing is filed under ' + esc(cityLabel()) + ' yet.'
+                      : 'Add some properties and this fills in.')+'</p></div>';
       return;
     }
-    /* The city is named here as well as lit in the header, because this line
-       is what goes out on the export and into a report. What the filters are
-       set to is on the note below rather than here, so it is said once. */
-    scope.textContent = (data.length === totalSaved
-      ? 'All ' + totalSaved + ' propert' + (totalSaved===1?'y':'ies')
-      : data.length + ' of ' + totalSaved + ' properties') +
-      (activeCity ? ' in ' + cityLabel() : '') + ' · ' + basisText();
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
     /* When the book was bought and when it sold, as two more medians. Kept as
