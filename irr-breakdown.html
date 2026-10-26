@@ -289,6 +289,11 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 /* In the narrow side panel it spans the panel and the two options split it
    evenly — one control, not two buttons with a stripe of space after them.
    Shorter as well: it sits above a list and should not outweigh it. */
+/* The city switcher wears the segmented look, but it is built from the book
+   and can run to a dozen names — so it scrolls sideways instead of pushing the
+   theme button off the header, and takes no room at all while it is empty. */
+.city-tabs{overflow-x:auto;scrollbar-width:thin}
+.city-tabs:empty{display:none}
 .seg-btns.seg-fill{width:100%}
 /* the base button rule carries min-height:44px for touch targets, which is why
    setting the padding alone changed nothing */
@@ -345,6 +350,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .cat-cell{display:flex;gap:var(--sp-2);min-width:0}
 .cat-cell select{flex:1 1 auto;min-width:0}
 .cat-cell button{flex:0 0 auto;min-height:40px}
+.cat-now{flex:1 1 auto;min-width:0;align-self:center;font-size:14px;line-height:20px;
+  font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
 /* the banner sits between the card head and the filters, so the container
    owns the spacing on both sides and the inner note drops its own */
@@ -769,6 +776,14 @@ details .body strong{color:var(--text)}
       <h1>IRR Calculator</h1>
     </div>
     <div class="head-right">
+      <!-- ══ WHICH BOOK YOU ARE IN ══
+           One capital city at a time. Overview, Register, Calculation, Sold
+           check and History all answer about whichever city is lit here, so it
+           sits in the header beside signing out rather than down in Filters:
+           it is not a filter that narrows a view, it is which book the whole
+           tool is open on. Built from the cities actually in the register, and
+           absent entirely while there is only one of them. -->
+      <div class="seg-btns city-tabs" id="cityTabs" role="group" aria-label="Capital city"></div>
       <button type="button" class="btn-primary" id="btnShareAuth" hidden></button>
       <button type="button" class="btn-ghost icon-btn theme-btn" id="btnTheme"
               aria-label="Switch to dark mode" title="Switch to dark mode"></button>
@@ -873,12 +888,15 @@ details .body strong{color:var(--text)}
             </div>
           </div>
         </div>
+        <!-- The city is chosen in the header, not here — this says which one
+             is in force and keeps Rename next to it, because renaming is a
+             thing you do to the city you are looking at. -->
         <div class="field">
-          <label for="fCat">Capital city</label>
+          <span class="lbl" id="catNowLbl">Capital city</span>
           <div class="cat-cell">
-            <select id="fCat"><option value="">All capital cities</option></select>
+            <span class="cat-now" id="catNow" aria-labelledby="catNowLbl">All capital cities</span>
             <button type="button" class="btn-ghost btn-sm" id="btnRenameCat"
-                    title="Rename the selected capital city">Rename</button>
+                    title="Rename the capital city in force">Rename</button>
           </div>
         </div>
         <div class="field">
@@ -3284,18 +3302,82 @@ window.stopCheck=false;
      the option value silently stops matching. */
   var NO_CAT = '__uncategorised__';
 
+  /* ══════════ THE ACTIVE CAPITAL CITY ══════════
+     Not a filter — the book the whole tool is open on. '' means every city at
+     once, a name means that one, and NO_CAT means the ones nobody has filed.
+     Remembered per browser, like the sort: which city you work in is a fact
+     about you, not about the book, so it never rides inside the shared store.
+
+     It is deliberately NOT applied inside loadProps(): everything that writes
+     reads the whole list first and writes it back whole, and a loadProps() that
+     quietly returned one city would delete the other four on the next save.
+     The views go through cityProps() instead, which only ever reads. */
+  var CITY_KEY = 'pp-irr-city-v1';
+  var activeCity = '';
+  try { activeCity = localStorage.getItem(CITY_KEY) || ''; }
+  catch (e) { /* storage blocked — it just starts on every city */ }
+
+  function cityProps(list){
+    if (!activeCity) return list;
+    /* the same sentinel rule filterEntries uses: only treat it as "unfiled" if
+       no city is actually named that */
+    if (activeCity === NO_CAT && categoriesOf(list).indexOf(NO_CAT) < 0)
+      return list.filter(function(e){ return !(e.category||'').trim(); });
+    return list.filter(function(e){ return (e.category||'').trim() === activeCity; });
+  }
+  function cityLabel(){
+    return !activeCity ? 'All capital cities'
+         : activeCity === NO_CAT ? 'Not set' : activeCity;
+  }
+  /* Switching city is switching books, so anything on screen that belongs to
+     the old one goes with it: an open result, a selection, a suburb that only
+     exists over there, an IRR band picked off the other book's chart. */
+  function setCity(c){
+    c = c || '';
+    if (c === activeCity) return;
+    activeCity = c;
+    try { localStorage.setItem(CITY_KEY, activeCity); } catch (e) {}
+    var here = cityProps(loadProps());
+    if (openEntryId && !here.some(function(e){ return e.id === openEntryId; })) {
+      openEntryId = null; syncEditBtn(); showEmpty();
+    }
+    leaveCompare();
+    picked = [];
+    $('fSuburb').value = '';
+    irrBand = null;
+    renderProps();
+    if (chk) chkRun(); else syncCheckTab();
+    if (currentTab() === 'history') showHistory();
+  }
+
   function syncCategoryControls(list){
     var cats = categoriesOf(list);
     var hasUncat = list.some(function(e){ return !(e.category||'').trim(); });
 
-    var sel = $('fCat'), keep = sel.value;
-    sel.innerHTML = '<option value="">All capital cities</option>' +
-      cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('') +
-      (hasUncat ? '<option value="'+NO_CAT+'">Not set</option>' : '');
-    // keep the current choice unless it no longer exists
-    sel.value = [].some.call(sel.options, function(o){ return o.value === keep; }) ? keep : '';
+    /* The tabs are the cities that exist plus the two ways of saying "the rest
+       of them". A city that has just been renamed away under your feet drops
+       the scope back to all of them rather than leaving you on an empty book. */
+    var choices = [{ v:'', t:'All cities' }]
+      .concat(cats.map(function(c){ return { v:c, t:c }; }))
+      .concat(hasUncat ? [{ v:NO_CAT, t:'Not set' }] : []);
+    if (activeCity && !choices.some(function(o){ return o.v === activeCity; })) {
+      activeCity = '';
+      try { localStorage.setItem(CITY_KEY, ''); } catch (e) {}
+    }
+    /* One city is not a choice, so the switcher stays out of the header until
+       there is a second thing it could be set to. */
+    $('cityTabs').innerHTML = choices.length > 2
+      ? choices.map(function(o){
+          return '<button type="button" data-city="'+esc(o.v)+'" aria-pressed="'+
+                 (o.v === activeCity ? 'true' : 'false')+'">'+esc(o.t)+'</button>';
+        }).join('')
+      : '';
+    var now = $('catNow'); if (now) now.textContent = cityLabel();
 
-    var sub = $('fSuburb'), keepSub = sub.value, subs = suburbsOf(list);
+    /* The suburbs are the ones in the book you are in. Left on the whole store
+       you could pick a suburb from Brisbane while looking at Adelaide and the
+       register would simply go blank with nothing saying why. */
+    var sub = $('fSuburb'), keepSub = sub.value, subs = suburbsOf(cityProps(list));
     sub.innerHTML = '<option value="">All suburbs</option>' +
       subs.map(function(s){ return '<option value="'+esc(s)+'">'+esc(s)+'</option>'; }).join('');
     sub.value = [].some.call(sub.options, function(o){ return o.value === keepSub; }) ? keepSub : '';
@@ -3310,9 +3392,12 @@ window.stopCheck=false;
     if (on) $('bandChipText').textContent = 'IRR ' + IRR_BINS[f.band].full;
     $('btnClearFilters').hidden = !anyFilterOn(f);
   }
+  /* Clear clears the filters. It does not change which city you are in — that
+     is the header's job, and a Clear that quietly moved you to another book
+     would be the most surprising button on the page. */
   function clearFilters(){
     ['fSearch','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){ $(id).value = ''; });
-    $('fCat').value = ''; $('fSuburb').value = '';
+    $('fSuburb').value = '';
     showKinds = { sold:true, held:false, archived:false };
     syncShowChrome();
     irrBand = null;
@@ -3415,7 +3500,9 @@ window.stopCheck=false;
   function readFilters(){
     return {
       q: $('fSearch').value.trim().toLowerCase(),
-      cat: $('fCat').value,
+      /* the city comes from the header, so every view that reads the filters
+         is scoped to it without each one having to remember to ask */
+      cat: activeCity,
       suburb: $('fSuburb').value,
       soldFrom: $('fSoldFrom').value,
       soldTo: $('fSoldTo').value,
@@ -3425,8 +3512,10 @@ window.stopCheck=false;
       band: irrBand
     };
   }
+  /* f.cat is not in here on purpose: the city is the scope, not a filter, and
+     counting it would leave Clear showing permanently with nothing to clear. */
   function anyFilterOn(f){
-    return !!(!showIsDefault() || f.q || f.cat || f.suburb || f.soldFrom || f.soldTo ||
+    return !!(!showIsDefault() || f.q || f.suburb || f.soldFrom || f.soldTo ||
               f.holdMin !== null || f.holdMax !== null ||
               f.band !== null);
   }
@@ -3612,7 +3701,7 @@ window.stopCheck=false;
     if (currentTab() === 'overview') drawOverview();
   }
   function drawOverview(){
-    var all = loadProps();
+    var all = cityProps(loadProps());
     if (!all.length) { ovStale = false; renderOverview([], [], 0); return; }
     var f = readFilters();
     f.show = ovShowKinds();         // the one filter the overview overrides
@@ -3629,13 +3718,17 @@ window.stopCheck=false;
     if (!data.length) {
       scope.textContent = '';
       body.innerHTML = '<div class="empty"><h3>Nothing to summarise</h3><p>'+
-        (totalSaved ? 'No property matches the current search and category.'
-                    : 'Add some properties and this fills in.')+'</p></div>';
+        (totalSaved ? 'No property matches the current search and filters.'
+                    : (activeCity ? 'Nothing is filed under ' + esc(cityLabel()) + ' yet.'
+                                  : 'Add some properties and this fills in.'))+'</p></div>';
       return;
     }
+    /* The city is named here as well as lit in the header, because this line
+       is what goes out on the export and into a report. */
     scope.textContent = (data.length === totalSaved
       ? 'All ' + totalSaved + ' propert' + (totalSaved===1?'y':'ies')
-      : data.length + ' of ' + totalSaved + ' properties') + ' · ' + basisText();
+      : data.length + ' of ' + totalSaved + ' properties') +
+      (activeCity ? ' in ' + cityLabel() : '') + ' · ' + basisText();
 
     var irrs = [], nets = [], holds = [], buys = [], sells = [], rets = [], cagrs = [], noIrr = 0;
     /* When the book was bought and when it sold, as two more medians. Kept as
@@ -3804,11 +3897,15 @@ window.stopCheck=false;
   function renderProps(){
     disarmDelete();     // the button it was armed on is about to be replaced
     prunePicks();
-    var all = loadProps();
+    /* The tabs are built from the whole store — every city has to be reachable
+       — and settling which one is active has to happen before anything is
+       scoped to it, or a renamed city would scope this render to a book that
+       no longer exists. */
+    var book = loadProps();
+    syncCategoryControls(book);
+    var all = cityProps(book);
     /* "of how many" has to mean of how many are in scope, or setting a property
-       aside would leave every denominator counting it anyway. The dropdowns
-       still read the whole store, so a category that only exists outside of
-       advice is still selectable. */
+       aside would leave every denominator counting it anyway. */
     var f = readFilters();
     var scoped = all.filter(function(e){ return !!f.show[kindOf(e)]; });
     /* Each badge counts its own tab, not whichever scope was rendered last.
@@ -3817,15 +3914,21 @@ window.stopCheck=false;
     /* the badge counts what this view is about, which is what the Show filter
        selects — the other filters narrow it and the count line says by how much */
     $('badgeProps').textContent = scoped.length;
-    syncCategoryControls(all);
 
     syncFilterChrome(f);
+    /* Splitting by city inside one city is a heading over the whole table, so
+       the switch goes away and the list reads flat while a city is in force. */
+    $('regGroupSeg').hidden = !!activeCity;
 
-    if (!all.length) {
+    if (!book.length || !all.length) {
       $('propCount').textContent = '';
       $('filtCount').textContent = '';
-      $('propsBody').innerHTML = '<div class="empty"><h3>No properties yet</h3>'+
-        '<p>Choose <strong>+ Add properties</strong> to paste rows or upload a spreadsheet — or work out a deal with <strong>Quick IRR</strong> and save it.</p></div>';
+      $('propsBody').innerHTML = book.length
+        ? '<div class="empty"><h3>Nothing in '+esc(cityLabel())+'</h3>'+
+          '<p>No property is filed under this capital city. Choose <strong>All cities</strong> '+
+          'in the header, or tick a few over there and use <strong>Move city</strong> to file them here.</p></div>'
+        : '<div class="empty"><h3>No properties yet</h3>'+
+          '<p>Choose <strong>+ Add properties</strong> to paste rows or upload a spreadsheet — or work out a deal with <strong>Quick IRR</strong> and save it.</p></div>';
       syncSelBar();
       markOverviewStale();
       return;
@@ -3852,11 +3955,22 @@ window.stopCheck=false;
 
     if (!data.length) {
       /* "Choose Clear to see all 0" is what the generic wording produces when
-         you open an empty archived list, so that case answers for itself. */
+         you open an empty archived list, so that case answers for itself.
+         A city whose properties are all of one kind hits the same wall — a
+         small book is easily all held or all sold — so when Show is the whole
+         reason, Show is what the answer talks about rather than Clear. */
+      var kindsOn = SHOW_KINDS.filter(function(k){ return showKinds[k]; });
       $('propsBody').innerHTML = (showKinds.archived && !showKinds.sold && !showKinds.held && !scoped.length)
         ? '<div class="empty"><h3>Nothing is set aside</h3>'+
           '<p>Use the archive button on a row, or tick a few and choose '+
           '<strong>Outside of advice</strong>, to keep a property without counting it.</p></div>'
+        : (!scoped.length && all.length && kindsOn.length)
+        ? '<div class="empty"><h3>Nothing '+esc(showPhrase())+' here</h3>'+
+          '<p>'+(activeCity ? esc(cityLabel()) : 'The register')+' has '+all.length+
+          ' propert'+(all.length===1?'y':'ies')+', but '+
+          (kindsOn.length===1?'none is':'none are')+' '+esc(showPhrase())+'. '+
+          'Change <strong>Show properties</strong> on the left to see '+
+          (all.length===1?'it':'them')+'.</p></div>'
         : '<div class="empty"><h3>Nothing matches</h3>'+
           '<p>No property matches the filters on the left. Choose <strong>Clear</strong> to see all '+scoped.length+'.</p></div>';
       syncSelBar();
@@ -3895,7 +4009,7 @@ window.stopCheck=false;
        A second pass in front of the sort the header is showing, so the rows
        keep the order you asked for inside the city they belong to. Array sort
        is stable, which is what makes one pass on top of the other work. */
-    var grouped = (regGroupBy === 'city');
+    var grouped = (regGroupBy === 'city') && !activeCity;
     if (grouped) {
       data.sort(function(a,b){
         var x = cityOf(a.e), y = cityOf(b.e);
@@ -3906,6 +4020,7 @@ window.stopCheck=false;
       });
     }
 
+    var cityCol = !activeCity;
     var rowHtml = function(d){
       var e = d.e;
       var irr = d.irr === null ? '—' : pct(d.irr);
@@ -3937,7 +4052,9 @@ window.stopCheck=false;
             ? '<br><span class="cat aside-chip">outside of advice'+
               ((e.outsideReason||'').trim() ? ' — '+esc(e.outsideReason) : '')+'</span>'
             : '') +'</td>'+
-        '<td class="city">'+(cat ? esc(cat) : '<span class="faint">—</span>')+'</td>'+
+        /* Inside one city the column says the same word on every row, so it
+           goes — the header already states which book you are in. */
+        (cityCol ? '<td class="city">'+(cat ? esc(cat) : '<span class="faint">—</span>')+'</td>' : '')+
         pdCell(e.purchasePrice, new Date(e.purchaseDate))+ (d.held ? heldCell() : soldCell(e))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
@@ -3961,13 +4078,13 @@ window.stopCheck=false;
 
     var cols = [
       { key:'name',     label:'Property',     cls:'' },
-      { key:'category', label:'Capital city', cls:'' },
+      { key:'category', label:'Capital city', cls:'', only:'all' },
       { key:'purchase', label:'Purchased',    cls:'num' },
       { key:'sold',     label:'Sold',       cls:'num' },
       { key:'hold',     label:'Hold',       cls:'num' },
       { key:'net',      label:'Net profit', cls:'num' },
       { key:'irr',      label:'IRR',        cls:'num' }
-    ];
+    ].filter(function(c){ return c.only !== 'all' || cityCol; });
     var head = cols.map(function(c){
       var on = (sortKey === c.key);
       return '<th scope="col"'+(c.cls?' class="'+c.cls+'"':'')+
@@ -5848,7 +5965,10 @@ window.stopCheck=false;
       (loose[looseKey(a)] = loose[looseKey(a)] || []).push(s);
     });
 
-    var book = loadProps();
+    /* Scoped like every other tab. The bookmarklet itself still works through
+       the whole register — you run it once, not once per city — so a city
+       narrows what this tab reports on, never what was asked. */
+    var book = cityProps(loadProps());
     var pool = book.filter(isHeld);     // held only; see above
     var results = pool.map(function(e){
       var a = splitAddr(e.name);
@@ -5938,9 +6058,10 @@ window.stopCheck=false;
         (bits.length ? ' · ' + bits.join(' · ') : '')
       : '';
     if (!rs.length) {
-      var total = loadProps().length;
+      var total = cityProps(loadProps()).length;
       $('chkBody').innerHTML = '<div class="empty"><h3>Nothing is waiting on a sale</h3>'+
-        '<p>All '+total+' propert'+(total===1?'y':'ies')+' in the register already '+
+        '<p>All '+total+' propert'+(total===1?'y':'ies')+' in '+
+        (activeCity ? esc(cityLabel()) : 'the register')+' already '+
         'ha'+(total===1?'s':'ve')+' a sale recorded, so there is nothing for the check '+
         'to ask about.</p></div>';
       return;
@@ -6270,8 +6391,9 @@ window.stopCheck=false;
      passes the table does, which is the only way "what you are looking at" and
      "what you exported" can be the same set. */
   function exportProps(){
-    var all = loadProps();
-    if (!all.length) { $('messages').innerHTML = msg('warn','No properties to export yet.'); return; }
+    var all = cityProps(loadProps());
+    if (!all.length) { $('messages').innerHTML = msg('warn', activeCity
+      ? 'Nothing is filed under ' + cityLabel() + ' to export.' : 'No properties to export yet.'); return; }
     var f = readFilters(), xOpts = readOpts();
     var derived = filterEntries(all, f).map(function(e){
       var d = { e:e, irr:null, net:null, hold:null, s:null, held:isHeld(e) };
@@ -6306,9 +6428,15 @@ window.stopCheck=false;
     /* The register and the archive are two tabs over one table, so exporting
        both used to write the same filename twice and the second file quietly
        replaced the first in the downloads folder. The name says which one. */
-    download(toCsvText(L), 'irr-calculator-register.csv');
+    /* One file per city, or four exports would overwrite each other in the
+       downloads folder the same way the register and the archive used to. */
+    var slug = activeCity
+      ? '-' + cityLabel().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      : '';
+    var fname = 'irr-calculator-register' + slug + '.csv';
+    download(toCsvText(L), fname);
     $('messages').innerHTML = msg('ok', list.length + ' propert' + (list.length===1?'y':'ies') +
-      ' written to <strong>irr-calculator-register.csv</strong> — the ones on screen. '+
+      ' written to <strong>'+esc(fname)+'</strong> — the ones on screen. '+
       'Set <strong>Show properties</strong> to <strong>All</strong> first for the whole book.');
   }
 
@@ -6398,6 +6526,14 @@ window.stopCheck=false;
     var d = $('addDialog');
     /* A dropped file opens this window too, so the file side is what it opens
        on however it was opened — never the hand-typing form with a file waiting. */
+    /* Whatever city you are in is the one you are almost certainly adding to,
+       so it is filled in for you — over a blank field only, never over
+       something already typed. */
+    var c = (activeCity && activeCity !== NO_CAT) ? activeCity : '';
+    if (c) {
+      if (!$('impCat').value.trim()) $('impCat').value = c;
+      if (!$('oCat').value.trim())   $('oCat').value = c;
+    }
     if (!d.open) { dlgSay(''); setAddView('file'); d.showModal(); }
   }
   function closeAdd(){ var d = $('addDialog'); if (d.open) d.close(); }
@@ -6441,9 +6577,9 @@ window.stopCheck=false;
     var all = loadProps();
     if (!all.length) { $('messages').innerHTML = msg('warn','There are no properties yet.'); return; }
 
-    var sel = $('fCat').value;
+    var sel = activeCity;
     if (!sel) {
-      $('messages').innerHTML = msg('warn','Pick a capital city in the dropdown first — that is the one that gets renamed.');
+      $('messages').innerHTML = msg('warn','Choose a capital city in the header first — that is the one that gets renamed.');
       return;
     }
     var uncat = (sel === NO_CAT);
@@ -6463,10 +6599,11 @@ window.stopCheck=false;
         var list = loadProps(), n = 0;
         list.forEach(function(e){ if ((e.category||'').trim() === from) { e.category = to; n++; } });
         if (!putProps(list)) return;
-        // follow the rename in the filter rather than silently resetting it
-        renderProps();
-        var opt = [].filter.call($('fCat').options, function(o){ return o.value === (to || NO_CAT); })[0];
-        $('fCat').value = opt ? opt.value : '';
+        /* follow the rename rather than silently dropping back to every city:
+           you renamed the book you were in, so you stay in it under its new
+           name — or under "Not set" if the name was cleared */
+        activeCity = to || NO_CAT;
+        try { localStorage.setItem(CITY_KEY, activeCity); } catch (e) {}
         renderProps();
         $('messages').innerHTML = msg('ok', to
           ? 'Moved ' + n + ' propert' + (n===1?'y':'ies') + ' to ' + esc(to) + '.'
@@ -6543,8 +6680,14 @@ window.stopCheck=false;
   $('confirmDialog').addEventListener('click', function(ev){ if (ev.target === $('confirmDialog')) closeConfirm(); });
   $('confirmDialog').addEventListener('close', function(){ pendingConfirm = null; });
 
+  // the capital city — the scope the whole tool is read through
+  $('cityTabs').addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('button[data-city]');
+    if (b) setCity(b.dataset.city);
+  });
+
   // filters
-  ['fSearch','fCat','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
+  ['fSearch','fSuburb','fSoldFrom','fSoldTo','fHoldMin','fHoldMax'].forEach(function(id){
     var el = $(id);
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', renderProps);
   });
@@ -6684,8 +6827,9 @@ window.stopCheck=false;
   /* The Overview is the part that goes into a report, and it was the one view
      with no way out of the tool. Writes what is on screen, filters and all. */
   function exportOverview(){
-    var all = loadProps();
-    if (!all.length) { $('messages').innerHTML = msg('warn','There are no properties yet.'); return; }
+    var all = cityProps(loadProps());
+    if (!all.length) { $('messages').innerHTML = msg('warn', activeCity
+      ? 'Nothing is filed under ' + cityLabel() + ' yet.' : 'There are no properties yet.'); return; }
     var f = readFilters(), opts = readOpts();
     f.show = ovShowKinds();         // the same override the overview itself makes
     var derived = filterEntries(all, f).map(function(e){ return deriveOne(e, opts); });
@@ -6712,9 +6856,9 @@ window.stopCheck=false;
     var totalNet = nets.reduce(function(a,b){ return a+b; }, 0);
     var L = [['Performance Property — IRR Calculator, overview']];
     L.push(['Exported', new Date().toISOString().slice(0,10)]);
+    L.push(['Capital city', cityLabel()]);
     L.push(['Scope', data.length + ' of ' + all.length + ' properties']);
     L.push(['Basis', basisText()]);
-    if (f.cat) L.push(['Capital city filter', f.cat === NO_CAT ? 'Not set' : f.cat]);
     if (f.suburb) L.push(['Suburb filter', f.suburb]);
     if (f.q) L.push(['Search', f.q]);
     if (f.soldFrom || f.soldTo) L.push(['Sold between', (f.soldFrom||'any') + ' and ' + (f.soldTo||'any')]);
@@ -7020,6 +7164,33 @@ window.stopCheck=false;
   }
   /* Read-only and open to anyone who can read the list — the point of a log is
      that the people who did not make the change can see it. */
+  /* ── the log, scoped to the city, as carefully as the log allows ──
+     A log row records a property by name, never by city, so the city is worked
+     out two ways. A deleted row carries the whole record as JSON and states its
+     own category, which is exact. Anything else is looked up by name against
+     the book as it stands now.
+
+     A row that cannot be placed either way — a property deleted before this
+     log column existed, or renamed since — is SHOWN, not hidden. Restore lives
+     on these rows, and a row hidden by a guess is a property with no way back. */
+  function histInCity(rows){
+    if (!activeCity) return rows;
+    var byName = {};
+    loadProps().forEach(function(e){
+      byName[String(e.name||'').trim().toLowerCase()] = (e.category||'').trim();
+    });
+    var here = function(c){ return activeCity === NO_CAT ? !c : c === activeCity; };
+    return rows.filter(function(x){
+      if (x.detail && String(x.detail).charAt(0) === '{') {
+        try {
+          var rec = JSON.parse(x.detail);
+          if (rec && typeof rec.category === 'string') return here(rec.category.trim());
+        } catch (e) { /* not a record after all — fall through to the name */ }
+      }
+      var k = String(x.property||'').trim().toLowerCase();
+      return (k && byName[k] !== undefined) ? here(byName[k]) : true;
+    });
+  }
   function showHistory(){
     drawSync();
     $('histBody').innerHTML = '<p class="count-line">Loading…</p>';
@@ -7037,16 +7208,19 @@ window.stopCheck=false;
             esc(r.error.message)+'</p>';
           return;
         }
-        var rows = r.data || [];
+        var rows = histInCity(r.data || []);
         if (!rows.length) {
           $('histBody').innerHTML = '<div class="empty"><h3>Nothing logged yet</h3>'+
-            '<p>Changes are recorded from now on — archiving, restoring, re-filing and deleting.</p></div>';
+            '<p>'+(activeCity
+              ? 'Nothing has changed in ' + esc(cityLabel()) + '. Choose <strong>All cities</strong> in the header for the whole log.'
+              : 'Changes are recorded from now on — archiving, restoring, re-filing and deleting.')+'</p></div>';
           return;
         }
         histRows = {};
         var canUndo = (share.canWrite !== false);
         var h = '<p class="count-line" style="margin-bottom:var(--sp-3)">'+
-                'The last '+rows.length+' change'+(rows.length===1?'':'s')+', newest first.'+
+                'The last '+rows.length+' change'+(rows.length===1?'':'s')+
+                (activeCity ? ' in '+esc(cityLabel()) : '')+', newest first.'+
                 (canUndo ? ' A deleted property can be put back from here.' : '')+'</p>'+
                 '<div class="tbl-scroll"><table><thead><tr>'+
                 '<th scope="col">When</th><th scope="col">Who</th><th scope="col">Change</th>'+
