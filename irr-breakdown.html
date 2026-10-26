@@ -3880,12 +3880,14 @@ window.stopCheck=false;
        than leave that to be discovered by counting rows in the register, the
        card names the date it changed hands — or both dates, or how many share
        the price — so the figure can be checked against the list. */
-    var whenNote = function(m, noun){
+    /* The date the median price belongs to. One property → its own, named
+       outright. Several → the earliest of them, with the rest in the list
+       below; "earliest" rather than a midpoint because a midpoint is a day
+       nothing happened on and no use for reading a market figure off. */
+    var whenNote = function(m, verb){
       if (!m || !m.days.length) return '';
-      if (m.at.length === 1) return 'when the median ' + noun + ' happened';
-      return m.even
-        ? 'earliest — the median price sits between these two'
-        : 'earliest — ' + m.at.length + ' share the median price';
+      var first = dLabel(new Date(m.days[0]));
+      return m.at.length === 1 ? verb + ' ' + first : 'earliest ' + first;
     };
     /* date — price, one line each, for every property the median price was
        read off. This is the working behind the figure, so nothing is dropped. */
@@ -3911,47 +3913,51 @@ window.stopCheck=false;
         (list ? '<ul class="k-list">'+list+'</ul>' : '')+
       '</div>';
     };
+    /* ── eight cards, two rows of four ──
+       The top row is the result: what the book returned. The bottom row is
+       what it was made of. The two price medians carry their own dates now
+       rather than having a card each — a date is an attribute of the price it
+       belongs to, and splitting them put a figure on screen next to a date
+       that belonged to a different property.
+
+       Each median is struck over its OWN count, not over the property count:
+       a property with no price filled in is left out of a price median, and a
+       held one has no sale price at all. Counting to the middle row of the
+       register to check a median lands on the wrong row unless you know which
+       number it was struck over, so every one of them says. */
+    var priceCard = function(label, vals, m, one, many, pk, verb){
+      return card(label, vals.length ? aud(median(vals)) : '—',
+        joinNote(countOf(vals.length, one, many),
+                 span(vals, function(v){ return audShort(v); }),
+                 whenNote(m, verb)),
+        '',
+        /* the list is the working, so it only earns its place when there is
+           more than one row behind the figure — with a single property the
+           note above already names its date */
+        (m && m.at.length > 1) ? dateList(m, pk) : '');
+    };
     var h = '<div class="kpis">'+
       card('Median IRR', irrs.length ? pct(median(irrs)) : '—',
            'half the book did better', 'lead')+
+      card('Total net profit',
+           '<span class="'+(totalNet<0?'neg':'pos')+'" title="'+esc(aud(totalNet))+'">'+
+             audShort(totalNet)+'</span>',
+           esc(aud(totalNet)))+
+      card('Median return', rets.length ? pct(median(rets)) : '—',
+           'sold over purchase')+
+      card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
+           'compounded over the hold')+
+      priceCard('Median purchase price', buys, buyMid, 'price', 'prices',
+                'purchasePrice', 'bought')+
+      priceCard('Median sale price', sells, sellMid, 'sale', 'sales',
+                'soldPrice', 'sold')+
+      card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
+           'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Properties', sold,
            winners + ' profitable of ' + nets.length +
            (heldN ? ' · ' + heldN + ' held' : '') +
            (sold - nets.length - heldN > 0
               ? ' · ' + (sold - nets.length - heldN) + ' with no sale price' : ''))+
-      /* Each of these four is struck over its OWN count, not over the property
-         count on the card above: a property with no price filled in is left
-         out of a price median, and a held one has no sale price or sale date
-         at all. Counting to the middle row of the register to check a median
-         lands on the wrong row unless you know which number it was struck
-         over, so every one of them says. */
-      /* Each price card gives the figure and the range it came out of; the
-         date card beside it answers "and when was that", off the SAME
-         properties — the ones the median price was read from — and lists them
-         so the pairing can be checked. The two used to be independent medians,
-         which meant the date on screen belonged to no property on screen. */
-      card('Median purchase price', buys.length ? aud(median(buys)) : '—',
-           joinNote(countOf(buys.length, 'price', 'prices'),
-                    span(buys, function(v){ return audShort(v); })))+
-      card('Median purchase date', midDay(buyMid) ? dLabel(midDay(buyMid)) : '—',
-           whenNote(buyMid, 'purchase'),
-           '', dateList(buyMid, 'purchasePrice'))+
-      card('Median sale price', sells.length ? aud(median(sells)) : '—',
-           joinNote(countOf(sells.length, 'sale', 'sales'),
-                    span(sells, function(v){ return audShort(v); })))+
-      card('Median sale date', midDay(sellMid) ? dLabel(midDay(sellMid)) : '—',
-           whenNote(sellMid, 'sale'),
-           '', dateList(sellMid, 'soldPrice'))+
-      card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
-           'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
-      card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
-           'compounded over the hold')+
-      card('Median return', rets.length ? pct(median(rets)) : '—',
-           'sold over purchase')+
-      card('Total net profit',
-           '<span class="'+(totalNet<0?'neg':'pos')+'" title="'+esc(aud(totalNet))+'">'+
-             audShort(totalNet)+'</span>',
-           esc(aud(totalNet)))+
       '</div>';
 
     /* ── distribution ──
