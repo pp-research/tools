@@ -151,18 +151,21 @@ header img{height:40px;width:auto;display:block}
    default to min-width:auto) and scrolling the whole page. Each panel is a
    flex column so a hidden card drops out of the gap. */
 .cols > *{min-width:0;display:flex;flex-direction:column;gap:var(--sp-4)}
-/* Settings and Filters are two separate questions — what the numbers are struck
-   on, and which rows you are looking at — so they get more air between them
-   than the cards in the main column, which are one continuous read. */
+/* The left column is the assumptions and nothing else now — which rows you are
+   looking at is asked above the tabs, where both tabs that read it can see it. */
 .side{gap:var(--sp-6)}
 #messages:empty{display:none}
 #messages .note:last-child{margin-bottom:0}
 @media (min-width:1024px){
-  /* Columns stretch to the tallest (the left panel), and the properties table
-     takes whatever height is left so both columns finish level.
+  /* Columns stretch to the tallest, and the properties table takes whatever
+     height is left so both columns finish level.
      flex-basis 0 is the load-bearing bit: with `auto` the full table height
-     would feed back into the row height and drag the left panel down with it. */
-  .cols{grid-template-columns:330px minmax(0,1fr)}
+     would feed back into the row height and drag the left panel down with it.
+     The left panel used to set that height; with the filters gone from it, it
+     is three toggles tall and the table was collapsing to match. The row now
+     has a floor of its own — the window, less the header and the page's own
+     padding — so the table fills the screen whatever is beside it. */
+  .cols{grid-template-columns:330px minmax(0,1fr);min-height:calc(100vh - 170px)}
   .panel{flex:1 1 auto;min-height:0}
   #propsCard{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
   #propsBody{flex:1 1 0;min-height:220px;display:flex;flex-direction:column}
@@ -205,8 +208,37 @@ header img{height:40px;width:auto;display:block}
 /* Sized to sit beside the heading rather than stretch across the card: the
    heading is small, and an input three times its width stops reading as its
    companion and starts competing with it. */
-#searchField{margin:0;flex:0 1 240px;min-width:140px}
-#searchField input{min-height:36px;padding:7px 12px;font-size:14px}
+/* The Show dropdown sits in a card head now, beside a heading and a search
+   box, so it is sized to them rather than to a panel column: it takes its own
+   width instead of filling one, and matches the search box's height. */
+#showDrop{flex:0 0 auto}
+.dd-btn.dd-inline{
+  width:auto;min-height:36px;padding:7px 12px;font-size:14px;line-height:20px;
+  border-radius:var(--r-md);white-space:nowrap;
+}
+.dd-btn.dd-inline .dd-pre{color:var(--muted);font-weight:600}
+#showDrop .dd-menu{left:auto;right:0;min-width:180px}
+
+/* ═══ THE FILTER BAR ═══
+   One strip above the tabs, read by the Register and the Overview alike. The
+   fields are laid out in a row and wrap on a narrow screen; the Clear button
+   is pushed to the far end so it never sits mid-row looking like a field. */
+.filter-bar{
+  background-color:var(--panel);background-image:var(--grad-sheen);
+  border:1px solid var(--border);border-radius:var(--r-md);
+  padding:var(--sp-3) var(--sp-4);box-shadow:var(--edge);
+}
+.fb-row{display:flex;align-items:flex-end;gap:var(--sp-3);flex-wrap:wrap}
+.fb-row.fb-sub{margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--border)}
+.fb-field{flex:0 1 190px;min-width:140px;margin:0}
+.fb-field.fb-search{flex:0 1 260px}
+.fb-field label{margin-bottom:4px}
+.fb-field input,.fb-field select{min-height:36px;padding:7px 12px;font-size:14px}
+/* the buttons line up with the bottom of the fields, not with their labels */
+.filter-bar .fb-more,.filter-bar .fb-clear,.filter-bar .band-chip{min-height:36px;flex:none}
+.filter-bar .fb-more{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.filter-bar .fb-clear{margin-left:auto}
+@media (max-width:520px){ .fb-field{flex:1 1 100%} .filter-bar .fb-clear{margin-left:0} }
 label{display:block;font-size:12px;line-height:16px;font-weight:600;color:var(--muted);margin-bottom:6px}
 input,select,textarea{
   width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border-strong);
@@ -347,11 +379,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 @media (min-width:600px){ .filters{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)} }
 .filters input,.filters select{min-height:40px;padding:8px 12px;font-size:14px}
 .filters select{padding-right:34px}
-.cat-cell{display:flex;gap:var(--sp-2);min-width:0}
-.cat-cell select{flex:1 1 auto;min-width:0}
-.cat-cell button{flex:0 0 auto;min-height:40px}
-.cat-now{flex:1 1 auto;min-width:0;align-self:center;font-size:14px;line-height:20px;
-  font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .count-line{font-size:12px;line-height:17px;color:var(--faint);margin-bottom:var(--sp-3)}
 /* the banner sits between the card head and the filters, so the container
    owns the spacing on both sides and the inner note drops its own */
@@ -766,6 +793,10 @@ details .body strong{color:var(--text)}
            Built from the cities actually in the register, and absent entirely
            while there is only one of them to be in. -->
       <div class="seg-btns city-tabs" id="cityTabs" role="group" aria-label="Capital city"></div>
+      <!-- Renaming is something you do to the city you are in, so it belongs
+           beside the city and not in a panel somewhere else. The title names
+           the city, because "Rename" on its own does not say what. -->
+      <button type="button" class="btn-ghost btn-sm" id="btnRenameCat" hidden>Rename</button>
       <button type="button" class="btn-primary" id="btnShareAuth" hidden></button>
       <button type="button" class="btn-ghost icon-btn theme-btn" id="btnTheme"
               aria-label="Switch to dark mode" title="Switch to dark mode"></button>
@@ -842,77 +873,60 @@ details .body strong{color:var(--text)}
         </details>
       </section>
 
-      <!-- One filter set for all three tabs: the list, the result you open from
-           it, and the overview all read the same narrowing. -->
-      <section class="card" aria-labelledby="filt-h">
-        <div class="card-head">
-          <h2 id="filt-h">Filters</h2>
-          <button type="button" class="btn-ghost btn-sm" id="btnClearFilters" hidden>Clear</button>
-        </div>
-
-        <!-- Which kinds of property the list is about. Sold, held and archived
-             are three states one property can be in, so this is tickboxes
-             rather than one choice — and the archive stopped needing a tab of
-             its own the moment it became one of them. -->
-        <div class="field">
-          <span class="lbl" id="showLbl">Show properties</span>
-          <div class="dd" id="showDrop">
-            <button type="button" class="dd-btn" id="btnShow" aria-expanded="false"
-                    aria-controls="showMenu" aria-describedby="showLbl">
-              <span id="showText">Sold</span>
-              <span class="dd-chev" aria-hidden="true">&#9662;</span>
-            </button>
-            <div class="dd-menu" id="showMenu" role="group" aria-labelledby="showLbl" hidden>
-              <label><input type="checkbox" data-show="sold" checked><span>Sold</span></label>
-              <label><input type="checkbox" data-show="held"><span>Held</span></label>
-              <label><input type="checkbox" data-show="archived"><span>Archived</span></label>
-              <label class="dd-sep"><input type="checkbox" data-show="all"><span>All</span></label>
-            </div>
-          </div>
-        </div>
-        <!-- The city is chosen in the header, not here — this says which one
-             is in force and keeps Rename next to it, because renaming is a
-             thing you do to the city you are looking at. -->
-        <div class="field">
-          <span class="lbl" id="catNowLbl">Capital city</span>
-          <div class="cat-cell">
-            <span class="cat-now" id="catNow" aria-labelledby="catNowLbl">—</span>
-            <button type="button" class="btn-ghost btn-sm" id="btnRenameCat"
-                    title="Rename the capital city in force">Rename</button>
-          </div>
-        </div>
-        <div class="field">
-          <label for="fSuburb">Suburb</label>
-          <select id="fSuburb"><option value="">All suburbs</option></select>
-        </div>
-
-        <div class="pair">
-          <div class="field"><label for="fSoldFrom">Sold from</label>
-            <input id="fSoldFrom" type="date"></div>
-          <div class="field"><label for="fSoldTo">Sold to</label>
-            <input id="fSoldTo" type="date"></div>
-        </div>
-        <div class="pair">
-          <div class="field"><label for="fHoldMin">Hold min</label>
-            <div class="suffix"><input id="fHoldMin" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
-          <div class="field"><label for="fHoldMax">Hold max</label>
-            <div class="suffix"><input id="fHoldMax" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
-        </div>
-
-        <!-- set by clicking a bar on the Overview, cleared from here -->
-        <div id="bandChipWrap" hidden style="margin-top:var(--sp-3)">
-          <button type="button" class="band-chip" id="bandChip">
-            <span id="bandChipText"></span><span aria-hidden="true">×</span>
-          </button>
-        </div>
-
-        <p class="count-line" id="filtCount" style="margin:var(--sp-4) 0 0"></p>
-      </section>
     </div>
 
     <!-- ══════════ RIGHT: RESULT / PROPERTIES ══════════ -->
     <div class="main">
       <div id="messages" role="status" aria-live="polite"></div>
+
+      <!-- ══ FILTERS ══
+           Above the tab strip, not beside it, because the Register and the
+           Overview both read these and a control only one of them can see is a
+           control that narrows the other one invisibly. It hides itself on the
+           three tabs that do not read it rather than sitting there doing
+           nothing. Show properties is NOT here: the Overview overrides it with
+           its own In advice / Archived / Both, so it belongs to the Register
+           and lives in the Register's own head. -->
+      <div class="filter-bar" id="filterBar" hidden>
+        <div class="fb-row">
+          <!-- Search belongs here and not in the Register's head, where it used
+               to sit: it narrows the Overview too, so a search typed over there
+               was changing this tab's numbers with no control on screen to say
+               so. -->
+          <div class="fb-field fb-search">
+            <label for="fSearch">Search</label>
+            <input id="fSearch" type="search" placeholder="Name or address" autocomplete="off">
+          </div>
+          <div class="fb-field">
+            <label for="fSuburb">Suburb</label>
+            <select id="fSuburb"><option value="">All suburbs</option></select>
+          </div>
+          <!-- Sold dates and hold length are the occasional cuts, so they fold
+               away — but a filter hidden behind a closed dropper is the very
+               thing this bar exists to prevent, so the button counts what is
+               set inside it and the row opens itself when anything is. -->
+          <button type="button" class="btn-ghost btn-sm fb-more" id="btnRefine"
+                  aria-expanded="false" aria-controls="refineRow">
+            <span id="refineText">Refine</span><span class="dd-chev" aria-hidden="true">&#9662;</span>
+          </button>
+          <div id="bandChipWrap" hidden>
+            <button type="button" class="band-chip" id="bandChip">
+              <span id="bandChipText"></span><span aria-hidden="true">×</span>
+            </button>
+          </div>
+          <button type="button" class="btn-ghost btn-sm fb-clear" id="btnClearFilters" hidden>Clear</button>
+        </div>
+        <div class="fb-row fb-sub" id="refineRow" hidden>
+          <div class="fb-field"><label for="fSoldFrom">Sold from</label>
+            <input id="fSoldFrom" type="date"></div>
+          <div class="fb-field"><label for="fSoldTo">Sold to</label>
+            <input id="fSoldTo" type="date"></div>
+          <div class="fb-field"><label for="fHoldMin">Hold min</label>
+            <div class="suffix"><input id="fHoldMin" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
+          <div class="fb-field"><label for="fHoldMax">Hold max</label>
+            <div class="suffix"><input id="fHoldMax" type="number" min="0" step="0.5" placeholder="any"><span>yrs</span></div></div>
+        </div>
+      </div>
 
       <div class="tabs" role="tablist" aria-label="Sections">
         <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
@@ -985,9 +999,26 @@ details .body strong{color:var(--text)}
                  third, unrelated control. -->
             <div class="head-left">
               <h2 id="props-h">Register</h2>
-              <div class="field" id="searchField">
-                <label for="fSearch" class="sr-only">Search properties</label>
-                <input id="fSearch" type="search" placeholder="Search name or address" autocomplete="off">
+              <!-- Which kinds of property the list is about. Sold, held and
+                   archived are three states one property can be in, so this is
+                   tickboxes rather than one choice — and the archive stopped
+                   needing a tab of its own the moment it became one of them.
+                   It sits on the Register because only the Register reads it;
+                   the Overview answers the same question for itself. -->
+              <div class="dd" id="showDrop">
+                <label for="btnShow" class="sr-only" id="showLbl">Show properties</label>
+                <button type="button" class="dd-btn dd-inline" id="btnShow" aria-expanded="false"
+                        aria-controls="showMenu" aria-describedby="showLbl">
+                  <span class="dd-pre">Show</span>
+                  <span id="showText">Sold</span>
+                  <span class="dd-chev" aria-hidden="true">&#9662;</span>
+                </button>
+                <div class="dd-menu" id="showMenu" role="group" aria-labelledby="showLbl" hidden>
+                  <label><input type="checkbox" data-show="sold" checked><span>Sold</span></label>
+                  <label><input type="checkbox" data-show="held"><span>Held</span></label>
+                  <label><input type="checkbox" data-show="archived"><span>Archived</span></label>
+                  <label class="dd-sep"><input type="checkbox" data-show="all"><span>All</span></label>
+                </div>
               </div>
             </div>
             <div class="btns" style="margin:0">
@@ -3188,6 +3219,10 @@ window.stopCheck=false;
       btn.tabIndex = on ? 0 : -1;
       panel.hidden = !on;
     });
+    /* The bar narrows the Register and the Overview and nothing else, so on
+       the other three it goes away rather than sitting there implying it is
+       doing something to what you are looking at. */
+    $('filterBar').hidden = !(name === 'register' || name === 'overview');
     if (name === 'history') showHistory();   // always the live log, never a stale one
     if (name === 'overview' && ovStale) drawOverview();
     /* The how-to shows itself the first time this browser opens the tab —
@@ -3347,7 +3382,16 @@ window.stopCheck=false;
                  (o.v === activeCity ? 'true' : 'false')+'">'+esc(o.t)+'</button>';
         }).join('')
       : '';
-    var now = $('catNow'); if (now) now.textContent = cityLabel();
+    /* Rename sits beside the tabs and acts on whichever city is lit, so it
+       names that city rather than saying "Rename" into the air — and it has
+       nothing to act on at all while the register is empty. */
+    var ren = $('btnRenameCat');
+    if (ren) {
+      ren.hidden = !activeCity || share.canWrite === false;
+      ren.title = activeCity === NO_CAT
+        ? 'Give these unfiled properties a capital city'
+        : 'Rename ' + cityLabel() + ' across every property filed under it';
+    }
 
     /* The suburbs are the ones in the book you are in. Left on the whole store
        you could pick a suburb from Brisbane while looking at Adelaide and the
@@ -3361,11 +3405,25 @@ window.stopCheck=false;
   }
   /* The band is set from the chart, so the panel shows it as a chip you can
      clear — otherwise a filter set elsewhere would be invisible from here. */
+  var REFINE_IDS = ['fSoldFrom','fSoldTo','fHoldMin','fHoldMax'];
+  function refineOn(){
+    return REFINE_IDS.filter(function(id){ return String($(id).value).trim() !== ''; }).length;
+  }
+  function openRefine(open){
+    $('refineRow').hidden = !open;
+    $('btnRefine').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
   function syncFilterChrome(f){
     var on = f.band !== null;
     $('bandChipWrap').hidden = !on;
     if (on) $('bandChipText').textContent = 'IRR ' + IRR_BINS[f.band].full;
     $('btnClearFilters').hidden = !anyFilterOn(f);
+    /* A filter folded out of sight is the thing this bar exists to prevent, so
+       the button carries a count and the row shows itself whenever one of the
+       four is set. It can still be closed by hand once they are cleared. */
+    var n = refineOn();
+    $('refineText').textContent = n ? 'Refine · ' + n : 'Refine';
+    if (n && $('refineRow').hidden) openRefine(true);
   }
   /* Clear clears the filters. It does not change which city you are in — that
      is the header's job, and a Clear that quietly moved you to another book
@@ -3376,6 +3434,7 @@ window.stopCheck=false;
     showKinds = { sold:true, held:false, archived:false };
     syncShowChrome();
     irrBand = null;
+    openRefine(false);     // nothing left inside it to see
     renderProps();
   }
   /* sorting — null means the order they were added in.
@@ -3866,7 +3925,6 @@ window.stopCheck=false;
 
     if (!book.length || !all.length) {
       $('propCount').textContent = '';
-      $('filtCount').textContent = '';
       $('propsBody').innerHTML = book.length
         ? '<div class="empty"><h3>Nothing in '+esc(cityLabel())+'</h3>'+
           '<p>No property is filed under this capital city. Choose another one in the header, '+
@@ -3894,8 +3952,10 @@ window.stopCheck=false;
     var countTxt = (data.length === scoped.length
       ? scoped.length + ' propert' + (scoped.length===1?'y':'ies')
       : 'Showing ' + data.length + ' of ' + scoped.length) + kindTxt;
+    /* One count, over the table it counts. The copy that used to live in the
+       filters panel showed the register's number on the Overview tab too,
+       where the Overview's own scope line says something different. */
     $('propCount').textContent = countTxt;
-    $('filtCount').textContent = countTxt;
 
     if (!data.length) {
       /* "Choose Clear to see all 0" is what the generic wording produces when
@@ -6580,6 +6640,7 @@ window.stopCheck=false;
   });
   $('btnClearFilters').addEventListener('click', clearFilters);
   $('bandChip').addEventListener('click', function(){ irrBand = null; renderProps(); });
+  $('btnRefine').addEventListener('click', function(){ openRefine($('refineRow').hidden); });
 
   // the selection checkboxes live in a table that is rebuilt on every render
   document.addEventListener('change', function(ev){
@@ -7699,12 +7760,17 @@ window.stopCheck=false;
   /* A viewer who cannot write should not be shown buttons that will fail.
      Everything that only reads — filters, compare, both exports, the whole
      Overview — stays exactly as it is. */
+  /* btnRenameCat is not in here: it has a second reason to be hidden — there
+     is no city to rename while the register is empty — so one owner decides,
+     and that is syncCategoryControls, which reads share.canWrite as well. */
   var WRITE_CONTROLS = ['btnAddOpen','btnPropsClear','btnMoveCat','btnDelSel',
-                        'btnAside','btnSaveAssump','btnDiscardAssump','btnResetAssump',
-                        'btnRenameCat'];
+                        'btnAside','btnSaveAssump','btnDiscardAssump','btnResetAssump'];
   function applyShareMode(){
     var ro = (share.canWrite === false);
     WRITE_CONTROLS.forEach(function(id){ var el = $(id); if (el) el.hidden = ro; });
+    /* Signing in does not re-render, so Rename is set here as well as in
+       syncCategoryControls — both conditions, in both places. */
+    var ren = $('btnRenameCat'); if (ren) ren.hidden = ro || !activeCity;
     document.body.classList.toggle('read-only', ro);
     /* The button says everything the sentence did: if it offers you a sign-in,
        you cannot edit yet. */
