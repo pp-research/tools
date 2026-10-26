@@ -2398,7 +2398,7 @@ function dfdChart(el,cfg){
   let s='<svg class="dfd-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+cfg.t+'">';
   for(let v=lo; v<=hi+1e-9; v+=stp){ const y=Y(v).toFixed(1); s+='<line x1="'+X0+'" y1="'+y+'" x2="'+X1+'" y2="'+y+'" style="stroke:'+(Math.abs(v)<1e-9&&lo<0?'var(--text-faint)':'var(--border)')+'"></line><text x="'+(X0-8)+'" y="'+(+y+4)+'" text-anchor="end" style="fill:var(--text-faint);font-size:11px">'+fmt(+v.toFixed(2))+'</text>'; }
   const step=n>30?5:n>12?2:1;
-  for(let j=0;j<n;j++){ const yr=cfg.y0+j; if(yr%step===0||j===n-1) s+='<text x="'+X(j).toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:11px">'+yr+'</text>'; }
+  for(let j=0;j<n;j++){ const yr=cfg.y0+j; if(yr%step===0||(j===n-1&&yr%step>=step/2+0.5)) s+='<text x="'+X(j).toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:11px">'+yr+'</text>'; }
   cfg.series.forEach(sr=>{ let d='', pen=false; sr.v.forEach((v,j)=>{ if(v==null){ pen=false; return; } d+=(pen?'L':'M')+X(j).toFixed(1)+' '+Y(v).toFixed(1); pen=true; });
     s+='<path d="'+d+'" style="fill:none;stroke:'+sr.c+';stroke-width:'+(sr.w||2.4)+';stroke-linejoin:round;'+(sr.dash?'stroke-dasharray:6 5;':'')+'"></path>'; });
   s+='<line class="dfd-guide" x1="0" x2="0" y1="'+YT+'" y2="'+YB+'" visibility="hidden" style="stroke:var(--text-dim);stroke-dasharray:3 3"></line></svg><div class="dfd-tip" hidden></div>';
