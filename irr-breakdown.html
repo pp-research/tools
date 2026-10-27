@@ -486,7 +486,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkBm .hint a, #chkBm .bm-steps a{color:var(--accent-300);text-decoration:underline}
 /* The how-to window. Its own reading styles, because a modal body is bare. */
 #chkBm > h3:first-of-type{margin-top:0}
-#chkBm > p, #chkBmPf > p{font-size:13px;line-height:20px;color:var(--muted);margin-bottom:var(--sp-3);max-width:90ch}
+#chkBm > p, #bmMonthly > p{font-size:13px;line-height:20px;color:var(--muted);margin-bottom:var(--sp-3);max-width:90ch}
 #chkBm strong{color:var(--text)}
 #chkBm em{font-style:normal;color:var(--text);font-weight:600}
 #chkBm code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -497,7 +497,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkBm .field{margin-bottom:var(--sp-5)}
 #chkBm #bmSheetLine{margin:0 0 var(--sp-4);font-size:13px;line-height:19px}
 #chkBm .bm-row{margin-bottom:var(--sp-4)}
-#chkBmPf{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
+#bmMonthly{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
 /* The window's own prose and controls need room between them: a paragraph
    whose last line touches the next field reads as one run-on block. */
 #addPurchased > h3, #addSold > h3{margin:0 0 var(--sp-2)}
@@ -1259,7 +1259,7 @@ details .body strong{color:var(--text)}
               <p class="hint" id="bmSheetShared" hidden></p>
             </div>
 
-            <h3>1 · RP Data — every held property</h3>
+            <h3>1 · RP Data — the weekly catch-up</h3>
             <p>One button checks <strong>every held property in the book</strong>,
                whatever capital it is in. For each one it types the address into
                RP Data's own search box, opens the property, and reads the last sale
@@ -1270,6 +1270,11 @@ details .body strong{color:var(--text)}
                finds it. <strong>It resumes</strong>: stop whenever you like and click
                it again later, and it carries on from where it stopped rather than
                starting the book again.</p>
+            <p>This pass only asks about what the sheet has <strong>no answer
+               for</strong> — properties you have just added, and the ones RP Data
+               could not resolve. Anything it has already answered is left alone, and
+               the unresolved ones come round again each <strong>Monday</strong>.
+               Once the book has been swept once, this is a short run.</p>
 
             <ol class="bm-steps">
               <li>Show the bookmarks bar if it is hidden — <code>Ctrl+Shift+B</code>.</li>
@@ -1285,30 +1290,29 @@ details .body strong{color:var(--text)}
             </ol>
 
             <div class="bm-row">
-              <a class="bm-drag" id="bmLink" href="#" draggable="true">RP Data held check</a>
+              <a class="bm-drag" id="bmLink" href="#" draggable="true">&#128269; RP Data weekly</a>
               <span class="hint" id="bmNote" style="margin:0">Drag me to your bookmarks bar</span>
             </div>
 
-            <!-- The second pass reads its list FROM the sheet, so without one
-                 there is nothing for it to work from. -->
-            <div id="chkBmPf" hidden>
-              <h3>2 · Pricefinder — second pass</h3>
-              <p>RP Data answers for nearly everything. What it cannot — no suggestion
-                 came back, the page never opened, or it opened with no sale on record
-                 — stays open in the sheet. This asks Pricefinder about
-                 <strong>exactly those</strong>, reading the list from the sheet so it
-                 is always the current remainder, and writes to its own
-                 <strong>Pricefinder check</strong> tab. Same drag, same routine.</p>
+            <!-- The monthly refresh needs a sheet: what it skips is the sheet's own
+                 date stamps, so without one it has no memory to resume from. -->
+            <div id="bmMonthly" hidden>
+              <h3>2 · RP Data — the monthly refresh</h3>
+              <p>"Still held" goes stale. This one asks about <strong>every held
+                 property again</strong>, whatever it said last time, so a sale that
+                 happened since the last check is found. It skips only what your
+                 register already has a sale for, and whatever has already been checked
+                 <strong>this calendar month</strong> — which is also how it resumes.
+                 It starts the book over on the <strong>1st</strong>.</p>
               <div class="bm-row">
-                <a class="bm-drag" id="pfLink" href="#" draggable="true">Pricefinder second pass</a>
-                <span class="hint" id="pfNote" style="margin:0">Drag me, then click it on Pricefinder</span>
+                <a class="bm-drag" id="bmLinkMonthly" href="#" draggable="true">&#128260; RP Data monthly</a>
+                <span class="hint" id="bmNoteMonthly" style="margin:0">Drag me to your bookmarks bar</span>
               </div>
-              <p class="hint"><strong>First run, watch the console.</strong>
-                 Pricefinder's own wording has not been read from the live site, so this
-                 recognises the shapes these pages use rather than what it actually
-                 says. It checks itself on the first property and stops — showing what
-                 the page said — instead of working through the list finding nothing.
-                 Send that text back and it is a one-line fix.</p>
+              <p class="hint">This is the long one — the whole book at about eight
+                 seconds a property — so expect to leave the tab in front for a while,
+                 and stop it with <code>stopCheck = true</code> whenever you like. The
+                 two bookmarks keep separate memories, so running one never confuses
+                 the other.</p>
             </div>
 
             <h3>3 · What it tells you</h3>
@@ -1321,8 +1325,9 @@ details .body strong{color:var(--text)}
                   A listing is not a sale, so none of it is ever written onto a property
                   — it is counted separately at the top of the tab.</li>
               <li><strong>Needs a second look.</strong> No suggestion came back, the page
-                  did not open, or it opened with no sale on record. The sheet says which,
-                  and that is the list the Pricefinder pass works from.</li>
+                  did not open, or it opened with no sale on record. The sheet says which.
+                  The weekly pass offers them again each Monday — or run
+                  <code>rpAskAgain = true</code> in the console to go at them now.</li>
             </ol>
           </div>
           <div class="modal-foot">
@@ -1623,275 +1628,20 @@ details .body strong{color:var(--text)}
      Sold check tab reads it out, substitutes the city and the sheet address
      from this browser's own settings, and builds the bookmarklet from that.
      Rebuild it with mkbm.pl; do not edit it between the markers by hand. -->
-<!-- The Pricefinder second pass, carried the same way. -->
-<!-- pfbm:start --><script type="text/plain" id="pfBmSrc">
-window.stopCheck=false;
-
-(async function () {
-  'use strict';
-
-  const RAW_SHEET = (localStorage.getItem('ppSheetUrl') || '__SHEET_URL__').trim();
-  /* Whoever was signed in to the tool when this was built. The sheet is
-     shared, so a row has to say who put it there. */
-  const WHO       = '__WHO__'.charAt(0) === '_' ? '' : '__WHO__';
-  const SHEET_URL = /^https:/.test(RAW_SHEET) ? RAW_SHEET : '';
-  const PAUSE     = 7000;         // ms between properties
-  const JITTER    = 2500;         // random extra, so the pace is not robotic
-  const LONG_REST = [20, 45000];  // every 20 properties, pause 45s
-
-  if (!SHEET_URL) {
-    console.error('This pass reads its list from the sheet, so it needs the sheet ' +
-      'address. Set it in the IRR Calculator, Sold check tab.');
-    return;
-  }
-
-  /* ── 1. what is still open ──────────────────────────────────────────── */
-  const q = u => u + (u.includes('?') ? '&' : '?');
-  const todo = await fetch(q(SHEET_URL) + 'todo=1')
-    .then(r => r.json()).then(d => (d && d.rows) || [])
-    .catch(e => { console.error('Could not read the sheet: ' + e.message); return null; });
-  if (!todo) return;
-
-  const done = new Set(await fetch(q(SHEET_URL) + 'done=1&tab=pricefinder')
-    .then(r => r.json()).then(d => (d && d.addresses) || [])
-    .catch(() => []));
-
-  const list = todo.filter(r => !done.has(r.address));
-  if (!list.length) {
-    console.log('%cNothing open — either RP Data answered for everything, or this ' +
-      'pass has already been through what it did not.',
-      'font-weight:bold;font-size:13px');
-    return;
-  }
-  console.log(`%c${list.length} propert${list.length === 1 ? 'y' : 'ies'} RP Data ` +
-    'could not answer for' + (done.size ? ` — ${done.size} already done here` : ''),
-    'font-weight:bold;font-size:13px');
-
-  /* ── 2. the sheet ───────────────────────────────────────────────────── */
-  /* Same fire-and-forget POST as the RP Data pass, and for the same reason:
-     Apps Script redirects on the way back, which kills the CORS headers. */
-  async function send(rows) {
-    try {
-      await fetch(SHEET_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ tab: 'pricefinder', rows })
-      });
-    } catch (e) { console.warn('sheet write failed:', e.message); }
-  }
-
-  /* ── 3. page helpers ────────────────────────────────────────────────── */
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-  /* Described, not named. A hard-coded id that has never been checked against
-     the live page fails silently; "the visible input that asks for an address"
-     either finds one or says it could not. */
-  function searchBox() {
-    const inputs = [...document.querySelectorAll('input:not([type=hidden])')]
-      .filter(x => x.offsetParent !== null);
-    return inputs.find(x => /address|suburb|search|property/i
-            .test((x.placeholder || '') + ' ' + (x.getAttribute('aria-label') || ''))) ||
-           inputs.find(x => x.type === 'search') || null;
-  }
-
-  // React owns inputs like this, so set the value through the native setter
-  // and tell React about it — otherwise it reverts on the next render.
-  function typeInto(el, text) {
-    const setter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype, 'value').set;
-    setter.call(el, text);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  async function waitFor(test, ms = 9000, step = 250) {
-    const until = Date.now() + ms;
-    while (Date.now() < until) {
-      const v = test();
-      if (v) return v;
-      await sleep(step);
-    }
-    return null;
-  }
-
-  /* The suggestion list, however it is built. role=option is the accessible
-     spelling; the rest are what a listbox looks like when it is not. */
-  function options() {
-    const sels = ['[role=option]', '[class*=suggestion] li', '[class*=autocomplete] li',
-                  '[class*=typeahead] li', 'ul[class*=menu] li', 'ul[class*=result] li'];
-    for (const sel of sels) {
-      const o = [...document.querySelectorAll(sel)].filter(x => x.offsetParent !== null);
-      if (o.length) return o;
-    }
-    return null;
-  }
-
-  const MONTHS = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,
-                   Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
-  function asDate(s) {
-    let m = /^(\d{1,2}) (\w{3})\w* (\d{4})$/.exec(String(s).trim());
-    if (m) return new Date(+m[3], MONTHS[m[2]], +m[1]);
-    m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());   // dd/mm/yyyy
-    return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
-  }
-  function iso(d) {
-    return d ? d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0') : '';
-  }
-
-  /* Several spellings, because the live wording has not been read. Each one
-     captures a date and a price, in one order or the other, and the pair is
-     sorted out afterwards by which half parses as a date. */
-  const DATE = '(\\d{1,2}[ /]\\w{3,9}[ /]\\d{4})';
-  const CASH = '\\$([\\d,]+)';
-  const SALE_PATTERNS = [
-    new RegExp('Last Sold[^\\n]{0,40}?' + DATE + '[^\\n]{0,40}?' + CASH, 'i'),
-    new RegExp('Sold[^\\n]{0,40}?' + DATE + '[^\\n]{0,40}?' + CASH, 'i'),
-    new RegExp('Sold[^\\n]{0,40}?' + CASH + '[^\\n]{0,40}?' + DATE, 'i'),
-    new RegExp('Sale Price[^\\n]{0,40}?' + CASH + '[^\\n]{0,40}?' + DATE, 'i')
-  ];
-
-  function readSale() {
-    const t = document.body.innerText.replace(/\n{2,}/g, '\n');
-    /* Same trap as RP Data: comparable sales sit below the subject property,
-       and reading past them picks up a neighbour's price. */
-    let cut = t.length;
-    for (const k of ['Comparable', 'Nearby', 'Similar', 'Recent Sales']) {
-      const i = t.indexOf(k);
-      if (i >= 0 && i < cut) cut = i;
-    }
-    const sub = t.slice(0, cut);
-    for (const re of SALE_PATTERNS) {
-      const m = re.exec(sub);
-      if (!m) continue;
-      const d1 = asDate(m[1]), p2 = Number(String(m[2]).replace(/,/g, ''));
-      if (d1 && p2) return { date: d1, price: p2 };
-      const d2 = asDate(m[2]), p1 = Number(String(m[1]).replace(/,/g, ''));
-      if (d2 && p1) return { date: d2, price: p1 };
-    }
-    return null;
-  }
-  function sample() {                      // what to show when nothing matched
-    return document.body.innerText.replace(/\n{2,}/g, '\n').slice(0, 700);
-  }
-
-  /* ── 4. one property ────────────────────────────────────────────────── */
-  async function check(p) {
-    const box = searchBox();
-    if (!box) return { status: 'NO SEARCH BOX' };
-
-    box.focus();
-    typeInto(box, '');
-    await sleep(150);
-    typeInto(box, p.address);
-
-    const opts = await waitFor(options, 8000);
-    if (!opts) return { status: 'no match in Pricefinder' };
-
-    const before = location.href;
-    opts[0].click();
-    const moved = await waitFor(() => location.href !== before, 12000);
-    if (!moved) return { status: 'did not open', resolved: opts[0].innerText.trim() };
-
-    await waitFor(readSale, 9000);
-    const sale = readSale();
-    const resolved = location.origin + location.pathname;   // clickable, not a fragment
-    if (!sale) return { status: 'no sale on record', resolved, raw: sample() };
-
-    const bought = p.purchased ? new Date(p.purchased) : null;
-    const since = !!(sale.date && bought && sale.date > bought);
-
-    /* The same rule as the RP Data pass, where the reasoning is written out:
-       the sale on record for a property she still owns is her own purchase of
-       it, whether the register dates it before her record or after, and it
-       does not belong in the Sold columns either way. */
-    const paid = Number(String(p.purchasePrice || '').replace(/[^0-9.]/g, ''));
-    const sameMoney = !!(paid && sale.price &&
-      Math.abs(sale.price - paid) < 0.02 * paid);
-    const near = !!(sale.date && bought &&
-      Math.abs(sale.date - bought) < 180 * 864e5);
-    const isThePurchase = since ? sameMoney : (near || sameMoney);
-    const reported = !bought || (since && !isThePurchase);
-
-    return {
-      status: !bought       ? 'no purchase date on file'
-            : reported      ? 'SOLD SINCE PURCHASE'
-            : since         ? 'still held — sale on record matches the purchase price'
-            : isThePurchase ? 'still held'
-                            : 'still held — last sale predates the purchase',
-      soldDate:  reported ? iso(sale.date) : '',
-      soldPrice: reported ? sale.price     : '',
-      resolved
-    };
-  }
-
-  /* ── 5. the run ─────────────────────────────────────────────────────── */
-  if (!searchBox()) {
-    console.error('No search box on this page. Open the Pricefinder screen that ' +
-      'has one and click the bookmark again.');
-    return;
-  }
-
-  const results = [];
-  for (let i = 0; i < list.length; i++) {
-    if (window.stopCheck) { console.warn('stopped at', i, 'of', list.length); break; }
-    const p = list[i];
-    let r;
-    try { r = await check(p); }
-    catch (e) { r = { status: 'error: ' + e.message }; }
-
-    r.address       = p.address;
-    r.city          = p.city || '';
-    r.purchased     = p.purchased || '';
-    r.purchasePrice = p.purchasePrice || '';
-    results.push(r);
-
-    const hit = r.status === 'SOLD SINCE PURCHASE';
-    console.log(`${i + 1}/${list.length}  %c${p.address}  —  ${r.status}` +
-      (r.soldDate ? `  (sold ${r.soldDate} $${r.soldPrice.toLocaleString()})` : ''),
-      hit ? 'color:#c0392b;font-weight:bold' : 'color:#888');
-
-    /* The first property proves whether this works at all. If it opened one
-       and recognised nothing, every one after it will do the same — so stop,
-       show what the page said, and let the pattern be corrected. */
-    if (i === 0 && r.raw) {
-      window.pfSample = r.raw;
-      console.error('Opened the property but recognised no sale wording. Stopping ' +
-        'after one rather than running the whole list blind.\n\n' +
-        'This is what the page said — it is also in window.pfSample:\n\n' + r.raw);
-      return;
-    }
-
-    await send([{ address: r.address, city: r.city, purchased: r.purchased,
-                  purchasePrice: r.purchasePrice, soldDate: r.soldDate || '',
-                  soldPrice: r.soldPrice || '', status: r.status, who: WHO,
-                  onMarket: '', lastAd: '', resolved: r.resolved || '' }]);
-    window.pfResults = results;
-
-    if (i < list.length - 1) {
-      const rest = (i + 1) % LONG_REST[0] === 0 ? LONG_REST[1] : 0;
-      await sleep(PAUSE + Math.random() * JITTER + rest);
-    }
-  }
-
-  /* ── 6. what came back ──────────────────────────────────────────────── */
-  const sold  = results.filter(r => r.status === 'SOLD SINCE PURCHASE');
-  const still = results.filter(r => /^still held/.test(r.status));
-  const open  = results.length - sold.length - still.length;
-  console.log(`%c\nchecked ${results.length} · ${sold.length} sold since purchase · ` +
-    `${still.length} still held · ${open} Pricefinder could not answer either`,
-    'font-weight:bold;font-size:13px');
-  if (sold.length) console.table(sold, ['address','city','purchased','soldDate','soldPrice']);
-  console.log('Rows are in the "Pricefinder check" tab. Read them into the tool ' +
-    'with From Google Sheet.');
-})();
-</script><!-- pfbm:end -->
 <!-- rpbm:start --><script type="text/plain" id="rpBmSrc">
 window.stopCheck=false;
 
 (async function () {
   'use strict';
+
+  /* ── which pass is this? ─────────────────────────────────────────────
+     Substituted by the tool when it builds the bookmark, so one source
+     serves both. An empty or unknown value is the weekly catch-up, which is
+     the safe one: it never re-asks something already answered. */
+  const MODE = ('__MODE__'.toLowerCase() === 'monthly') ? 'monthly' : 'weekly';
+  /* the words the console uses, so the two passes do not both say "Monday" */
+  const PARKED = MODE === 'monthly' ? 'already checked this month' : 'asked earlier this week and still unanswered';
+  const RELEASED = MODE === 'monthly' ? 'on the 1st' : 'on Monday';
 
   /* ── settings ───────────────────────────────────────────────────────── */
   /* Every held property in the book, whatever capital it is in. One run and
@@ -1998,7 +1748,7 @@ window.stopCheck=false;
      a list of her clients' addresses is not something to leave sitting in
      another company's local storage; a hash is enough to recognise one we
      already asked about. */
-  const ASKED = 'rpAskedUnanswered';
+  const ASKED = MODE === 'monthly' ? 'rpAskedMonthly' : 'rpAskedUnanswered';
   function key_(s) {
     let h = 7;
     for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 4294967296;
@@ -2015,6 +1765,19 @@ window.stopCheck=false;
     m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
     return m;
   }
+  /* Midnight on the 1st of the current month — the monthly pass's reset.
+     A calendar month, not "30 days ago", for the same reason the weekly one
+     uses Monday: a rolling window drifts and you can never say which
+     properties are due without doing the arithmetic. */
+  function monthStart(from) {
+    const m = from ? new Date(from.getTime()) : new Date();
+    m.setHours(0, 0, 0, 0);
+    m.setDate(1);
+    return m;
+  }
+  function periodStart(from) {
+    return MODE === 'monthly' ? monthStart(from) : weekStart(from);
+  }
   function ymd(d) {
     return d.getFullYear() + '-' +
       String(d.getMonth() + 1).padStart(2, '0') + '-' +
@@ -2023,7 +1786,7 @@ window.stopCheck=false;
   function loadAsked() {
     try {
       const o = JSON.parse(localStorage.getItem(ASKED) || '{}');
-      const cut = weekStart().getTime();
+      const cut = periodStart().getTime();
       const out = {};
       Object.keys(o).forEach(k => { if (o[k] >= cut) out[k] = o[k]; });
       return out;
@@ -2058,7 +1821,7 @@ window.stopCheck=false;
   }
   const askedBefore = loadAsked();
 
-  let done = new Set(), askedThisWeek = new Set();
+  let done = new Set(), asked = new Set();
   /* Every address the sheet still holds an RP Data row for, whatever it says
      about it. Null while the sheet has not answered, which is the difference
      between "no row for this one" and "no answer from the sheet at all". */
@@ -2070,13 +1833,23 @@ window.stopCheck=false;
         20000, 'asking the sheet what it already has');
       /* Both sides are yyyy-mm-dd, so a string compare IS a date compare and
          nothing has to be parsed back into a Date to be got wrong. */
-      const monday = ymd(weekStart());
+      const since = ymd(periodStart());
       sheetSeen = new Set();
       ((d && d.rows) || []).forEach(r => {
         if (!r.address || !/^RP Data/.test(r.source || '')) return;
         sheetSeen.add(r.address);
-        if (/still held|SOLD SINCE PURCHASE/.test(r.status || '')) done.add(r.address);
-        else if (String(r.checkedAt || '').slice(0, 10) >= monday) askedThisWeek.add(r.address);
+        const thisPeriod = String(r.checkedAt || '').slice(0, 10) >= since;
+        /* The monthly refresh does not care what the row SAYS, only when it
+           was written: "still held" is exactly the answer it exists to take
+           again. The weekly catch-up is the opposite — an answer is the
+           reason to leave a property alone. */
+        if (MODE === 'monthly') {
+          if (thisPeriod) asked.add(r.address);
+        } else if (/still held|SOLD SINCE PURCHASE/.test(r.status || '')) {
+          done.add(r.address);
+        } else if (thisPeriod) {
+          asked.add(r.address);
+        }
       });
     } catch (e) {
       console.warn('Could not ask the sheet what it already has, so this is a ' +
@@ -2094,36 +1867,38 @@ window.stopCheck=false;
   /* Whichever of the two noticed it. The sheet's set reaches across browsers
      and machines; the browser's own reaches across a reload the sheet never
      got to see. */
-  all.forEach(p => { if (askedBefore[key_(p.name)]) askedThisWeek.add(p.name); });
+  all.forEach(p => { if (askedBefore[key_(p.name)]) asked.add(p.name); });
 
   /* One way to override it, said out loud below: ask for them anyway. */
   if (window.rpAskAgain) {
-    askedThisWeek = new Set();
+    asked = new Set();
     try { localStorage.removeItem(ASKED); } catch (e) {}
   }
-  const held = all.filter(p => !done.has(p.name) && !askedThisWeek.has(p.name));
+  const held = all.filter(p => !done.has(p.name) && !asked.has(p.name));
   const skipped = done.size ? all.filter(p => done.has(p.name)).length : 0;
-  const retried = all.filter(p => askedThisWeek.has(p.name)).length;
+  const retried = all.filter(p => asked.has(p.name)).length;
 
   if (!held.length) {
-    console.log('%cNothing left to check — ' + skipped + ' answered' +
-      (retried ? ', ' + retried + ' asked earlier this week and still unanswered' : '') +
+    console.log('%cNothing left to check on the ' + MODE + ' pass — ' +
+      (skipped ? skipped + ' answered' : '') +
+      (skipped && retried ? ', ' : '') +
+      (retried ? retried + ' ' + PARKED : '') +
       '. ' + (retried
-        ? 'Those come round again on Monday. To go at them now, run  rpAskAgain = true  ' +
+        ? 'Those come round again ' + RELEASED + '. To go at them now, run  rpAskAgain = true  ' +
           'and click the bookmark again.'
         : 'To start the book over, delete the rows in the "RP Data check" tab and ' +
           'click the bookmark again.'),
       'font-weight:bold;font-size:13px');
     return;
   }
-  console.log(`%c${held.length} propert${held.length === 1 ? 'y' : 'ies'} to check` +
+  console.log(`%c${MODE} pass — ${held.length} propert${held.length === 1 ? 'y' : 'ies'} to check` +
     (CITY ? ` in ${CITY}` : ' across every capital') +
     (skipped ? ` — ${skipped} already answered` : '') +
-    (retried ? ` — ${retried} asked earlier this week and still unanswered, left until Monday` : '') +
+    (retried ? ` — ${retried} ${PARKED}, left until ${RELEASED}` : '') +
     (SHEET_URL ? ' — writing to your Google Sheet' : ' — CSV at the end'),
     'font-weight:bold;font-size:13px');
   if (retried) {
-    console.log(`To ask those ${retried} again now rather than waiting for Monday, run ` +
+    console.log(`To ask those ${retried} again now rather than waiting ${RELEASED}, run ` +
       ` rpAskAgain = true  and click the bookmark again.`);
   }
   console.log(`About ${Math.round(held.length * 9.5 / 60)} minutes. ` +
@@ -5812,7 +5587,7 @@ window.stopCheck=false;
     var el = $(id || 'rpBmSrc');
     return el ? el.textContent : '';
   }
-  function buildBm(id){
+  function buildBm(id, mode){
     var src = bmSource(id);
     if (!src) return '';
     var url = sheetUrl();
@@ -5825,7 +5600,10 @@ window.stopCheck=false;
     try { who = (localStorage.getItem('pp-irr-email') || '').trim(); } catch (e) {}
     src = src.replace(/__SHEET_URL__/g, function(){ return url; })
              .replace(/__CITY__/g,      function(){ return ''; })
-             .replace(/__WHO__/g,       function(){ return who; });
+             .replace(/__WHO__/g,       function(){ return who; })
+             /* Which pass this bookmark is. Empty means the weekly catch-up,
+                which is the safe default: it never re-asks what is answered. */
+             .replace(/__MODE__/g,      function(){ return mode === 'monthly' ? 'monthly' : ''; });
     return 'javascript:' + encodeURIComponent('void function(){\n' + src + '\n}();');
   }
   var bmLast = null;             // what the href was last built from
@@ -5846,19 +5624,19 @@ window.stopCheck=false;
     var sig = (sheetUrl() || '-') + ' :: ' + who;
     if (sig === bmLast) return;
     bmLast = sig;
-    a.href = buildBm('rpBmSrc') || '#';
+    a.href = buildBm('rpBmSrc', 'weekly') || '#';
     var n = $('bmNote');
     if (n) {
       n.textContent = sheetUrl()
         ? 'Drag me to your bookmarks bar · results go to your sheet'
         : 'Drag me to your bookmarks bar · no sheet set, so you get a CSV';
     }
-    /* The second pass has no CSV fallback: its list comes FROM the sheet, so
-       without one there is nothing for it to work from. */
-    var pf = $('pfLink'), box = $('chkBmPf');
-    if (pf && box) {
+    /* The monthly refresh has no CSV fallback: what it skips is the sheet's
+       own date stamps, so without a sheet it has no memory to resume from. */
+    var mo = $('bmLinkMonthly'), box = $('bmMonthly');
+    if (mo && box) {
       box.hidden = !sheetUrl();
-      if (!box.hidden) pf.href = buildBm('pfBmSrc') || '#';
+      if (!box.hidden) mo.href = buildBm('rpBmSrc', 'monthly') || '#';
     }
   }
   /* ── the sheet address, shared with whoever can sign in ─────────────────
@@ -7599,7 +7377,7 @@ window.stopCheck=false;
   /* Clicking either bookmarklet would run it against this page, which is
      neither site: it would read the register, find no search box and throw.
      Say what to do instead. */
-  [['bmLink','bmNote'], ['pfLink','pfNote']].forEach(function(pair){
+  [['bmLink','bmNote'], ['bmLinkMonthly','bmNoteMonthly']].forEach(function(pair){
     $(pair[0]).addEventListener('click', function(ev){
       ev.preventDefault();
       var n = $(pair[1]);
