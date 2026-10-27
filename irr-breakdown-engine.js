@@ -623,14 +623,19 @@
   /* ═══ SELF-TEST — the two worked samples on the workbook's breakdown tabs ═══
      Addresses deliberately omitted; only the numeric deal terms are needed.
 
-     NET PROFIT IS NOT THE WORKBOOK'S FIGURE ANY MORE. The two values below
-     are the workbook's, LESS the purchase fees it also left out:
-       sample 1   696387.0519 − 560000 × 0.085 = 648787.0519
-       sample 2   274194.0311 − 965000 × 0.085 = 192169.0311
-     Derived, in other words, not observed — so they prove the correction was
-     applied, not that it agrees with a corrected sheet. When the two
-     breakdown tabs are re-run with the workbook's own fix, replace these with
-     what it says and delete this note. Every other field here is still the
+     NET PROFIT IS NOT THE WORKBOOK'S FIGURE ANY MORE, and does not need to
+     be. The workbook left the purchase fees out of it; these are its figures
+     less that omission (696387.0519 − 560000 × 0.085, and
+     274194.0311 − 965000 × 0.085).
+
+     They are not taken on trust. Net profit has to equal the SUM OF THE
+     CASHFLOW — the same rows the IRR is built from, where the full
+     depositAndFee has always landed on the purchase date — and the check
+     below asserts exactly that, independently of any sheet. The two agree to
+     the cent; before the fix they were out by P × 0.085 on every deal.
+
+     That is the stronger test, because a spreadsheet can carry the same
+     mistake, which is what happened here. Every other field is still the
      workbook's, untouched. */
   function selfTest() {
     var cases = [
@@ -656,6 +661,12 @@
         var tol = (key === 'irr') ? 1e-9 : 1e-3;
         checks.push({ field: key, got: got, want: want, pass: Math.abs(got - want) <= tol });
       });
+      /* The one check that needs nothing outside this file: what the client
+         ends up with has to be what went in and out. */
+      var sumCF = res.rows.reduce(function (a, r) { return a + r.netCF; }, 0);
+      checks.push({ field: 'netProfit = sum(netCF)',
+                    got: res.summary.netProfit, want: sumCF,
+                    pass: Math.abs(res.summary.netProfit - sumCF) <= 1e-6 });
       var fixed = computeBreakdown(c.deal).summary;
       out.push({ name: c.name, months: res.rows.length, checks: checks,
                  pass: checks.every(function (x) { return x.pass; }),
