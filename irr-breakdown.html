@@ -153,9 +153,20 @@ header img{height:40px;width:auto;display:block}
    default to min-width:auto) and scrolling the whole page. Each panel is a
    flex column so a hidden card drops out of the gap. */
 .cols > *{min-width:0;display:flex;flex-direction:column;gap:var(--sp-4)}
-/* The left column is the assumptions and nothing else now — which rows you are
-   looking at is asked above the tabs, where both tabs that read it can see it. */
-.side{gap:var(--sp-6)}
+/* ═══ SETTINGS BAR ═══
+   The toggles and the assumptions, in one line above the tabs. Collapsed, the
+   assumptions sit at the right-hand end of that line; opened, they break to a
+   row of their own so the toggles keep their place. */
+.set-bar{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-6);padding:var(--sp-3) var(--sp-4)}
+.set-bar h2{margin:0;flex:0 0 auto}
+.set-bar .seg-row{display:flex;align-items:center;gap:var(--sp-2);margin:0;flex:0 0 auto}
+.set-bar .seg-label{white-space:nowrap}
+.set-bar #assumpBox{flex:0 0 auto;margin-left:auto;border-top:0;padding-top:0;margin-top:0}
+/* Open, it is a row of its own, so the rule earns its place again. */
+.set-bar #assumpBox[open]{flex:1 0 100%;margin-left:0;border-top:1px solid var(--border);padding-top:var(--sp-3);margin-top:var(--sp-1)}
+/* Two fields to a pair, so a pair needs its own width before it wraps. */
+.set-bar #assumpBox[open] .body{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+  gap:0 var(--sp-6);align-items:start;max-width:none;margin-top:var(--sp-3)}
 #messages:empty{display:none}
 #messages .note:last-child{margin-bottom:0}
 @media (min-width:1024px){
@@ -167,7 +178,7 @@ header img{height:40px;width:auto;display:block}
      is three toggles tall and the table was collapsing to match. The row now
      has a floor of its own — the window, less the header and the page's own
      padding — so the table fills the screen whatever is beside it. */
-  .cols{grid-template-columns:330px minmax(0,1fr);min-height:calc(100vh - 170px)}
+  .cols{min-height:calc(100vh - 170px)}
   .panel{flex:1 1 auto;min-height:0}
   /* The register runs down the page rather than scrolling inside a window of
      its own. A box the height of the screen holds about eight of these rows —
@@ -886,10 +897,16 @@ details .body strong{color:var(--text)}
 
   <div class="cols">
 
-    <!-- ══════════ LEFT: SETTINGS, THEN THE DEAL ══════════ -->
-    <div class="side">
-      <section class="card" aria-labelledby="set-h">
-        <h2 id="set-h">Settings</h2>
+    <!-- ══════════ SETTINGS — across the top, above the tabs ══════════
+         These used to be a 330px left column. Everything that reads them —
+         the Overview's figures, the Calculation, the register's IRR column —
+         sits in a tab below, so the column was spending a third of the width
+         on three toggles and squeezing the table that needed it. Across the
+         top they are still in sight of everything they change, and the
+         register gets the whole page. Open the assumptions and they take a
+         row of their own underneath rather than crushing the toggles. -->
+    <section class="card set-bar" id="setCard" aria-labelledby="set-h">
+      <h2 id="set-h">Settings</h2>
 
         <div class="seg-row">
           <span class="seg-label" id="lbl-rate">Cash rate</span>
@@ -950,11 +967,9 @@ details .body strong{color:var(--text)}
             </div>
           </div>
         </details>
-      </section>
+    </section>
 
-    </div>
-
-    <!-- ══════════ RIGHT: RESULT / PROPERTIES ══════════ -->
+    <!-- ══════════ THE TABS AND WHAT THEY SHOW ══════════ -->
     <div class="main">
       <div id="messages" role="status" aria-live="polite"></div>
 
