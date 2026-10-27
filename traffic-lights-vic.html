@@ -1801,7 +1801,7 @@ function renderPVR(){
     const hit=(b)=>b.x0<X0-2||b.x1>X1-2||b.y0<YT-4||b.y1>YB+2||placed.some(p=>b.x0<p.x1&&p.x0<b.x1&&b.y0<p.y1&&p.y0<b.y1)||
       dots.some(d=>d.x+d.r>b.x0&&d.x-d.r<b.x1&&d.y+d.r>b.y0&&d.y-d.r<b.y1);
     want.forEach(r=>{ const cx=X(r.ap), cy=Y(r.ar), rr=rad(r.stag);
-      const txt=pvrNm(r.l)+(r.area==='near'&&r.dm!=null?' · '+pvrHM(r.dm):''), w=txt.length*6.9;
+      const txt=pvrNm(r.l), w=txt.length*6.9;   // name only; the drive time lives in the ranking (Shaene 2026-10-27)
       const spots=[[cx+rr+5,cy+4,0],[cx-rr-5-w,cy+4,0],[cx-w/2,cy-rr-5,0],[cx-w/2,cy+rr+14,0]];
       [18,32,48].forEach(dd=>spots.push([cx+rr+5,cy-dd+4,1],[cx+rr+5,cy+dd+4,1],[cx-rr-5-w,cy-dd+4,1],[cx-rr-5-w,cy+dd+4,1]));
       let sp=spots.find(([x,y])=>!hit({x0:x,x1:x+w,y0:y-11,y1:y+3})); if(!sp){ if(r!==mp&&!r.bench) return; sp=spots[0]; }
