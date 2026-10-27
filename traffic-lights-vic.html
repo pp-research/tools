@@ -971,7 +971,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-cardhead"><h3 id="pvmTitle">&nbsp;</h3></div>
         <div class="pvm-kpis" id="pvmKpis"></div>
         <div class="dfd-plot" id="pvmPlot"></div>
-        <div class="dfd-legend"><span><i style="background:var(--teal)"></i>% of Greater Melbourne</span><span><i class="ln dash"></i>Long-term average</span><span><i style="background:var(--red)"></i>Greater Melbourne = 100%</span><span><i style="background:var(--teal);opacity:.35;height:10px"></i>Cheaper than usual</span><span><i style="background:var(--red);opacity:.3;height:10px"></i>Dearer than usual</span></div>
+        <div class="dfd-legend"><span><i style="background:var(--teal)"></i>% of Greater Melbourne</span><span><i class="ln dash"></i>Long-term average</span><span><i style="background:var(--teal);opacity:.35;height:10px"></i>Cheaper than usual</span><span><i style="background:var(--red);opacity:.3;height:10px"></i>Dearer than usual</span></div>
       </section>
       <section class="pvr-card" aria-label="Ranking">
         <div class="pvr-cardhead"><h3>Ranking</h3><span class="pvr-hint" id="pvmShowing"></span></div>
@@ -2624,7 +2624,7 @@ function pvmChart(r){
   const W=Math.max(520,Math.round(el.clientWidth||900)), H=Math.round(W*0.32)+60, X0=48, X1=W-112, YT=14, YB=H-34;
   const ys=r.ys, n=ys.length, ja=ys.indexOf(r.from);
   let lo=Math.min(r.avg,...r.R.filter(v=>v!=null)), hi=Math.max(r.avg,...r.R.filter(v=>v!=null));
-  const s100=lo<=115&&hi>=85; if(s100){ lo=Math.min(lo,100); hi=Math.max(hi,100); }
+
   const span=hi-lo||10, st=[2,5,10,20,25,50,100].find(s=>span/s<=6)||100;
   lo=Math.max(0,Math.floor((lo-span*.04)/st)*st); hi=Math.ceil((hi+span*.04)/st)*st;
   const X=j=>X0+(X1-X0)*j/Math.max(1,n-1), Y=v=>YB-(YB-YT)*(v-lo)/(hi-lo), ya=Y(r.avg);
@@ -2638,7 +2638,7 @@ function pvmChart(r){
   r.R.forEach((v,j)=>{ if(j<ja) return; if(v==null) flush(); else run.push(j); }); flush();
   s+='<g clip-path="url(#pvmCa)" style="fill:var(--red);opacity:.13">'+fill+'</g><g clip-path="url(#pvmCb)" style="fill:var(--teal);opacity:.16">'+fill+'</g>';
   const labs=[];
-  if(s100&&100>=lo&&100<=hi){ s+='<line x1="'+X0+'" x2="'+X1+'" y1="'+Y(100).toFixed(1)+'" y2="'+Y(100).toFixed(1)+'" style="stroke:var(--red);stroke-width:1.5;opacity:.8"></line>'; labs.push({y:Y(100),t:'Melbourne 100%',c:'var(--red)'}); }
+
   s+='<line x1="'+X(Math.max(0,ja)).toFixed(1)+'" x2="'+X1+'" y1="'+ya.toFixed(1)+'" y2="'+ya.toFixed(1)+'" style="stroke:var(--text-dim);stroke-width:1.5;stroke-dasharray:6 5"></line>';
   labs.push({y:ya,t:'Average '+r.avg.toFixed(1)+'%',c:'var(--text-dim)'});
   let p='', seg=[]; const fl=()=>{ if(seg.length>1) p+='<polyline points="'+seg.join(' ')+'" style="fill:none;stroke:var(--teal);stroke-width:2.5;stroke-linejoin:round"></polyline>'; seg=[]; };
