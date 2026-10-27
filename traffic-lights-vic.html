@@ -538,8 +538,10 @@ table.calc.pvr tr.shade.active td{background:rgba(0,160,180,.22)}
 .pvm-controls .pvr-chips button{min-height:38px;padding:7px 10px;font-size:12px}
 .pvm-ctl{display:flex;align-items:center;gap:8px}
 .pvm-lbl{font-size:12px;font-weight:800;color:var(--text-dim)}
-.pvm-pick{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--text-dim)}
-.pvm-pick select{font:inherit;font-size:13.5px;font-weight:700;color:var(--text);background:var(--surface-2);border:1px solid var(--border-strong);border-radius:10px;padding:7px 10px;min-height:38px}
+.pvm-controls .pvm-select{margin:0;flex:0 0 220px;min-width:0}
+.pvm-controls .pvm-select label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pvm-controls .dd-trigger{padding:8px 12px;font-size:13.5px}
+.dd-opt .dd-gap.pvm-ddv{color:var(--text-dim)}.dd-opt .dd-gap.pvm-ddv.cheap{color:var(--green)}.dd-opt .dd-gap.pvm-ddv.dear{color:var(--red)}
 .pvm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .pvm-kpis div{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
 .pvm-kpis span{font-size:11.5px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em}
@@ -954,12 +956,19 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-hero-txt"><h2 class="pvr-h1">Price vs. Melbourne</h2><p class="pvr-lede">Each LGA&rsquo;s median sale price as a percentage of Greater Melbourne&rsquo;s, against its own long-term average. Below its average, the market is cheaper relative to Melbourne than it usually is.</p></div>
       </div>
       <section class="pvr-card pvm-controls" aria-label="Controls">
+        <div class="region-select pvm-select"><label for="pvmDdInput">Selected LGA</label><div class="dd" id="pvmDd">
+          <div class="dd-trigger" id="pvmDdTrigger">
+            <span class="cur"><span class="pin"></span><input type="text" id="pvmDdInput" placeholder="Find an LGA&hellip;" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pvmDdPanel"></span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div class="dd-panel" id="pvmDdPanel" role="listbox"></div>
+        </div></div>
         <div class="pvr-seg pvr-seg-sm" id="pvmSeg" role="group" aria-label="Segment"><button type="button" data-s="house" aria-pressed="true">Houses</button><button type="button" data-s="unit" aria-pressed="false">Units</button></div>
         <div class="pvm-ctl"><span class="pvm-lbl">Average over</span><div class="pvr-seg pvr-seg-sm" id="pvmWin" role="group" aria-label="Average over"><button type="button" data-w="0" aria-pressed="true">Whole history</button><button type="button" data-w="20" aria-pressed="false">20 years</button><button type="button" data-w="10" aria-pressed="false">10 years</button></div></div>
         <div class="pvr-chips" id="pvmFilt" role="group" aria-label="Area"><button type="button" data-f="all" aria-pressed="true">All Victoria</button><button type="button" data-f="metro" aria-pressed="false">Metro</button><button type="button" data-f="near" aria-pressed="false">Within 2h drive</button><button type="button" data-f="far" aria-pressed="false">Beyond 2h drive</button></div>
       </section>
       <section class="pvr-card" id="pvmChartCard" aria-label="Selected market">
-        <div class="pvr-cardhead"><h3 id="pvmTitle">&nbsp;</h3><label class="pvm-pick"><span>LGA</span><select id="pvmPick"></select></label></div>
+        <div class="pvr-cardhead"><h3 id="pvmTitle">&nbsp;</h3></div>
         <div class="pvm-kpis" id="pvmKpis"></div>
         <div class="dfd-plot" id="pvmPlot"></div>
         <div class="dfd-legend"><span><i style="background:var(--teal)"></i>% of Greater Melbourne</span><span><i class="ln dash"></i>Long-term average</span><span><i style="background:var(--red)"></i>Greater Melbourne = 100%</span><span><i style="background:var(--teal);opacity:.35;height:10px"></i>Cheaper than usual</span><span><i style="background:var(--red);opacity:.3;height:10px"></i>Dearer than usual</span></div>
@@ -2544,7 +2553,7 @@ function renderDfd(){
 // ---- Price v Melbourne tab (Shaene 2026-10-27): each LGA's median sale price as a % of Greater Melbourne's the same year,
 // against that LGA's own long-term average of the ratio. Levels = PVRD (December 12-month medians; 2026 = the latest
 // 3-month median), chained back to 1980 through GROWTH p where PVRD starts later. Below its average = cheaper than usual.
-let PVMSEG='house', PVMWIN=0, PVMF='all', PVMSORT={k:'rel',d:1}, PVMSEL='Hepburn', PVMTT=null;
+let PVMSEG='house', PVMWIN=0, PVMF='all', PVMSORT={k:'rel',d:1}, PVMSEL='Hepburn', PVMTT=null, PVMALL=[];
 const PVMMIN=10;   // years of history needed to be ranked
 function pvmLevels(l,seg){
   const g=GROWTH[l]&&GROWTH[l][seg], d=PVRD[l]&&PVRD[l][seg]; if(!g||!d||!d.p) return null;
@@ -2571,12 +2580,15 @@ const pvmSg=(v,d)=>{ const t=Math.abs(v).toFixed(d==null?1:d); return (+t===0?''
 const pvmCls=r=>r.rel<=-10?'cheap':r.rel>=10?'dear':'';
 function renderPvm(){
   const M=pvmLevels(PVRBM,PVMSEG), T=PVMSEG==='house'?'houses':'units';
-  let rows=Object.keys(GROWTH).filter(l=>l!==PVRBM).map(l=>pvmRow(l,PVMSEG,M)).filter(Boolean);
-  if(PVMF!=='all') rows=rows.filter(r=>r.area===PVMF);
+  const allRows=Object.keys(GROWTH).filter(l=>l!==PVRBM).map(l=>pvmRow(l,PVMSEG,M)).filter(Boolean);
+  PVMALL=allRows;
+  let rows=PVMF==='all'?allRows.slice():allRows.filter(r=>r.area===PVMF);
   const k=PVMSORT.k, d=PVMSORT.d;
   rows.sort((a,b)=>(a.short-b.short)||(k==='l'?a.l.localeCompare(b.l)*d:(a[k]-b[k])*d||a.l.localeCompare(b.l)));
-  if(!rows.some(r=>r.l===PVMSEL)&&rows.length) PVMSEL=rows[0].l;
-  const sel=rows.find(r=>r.l===PVMSEL);
+  // the selection is the tab's own (not Price v Rent's) and survives the area filter; it falls back only when the segment has no data for it
+  if(!allRows.some(r=>r.l===PVMSEL)&&allRows.length) PVMSEL=(rows[0]||allRows[0]).l;
+  const sel=allRows.find(r=>r.l===PVMSEL);
+  pvmDdInput.placeholder=PVMSEL||'Find an LGA…';
   // controls
   document.querySelectorAll('#pvmSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===PVMSEG));
   document.querySelectorAll('#pvmWin button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.w===PVMWIN));
@@ -2586,8 +2598,6 @@ function renderPvm(){
   const winTxt=PVMWIN?'the last '+PVMWIN+' years':'each market&rsquo;s whole history';
   document.getElementById('pvmShowing').innerHTML=rows.filter(r=>!r.short).length+' ranked, '+T+'; average over '+winTxt;
   // selected market
-  const pk=document.getElementById('pvmPick');
-  pk.innerHTML=rows.slice().sort((a,b)=>a.l.localeCompare(b.l)).map(r=>'<option'+(r.l===PVMSEL?' selected':'')+'>'+r.l+'</option>').join('');
   if(sel){
     document.getElementById('pvmTitle').textContent=sel.l+' as a % of Greater Melbourne, '+T;
     const c=pvmCls(sel);
@@ -2656,7 +2666,28 @@ document.getElementById('pvmWin').addEventListener('click',e=>{ const b=e.target
 document.getElementById('pvmFilt').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ PVMF=b.dataset.f; renderPvm(); } });
 document.getElementById('pvmSort').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
   PVMSORT=PVMSORT.k===b.dataset.k?{k:b.dataset.k,d:-PVMSORT.d}:{k:b.dataset.k,d:b.dataset.k==='rel'||b.dataset.k==='l'?1:-1}; renderPvm(); });
-document.getElementById('pvmPick').addEventListener('change',e=>{ PVMSEL=e.target.value; renderPvm(); });
+const pvmDd=document.getElementById('pvmDd'),pvmDdTrigger=document.getElementById('pvmDdTrigger'),pvmDdPanel=document.getElementById('pvmDdPanel'),pvmDdInput=document.getElementById('pvmDdInput');
+let pvmFiltered=[], pvmKb=-1;
+function pvmBuildOpts(){
+  const q=pvmDdInput.value.trim().toLowerCase(), ALL=PVMALL.slice().sort((a,b)=>a.l.localeCompare(b.l));
+  pvmFiltered=q?ALL.filter(r=>r.l.toLowerCase().includes(q)):ALL;
+  if(!pvmFiltered.length){pvmDdPanel.innerHTML='<div class="dd-empty">No LGAs found</div>';return;}
+  pvmDdPanel.innerHTML=pvmFiltered.map((r,i)=>'<div class="dd-opt '+(r.l===PVMSEL?'sel':'')+' '+(i===pvmKb?'kb':'')+'" role="option" data-lga="'+r.l+'"><span>'+r.l+'</span>'+
+    '<span class="dd-gap pvm-ddv '+pvmCls(r)+'" title="Now vs its long-term average">'+pvmSg(r.rel,0)+'%</span>'+TICK+'</div>').join('');
+  pvmDdPanel.querySelectorAll('.dd-opt').forEach(o=>o.addEventListener('click',()=>pvmSelect(o.dataset.lga)));
+}
+function pvmSelect(l){ pvmDdInput.value=''; pvmKb=-1; pvmCloseDD(); PVMSEL=l; renderPvm(); }
+function pvmOpenDD(){ pvmDd.classList.add('open'); pvmDdTrigger.setAttribute('aria-expanded','true'); pvmKb=-1; pvmBuildOpts(); }
+function pvmCloseDD(){ pvmDd.classList.remove('open'); pvmDdTrigger.setAttribute('aria-expanded','false'); pvmDdInput.value=''; pvmKb=-1; }
+pvmDdInput.addEventListener('focus',pvmOpenDD);
+pvmDdInput.addEventListener('input',()=>{ if(!pvmDd.classList.contains('open')) pvmOpenDD(); pvmKb=-1; pvmBuildOpts(); });
+pvmDdInput.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){e.preventDefault(); if(pvmFiltered.length){pvmKb=(pvmKb+1)%pvmFiltered.length; pvmBuildOpts();}}
+  else if(e.key==='ArrowUp'){e.preventDefault(); if(pvmFiltered.length){pvmKb=(pvmKb-1+pvmFiltered.length)%pvmFiltered.length; pvmBuildOpts();}}
+  else if(e.key==='Enter'){e.preventDefault(); if(pvmKb>=0&&pvmFiltered[pvmKb]) pvmSelect(pvmFiltered[pvmKb].l); else if(pvmFiltered.length===1) pvmSelect(pvmFiltered[0].l);}
+  else if(e.key==='Escape'){ pvmCloseDD(); pvmDdInput.blur(); }});
+pvmDdTrigger.addEventListener('click',e=>{ if(e.target!==pvmDdInput) pvmDdInput.focus(); });
+document.addEventListener('click',e=>{ if(!pvmDd.contains(e.target)) pvmCloseDD(); });
 document.getElementById('pvmTable').addEventListener('click',e=>{ const tr=e.target.closest('tr.pvm-row'); if(tr){ PVMSEL=tr.dataset.l; renderPvm(); document.getElementById('pvmChartCard').scrollIntoView({behavior:'smooth',block:'nearest'}); } });
 const TABS=[['tab-dash','pane-dash',null],['tab-pvr','pane-pvr',function(){renderGrowthAll(current);}],['tab-pvm','pane-pvm',function(){renderPvm();}],['tab-dfd','pane-dfd',function(){renderDfd();}],['tab-runway','pane-runway',function(){renderRunway(current);}],['tab-demand','pane-demand',function(){renderDemand(current);}],['tab-vacancy','pane-vacancy',function(){renderVacancy(current);}],['tab-rent','pane-rent',function(){renderRent(current);}],['tab-work','pane-work',function(){renderWork(current);}],['tab-sources','pane-sources',renderSources]];
 function showTab(id){ TABS.forEach(function(t){ const on=t[0]===id; document.getElementById(t[0]).setAttribute('aria-selected',on); document.getElementById(t[1]).hidden=!on; if(on&&t[2])t[2](); }); }
