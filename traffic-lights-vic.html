@@ -532,6 +532,45 @@ table.calc.pvr tr.shade td:first-child{box-shadow:inset 3px 0 0 rgba(0,160,180,.
 table.calc.pvr tr.shade.active td{background:rgba(0,160,180,.22)}
 .pvr-shadekey{display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(0,160,180,.18);box-shadow:inset 3px 0 0 var(--teal);vertical-align:-1px;margin-right:6px}
 #pane-dfd > .dfd{display:flex;flex-direction:column;gap:22px}
+#pane-pvm > .pvm{display:flex;flex-direction:column;gap:22px}
+.pvm-controls{flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:12px 16px}
+.pvm-controls .pvr-chips{justify-content:flex-start;gap:6px}
+.pvm-controls .pvr-chips button{min-height:38px;padding:7px 10px;font-size:12px}
+.pvm-ctl{display:flex;align-items:center;gap:8px}
+.pvm-lbl{font-size:12px;font-weight:800;color:var(--text-dim)}
+.pvm-pick{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--text-dim)}
+.pvm-pick select{font:inherit;font-size:13.5px;font-weight:700;color:var(--text);background:var(--surface-2);border:1px solid var(--border-strong);border-radius:10px;padding:7px 10px;min-height:38px}
+.pvm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.pvm-kpis div{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.pvm-kpis span{font-size:11.5px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em}
+.pvm-kpis b{font-size:22px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.pvm-kpis em{font-style:normal;font-size:12px;color:var(--text-dim)}
+.pvm-kpis .cheap b{color:var(--green)}.pvm-kpis .dear b{color:var(--red)}
+.pvm-svg{width:100%;height:auto;display:block;font-family:inherit}
+table.pvm-tbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.pvm-tbl th{font-size:11.5px;font-weight:800;color:var(--text-dim);text-align:right;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--bg-1)}
+table.pvm-tbl td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+table.pvm-tbl th:nth-child(-n+2),table.pvm-tbl td:nth-child(-n+2){text-align:left}
+table.pvm-tbl td:first-child{color:var(--text-faint);width:30px}
+table.pvm-tbl td.nm{font-weight:700;min-width:150px}
+table.pvm-tbl .sub{display:block;font-size:11px;font-weight:600;color:var(--text-faint)}
+table.pvm-tbl td.cheap b{color:var(--green)}table.pvm-tbl td.dear b{color:var(--red)}
+table.pvm-tbl tr.pvm-row{cursor:pointer}
+table.pvm-tbl tr.pvm-row:hover td{background:var(--surface-2)}
+table.pvm-tbl tr.pvm-row.active td{background:rgba(0,160,180,.18)}
+table.pvm-tbl tr.pvm-row.active td:first-child{box-shadow:inset 4px 0 0 var(--teal)}
+table.pvm-tbl tr.faint td{opacity:.6}
+table.pvm-tbl tr.faint.active td,table.pvm-tbl tr.faint:hover td{opacity:1}
+table.pvm-tbl .rg{width:190px;text-align:left}
+.pvm-rng{position:relative;height:14px;margin:0 6px}
+.pvm-rng i{position:absolute;display:block}
+.pvm-rng .bar{left:0;right:0;top:6px;height:3px;border-radius:2px;background:var(--border-strong)}
+.pvm-rng .avg{top:1px;width:2px;height:12px;margin-left:-1px;background:var(--text-dim)}
+.pvm-rng .now{top:2px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--text-dim);border:2px solid var(--bg-1)}
+.pvm-rng .now.cheap{background:var(--green)}.pvm-rng .now.dear{background:var(--red)}
+.rgl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-faint);margin:1px 0 0}
+.rgl span{padding:0 2px}
+@media(max-width:760px){.pvm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}table.pvm-tbl .rg{display:none}}
 .dfd-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}   /* one chart per row, full width (Shaene 2026-10-27) */
 .dfd-card{gap:8px}
 .dfd-card h3{font-size:15px;font-weight:800;margin:0;color:var(--text)}
@@ -807,7 +846,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
 <div class="wrap">
   <h1>TRAFFIC <span class="p2">LIGHTS</span></h1>
   <p class="subtitle">Victoria LGAs &mdash; graded across <b>Confidence</b>, <b>Value</b>, and <b>Supply &amp; Demand</b>.</p>
-  <div class="tabs" role="tablist"><button role="tab" id="tab-dash" aria-selected="true">Dashboard</button><button role="tab" id="tab-pvr" aria-selected="false">Price v Rent</button><button role="tab" id="tab-dfd" aria-selected="false">Daylesford</button><button role="tab" id="tab-runway" aria-selected="false" hidden>Runway</button><button role="tab" id="tab-demand" aria-selected="false" hidden>Demand score</button><button role="tab" id="tab-vacancy" aria-selected="false" hidden>Vacancy rate</button><button role="tab" id="tab-rent" aria-selected="false" hidden>Rent</button><button role="tab" id="tab-work" aria-selected="false" hidden>Working</button><button role="tab" id="tab-sources" aria-selected="false" hidden>Sources</button></div>
+  <div class="tabs" role="tablist"><button role="tab" id="tab-dash" aria-selected="true">Dashboard</button><button role="tab" id="tab-pvr" aria-selected="false">Price v Rent</button><button role="tab" id="tab-pvm" aria-selected="false">Price v Melbourne</button><button role="tab" id="tab-dfd" aria-selected="false">Daylesford</button><button role="tab" id="tab-runway" aria-selected="false" hidden>Runway</button><button role="tab" id="tab-demand" aria-selected="false" hidden>Demand score</button><button role="tab" id="tab-vacancy" aria-selected="false" hidden>Vacancy rate</button><button role="tab" id="tab-rent" aria-selected="false" hidden>Rent</button><button role="tab" id="tab-work" aria-selected="false" hidden>Working</button><button role="tab" id="tab-sources" aria-selected="false" hidden>Sources</button></div>
   <div class="pane" id="pane-dash" role="tabpanel">
   <div class="region-select">
     <label>SELECT LGA</label>
@@ -908,6 +947,31 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
     <div class="wk"><h4>Value — working</h4><p class="wsub" id="wkSub"></p><div class="scroll" id="wkTable"></div></div>
     <div class="wk"><h4>Column formulas</h4><p class="wsub">How each figure is derived. Self-contained — computed from the CoreLogic median series and the AI Ceiling workbook.</p><div class="fml" id="wkFml"></div></div>
     <div class="wk"><h4>Method</h4><div class="mth" id="wkMth"></div></div>
+  </div>
+  <div class="pane" id="pane-pvm" role="tabpanel" hidden>
+    <div class="pvm">
+      <div class="pvr-top">
+        <div class="pvr-hero-txt"><h2 class="pvr-h1">Price vs. Melbourne</h2><p class="pvr-lede">Each LGA&rsquo;s median sale price as a percentage of Greater Melbourne&rsquo;s, against its own long-term average. Below its average, the market is cheaper relative to Melbourne than it usually is.</p></div>
+      </div>
+      <section class="pvr-card pvm-controls" aria-label="Controls">
+        <div class="pvr-seg pvr-seg-sm" id="pvmSeg" role="group" aria-label="Segment"><button type="button" data-s="house" aria-pressed="true">Houses</button><button type="button" data-s="unit" aria-pressed="false">Units</button></div>
+        <div class="pvm-ctl"><span class="pvm-lbl">Average over</span><div class="pvr-seg pvr-seg-sm" id="pvmWin" role="group" aria-label="Average over"><button type="button" data-w="0" aria-pressed="true">Whole history</button><button type="button" data-w="20" aria-pressed="false">20 years</button><button type="button" data-w="10" aria-pressed="false">10 years</button></div></div>
+        <div class="pvr-chips" id="pvmFilt" role="group" aria-label="Area"><button type="button" data-f="all" aria-pressed="true">All Victoria</button><button type="button" data-f="metro" aria-pressed="false">Metro</button><button type="button" data-f="near" aria-pressed="false">Within 2h drive</button><button type="button" data-f="far" aria-pressed="false">Beyond 2h drive</button></div>
+      </section>
+      <section class="pvr-card" id="pvmChartCard" aria-label="Selected market">
+        <div class="pvr-cardhead"><h3 id="pvmTitle">&nbsp;</h3><label class="pvm-pick"><span>LGA</span><select id="pvmPick"></select></label></div>
+        <div class="pvm-kpis" id="pvmKpis"></div>
+        <div class="dfd-plot" id="pvmPlot"></div>
+        <div class="dfd-legend"><span><i style="background:var(--teal)"></i>% of Greater Melbourne</span><span><i class="ln dash"></i>Long-term average</span><span><i style="background:var(--red)"></i>Greater Melbourne = 100%</span><span><i style="background:var(--teal);opacity:.35;height:10px"></i>Cheaper than usual</span><span><i style="background:var(--red);opacity:.3;height:10px"></i>Dearer than usual</span></div>
+      </section>
+      <section class="pvr-card" aria-label="Ranking">
+        <div class="pvr-cardhead"><h3>Ranking</h3><span class="pvr-hint" id="pvmShowing"></span></div>
+        <div class="pvr-sortchips" id="pvmSort" role="group" aria-label="Sort by"></div>
+        <div class="scroll" id="pvmTable"></div>
+        <details class="pvr-info"><summary>How it works &#9432;</summary><p class="pvr-sub">Each year, the LGA&rsquo;s median sale price is divided by Greater Melbourne&rsquo;s median for the same year: 100% means the same price as Greater Melbourne, 60% means 40% cheaper. The long-term average is the mean of that percentage over the chosen years. <b>Now vs avg</b> is how far today&rsquo;s percentage sits from that average, as a share of the average (the points difference is underneath). A big negative number means the market is unusually cheap next to Melbourne, the catch-up case; a big positive one means it has already run ahead. Shaded green at 10% or more below, red at 10% or more above.</p>
+          <p class="pvr-note">Prices: Cotality December 12-month medians (each LGA&rsquo;s stored series, chained back to 1980 through its annual growth where the stored series starts later); the latest point is the June 2026 3-month median, so small markets can be noisy. Markets with under 10 years of history are listed last and not ranked; thin-data markets are faded. The range bar runs from the lowest to the highest percentage in the averaging window, with the average as a tick and now as a dot.</p></details>
+      </section>
+    </div>
   </div>
   <div class="pane" id="pane-dfd" role="tabpanel" hidden>
     <div class="dfd">
@@ -2477,7 +2541,124 @@ function renderDfd(){
   document.getElementById('dfdSnap').innerHTML='<table class="dfd-snap"><thead><tr><th>July 2026, houses</th>'+DFD.names.map((nm,i)=>'<th><i style="background:'+DFDCOL[i]+'"></i>'+nm+'</th>').join('')+'</tr></thead><tbody>'+
     DFD.snap.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('')+'</tbody></table>';
 }
-const TABS=[['tab-dash','pane-dash',null],['tab-pvr','pane-pvr',function(){renderGrowthAll(current);}],['tab-dfd','pane-dfd',function(){renderDfd();}],['tab-runway','pane-runway',function(){renderRunway(current);}],['tab-demand','pane-demand',function(){renderDemand(current);}],['tab-vacancy','pane-vacancy',function(){renderVacancy(current);}],['tab-rent','pane-rent',function(){renderRent(current);}],['tab-work','pane-work',function(){renderWork(current);}],['tab-sources','pane-sources',renderSources]];
+// ---- Price v Melbourne tab (Shaene 2026-10-27): each LGA's median sale price as a % of Greater Melbourne's the same year,
+// against that LGA's own long-term average of the ratio. Levels = PVRD (December 12-month medians; 2026 = the latest
+// 3-month median), chained back to 1980 through GROWTH p where PVRD starts later. Below its average = cheaper than usual.
+let PVMSEG='house', PVMWIN=0, PVMF='all', PVMSORT={k:'rel',d:1}, PVMSEL='Hepburn', PVMTT=null;
+const PVMMIN=10;   // years of history needed to be ranked
+function pvmLevels(l,seg){
+  const g=GROWTH[l]&&GROWTH[l][seg], d=PVRD[l]&&PVRD[l][seg]; if(!g||!d||!d.p) return null;
+  const L={}; d.p.forEach((v,i)=>{ if(v!=null) L[g.y0+d.o+i]=v; });
+  const ks=Object.keys(L).map(Number); if(!ks.length) return null;
+  for(let y=Math.min(...ks)-1; y>=g.pv0; y--){ const k=y+1-g.y0, p=k>=0?g.p[k]:null; if(p==null||L[y+1]==null) break; L[y]=L[y+1]/(1+p/100); }
+  return L;
+}
+function pvmRow(l,seg,M){
+  const L=pvmLevels(l,seg); if(!L||!M) return null;
+  const yrs=Object.keys(L).map(Number).filter(y=>M[y]).sort((a,b)=>a-b); if(yrs.length<2) return null;
+  const y0=yrs[0], y1=yrs[yrs.length-1], ys=[], R=[], P=[], G=[];
+  for(let y=y0;y<=y1;y++){ ys.push(y); const ok=L[y]!=null&&!!M[y]; R.push(ok?L[y]/M[y]*100:null); P.push(ok?L[y]:null); G.push(M[y]||null); }
+  const from=Math.max(y0,PVMWIN?y1-PVMWIN+1:y0), win=[];
+  R.forEach((v,i)=>{ if(v!=null&&ys[i]>=from) win.push({v,y:ys[i]}); });
+  const avg=win.reduce((a,b)=>a+b.v,0)/win.length, now=R[R.length-1];
+  const lo=win.reduce((a,b)=>b.v<a.v?b:a), hi=win.reduce((a,b)=>b.v>a.v?b:a);
+  return {l, area:pvrArea(l), thin:!!(GROWTH[l][seg]||{}).thin, ys, R, P, G, from, nYrs:win.length, avg, now, lo, hi,
+    med:P[P.length-1], pts:now-avg, rel:(now/avg-1)*100, short:win.length<PVMMIN, last:y1};
+}
+const pvmYr=y=>y>=2026?'Jun '+y:'Dec '+y;
+const pvmK=v=>v>=1e6?'$'+(v/1e6).toFixed(2)+'m':'$'+Math.round(v/1000)+'k';
+const pvmSg=(v,d)=>{ const t=Math.abs(v).toFixed(d==null?1:d); return (+t===0?'':v>0?'+':'−')+t; };
+const pvmCls=r=>r.rel<=-10?'cheap':r.rel>=10?'dear':'';
+function renderPvm(){
+  const M=pvmLevels(PVRBM,PVMSEG), T=PVMSEG==='house'?'houses':'units';
+  let rows=Object.keys(GROWTH).filter(l=>l!==PVRBM).map(l=>pvmRow(l,PVMSEG,M)).filter(Boolean);
+  if(PVMF!=='all') rows=rows.filter(r=>r.area===PVMF);
+  const k=PVMSORT.k, d=PVMSORT.d;
+  rows.sort((a,b)=>(a.short-b.short)||(k==='l'?a.l.localeCompare(b.l)*d:(a[k]-b[k])*d||a.l.localeCompare(b.l)));
+  if(!rows.some(r=>r.l===PVMSEL)&&rows.length) PVMSEL=rows[0].l;
+  const sel=rows.find(r=>r.l===PVMSEL);
+  // controls
+  document.querySelectorAll('#pvmSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===PVMSEG));
+  document.querySelectorAll('#pvmWin button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.w===PVMWIN));
+  document.querySelectorAll('#pvmFilt button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f===PVMF));
+  const SORTS=[['rel','vs its average'],['now','% of Melbourne'],['med','Median price'],['l','Name']];
+  document.getElementById('pvmSort').innerHTML=SORTS.map(s=>'<button type="button" data-k="'+s[0]+'" aria-pressed="'+(k===s[0])+'">'+s[1]+(k===s[0]?(d>0?' &uarr;':' &darr;'):'')+'</button>').join('');
+  const winTxt=PVMWIN?'the last '+PVMWIN+' years':'each market&rsquo;s whole history';
+  document.getElementById('pvmShowing').innerHTML=rows.filter(r=>!r.short).length+' ranked, '+T+'; average over '+winTxt;
+  // selected market
+  const pk=document.getElementById('pvmPick');
+  pk.innerHTML=rows.slice().sort((a,b)=>a.l.localeCompare(b.l)).map(r=>'<option'+(r.l===PVMSEL?' selected':'')+'>'+r.l+'</option>').join('');
+  if(sel){
+    document.getElementById('pvmTitle').textContent=sel.l+' as a % of Greater Melbourne, '+T;
+    const c=pvmCls(sel);
+    document.getElementById('pvmKpis').innerHTML=
+      '<div><span>Now ('+pvmYr(sel.last)+')</span><b>'+sel.now.toFixed(1)+'%</b><em>'+pvmK(sel.med)+' vs '+pvmK(sel.G[sel.G.length-1])+'</em></div>'+
+      '<div><span>Long-term average</span><b>'+sel.avg.toFixed(1)+'%</b><em>'+sel.from+'&ndash;'+sel.last+', '+sel.nYrs+' years</em></div>'+
+      '<div class="'+c+'"><span>Now vs its average</span><b>'+pvmSg(sel.rel,0)+'%</b><em>'+pvmSg(sel.pts)+' pts of Melbourne</em></div>'+
+      '<div><span>Range</span><b>'+sel.lo.v.toFixed(0)+'&ndash;'+sel.hi.v.toFixed(0)+'%</b><em>low '+sel.lo.y+', high '+sel.hi.y+'</em></div>';
+    pvmChart(sel);
+  }
+  // ranking
+  let rk=0;
+  document.getElementById('pvmTable').innerHTML='<table class="pvm-tbl"><thead><tr><th>#</th><th>LGA</th><th>Median</th><th>% of Melb.</th><th>Long-term avg</th><th>Now vs avg</th><th class="rg">Where now sits in its range</th></tr></thead><tbody>'+
+    rows.map(r=>{ const c=pvmCls(r), sp=r.hi.v-r.lo.v||1, pa=(r.avg-r.lo.v)/sp*100, pn=(r.now-r.lo.v)/sp*100;
+      const sub=(r.area==='metro'?'Metro':r.area==='near'?'Within 2h drive':'Beyond 2h drive')+' &middot; since '+r.from+(r.short?' &middot; under '+PVMMIN+' years, not ranked':r.thin?' &middot; thin data':'');
+      return '<tr class="pvm-row'+(r.l===PVMSEL?' active':'')+(r.short||r.thin?' faint':'')+'" data-l="'+r.l+'"><td>'+(r.short?'&ndash;':++rk)+'</td>'+
+        '<td class="nm">'+r.l+'<span class="sub">'+sub+'</span></td><td>'+pvmK(r.med)+'</td><td><b>'+r.now.toFixed(1)+'%</b></td><td>'+r.avg.toFixed(1)+'%</td>'+
+        '<td class="'+c+'"><b>'+pvmSg(r.rel,0)+'%</b><span class="sub">'+pvmSg(r.pts)+' pts</span></td>'+
+        '<td class="rg"><div class="pvm-rng" title="Low '+r.lo.v.toFixed(1)+'% ('+r.lo.y+'), high '+r.hi.v.toFixed(1)+'% ('+r.hi.y+'), average '+r.avg.toFixed(1)+'%"><i class="bar"></i><i class="avg" style="left:'+pa.toFixed(1)+'%"></i><i class="now '+c+'" style="left:'+pn.toFixed(1)+'%"></i></div>'+
+        '<span class="rgl"><span>'+r.lo.v.toFixed(0)+'%</span><span>'+r.hi.v.toFixed(0)+'%</span></span></td></tr>'; }).join('')+'</tbody></table>';
+}
+function pvmChart(r){
+  const el=document.getElementById('pvmPlot');
+  const W=Math.max(520,Math.round(el.clientWidth||900)), H=Math.round(W*0.32)+60, X0=48, X1=W-112, YT=14, YB=H-34;
+  const ys=r.ys, n=ys.length, ja=ys.indexOf(r.from);
+  let lo=Math.min(r.avg,...r.R.filter(v=>v!=null)), hi=Math.max(r.avg,...r.R.filter(v=>v!=null));
+  const s100=lo<=115&&hi>=85; if(s100){ lo=Math.min(lo,100); hi=Math.max(hi,100); }
+  const span=hi-lo||10, st=[2,5,10,20,25,50,100].find(s=>span/s<=6)||100;
+  lo=Math.max(0,Math.floor((lo-span*.04)/st)*st); hi=Math.ceil((hi+span*.04)/st)*st;
+  const X=j=>X0+(X1-X0)*j/Math.max(1,n-1), Y=v=>YB-(YB-YT)*(v-lo)/(hi-lo), ya=Y(r.avg);
+  let s='<defs><clipPath id="pvmCa"><rect x="0" y="0" width="'+W+'" height="'+ya.toFixed(1)+'"/></clipPath><clipPath id="pvmCb"><rect x="0" y="'+ya.toFixed(1)+'" width="'+W+'" height="'+(H-ya).toFixed(1)+'"/></clipPath></defs>';
+  for(let v=lo;v<=hi+1e-9;v+=st) s+='<line x1="'+X0+'" x2="'+X1+'" y1="'+Y(v).toFixed(1)+'" y2="'+Y(v).toFixed(1)+'" style="stroke:var(--border);stroke-width:1"></line><text x="'+(X0-8)+'" y="'+(Y(v)+4).toFixed(1)+'" text-anchor="end" style="fill:var(--text-faint);font-size:11px">'+v+'%</text>';
+  ys.forEach((y,j)=>{ if((y%5===0&&j<n-3)||j===n-1) s+='<text x="'+X(j).toFixed(1)+'" y="'+(YB+18)+'" text-anchor="middle" style="fill:var(--text-faint);font-size:11px">'+y+'</text>'; });
+  if(ja>0) s+='<rect x="'+X0+'" y="'+YT+'" width="'+(X(ja)-X0).toFixed(1)+'" height="'+(YB-YT)+'" style="fill:var(--text);opacity:.04"></rect>';
+  // shading between the line and its average, inside the averaging window: red = dearer than usual, teal = cheaper
+  let fill='', run=[];
+  const flush=()=>{ if(run.length>1) fill+='<polygon points="'+run.map(j=>X(j).toFixed(1)+','+Y(r.R[j]).toFixed(1)).join(' ')+' '+X(run[run.length-1]).toFixed(1)+','+ya.toFixed(1)+' '+X(run[0]).toFixed(1)+','+ya.toFixed(1)+'"></polygon>'; run=[]; };
+  r.R.forEach((v,j)=>{ if(j<ja) return; if(v==null) flush(); else run.push(j); }); flush();
+  s+='<g clip-path="url(#pvmCa)" style="fill:var(--red);opacity:.13">'+fill+'</g><g clip-path="url(#pvmCb)" style="fill:var(--teal);opacity:.16">'+fill+'</g>';
+  const labs=[];
+  if(s100&&100>=lo&&100<=hi){ s+='<line x1="'+X0+'" x2="'+X1+'" y1="'+Y(100).toFixed(1)+'" y2="'+Y(100).toFixed(1)+'" style="stroke:var(--red);stroke-width:1.5;opacity:.8"></line>'; labs.push({y:Y(100),t:'Melbourne 100%',c:'var(--red)'}); }
+  s+='<line x1="'+X(Math.max(0,ja)).toFixed(1)+'" x2="'+X1+'" y1="'+ya.toFixed(1)+'" y2="'+ya.toFixed(1)+'" style="stroke:var(--text-dim);stroke-width:1.5;stroke-dasharray:6 5"></line>';
+  labs.push({y:ya,t:'Average '+r.avg.toFixed(1)+'%',c:'var(--text-dim)'});
+  let p='', seg=[]; const fl=()=>{ if(seg.length>1) p+='<polyline points="'+seg.join(' ')+'" style="fill:none;stroke:var(--teal);stroke-width:2.5;stroke-linejoin:round"></polyline>'; seg=[]; };
+  r.R.forEach((v,j)=>{ if(v==null) fl(); else seg.push(X(j).toFixed(1)+','+Y(v).toFixed(1)); }); fl(); s+=p;
+  s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(r.now).toFixed(1)+'" r="4.5" style="fill:var(--teal);stroke:var(--bg-1);stroke-width:2"></circle>';
+  labs.push({y:Y(r.now),t:'Now '+r.now.toFixed(1)+'%',c:'var(--teal)',b:1});
+  labs.sort((a,b)=>a.y-b.y); for(let i=1;i<labs.length;i++) if(labs[i].y-labs[i-1].y<15) labs[i].y=labs[i-1].y+15;
+  labs.forEach(a=>{ s+='<text x="'+(X1+8)+'" y="'+(a.y+4).toFixed(1)+'" style="fill:'+a.c+';font-size:11.5px;font-weight:'+(a.b?800:700)+'">'+a.t+'</text>'; });
+  s+='<line id="pvmHair" x1="0" x2="0" y1="'+YT+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1;opacity:0"></line>';
+  s+='<rect id="pvmHit" x="'+X0+'" y="'+YT+'" width="'+(X1-X0)+'" height="'+(YB-YT)+'" style="fill:transparent;cursor:crosshair"></rect>';
+  el.innerHTML='<svg class="pvm-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+r.l+' median price as a percentage of Greater Melbourne, by year">'+s+'</svg><div class="dfd-tip" id="pvmTip" hidden></div>';
+  PVMTT={r,X,Y,X0,X1,W};
+  const sv=el.querySelector('svg'), hit=sv.querySelector('#pvmHit'), hair=sv.querySelector('#pvmHair'), tip=el.querySelector('#pvmTip');
+  const move=e=>{ const b=sv.getBoundingClientRect(), x=(e.clientX-b.left)*W/b.width;
+    const j=Math.max(0,Math.min(n-1,Math.round((x-X0)/(X1-X0)*(n-1)))), v=r.R[j];
+    hair.setAttribute('x1',X(j)); hair.setAttribute('x2',X(j)); hair.style.opacity=.6;
+    tip.innerHTML='<b>'+pvmYr(ys[j])+'</b><span><i style="background:var(--teal)"></i>% of Melbourne<b>'+(v!=null?v.toFixed(1)+'%':'&ndash;')+'</b></span>'+
+      '<span><i style="background:var(--teal)"></i>'+r.l+'<b>'+(r.P[j]?pvmK(r.P[j]):'&ndash;')+'</b></span><span><i style="background:var(--red)"></i>Greater Melbourne<b>'+(r.G[j]?pvmK(r.G[j]):'&ndash;')+'</b></span>'+
+      (ys[j]>=r.from?'<span><i style="background:var(--text-dim)"></i>vs average<b>'+(v!=null?pvmSg(v-r.avg)+' pts':'&ndash;')+'</b></span>':'');
+    tip.hidden=false; const px=X(j)*b.width/W; tip.style.left=Math.min(px+12,b.width-190)+'px'; tip.style.top='8px'; };
+  hit.addEventListener('mousemove',move); hit.addEventListener('mouseleave',()=>{ tip.hidden=true; hair.style.opacity=0; });
+}
+document.getElementById('pvmSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ PVMSEG=b.dataset.s; renderPvm(); } });
+document.getElementById('pvmWin').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ PVMWIN=+b.dataset.w; renderPvm(); } });
+document.getElementById('pvmFilt').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ PVMF=b.dataset.f; renderPvm(); } });
+document.getElementById('pvmSort').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+  PVMSORT=PVMSORT.k===b.dataset.k?{k:b.dataset.k,d:-PVMSORT.d}:{k:b.dataset.k,d:b.dataset.k==='rel'||b.dataset.k==='l'?1:-1}; renderPvm(); });
+document.getElementById('pvmPick').addEventListener('change',e=>{ PVMSEL=e.target.value; renderPvm(); });
+document.getElementById('pvmTable').addEventListener('click',e=>{ const tr=e.target.closest('tr.pvm-row'); if(tr){ PVMSEL=tr.dataset.l; renderPvm(); document.getElementById('pvmChartCard').scrollIntoView({behavior:'smooth',block:'nearest'}); } });
+const TABS=[['tab-dash','pane-dash',null],['tab-pvr','pane-pvr',function(){renderGrowthAll(current);}],['tab-pvm','pane-pvm',function(){renderPvm();}],['tab-dfd','pane-dfd',function(){renderDfd();}],['tab-runway','pane-runway',function(){renderRunway(current);}],['tab-demand','pane-demand',function(){renderDemand(current);}],['tab-vacancy','pane-vacancy',function(){renderVacancy(current);}],['tab-rent','pane-rent',function(){renderRent(current);}],['tab-work','pane-work',function(){renderWork(current);}],['tab-sources','pane-sources',renderSources]];
 function showTab(id){ TABS.forEach(function(t){ const on=t[0]===id; document.getElementById(t[0]).setAttribute('aria-selected',on); document.getElementById(t[1]).hidden=!on; if(on&&t[2])t[2](); }); }
 TABS.forEach(function(t){ document.getElementById(t[0]).addEventListener('click',function(){ showTab(t[0]); }); });
 document.getElementById('gwExpand').addEventListener('click',gwOpen);
