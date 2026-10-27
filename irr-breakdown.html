@@ -485,8 +485,18 @@ button:disabled{opacity:.45;cursor:not-allowed}
    for themselves */
 #chkBm .hint a, #chkBm .bm-steps a{color:var(--accent-300);text-decoration:underline}
 /* The how-to window. Its own reading styles, because a modal body is bare. */
+/* ── one type scale for the whole how-to ───────────────────────────────
+   It used to run at four body sizes at once: 16px list items inheriting
+   straight from <body>, 14px from .modal-body p, 13px from a rule that only
+   caught DIRECT children of #chkBm, and 11px hints — with an h3 left at the
+   browser default on top. Four sizes read as untidy, not as a hierarchy.
+   Three do the job: body, aside, heading. Everything here is scoped to
+   #chkBm so the other modals keep the shared .modal-body sizes. */
+#chkBm p, #chkBm li{font-size:13px;line-height:20px;color:var(--muted);max-width:90ch}
+#chkBm p{margin-bottom:var(--sp-3)}
+#chkBm .hint{font-size:12px;line-height:18px;color:var(--faint)}
+#chkBm h3{font-size:16px;line-height:23px;font-weight:700;color:var(--text);margin:var(--sp-6) 0 var(--sp-3)}
 #chkBm > h3:first-of-type{margin-top:0}
-#chkBm > p, #bmMonthly > p{font-size:13px;line-height:20px;color:var(--muted);margin-bottom:var(--sp-3);max-width:90ch}
 #chkBm strong{color:var(--text)}
 #chkBm em{font-style:normal;color:var(--text);font-weight:600}
 #chkBm code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -495,7 +505,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
    typo impossible to spot */
 #chkBm #bmSheet{font:500 12px/18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:38px;padding:8px 10px}
 #chkBm .field{margin-bottom:var(--sp-5)}
-#chkBm #bmSheetLine{margin:0 0 var(--sp-4);font-size:13px;line-height:19px}
+#chkBm #bmSheetLine{margin:0 0 var(--sp-4);font-size:13px;line-height:19px;color:var(--text)}
 #chkBm .bm-row{margin-bottom:var(--sp-4)}
 #bmMonthly{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
 /* The window's own prose and controls need room between them: a paragraph
