@@ -814,6 +814,10 @@ th .col-pair .sortbtn:hover{color:var(--text)}
 .note-warn{background:rgba(255,169,31,.10);border:1px solid rgba(255,169,31,.4);color:#ffd79a}
 .note-err{background:rgba(231,35,71,.10);border:1px solid rgba(231,35,71,.45);color:#ffb3c1}
 .note-ok{background:rgba(113,179,87,.10);border:1px solid rgba(113,179,87,.4);color:#c3e6b4}
+/* Neither good news nor a warning — just the thing you most need to know
+   before you start. Same pale teal as the Overview's scope line. */
+.note-info{background:rgba(var(--accent-rgb),.10);border:1px solid rgba(var(--accent-rgb),.30);color:var(--text)}
+:root[data-theme="light"] .note-info{background:rgba(var(--accent-rgb),.07)}
 .note ul{margin:4px 0 0 18px}
 .empty{text-align:center;padding:40px var(--sp-4);color:var(--muted)}
 .empty h3{color:var(--text);font-size:16px;font-weight:600;margin:0 0 6px;text-transform:none;letter-spacing:0}
@@ -1239,7 +1243,7 @@ details .body strong{color:var(--text)}
             <button type="button" class="modal-x" id="chkHelpClose" aria-label="Close">&times;</button>
           </div>
           <div class="modal-body" id="chkBm">
-            <p class="hint" id="bmSheetLine" hidden></p>
+            <p class="note note-info" id="bmSheetLine" hidden></p>
 
             <!-- Shown only while this browser has no address. Once one is set it
                  goes away and stays away: it is a thing you do once, not a
@@ -5707,9 +5711,18 @@ window.stopCheck=false;
     if (field) field.hidden = !!u;
     p.hidden = !u;
     if (!p.hidden) {
-      p.innerHTML = view
-        ? 'Results go to <a href="'+esc(view)+'" target="_blank" rel="noopener">your Google Sheet</a>, as the run finds them.'
-        : 'Results go to your Google Sheet as the run finds them.';
+      /* A sheet with a page corner and lines on it. Decorative — the sentence
+         beside it carries the whole message. */
+      var ico = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" '+
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>'+
+        '<path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>';
+      var where = view
+        ? '<a href="'+esc(view)+'" target="_blank" rel="noopener">your Google Sheet</a>'
+        : 'your Google Sheet';
+      p.innerHTML = ico + '<span><strong>Results go to ' + where + ' as the run finds them.</strong> ' +
+        'Each row is written the moment it is found, so a run that stops half way through ' +
+        'keeps everything it had already answered.</span>';
     }
 
     if (view || !u) return;
