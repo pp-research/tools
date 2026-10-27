@@ -563,6 +563,10 @@ table.dfd-snap td:first-child{color:var(--text-dim);font-weight:700}
 #pvrTable tr.bench td.nm{font-weight:800}
 .pvr-bm{color:var(--red);font-size:13px}
 #pvrTable tr.bench td.nm{color:var(--red)}
+.pvr-gmtick{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;color:var(--red);font-weight:700}
+.pvr-gmtick input{margin:0;width:14px;height:14px;accent-color:var(--red);cursor:pointer}
+.pvr-gmtick em{font-style:normal;font-weight:600;color:var(--text-dim)}
+.pvr-gmtick:has(input:not(:checked)){opacity:.6}
 .pvr-idxtools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pvr-zhint{font-size:12px;font-weight:700;color:var(--text-faint)}
 .pvr-zreset{font:inherit;font-size:12px;font-weight:800;padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer}
@@ -1553,7 +1557,7 @@ function pvrRows(seg){
 const pvrHM=m=>Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');
 const pvrPC=x=>(x>0?'+':'')+x.toFixed(1)+'%';
 const pvrNm=l=>l==='Melbourne'?'City of Melbourne':l;
-const PVRBM='Greater Melbourne';   // the benchmark: plotted and listed, never ranked or counted (Shaene 2026-10-27)
+const PVRBM='Greater Melbourne'; let PVRGM=true;   // PVRGM: show Greater Melbourne on "The gap" chart (tick box)   // the benchmark: plotted and listed, never ranked or counted (Shaene 2026-10-27)
 function pvrBench(seg){ const g=GROWTH[PVRBM]&&GROWTH[PVRBM][seg]; if(!g) return null;
   const b={l:PVRBM,bench:true,q:false,why:'Benchmark',area:'metro',dm:null,town:null};
   if(PVRWIN){ const N=PVRWIN, w=pvrWin(g,N);
@@ -1606,6 +1610,7 @@ function pvrZoomWire(idx, zk){
     tt.innerHTML='<div class="tty">'+y+(cur?' <span>(to Jun)</span>':'')+'</div>'+
       '<div class="ttr"><i style="background:var(--text)"></i>Price <b>'+money(pr)+'</b><span>index '+(pi!=null?Math.round(pi):'&ndash;')+'</span></div>'+
       '<div class="ttr"><i style="background:var(--teal)"></i>Rent <b>'+(rt!=null?'$'+rt+'/wk':'&ndash;')+'</b><span>index '+(ri!=null?Math.round(ri):'&ndash;')+'</span></div>'+
+      (T.GP&&(T.GP[j]!=null||T.GR[j]!=null)?'<div class="ttr"><i style="background:var(--red)"></i>Greater Melbourne<span>price '+(T.GP[j]!=null?Math.round(T.GP[j]):'&ndash;')+' &middot; rent '+(T.GR[j]!=null?Math.round(T.GR[j]):'&ndash;')+'</span></div>':'')+
       (pi!=null&&ri!=null?'<div class="ttg">Rent vs price '+((ri-pi)>0?'+':'&minus;')+Math.abs(Math.round(ri-pi))+' index pts</div>':'');
     const box=svg.getBoundingClientRect(), host=idx.getBoundingClientRect(), sc=box.width/W, px=box.left-host.left+jx(j)*sc;
     tt.hidden=false; const tw=tt.offsetWidth; tt.style.left=Math.max(4,Math.min(host.width-tw-4, px+(px+14+tw>host.width?-tw-14:14)))+'px'; tt.style.top=(box.top-host.top+18)+'px';
@@ -1685,10 +1690,15 @@ function renderPVR(){
       let lp=100, lrv=100;
       for(let i=bi;i<=lr;i++){ if(i>bi){ lp*=1+(G.p[i]||0)/100; lrv*=1+G.r[i]/100; } yrs.push(G.y0+i); P.push(lp); R.push(lrv); }
     }
+    // Greater Melbourne over the same years, indexed to 100 in the same base year (its PVRD levels); not on its own chart
+    const BMD=PVRD[PVRBM]&&PVRD[PVRBM][seg], BMG=GROWTH[PVRBM]&&GROWTH[PVRBM][seg], hasBM=cur!==PVRBM&&!!BMD&&!!BMG, showBM=hasBM&&PVRGM;
+    let GP=yrs.map(()=>null), GR=yrs.map(()=>null);
+    if(showBM){ const at=(a,y)=>{ const k=y-BMG.y0-BMD.o; return k>=0&&k<a.length?a[k]:null; }, p0=at(BMD.p,base), r0=at(BMD.r,base);
+      GP=yrs.map(y=>{ const v=at(BMD.p,y); return p0&&v?v/p0*100:null; }); GR=yrs.map(y=>{ const v=at(BMD.r,y); return r0&&v?v/r0*100:null; }); }
     // drag-zoom: crop to the chosen years; values keep their index base, so the gap reads the same
     if(PVRZOOM){ const ia=yrs.indexOf(PVRZOOM.a), ib=yrs.indexOf(PVRZOOM.b);
-      if(ia>=0&&ib>ia){ yrs=yrs.slice(ia,ib+1); P=P.slice(ia,ib+1); R=R.slice(ia,ib+1); } else PVRZOOM=null; }
-    const n=yrs.length, vals=P.concat(R.filter(v=>v!=null));
+      if(ia>=0&&ib>ia){ yrs=yrs.slice(ia,ib+1); P=P.slice(ia,ib+1); R=R.slice(ia,ib+1); GP=GP.slice(ia,ib+1); GR=GR.slice(ia,ib+1); } else PVRZOOM=null; }
+    const n=yrs.length, vals=P.concat(R.filter(v=>v!=null),GP.filter(v=>v!=null),GR.filter(v=>v!=null));
     const ttY=yrs, ttP=P, ttR=R;   // the tooltip reads the exact series drawn
     const span=Math.max(...vals)-Math.min(...vals), step=span>400?100:span>160?50:span>60?20:10;
     const lo=Math.floor(Math.min(...vals,100)/step)*step, hi=Math.ceil(Math.max(...vals,100)/step)*step;
@@ -1715,24 +1725,27 @@ function renderPVR(){
         gapPoly+='<polygon points="'+top.join(' ')+' '+bot.reverse().join(' ')+'" style="fill:var(--teal);opacity:.14"></polygon>'; } a=b; }
     const line=(a,c)=>{ let s='', segp=[]; const flush=()=>{ if(segp.length>1) s+='<polyline points="'+segp.join(' ')+'" style="fill:none;stroke:'+c+';stroke-width:3;stroke-linejoin:round;stroke-linecap:round"></polyline>'; segp=[]; };
       a.forEach((v,j)=>{ if(v==null) flush(); else segp.push(X(j).toFixed(1)+','+Y(v).toFixed(1)); }); flush(); return s; };
+    const bline=(a,dash)=>line(a,'var(--red)').replace(/stroke-width:3;/g,'stroke-width:2;'+(dash?'stroke-dasharray:6 5;':'')+'opacity:.85;');
     const lastR=R[n-1], lastP=P[n-1], hasR=R.some(v=>v!=null);
     const rAbove=lastR!=null&&lastR>=lastP;
     const lab=(v,c,t,up)=>'<circle cx="'+X(n-1)+'" cy="'+Y(v)+'" r="5.5" style="fill:'+c+'"></circle><text x="'+(X(n-1)-10)+'" y="'+(Y(v)+(up?-12:22))+'" text-anchor="end" style="fill:'+c+';font-size:13px;font-weight:800">'+t+' '+Math.round(v)+'</text>';
     const title='The gap: '+pvrNm(cur)+' '+segW+'s'+(PVRIDX==='peak'?' since the '+G.pk+' peak':'')+(PVRZOOM?', '+yrs[0]+'&ndash;'+yrs[n-1]:'');
-    PVRTT={yrs:ttY, P:ttP, R:ttR};
+    PVRTT={yrs:ttY, P:ttP, R:ttR, GP:showBM?GP:null, GR:showBM?GR:null};
     idx.innerHTML=head(title)+
-      '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.14"></i>Stagnation periods</span>':'')+'</div>'+
+      '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.14"></i>Stagnation periods</span>':'')+
+      (hasBM?'<label class="pvr-gmtick"><input type="checkbox" id="pvrGmTick"'+(PVRGM?' checked':'')+'><i class="ln" style="background:var(--red)"></i>Greater Melbourne <em>solid price, dashed rent</em></label>':'')+'</div>'+
       '<svg class="pvr-svg" data-w="'+W+'" data-x0="'+X0+'" data-x1="'+X1+'" data-ya="'+yrs[0]+'" data-yb="'+yrs[n-1]+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+title.replace(/&[a-z]+;/g,'-')+': indexed to 100 in '+base+'">'+
-      stall+'<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+gapPoly+line(R,'var(--teal)')+line(P,'var(--text)')+
+      stall+'<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+gapPoly+(showBM?bline(GP,false)+bline(GR,true):'')+line(R,'var(--teal)')+line(P,'var(--text)')+
       (lastR!=null?lab(lastR,'var(--teal)','Rent',rAbove):'')+lab(lastP,'var(--text)','Price',!rAbove)+
       '<rect id="pvrZSel" x="0" y="'+YT+'" width="0" height="'+(YB-YT)+'" style="fill:var(--teal);opacity:.18;pointer-events:none"></rect>'+
       '<line id="pvrTTLine" x1="0" x2="0" y1="'+YT+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1;stroke-dasharray:3 3;pointer-events:none" visibility="hidden"></line></svg><div class="pvr-tt" id="pvrTT" hidden></div>'+
       '<p class="pvr-note">'+(PVRIDX==='peak'?('Indexed to 100 in the '+G.pk+' peak year.'):('Both indexed to 100 in '+base+(hasR?', where the unbroken rent record begins, so the gap opens from a common start':'')+'. Grey bands: stagnation periods, each from a price peak to the year price next passed it (3+ years); the last runs to now if price has not recovered.'))+
-      (hasR?'':' No rent history for this market.')+' Hover or tap a year for the actual median price and weekly rent.'+' Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
+      (hasR?'':' No rent history for this market.')+(showBM?(' Red: Greater Melbourne over the same years, also indexed to 100 in '+base+(GR.some(v=>v!=null)?'':' (no Greater Melbourne rent reading that year, so only its price shows)')+'.'):'')+' Hover or tap a year for the actual median price and weekly rent.'+' Price: December 12-month median, the current year on the latest 3-month median. Rent: 12-month average of median asking rents. Nominal.</p>';
   }
   idx.querySelectorAll('#pvrIdxMode button').forEach(b=>{ b.onclick=()=>{ if(PVRIDX!==b.dataset.m){ PVRIDX=b.dataset.m; renderPVR(); } }; });
   const zr=document.getElementById('pvrZReset'); if(zr) zr.onclick=()=>{ PVRZOOM=null; renderPVR(); };
-  { const sv=idx.querySelector('svg.pvr-svg'); if(sv&&G&&PVRTT) sv._tt={yrs:PVRTT.yrs, P:PVRTT.P, R:PVRTT.R, d:(PVRD[cur]&&PVRD[cur][seg])||null, y0:G.y0, cy:G.y0+G.p.length-1}; }
+  const gt=document.getElementById('pvrGmTick'); if(gt) gt.onchange=()=>{ PVRGM=gt.checked; renderPVR(); };
+  { const sv=idx.querySelector('svg.pvr-svg'); if(sv&&G&&PVRTT) sv._tt={yrs:PVRTT.yrs, P:PVRTT.P, R:PVRTT.R, GP:PVRTT.GP, GR:PVRTT.GR, d:(PVRD[cur]&&PVRD[cur][seg])||null, y0:G.y0, cy:G.y0+G.p.length-1}; }
   pvrZoomWire(idx, zk);
 
   // ---- selected market
