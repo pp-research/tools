@@ -1725,12 +1725,29 @@ window.stopCheck=false;
   const RUN_MARK = 'rpRunEndedAt'; // where a run was when the page went
 
   /* ── 1. the register ────────────────────────────────────────────────── */
-  const cfgSrc = await fetch('https://pp-research.github.io/tools/supabase-config.js')
-    .then(r => r.text());
-  const url = (cfgSrc.match(/url:\s*'([^']+)'/) || [])[1];
-  const key = (cfgSrc.match(/key:\s*'([^']+)'/) || [])[1];
+  /* WHERE THE REGISTER LIVES.
+     The address and the publishable key are read at run time rather than
+     baked into the bookmark: a link on a bookmarks bar gets copied, shared
+     and screenshotted, and nothing in it should outlive the page it came
+     from. The tool substitutes only WHICH file to read them out of, so the
+     standalone build reads its own project and the hub build reads the hub's.
+     An unsubstituted placeholder falls back to the standalone, which is where
+     this started and is the harmless answer if a stale bookmark is clicked. */
+  const CFG_SRC = '__CFG_SRC__'.charAt(0) === '_'
+    ? 'https://pp-research.github.io/tools/supabase-config.js'
+    : '__CFG_SRC__';
+  const cfgSrc = await fetch(CFG_SRC).then(r => r.text());
+  /* Two shapes to read: the standalone's  { url: '…', key: '…' }  config
+     object, and the hub's  const SUPABASE_URL = '…'  module constants. */
+  const pick = (a, b) => ((cfgSrc.match(a) || cfgSrc.match(b) || [])[1] || '');
+  const url = pick(/url:\s*'([^']+)'/, /SUPABASE_URL\s*=\s*'([^']+)'/);
+  const key = pick(/key:\s*'([^']+)'/, /SUPABASE_KEY\s*=\s*'([^']+)'/);
   const row = (cfgSrc.match(/row:\s*'([^']+)'/) || [])[1] || 'adelaide';
-  if (!url || !key) { console.error('Could not read the shared-list config.'); return; }
+  if (!url || !key) {
+    console.error('Could not read the shared-list config from ' + CFG_SRC + '.');
+    return;
+  }
+  console.log('Register: ' + url.replace(/^https:\/\//, '') + ' · book "' + row + '"');
 
   const book = await fetch(`${url}/rest/v1/irr_book?select=body&id=eq.${row}`,
     { headers: { apikey: key, Authorization: 'Bearer ' + key } })
