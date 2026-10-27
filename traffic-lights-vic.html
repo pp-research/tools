@@ -1736,7 +1736,7 @@ function renderPVR(){
     PVRTT={yrs:ttY, P:ttP, R:ttR, GP:showBM?GP:null, GR:showBM?GR:null};
     idx.innerHTML=head(title)+
       '<div class="pvr-legend"><span><i class="ln" style="background:var(--teal)"></i>Rent</span><span><i class="ln" style="background:var(--text)"></i>Price</span>'+(hasR?'<span><i class="dot" style="background:var(--teal);opacity:.3"></i>The gap</span>':'')+(stall?'<span><i class="dot" style="background:var(--text);opacity:.14"></i>Stagnation periods</span>':'')+
-      (hasBM?'<label class="pvr-gmtick"><input type="checkbox" id="pvrGmTick"'+(PVRGM?' checked':'')+'>Greater Melbourne <span class="gml"><i class="ln" style="background:var(--red)"></i>price</span><span class="gml"><i class="ln gmdash"></i>rent</span></label>':'')+'</div>'+
+      (hasBM?'<label class="pvr-gmtick"><input type="checkbox" id="pvrGmTick"'+(PVRGM?' checked':'')+'>Greater Melbourne</label>':'')+'</div>'+
       '<svg class="pvr-svg" data-w="'+W+'" data-x0="'+X0+'" data-x1="'+X1+'" data-ya="'+yrs[0]+'" data-yb="'+yrs[n-1]+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+title.replace(/&[a-z]+;/g,'-')+': indexed to 100 in '+base+'">'+
       stall+'<g>'+grid+'</g><g style="fill:var(--text-faint);font-size:12px">'+ticks+'</g>'+gapPoly+(showBM?bline(GP,false)+bline(GR,true):'')+line(R,'var(--teal)')+line(P,'var(--text)')+
       (lastR!=null?lab(lastR,'var(--teal)','Rent',rAbove):'')+lab(lastP,'var(--text)','Price',!rAbove)+
