@@ -1702,7 +1702,9 @@ function renderPVR(){
     const ttY=yrs, ttP=P, ttR=R;   // the tooltip reads the exact series drawn
     const span=Math.max(...vals)-Math.min(...vals), step=span>400?100:span>160?50:span>60?20:10;
     const lo=Math.floor(Math.min(...vals,100)/step)*step, hi=Math.ceil(Math.max(...vals,100)/step)*step;
-    const W=Math.max(520,Math.round((idx.clientWidth||900)-52)),H=Math.round(W*0.38)+90,X0=52,X1=W-52,YT=24,YB=H-64;   // fits its panel; room under the plot for the rotated year labels
+    // a band above the plot for the stagnation labels (two rows) when any period falls in view
+    const epsV=((EPIS[cur]&&EPIS[cur][seg])||[]).some(ep=>{ const e=ep.open?yrs[n-1]:ep.e; return !(e<yrs[0]||ep.s>yrs[n-1]); });
+    const W=Math.max(520,Math.round((idx.clientWidth||900)-52)),H=Math.round(W*0.38)+90+(epsV?36:0),X0=52,X1=W-52,YT=epsV?60:24,YB=H-64;   // fits its panel; room under the plot for the rotated year labels
     const X=j=>n>1?X0+(X1-X0)*j/(n-1):(X0+X1)/2, Y=v=>YB-(YB-YT)*(v-lo)/(hi-lo);
     let grid='', ticks='';
     for(let v=lo; v<=hi+1e-9; v+=step){ grid+='<line x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'" style="stroke:var(--border)'+(v===100?';stroke:var(--text-faint);stroke-dasharray:4 4':'')+'"></line>'; ticks+='<text x="'+(X0-10)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'; }
@@ -1717,8 +1719,8 @@ function renderPVR(){
       const row=(xa+4<lastEnd[0])?((xa+4<lastEnd[1])?2:1):0;
       if(row<2) lastEnd[row]=xa+4+w;
       stall+='<rect x="'+xa.toFixed(1)+'" y="'+YT+'" width="'+(xb-xa).toFixed(1)+'" height="'+(YB-YT)+'" style="fill:var(--text);opacity:'+(ep.open?'.08':'.05')+'"></rect>'+
-        '<line x1="'+xa.toFixed(1)+'" y1="'+YT+'" x2="'+xa.toFixed(1)+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1;stroke-dasharray:3 4"></line>'+
-        (row<2?'<text x="'+(xa+4).toFixed(1)+'" y="'+(YT+13+row*15)+'" style="fill:var(--text-dim);font-size:11.5px;font-weight:800">'+txt+'</text>':''); });
+        '<line x1="'+xa.toFixed(1)+'" y1="'+(row<2?YT-46+row*16:YT)+'" x2="'+xa.toFixed(1)+'" y2="'+YB+'" style="stroke:var(--text-dim);stroke-width:1;stroke-dasharray:3 4"></line>'+
+        (row<2?'<text x="'+(xa+4).toFixed(1)+'" y="'+(YT-36+row*16)+'" style="fill:var(--text-dim);font-size:11.5px;font-weight:800">'+txt+'</text>':''); });
     // the gap: shaded wherever both series run, as one band per unbroken stretch
     let gapPoly=''; for(let a=0;a<n;a++){ if(R[a]==null) continue; let b=a; while(b+1<n&&R[b+1]!=null) b++;
       if(b>a){ const top=[], bot=[]; for(let j=a;j<=b;j++){ top.push(X(j).toFixed(1)+','+Y(R[j]).toFixed(1)); bot.push(X(j).toFixed(1)+','+Y(P[j]).toFixed(1)); }
