@@ -1189,6 +1189,28 @@ details .body strong{color:var(--text)}
           <div id="syncStatus"></div>
           <div id="histBody"></div>
         </section>
+
+        <!-- The register's Export CSV writes the rows you can SEE — whatever
+             the Show filter and the search box have left on screen. This
+             writes the book itself: every city, archived and outside-of-advice
+             properties included, and the whole change log rather than the
+             latest 300. It is the backup, and it is how a book moves to
+             another copy of the tool. -->
+        <section class="card" aria-labelledby="move-h">
+          <div class="card-head">
+            <h2 id="move-h">Backup and move</h2>
+          </div>
+          <p class="count-line">One file with every city's register and the whole
+             change log in it. Archived and outside-of-advice properties are
+             included &mdash; the register's Export CSV holds only the rows
+             showing at the time.</p>
+          <div class="bm-row">
+            <button type="button" class="btn-ghost btn-sm" id="btnBookExport">Export everything</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnBookImport">Import everything</button>
+            <input type="file" id="bookFile" accept="application/json,.json" hidden>
+          </div>
+          <p class="hint" id="bookMoveNote" style="margin-top:var(--sp-2)"></p>
+        </section>
       </div>
 
       <!-- Several sales can share one street number — a block of units against
@@ -7194,6 +7216,130 @@ window.stopCheck=false;
         $('histBody').innerHTML = h + '</tbody></table></div>';
       });
   }
+  /* ══════════ BACKUP AND MOVE ══════════
+     One file, both directions. The register's CSV answers "what am I looking
+     at"; this answers "what is the book", which is what a move needs.
+
+     Export reads every irr_book row this sign-in can see — not just the city
+     on screen — and pages the whole irr_log rather than the 300 the History
+     tab shows.
+
+     Import OVERWRITES a city outright. Two registers that have both been
+     edited cannot be reconciled: the same address with two different notes
+     has no right answer, and guessing one quietly is worse than refusing.
+     So this is a one-direction, one-time move, and it says so before it
+     runs. */
+  var BOOK_FORMAT = 'pp-irr-book';
+  function bookNote(t, bad){
+    var n = $('bookMoveNote'); if (!n) return;
+    n.textContent = t || '';
+    n.style.color = bad ? 'var(--money-neg)' : '';
+  }
+  function downloadJson(obj, filename){
+    var text = JSON.stringify(obj);
+    var blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }
+  /* The log can outgrow one request, so page until a short page comes back.
+     Oldest first, so re-inserting them keeps the order they happened in. */
+  function allLog(){
+    var out = [], page = 1000;
+    var step = function(from){
+      return share.sb.from('irr_log').select('at,who,action,property,detail')
+        .order('at', { ascending: true }).range(from, from + page - 1)
+        .then(function(r){
+          if (r.error) throw new Error(r.error.message);
+          var got = (r.data || []);
+          out = out.concat(got);
+          return got.length < page ? out : step(from + page);
+        });
+    };
+    return step(0);
+  }
+  function countProps(books){
+    return books.reduce(function(a, b){
+      return a + ((((b || {}).body || {}).properties || []).length);
+    }, 0);
+  }
+  function exportBook(){
+    if (!share.sb) { bookNote('There is no shared list to export from.', true); return; }
+    bookNote('Reading the book…');
+    var books = [];
+    share.sb.from('irr_book').select('id,body,updated_at').order('id')
+      .then(function(r){
+        if (r.error) throw new Error(r.error.message);
+        books = r.data || [];
+        return allLog();
+      })
+      .then(function(log){
+        if (!books.length) { bookNote('Nothing to export — no books are readable with this sign-in.', true); return; }
+        var d = new Date(), p2 = function(n){ return (n < 10 ? '0' : '') + n; };
+        downloadJson({ format: BOOK_FORMAT, version: 1,
+                       exportedAt: d.toISOString(),
+                       books: books, log: log },
+          'irr-book-' + d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + '.json');
+        bookNote('Exported ' + books.length + ' book' + (books.length === 1 ? '' : 's') +
+                 ' · ' + countProps(books) + ' properties · ' + log.length + ' history rows.');
+      })
+      .catch(function(e){ bookNote('Export failed: ' + ((e && e.message) || e), true); });
+  }
+  function importBook(file){
+    if (!share.sb || share.canWrite === false) { bookNote('Importing needs a sign-in that can write.', true); return; }
+    bookNote('Reading ' + file.name + '…');
+    var fr = new FileReader();
+    fr.onerror = function(){ bookNote('Could not read that file.', true); };
+    fr.onload = function(){
+      var doc;
+      try { doc = JSON.parse(String(fr.result)); }
+      catch (e) { bookNote('That is not a JSON file.', true); return; }
+      if (!doc || doc.format !== BOOK_FORMAT || !Array.isArray(doc.books)) {
+        bookNote('That file is not an IRR book export.', true); return;
+      }
+      var books = doc.books.filter(function(b){ return b && b.id && b.body; });
+      var log = Array.isArray(doc.log) ? doc.log : [];
+      if (!books.length) { bookNote('That export has no books in it.', true); return; }
+      var names = books.map(function(b){ return b.id; }).join(', ');
+      if (!confirm('Import ' + books.length + ' book' + (books.length === 1 ? '' : 's') +
+            ' (' + names + '), ' + countProps(books) + ' properties and ' + log.length +
+            ' history rows.\n\nAny city of the same name here is REPLACED outright, not merged.' +
+            '\n\nGo ahead?')) { bookNote('Import cancelled — nothing was changed.'); return; }
+
+      bookNote('Writing ' + books.length + ' book' + (books.length === 1 ? '' : 's') + '…');
+      share.sb.from('irr_book')
+        .upsert(books.map(function(b){ return { id: String(b.id).trim().toLowerCase(), body: b.body }; }),
+                { onConflict: 'id' })
+        .then(function(r){
+          if (r.error) throw new Error(r.error.message);
+          if (!log.length) return null;
+          /* in chunks: one oversized insert is the thing most likely to be
+             refused, and a refusal half way leaves the book already written */
+          bookNote('Writing ' + log.length + ' history rows…');
+          var rows = log.map(function(x){
+            return { at: x.at || null, who: x.who || null,
+                     action: x.action || 'imported', property: x.property || null,
+                     detail: x.detail || null };
+          });
+          var step = function(i){
+            if (i >= rows.length) return null;
+            return share.sb.from('irr_log').insert(rows.slice(i, i + 500)).then(function(res){
+              if (res && res.error) throw new Error(res.error.message);
+              return step(i + 500);
+            });
+          };
+          return step(0);
+        })
+        .then(function(){
+          bookNote('Imported ' + books.length + ' book' + (books.length === 1 ? '' : 's') +
+                   ' · ' + countProps(books) + ' properties · ' + log.length + ' history rows. Reloading…');
+          setTimeout(function(){ location.reload(); }, 1200);
+        })
+        .catch(function(e){ bookNote('Import failed: ' + ((e && e.message) || e), true); });
+    };
+    fr.readAsText(file);
+  }
   function logChange(rows){
     if (!share.sb || share.canWrite === false || !rows || !rows.length) return;
     var who = '';
@@ -7490,6 +7636,13 @@ window.stopCheck=false;
   $('btnEditCancel').addEventListener('click', closeEdit);
   $('editDialog').addEventListener('click', function(ev){ if (ev.target === $('editDialog')) closeEdit(); });
   $('btnHistRefresh').addEventListener('click', showHistory);
+  $('btnBookExport').addEventListener('click', exportBook);
+  $('btnBookImport').addEventListener('click', function(){ $('bookFile').click(); });
+  $('bookFile').addEventListener('change', function(){
+    var fl = this.files && this.files[0];
+    this.value = '';            // so picking the same file twice still fires
+    if (fl) importBook(fl);
+  });
   /* share.sent holds the last body that went up, and pushShared returns early
      when nothing has changed since — so clearing it is what makes this a
      genuine retry rather than a no-op. */
@@ -7752,7 +7905,8 @@ window.stopCheck=false;
      is no city to rename while the register is empty — so one owner decides,
      and that is syncCategoryControls, which reads share.canWrite as well. */
   var WRITE_CONTROLS = ['btnAddOpen','btnPropsClear','btnMoveCat','btnDelSel',
-                        'btnAside','btnSaveAssump','btnDiscardAssump','btnResetAssump'];
+                        'btnAside','btnSaveAssump','btnDiscardAssump','btnResetAssump',
+                        'btnBookImport'];
   function applyShareMode(){
     var ro = (share.canWrite === false);
     WRITE_CONTROLS.forEach(function(id){ var el = $(id); if (el) el.hidden = ro; });
