@@ -275,7 +275,19 @@
     }
     var netHoldingPreTax = financeCosts + runningCosts - rentalIncome;
     var afterTaxHolding = netHoldingPreTax - ngTotal;
-    var netProfit = grossProfit - afterTaxHolding + sellingCosts;
+    /* The cash in at the start is two different things wearing one number.
+       Of depositAndFee (18.5% by default), 1 − lvr (10%) is the DEPOSIT — the
+       client's own equity, which comes back out of the sale, and which
+       grossProfit = S − P already assumes is recovered. The rest — 8.5% — is
+       stamp duty, legals and the performance fee. That money is spent and
+       never returns, and it was missing from this sum, so every net profit
+       read about $51k high on a $600k purchase.
+
+       Negative, and added, to match sellingCosts' convention a few lines up.
+       The IRR is unaffected and always has been: it runs off the cashflow
+       rows, where the FULL depositAndFee already lands on the purchase date. */
+    var entryCosts = -P * (a.depositAndFee - (1 - a.lvr));
+    var netProfit = grossProfit - afterTaxHolding + sellingCosts + entryCosts;
 
     var amounts = rows.map(function (r) { return r.netCF; });
     var cfDates = rows.map(function (r) { return r.cfDate; });
@@ -290,7 +302,7 @@
       assumptions: a,
       summary: {
         purchasePrice: P, purchaseDate: pDate, soldPrice: S, soldDate: sDate,
-        holdYears: holdYears, loan: loan, deposit: deposit,
+        holdYears: holdYears, loan: loan, deposit: deposit, entryCosts: entryCosts,
         grossProfit: grossProfit, financeCosts: financeCosts,
         runningCosts: runningCosts, rentalIncome: rentalIncome,
         netHoldingPreTax: netHoldingPreTax, ngRefund: ngTotal,
@@ -609,17 +621,27 @@
   }
 
   /* ═══ SELF-TEST — the two worked samples on the workbook's breakdown tabs ═══
-     Addresses deliberately omitted; only the numeric deal terms are needed. */
+     Addresses deliberately omitted; only the numeric deal terms are needed.
+
+     NET PROFIT IS NOT THE WORKBOOK'S FIGURE ANY MORE. The two values below
+     are the workbook's, LESS the purchase fees it also left out:
+       sample 1   696387.0519 − 560000 × 0.085 = 648787.0519
+       sample 2   274194.0311 − 965000 × 0.085 = 192169.0311
+     Derived, in other words, not observed — so they prove the correction was
+     applied, not that it agrees with a corrected sheet. When the two
+     breakdown tabs are re-run with the workbook's own fix, replace these with
+     what it says and delete this note. Every other field here is still the
+     workbook's, untouched. */
   function selfTest() {
     var cases = [
       { name: 'Long-hold sample (Oct 2016 → Apr 2026)',
         deal: { purchasePrice: 560000, purchaseDate: '2016-10-22', soldPrice: 1450000, soldDate: '2026-04-25' },
         expect: { irr: 0.1826136538377273, holdYears: 9.508333333333333, financeCosts: 236670,
-                  runningCosts: 178314.1038, rentalIncome: 267471.1557, netProfit: 696387.0519 } },
+                  runningCosts: 178314.1038, rentalIncome: 267471.1557, netProfit: 648787.0519 } },
       { name: 'Short-hold sample (Dec 2022 → Mar 2026)',
         deal: { purchasePrice: 965000, purchaseDate: '2022-12-19', soldPrice: 1387500, soldDate: '2026-03-31' },
         expect: { irr: 0.2083312748813537, holdYears: 3.283333333333333, financeCosts: 141855,
-                  runningCosts: 77048.06229, rentalIncome: 115572.0934, netProfit: 274194.0311 } }
+                  runningCosts: 77048.06229, rentalIncome: 115572.0934, netProfit: 192169.0311 } }
     ];
     var out = [];
     cases.forEach(function (c) {
