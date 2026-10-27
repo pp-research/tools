@@ -915,7 +915,7 @@ table.srctbl tr.sec td{background:var(--surface-2);font-weight:800;color:var(--t
         <div class="pvr-hero-txt"><h2 class="pvr-h1">Daylesford</h2><p class="pvr-lede">Daylesford (suburb) against Hepburn Shire and Greater Melbourne, houses. Cotality data, January 1980 to July 2026; the charts use each year&rsquo;s December figure, and July for 2026.</p></div>
       </div>
       <section class="pvr-card"><div class="scroll" id="dfdSnap"></div>
-        <p class="dfd-note">Daylesford and Hepburn medians rest on small sale counts (Daylesford: 73 house sales in the year to June 2026), so year-to-year moves are noisy. Units trade too thinly to chart.</p></section>
+        <p class="dfd-note">Daylesford and Hepburn medians rest on small sale counts (Daylesford: 80 house sales in the year to July 2026), so year-to-year moves are noisy. Units trade too thinly to chart.</p></section>
       <div class="dfd-grid" id="dfdCharts"></div>
       <p class="dfd-note">Source: Cotality (CoreLogic) &mdash; VIC suburbs historical extract and monthly Market Trends, Capital Cities history, and VR &amp; rent files. Measures are rolling 12-month figures unless noted.</p>
     </div>
@@ -2409,21 +2409,21 @@ const DFD={
   r:[[100,92.6,105.3,117.9,115.8,126.3,134.7,130.5,130.5,138.9,138.9,147.4,160,165.3,163.2,193.7,204.2,208.4,215.8,213.7,225.3],
      [100,102.7,108.1,118.9,135.1,148.6,151.4,154.1,159.5,167.6,174.6,178.4,189.2,200,195.9,216.2,237.8,237.8,248.6,248.6,267.6],
      [100,111.5,125,130.8,134.6,136.5,136.5,138.5,142.3,150,153.8,157.7,171.2,173.1,165.4,169.2,176.9,200,221.2,223.1,223.1]]},
- // June 2026, houses (the three data tabs, latest row)
+ // July 2026, houses: the 2026-07 Cotality Market Trends files (Suburbs / LGA / CapitalCities) and VR & Rent csvs (vacancy)
  snap:[
-  ['Median sale price (12m)','$800,000','$685,000','$895,000'],
-  ['Median sale price (3m, July 2026)','$715,000','$715,000','$873,750'],
-  ['Price change (12m)','−3.0%','+5.4%','+4.1%'],
-  ['10-year growth a year','6.0%','6.5%','4.1%'],
-  ['Median value (AVM)','$833,799','$781,943','$951,807'],
-  ['Asking rent (12m)','$547.50/wk','$495/wk','$580/wk'],
-  ['Gross rental yield','3.6%','3.8%','3.4%'],
-  ['Days on market (12m)','107','85','30'],
-  ['Vendor discount (12m)','−3.8%','−4.0%','−3.3%'],
-  ['Stock on market (12m)','10.3%','9.3%','5.0%'],
-  ['Rental vacancy rate','&ndash;','1.44%','1.54%'],
-  ['Sales (12m)','73','291','64,657'],
-  ['Average hold period','12.8 yrs','11.6 yrs','13.6 yrs']]
+  ['Median sale price (12m)','$795,000','$692,500','$897,000'],
+  ['Median sale price (3m)','$715,000','$715,000','$873,750'],
+  ['Price change (12m)','−3.3%','+6.5%','+4.3%'],
+  ['10-year growth a year','6.0%','6.6%','4.1%'],
+  ['Median value (AVM)','$780,505','$693,432','$933,432'],
+  ['Asking rent (12m)','$535/wk','$495/wk','$580/wk'],
+  ['Gross rental yield','3.5%','3.7%','3.4%'],
+  ['Days on market (12m)','109.5','84','30'],
+  ['Vendor discount (12m)','−5.0%','−4.3%','−3.4%'],
+  ['Stock on market (12m)','10.0%','9.3%','5.0%'],
+  ['Rental vacancy rate','&ndash;','1.12%','1.80%'],
+  ['Sales (12m)','80','301','63,841'],
+  ['Average hold period','13.3 yrs','11.5 yrs','13.6 yrs']]
 };
 const DFDCOL=['var(--teal)','var(--orange)','var(--text-dim)'];
 // one line chart: years across, the three areas (or price solid + rent dashed for the index); hover shows the year's values
@@ -2474,7 +2474,7 @@ function renderDfd(){
     document.getElementById('dfdLeg-'+k).innerHTML=(k==='idx'?DFD.names.map((nm,i)=>'<span><i style="background:'+DFDCOL[i]+'"></i>'+nm+'</span>').join('')+'<span><i class="ln"></i>price</span><span><i class="ln dash"></i>rent</span>':
       series.map(sr=>'<span><i style="background:'+sr.c+'"></i>'+sr.n+'</span>').join(''));
     dfdChart(document.getElementById('dfdPlot-'+k),{y0:c.y0,last:c.last,t:c.t,u:c.u,zero:c.zero,series}); });
-  document.getElementById('dfdSnap').innerHTML='<table class="dfd-snap"><thead><tr><th>June 2026, houses</th>'+DFD.names.map((nm,i)=>'<th><i style="background:'+DFDCOL[i]+'"></i>'+nm+'</th>').join('')+'</tr></thead><tbody>'+
+  document.getElementById('dfdSnap').innerHTML='<table class="dfd-snap"><thead><tr><th>July 2026, houses</th>'+DFD.names.map((nm,i)=>'<th><i style="background:'+DFDCOL[i]+'"></i>'+nm+'</th>').join('')+'</tr></thead><tbody>'+
     DFD.snap.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('')+'</tbody></table>';
 }
 const TABS=[['tab-dash','pane-dash',null],['tab-pvr','pane-pvr',function(){renderGrowthAll(current);}],['tab-dfd','pane-dfd',function(){renderDfd();}],['tab-runway','pane-runway',function(){renderRunway(current);}],['tab-demand','pane-demand',function(){renderDemand(current);}],['tab-vacancy','pane-vacancy',function(){renderVacancy(current);}],['tab-rent','pane-rent',function(){renderRent(current);}],['tab-work','pane-work',function(){renderWork(current);}],['tab-sources','pane-sources',renderSources]];
