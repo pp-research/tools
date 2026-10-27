@@ -15,18 +15,18 @@
 <title>IRR Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
 <style>
 /* ═══ TOKENS — "Midnight": deeper navy ground, lit card edges, brighter teal ═══ */
 :root{
-  --bg:#0F1420; --panel:#171E2E; --panel-2:#1C2436; --well:#131A29;
-  --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+  --bg:#121826; --panel:#1C222F; --panel-2:#202734; --well:#1A2130;
+  --border:rgba(255,255,255,.12); --border-strong:rgba(255,255,255,.20);
   /* the 1px lighter line along the top of each card — what makes the surfaces
      read as lit from above rather than as flat rectangles */
-  --edge:inset 0 1px 0 rgba(255,255,255,.14);
-  --accent:#2BC4D8; --accent-600:#1AA7BA; --accent-300:#5FD8E8;
-  --accent-700:#159AAB;
-  --accent-rgb:43,196,216;
+  --edge:none;
+  --accent:#00A0B4; --accent-600:#008E9F; --accent-300:#00A0B4;
+  --accent-700:#007C8B;
+  --accent-rgb:0,160,180;
   --on-accent:#06222a; --on-accent-deep:#06222a;
   --border-hover:rgba(255,255,255,.30);
   /* ── GRADIENTS ──
@@ -35,23 +35,23 @@
      riding on it. So the measured contrast is the conservative one, and if the
      image fails to paint the control is still a legible solid. Single hue,
      light above dark — a sheen, not a wash. */
-  --grad-accent:linear-gradient(180deg,#3FD3E5,#22B3C6);        --grad-accent-base:#22B3C6;
-  --grad-accent-hover:linear-gradient(180deg,#34C2D4,#1A9FB1);  --grad-accent-hover-base:#1A9FB1;
-  --grad-accent-active:linear-gradient(180deg,#1FA9BB,#1795A6); --grad-accent-active-base:#1795A6;
-  --grad-danger:linear-gradient(180deg,#F04061,#D81A3C);        --grad-danger-base:#D81A3C;
-  --grad-lead:linear-gradient(180deg,#1C3C48,#152A34);          --grad-lead-base:#152A34;
+  --grad-accent:none;        --grad-accent-base:#00A0B4;
+  --grad-accent-hover:none;  --grad-accent-hover-base:#008E9F;
+  --grad-accent-active:none; --grad-accent-active-base:#007C8B;
+  --grad-danger:none;        --grad-danger-base:#E72347;
+  --grad-lead:none;          --grad-lead-base:#1A2130;
   /* the whisper set: a top sheen on raised surfaces, a recess on sunken ones */
-  --grad-sheen:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 140px);
-  --grad-recess:linear-gradient(180deg,rgba(0,0,0,.22),rgba(255,255,255,.015));
-  --grad-page:linear-gradient(180deg,#131A28,#0F1420 640px);
-  --glow-accent:0 6px 18px -8px rgba(43,196,216,.55);
+  --grad-sheen:none;
+  --grad-recess:none;
+  --grad-page:none;
+  --glow-accent:none;
   --text:#F4F7FA; --muted:#A3B0C0; --faint:rgba(255,255,255,.56);
   --green:#71B357; --red:#E72347; --yellow:#FFA91F;
   /* the gain/loss figures are small text, so they need more lift than the
      chrome colours: brand red on the dark panel is only 2.93:1 */
   --money-pos:#8FCB74; --money-neg:#FF94A6;
   --note-bg:rgba(255,169,31,.12); --note-line:rgba(255,169,31,.45); --note-ink:#FFD79A;
-  --accent-text:#5FD8E8;
+  --accent-text:#00A0B4;
   --row-alt:rgba(255,255,255,.022);
   --row-line:rgba(255,255,255,.055);
   --row-line-strong:rgba(255,255,255,.2);
@@ -65,8 +65,8 @@
    which is fine behind white text on a filled button but fails as body text —
    so accent-as-text darkens, and the gain/loss pair darkens with it. */
 :root[data-theme="light"]{
-  --bg:#F2F4F6; --panel:#FFFFFF; --panel-2:#EDF0F3; --well:#F7F9FA;
-  --border:rgba(23,27,36,.11); --border-strong:rgba(23,27,36,.20);
+  --bg:#F2F4F6; --panel:#FFFFFF; --panel-2:#f4f6f9; --well:#f4f6f9;
+  --border:#e4e8ee; --border-strong:#cfd6df;
   /* no lit edge on white — the shared rule resolves this to nothing */
   --edge:none;
   --accent:#00A0B4; --accent-600:#00808F; --accent-700:#00606D; --accent-300:#00788A;
@@ -75,15 +75,15 @@
   --border-hover:rgba(23,27,36,.34);
   /* light carries ink on the resting fill but white once it darkens on hover,
      so the worst-contrast stop flips from the bottom of the ramp to the top */
-  --grad-accent:linear-gradient(180deg,#00B4C9,#009BAA);        --grad-accent-base:#009BAA;
-  --grad-accent-hover:linear-gradient(180deg,#007E8C,#00646F);  --grad-accent-hover-base:#007E8C;
-  --grad-accent-active:linear-gradient(180deg,#00646F,#004F58); --grad-accent-active-base:#00646F;
-  --grad-danger:linear-gradient(180deg,#D4152F,#A80F24);        --grad-danger-base:#D4152F;
-  --grad-lead:linear-gradient(180deg,#F1F8F9,#E4F0F2);          --grad-lead-base:#E4F0F2;
-  --grad-sheen:linear-gradient(180deg,rgba(23,27,36,.016),rgba(23,27,36,0) 140px);
-  --grad-recess:linear-gradient(180deg,rgba(23,27,36,.07),rgba(23,27,36,.01));
-  --grad-page:linear-gradient(180deg,#EDF0F3,#F2F4F6 640px);
-  --glow-accent:0 6px 16px -9px rgba(0,110,124,.45);
+  --grad-accent:none;        --grad-accent-base:#00A0B4;
+  --grad-accent-hover:none;  --grad-accent-hover-base:#007E8C;
+  --grad-accent-active:none; --grad-accent-active-base:#00646F;
+  --grad-danger:none;        --grad-danger-base:#D4152F;
+  --grad-lead:none;          --grad-lead-base:#f4f6f9;
+  --grad-sheen:none;
+  --grad-recess:none;
+  --grad-page:none;
+  --glow-accent:none;
   --accent-text:#00707F;
   --text:#171B24; --muted:rgba(23,27,36,.66); --faint:rgba(23,27,36,.63);
   --green:#3F7D2E; --red:#C1122F; --yellow:#8A5A00;
@@ -111,7 +111,7 @@
    table cannot shift the whole page 15px sideways and re-lay-out the columns. */
 html{-webkit-text-size-adjust:100%;scrollbar-gutter:stable}
 body{
-  font-family:'Manrope',system-ui,sans-serif; font-weight:500;
+  font-family:'Montserrat',system-ui,sans-serif; font-weight:500;
   background-color:var(--bg); background-image:var(--grad-page);
   background-attachment:fixed; color:var(--text); min-height:100vh;
   padding:var(--sp-6) var(--sp-4) 64px; line-height:1.5;
@@ -133,8 +133,10 @@ header{display:flex;align-items:center;justify-content:space-between;gap:var(--s
 header img{height:40px;width:auto;display:block}
 .head-right{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap}
 .titles{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap}
-.head-sep{width:1px;height:28px;background:var(--border-strong);display:inline-block}
-.titles h1{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em}
+.head-sep{width:1px;height:34px;background:var(--border-strong);display:inline-block}
+.title-stack{display:flex;flex-direction:column;gap:1px;min-width:0}
+.eyebrow{font-size:11px;line-height:15px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-text)}
+.titles h1{font-size:26px;line-height:32px;font-weight:800;letter-spacing:-.01em}
 .titles p{font-size:14px;line-height:20px;color:var(--muted);margin-top:2px}
 
 /* ═══ CARDS ═══ */
@@ -191,7 +193,7 @@ header img{height:40px;width:auto;display:block}
   display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);width:100%;
   background:var(--bg);color:var(--text);border:1px solid var(--border-strong);
   border-radius:var(--r-md);padding:10px 12px;min-height:44px;cursor:pointer;
-  font:600 15px/22px 'Manrope',sans-serif;text-align:left;
+  font:600 15px/22px 'Montserrat',sans-serif;text-align:left;
 }
 .dd-btn:hover{border-color:var(--border-hover)}
 .dd-btn[aria-expanded="true"]{border-color:var(--accent);outline:2px solid var(--accent-300);outline-offset:1px}
@@ -204,7 +206,7 @@ header img{height:40px;width:auto;display:block}
 :root[data-theme="light"] .dd-menu{box-shadow:0 18px 36px -18px rgba(23,27,36,.35)}
 .dd-menu label{
   display:flex;align-items:center;gap:var(--sp-2);margin:0;padding:7px 8px;border-radius:7px;
-  font:600 13px/18px 'Manrope',sans-serif;color:var(--text);text-transform:none;letter-spacing:0;cursor:pointer;
+  font:600 13px/18px 'Montserrat',sans-serif;color:var(--text);text-transform:none;letter-spacing:0;cursor:pointer;
 }
 .dd-menu label:hover{background:var(--panel-2)}
 .dd-menu input{width:16px;height:16px;min-height:0;flex:none;margin:0;accent-color:var(--accent);cursor:pointer}
@@ -257,7 +259,7 @@ header img{height:40px;width:auto;display:block}
 label{display:block;font-size:12px;line-height:16px;font-weight:600;color:var(--muted);margin-bottom:6px}
 input,select,textarea{
   width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border-strong);
-  border-radius:var(--r-md);padding:10px 12px;font:600 15px/22px 'Manrope',sans-serif;
+  border-radius:var(--r-md);padding:10px 12px;font:600 15px/22px 'Montserrat',sans-serif;
   font-variant-numeric:tabular-nums lining-nums; min-height:44px;
 }
 textarea{font:500 13px/19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;min-height:96px;white-space:pre;overflow-x:auto}
@@ -329,7 +331,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 /* fit-content so the box ends where the last button does: left to stretch, a
    two-option toggle in a narrow panel trails a stripe of empty space */
 .seg-btns{display:flex;width:fit-content;max-width:100%;gap:2px;background-color:var(--bg);background-image:var(--grad-recess);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:3px}
-.seg-btns button{border:1px solid transparent;background:transparent;color:var(--muted);border-radius:7px;padding:5px 11px;font:600 12px/16px 'Manrope',sans-serif;white-space:nowrap;cursor:pointer}
+.seg-btns button{border:1px solid transparent;background:transparent;color:var(--muted);border-radius:7px;padding:5px 11px;font:600 12px/16px 'Montserrat',sans-serif;white-space:nowrap;cursor:pointer}
 .seg-btns button:hover{color:var(--text);background:var(--panel-2)}
 .seg-btns button[aria-pressed="true"]{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
 .seg-btns button:focus-visible{outline:2px solid var(--accent-300);outline-offset:2px}
@@ -421,7 +423,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .btn-grid .wide{grid-column:1 / -1}
 .btn-grid button{padding-left:var(--sp-2);padding-right:var(--sp-2)}
 button{
-  font:700 14px/20px 'Manrope',sans-serif;border-radius:var(--r-md);border:1px solid transparent;
+  font:700 14px/20px 'Montserrat',sans-serif;border-radius:var(--r-md);border:1px solid transparent;
   padding:11px 20px;min-height:44px;cursor:pointer;transition:background .15s ease,border-color .15s ease;
 }
 .btn-primary{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
@@ -435,24 +437,25 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .btn-danger{background:transparent;color:#ffb3c1;border-color:rgba(231,35,71,.45)}
 .btn-danger:hover{background:rgba(231,35,71,.14);border-color:var(--red)}
 .btn-danger-solid{background-color:var(--grad-danger-base);background-image:var(--grad-danger);color:#fff;border-color:transparent}
-.btn-danger-solid:hover{background-image:linear-gradient(180deg,#D81A3C,#B4122E);border-color:transparent}
+.btn-danger-solid:hover{background-color:#B4122E;background-image:none;border-color:transparent}
 
 /* ═══ TABS ═══ */
 /* Six tabs do not fit one row on a narrow screen. The strip wraps rather than
    clipping a label or scrolling sideways, and flex:1 1 auto lets each button
    stretch to fill its row while never shrinking below its own text. */
-.tabs{display:flex;flex-wrap:wrap;gap:var(--sp-1);background-color:var(--panel);background-image:var(--grad-recess);border:1px solid var(--border);border-radius:var(--r-md);padding:5px;box-shadow:var(--edge)}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;background:none;border:0;border-bottom:1px solid var(--border-strong);border-radius:0;padding:0;box-shadow:none}
 .tabs button{
-  flex:1 1 auto;min-width:0;white-space:nowrap;border-radius:8px;background:transparent;color:var(--muted);
-  border:1px solid transparent;padding:9px 12px;min-height:40px;font:600 13px/20px 'Manrope',sans-serif;
+  flex:0 1 auto;min-width:0;white-space:nowrap;border-radius:0;background:transparent;color:var(--muted);
+  border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:9px 14px;min-height:38px;
+  font:700 13px/20px 'Montserrat',sans-serif;
   display:flex;align-items:center;justify-content:center;gap:7px;
 }
-.tabs button:hover{color:var(--text);background:var(--panel-2)}
-.tabs button[aria-selected="true"]{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
-.tabs button[aria-selected="true"] .badge{background:rgba(255,255,255,.92);color:#06222a}
+.tabs button:hover{color:var(--text);background:none}
+.tabs button[aria-selected="true"]{background:none;color:var(--accent-text);border-bottom-color:var(--accent);box-shadow:none}
+.tabs button[aria-selected="true"] .badge{background:var(--accent);color:#fff}
 .badge{
-  min-width:20px;padding:0 6px;border-radius:999px;background:var(--panel-2);color:var(--text);
-  font-size:11px;line-height:18px;font-weight:700;font-variant-numeric:tabular-nums lining-nums;
+  min-width:20px;padding:0 6px;border-radius:999px;background:var(--panel-2);color:var(--muted);
+  font-size:11px;line-height:18px;font-weight:800;font-variant-numeric:tabular-nums lining-nums;
 }
 .panel{display:flex;flex-direction:column;gap:var(--sp-4)}
 .panel[hidden]{display:none}
@@ -471,7 +474,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
   display:inline-block;background-color:var(--grad-accent-base);background-image:var(--grad-accent);
   color:var(--on-accent);box-shadow:var(--glow-accent);border-radius:var(--r-md);
   border:1px solid transparent;padding:11px 20px;text-decoration:none;
-  font:700 14px/22px 'Manrope',sans-serif;cursor:grab;user-select:none;
+  font:700 14px/22px 'Montserrat',sans-serif;cursor:grab;user-select:none;
 }
 .bm-drag:hover{background-color:var(--grad-accent-hover-base);background-image:var(--grad-accent-hover);color:var(--on-accent-deep)}
 .bm-drag:active{cursor:grabbing}
@@ -540,8 +543,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
    pushes the tracks wider than the card and scrolls the page on a phone. */
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin-bottom:var(--sp-4)}
 @media (min-width:768px){ .kpis{grid-template-columns:repeat(4,minmax(0,1fr))} }
-.kpi{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--sp-4);min-width:0}
-.kpi .k-label{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:var(--sp-4);min-width:0}
+.kpi .k-label{font-size:11px;line-height:16px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.26;font-weight:800;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.03em;overflow-wrap:anywhere}
 .kpi .k-note{font-size:12px;line-height:16px;color:var(--faint);margin-top:2px}
 /* The rows a median was actually read off. Every one of them is listed — a
@@ -552,8 +555,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
   font-size:11px;line-height:18px;color:var(--muted);
   font-variant-numeric:tabular-nums lining-nums}
 .kpi .k-list li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi.lead{border-color:rgba(43,196,216,.42);background-color:var(--grad-lead-base);background-image:var(--grad-lead)}
-.kpi.lead .k-value{color:var(--accent-300)}
+.kpi.lead{border-color:rgba(0,160,180,.45);background:var(--panel)}
+.kpi.lead .k-value{color:var(--accent-text)}
 .pos{color:var(--money-pos)} .neg{color:var(--money-neg)}
 /* ═══ OVERVIEW ═══
    The histogram is a single measure over ordered bins, so it takes one encoding:
@@ -577,13 +580,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .ov-col.is-on .ov-count{color:var(--accent-text);font-weight:700}
 .band-chip{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:5px 12px;
   border-radius:999px;border:1px solid var(--accent);background:rgba(var(--accent-rgb),.12);
-  color:var(--accent-text);font:600 12px/16px 'Manrope',sans-serif;cursor:pointer}
+  color:var(--accent-text);font:600 12px/16px 'Montserrat',sans-serif;cursor:pointer}
 .band-chip:hover{background:rgba(var(--accent-rgb),.2)}
 .ov-count{font-size:11px;line-height:14px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ov-track{height:148px;display:flex;align-items:flex-end;border-bottom:1px solid var(--row-line-strong)}
 .ov-bar{width:100%;border-radius:4px 4px 0 0;min-height:2px;
   background-color:var(--money-pos);
-  background-image:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0))}
+  background-image:none}
 .ov-bar.is-neg{background-color:var(--money-neg)}
 .ov-bar.is-empty{background:var(--row-line);min-height:2px}
 .ov-axis{font-size:10px;line-height:13px;color:var(--faint);overflow-wrap:anywhere}
@@ -771,7 +774,7 @@ mark{background:rgba(var(--accent-rgb),.34);color:var(--text);border-radius:3px;
 th .sortbtn{
   display:flex;align-items:center;gap:5px;width:100%;min-height:0;
   background:transparent;border:0;padding:0;border-radius:var(--r-sm);cursor:pointer;
-  font:700 11px/14px 'Manrope',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  font:700 11px/14px 'Montserrat',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
 }
 th.num .sortbtn{justify-content:flex-end}
 th .sortbtn:hover{color:var(--text)}
@@ -783,7 +786,7 @@ th[aria-sort] .arrow{opacity:1}
    header stacks too: the column's name, then the two things you can sort it
    by. The whole-column lighting has to be undone inside the pair, or sorting
    by price would light "date" as well and say nothing. */
-th .col-h{display:block;font:700 11px/14px 'Manrope',sans-serif;letter-spacing:.05em;
+th .col-h{display:block;font:700 11px/14px 'Montserrat',sans-serif;letter-spacing:.05em;
   text-transform:uppercase;color:var(--muted);margin-bottom:3px}
 th.num .col-h{text-align:right}
 th .col-pair{display:flex;gap:10px}
@@ -840,7 +843,10 @@ details .body strong{color:var(--text)}
     <div class="titles">
       <img id="ppLogo" alt="Performance Property" src="pp-logo-inverted.png">
       <span class="head-sep" aria-hidden="true"></span>
-      <h1>IRR Calculator</h1>
+      <div class="title-stack">
+        <div class="eyebrow">Performance Property &middot; Realised returns on client purchases</div>
+        <h1>IRR Calculator</h1>
+      </div>
     </div>
     <div class="head-right">
       <!-- ══ WHICH BOOK YOU ARE IN ══
