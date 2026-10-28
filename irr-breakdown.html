@@ -567,6 +567,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 @media (min-width:768px){ .kpis.kpis-3{grid-template-columns:repeat(3,minmax(0,1fr))} }
 /* The market row gets a heading, because it is a different kind of number
    from the eight above it: somebody else's series, not the book's own. */
+.warn-ink{color:var(--yellow)}
 .ov-sub{font-size:11px;line-height:16px;font-weight:800;letter-spacing:.08em;
   text-transform:uppercase;color:var(--faint);margin:var(--sp-5) 0 var(--sp-3)}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:var(--sp-4);min-width:0}
@@ -3552,6 +3553,33 @@ var MHP_FROM='2008-01', MHP={
     var v = a[i];
     return (typeof v === 'number' && v > 0) ? v : null;
   }
+  /* The market the book actually bought into, across every property rather
+     than the one or two that happen to define the median price.
+
+     Looking the market up at a single chosen month sounds equivalent and is
+     not. On the Adelaide book the median purchase price is set by two
+     properties bought two YEARS apart, so choosing either one is a coin flip
+     — and the two answers are three per cent apart, which moved the growth
+     comparison by six points. A median across all of their months has no
+     coin flip in it, uses the whole book, and is the same kind of statistic
+     as the median price it sits beside.
+
+     A property with no date is not a miss; one with a date the series does
+     not reach is, and gets counted so the card can say so. */
+  function mhpSpread(rows, city, dk){
+    var vals = [], days = [], skipped = 0;
+    (rows || []).forEach(function(d){
+      var t = dayStamp(d.e[dk]);
+      if (t === null) return;
+      var v = mhpAt(city, new Date(t));
+      if (v === null) { skipped++; return; }
+      vals.push(v); days.push(t);
+    });
+    if (!vals.length) return { median:null, n:0, skipped:skipped };
+    days.sort(function(a, b){ return a - b; });
+    return { median: median(vals), n: vals.length, skipped: skipped,
+             first: new Date(days[0]), last: new Date(days[days.length - 1]) };
+  }
   function midDay(m){
     if (!m || !m.days.length) return null;
     var d = new Date(m.days[0]);
@@ -3870,23 +3898,27 @@ var MHP_FROM='2008-01', MHP={
        Both months come from the same place the price cards do — the EARLIEST
        date behind the median price — so the comparison lines up with what the
        two cards above it say. */
-    var mkBuy = midDay(buyMid), mkSell = midDay(sellMid);
-    var mhpBuy = mhpAt(activeCity, mkBuy), mhpSell = mhpAt(activeCity, mkSell);
+    var mBuy  = mhpSpread(data, activeCity, 'purchaseDate');
+    var mSell = mhpSpread(data, activeCity, 'soldDate');
+    var mhpBuy = mBuy.median, mhpSell = mSell.median;
     var monthOf = function(d){
       return d ? MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : '—';
     };
-    var mhpNote = function(d){
+    var mhpNote = function(sp){
       if (!activeCity) return 'no city selected';
-      if (!d) return 'no median month to look up';
       if (!MHP[activeCity]) return 'no Cotality series for ' + esc(cityLabel());
-      return esc(cityLabel()) + ' houses · ' + monthOf(d);
+      if (!sp || !sp.n) return 'no months the series reaches';
+      return esc(cityLabel()) + ' houses · median of ' + sp.n + ' month' +
+        (sp.n === 1 ? '' : 's') + ' · ' + monthOf(sp.first) + ' to ' + monthOf(sp.last) +
+        (sp.skipped ? ' · <span class="warn-ink">' + sp.skipped +
+                      ' outside the series</span>' : '');
     };
     h += '<h3 class="ov-sub">Against the market</h3>' +
       '<div class="kpis kpis-3">' +
-      card('Cotality median — purchase month',
-           mhpBuy ? aud(mhpBuy) : '—', mhpNote(mkBuy)) +
-      card('Cotality median — sale month',
-           mhpSell ? aud(mhpSell) : '—', mhpNote(mkSell)) +
+      card('Cotality median — purchase months',
+           mhpBuy ? aud(mhpBuy) : '—', mhpNote(mBuy)) +
+      card('Cotality median — sale months',
+           mhpSell ? aud(mhpSell) : '—', mhpNote(mSell)) +
       (function(){
         var ours = (buyMid && sellMid && buyMid.median > 0)
           ? sellMid.median / buyMid.median - 1 : null;
@@ -3899,16 +3931,18 @@ var MHP_FROM='2008-01', MHP={
           '<span class="' + (gap >= 0 ? 'pos' : 'neg') + '">' +
             (gap >= 0 ? '+' : '') + gap.toFixed(1) + ' pts</span>',
           'ours ' + pct(ours) + ' · Cotality ' + pct(mkt) +
-          ' · ' + monthOf(mkBuy) + ' to ' + monthOf(mkSell));
+          ' · across ' + mBuy.n + ' purchases and ' + mSell.n + ' sales');
       })() +
       '</div>' +
       /* Said on the page, not just in a handover: these two medians are
          across DIFFERENT properties, so the ratio is not anybody's gain. */
-      '<p class="count-line">The two medians are taken across all sold properties, so they are not the '+
-      'same properties — this sets the middle of what was bought against the middle of what was sold, '+
-      'which is not a like-for-like gain. Cotality is the median of what SOLD in those months, so it '+
-      'moves with the mix as well as with values. For a real score, compare each property with the '+
-      'market over its own dates.</p>';
+      '<p class="count-line">Each Cotality figure is the median of the market at <strong>every '+
+      'property&rsquo;s own month</strong>, so it reads the whole book rather than the one or two '+
+      'properties that happen to define the median price. The two price medians are still across '+
+      'different properties, so this sets the middle of what was bought against the middle of what '+
+      'was sold — close to a gain, but not a like-for-like one. Cotality is the median of what SOLD '+
+      'in those months, so it moves with the mix as well as with values. For a real score, compare '+
+      'each property with the market over its own dates.</p>';
 
     /* ── distribution ──
        Built from `spread`, which has every filter applied except the band, so
