@@ -245,6 +245,10 @@ header img{height:40px;width:auto;display:block}
   border:1px solid var(--border);border-radius:var(--r-md);
   padding:var(--sp-3) var(--sp-4);box-shadow:var(--edge);
 }
+/* On its own above the tabs. Not full width: it is one field, and a search
+   box the width of the page reads as a command bar rather than a filter. */
+.search-bar{display:flex;align-items:flex-end;margin-bottom:var(--sp-3)}
+.search-bar .fb-field.fb-search{flex:0 1 420px;min-width:160px}
 .fb-row{display:flex;align-items:flex-end;gap:var(--sp-3);flex-wrap:wrap}
 .fb-field{margin:0;flex:22 1 0;min-width:130px}
 .fb-field.fb-search{flex:30 1 0;min-width:150px}
@@ -991,6 +995,20 @@ details .body strong{color:var(--text)}
     <div class="main">
       <div id="messages" role="status" aria-live="polite"></div>
 
+      <!-- ══ SEARCH ══
+           Above the tabs and showing on all of them. Every tab reads it —
+           the Overview's figures, the register's rows, the sold check's
+           list — so keeping it inside the Register's filter row meant a
+           search could be narrowing a number on a tab that had nothing on
+           screen to say it was on. The rest of the filters stay below,
+           where they are the Register's own controls. -->
+      <div class="search-bar">
+        <div class="fb-field fb-search">
+          <label for="fSearch">Search</label>
+          <input id="fSearch" type="search" placeholder="Name or address" autocomplete="off">
+        </div>
+      </div>
+
       <div class="tabs" role="tablist" aria-label="Sections">
         <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
         <button type="button" role="tab" id="tab-register" aria-controls="panel-register" aria-selected="true">Register <span class="badge" id="badgeProps">0</span></button>
@@ -1000,18 +1018,16 @@ details .body strong{color:var(--text)}
       </div>
 
       <!-- ══ FILTERS ══
-           Under the tab strip and on the Register alone — it reads as the
-           Register's own row of controls, which is what it is used as.
-           It still narrows the Overview's numbers, because both tabs read one
-           filter set; the Overview's scope line names whatever is on so a
+           Under the tab strip and on the Register alone — they read as the
+           Register's own row of controls, which is what they are used as.
+           Search is no longer among them: it sits above the tabs, because it
+           applies everywhere and ought to be visible everywhere.
+           These still narrow the Overview's numbers, because both tabs read
+           one filter set; the Overview's scope line names whatever is on so a
            figure is never quietly smaller than the book with nothing on that
            tab to say why. -->
       <div class="filter-bar" id="filterBar" hidden>
         <div class="fb-row">
-          <div class="fb-field fb-search">
-            <label for="fSearch">Search</label>
-            <input id="fSearch" type="search" placeholder="Name or address" autocomplete="off">
-          </div>
           <!-- Which kinds of property the list is about. Sold, held and
                archived are three states one property can be in, so this is
                tickboxes rather than one choice — and the archive stopped
