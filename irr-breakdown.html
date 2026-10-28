@@ -564,7 +564,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
    pushes the tracks wider than the card and scrolls the page on a phone. */
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin-bottom:var(--sp-4)}
 @media (min-width:768px){ .kpis{grid-template-columns:repeat(4,minmax(0,1fr))} }
-@media (min-width:768px){ .kpis.kpis-3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+
 /* The market row gets a heading, because it is a different kind of number
    from the eight above it: somebody else's series, not the book's own. */
 .warn-ink{color:var(--yellow)}
@@ -3923,7 +3923,7 @@ var MHP_FROM='2008-01', MHP={
                       ' outside the series</span>' : '');
     };
     h += '<h3 class="ov-sub">Against the market</h3>' +
-      '<div class="kpis kpis-3">' +
+      '<div class="kpis">' +
       card('Cotality median — purchase months',
            mhpBuy ? aud(mhpBuy) : '—', mhpNote(mBuy)) +
       card('Cotality median — sale months',
@@ -3932,16 +3932,17 @@ var MHP_FROM='2008-01', MHP={
         var ours = (buyMid && sellMid && buyMid.median > 0)
           ? sellMid.median / buyMid.median - 1 : null;
         var mkt  = (mhpBuy && mhpSell) ? mhpSell / mhpBuy - 1 : null;
+        var why = 'needs a median purchase and sale, and a series for this city';
         if (ours === null || mkt === null)
-          return card('Growth', '—',
-                      'needs a median purchase and sale, and a series for this city');
-        /* Both figures, each against the name of whoever earned it. A single
-           signed gap makes the reader work out which way round it runs, and
-           on a card that gets screenshotted that is one step too many. The
-           market goes first because it is the thing being measured against. */
+          return card('Growth', '—', why) + card('Difference', '—', why);
+        /* Two cards, not one. Growth carries both figures against the name of
+           whoever earned it; Difference carries the gap on its own, said in
+           words as well as a sign — on a card that gets screenshotted,
+           "behind" should not have to be inferred from a minus. */
         var ahead = (ours >= mkt);
         var mktName = (activeCity && activeCity !== NO_CAT)
           ? 'Greater ' + esc(cityLabel()) : esc(cityLabel());
+        var pts = Math.abs((ours - mkt) * 100).toFixed(1);
         return '<div class="kpi">' +
           '<div class="k-label">Growth</div>' +
           '<ul class="k-cmp">' +
@@ -3949,10 +3950,13 @@ var MHP_FROM='2008-01', MHP={
             '<li><span>Performance Property</span>' +
               '<b class="' + (ahead ? 'pos' : 'neg') + '">' + pct(ours) + '</b></li>' +
           '</ul>' +
-          '<div class="k-note">' + (ahead ? 'ahead by ' : 'behind by ') +
-            Math.abs((ours - mkt) * 100).toFixed(1) + ' points · across ' +
-            mBuy.n + ' purchases and ' + mSell.n + ' sales</div>' +
-        '</div>';
+          '<div class="k-note">median sale price over median purchase price</div>' +
+        '</div>' +
+        card('Difference',
+          '<span class="' + (ahead ? 'pos' : 'neg') + '">' +
+            (ahead ? '+' : '&minus;') + pts + ' pts</span>',
+          'Performance Property ' + (ahead ? 'ahead of ' : 'behind ') + mktName +
+          ' · across ' + mBuy.n + ' purchases and ' + mSell.n + ' sales');
       })() +
       '</div>' +
       /* Said on the page, not just in a handover: these two medians are
