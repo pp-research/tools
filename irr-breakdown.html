@@ -962,7 +962,7 @@ details .body strong{color:var(--text)}
             <label for="tRent-b">Midpoint</label>
           </div>
         </div>
-      <span class="edited-chip" id="assumpEdited" hidden>edited</span>
+      <span class="edited-chip" id="assumpUnsaved" hidden>unsaved</span>
       <button type="button" class="btn-ghost btn-sm" id="btnEditAssump"
               aria-expanded="false" aria-controls="assumpBox">View assumptions</button>
 
@@ -3679,11 +3679,13 @@ var MHP_FROM='2008-01', MHP={
            .join(' · ') + (assumptionsEdited() ? ' · assumptions edited' : '');
   }
   function syncAssumpFlag(){
-    var dirty = assumptionsDirty(), chip = $('assumpEdited');
-    if (chip) {
-      chip.hidden = !(dirty || assumptionsEdited());
-      chip.textContent = dirty ? 'unsaved' : 'edited';
-    }
+    /* Only "unsaved" now. "Edited" — what is in force differing from the
+       workbook — is in the History, one row per field, with the old value
+       and the new. A draft sitting in a field is not: nothing has happened
+       for the history to record, and this is the only thing that says the
+       panel and the numbers on screen disagree. */
+    var dirty = assumptionsDirty(), chip = $('assumpUnsaved');
+    if (chip) chip.hidden = !dirty;
     var save = $('btnSaveAssump'); if (save) save.disabled = !dirty;
     var undo = $('btnDiscardAssump'); if (undo) undo.hidden = !dirty;
   }
