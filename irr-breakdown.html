@@ -476,16 +476,26 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* Six tabs do not fit one row on a narrow screen. The strip wraps rather than
    clipping a label or scrolling sideways, and flex:1 1 auto lets each button
    stretch to fill its row while never shrinking below its own text. */
-.tabs{display:flex;flex-wrap:wrap;gap:4px;background:none;border:0;border-bottom:1px solid var(--border-strong);border-radius:0;padding:0;box-shadow:none}
+/* The strip sits between the settings above it and the panel below, and all
+   three used to be the same quiet grey — so the one you navigate with read as
+   another band of chrome. It gets its own surface and a little air, and the
+   selected tab is FILLED rather than underlined: at a glance the question
+   "which section am I in" should be answered by a block of colour, not by a
+   two-pixel line under a word. */
+.tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--panel-2);
+  border:1px solid var(--border-strong);border-radius:12px;padding:5px;
+  margin:var(--sp-4) 0 var(--sp-3);box-shadow:none}
 .tabs button{
-  flex:0 1 auto;min-width:0;white-space:nowrap;border-radius:0;background:transparent;color:var(--muted);
-  border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:9px 14px;min-height:38px;
-  font:700 13px/20px 'Montserrat',sans-serif;
+  flex:0 1 auto;min-width:0;white-space:nowrap;border-radius:8px;background:transparent;color:var(--muted);
+  border:0;padding:10px 16px;min-height:40px;
+  font:800 13.5px/20px 'Montserrat',sans-serif;letter-spacing:.01em;
   display:flex;align-items:center;justify-content:center;gap:7px;
 }
-.tabs button:hover{color:var(--text);background:none}
-.tabs button[aria-selected="true"]{background:none;color:var(--accent-text);border-bottom-color:var(--accent);box-shadow:none}
-.tabs button[aria-selected="true"] .badge{background:var(--accent);color:#fff}
+.tabs button:hover{color:var(--text);background:var(--well)}
+.tabs button[aria-selected="true"]{background:var(--accent);color:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.tabs button[aria-selected="true"]:hover{background:var(--accent-600);color:#fff}
+.tabs button[aria-selected="true"] .badge{background:rgba(255,255,255,.26);color:#fff}
 .badge{
   min-width:20px;padding:0 6px;border-radius:999px;background:var(--panel-2);color:var(--muted);
   font-size:11px;line-height:18px;font-weight:800;font-variant-numeric:tabular-nums lining-nums;
@@ -1197,7 +1207,6 @@ details .body strong{color:var(--text)}
                 <label for="regView-m">vs Market</label>
               </div>
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
-              <button type="button" class="btn-ghost btn-sm" id="btnDetectType">Detect types</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
             </div>
@@ -7511,11 +7520,15 @@ var MHP_FROM='1980-03', MHP={
     var r = addEntries([entryFrom($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts(), $('pCat').value)]);
     if (r) { closeQuick(); $('messages').innerHTML = msg('ok', r.updated ? 'Updated this property on the list.' : 'Saved to properties — this browser only.'); }
   });
-  /* A bulk tag from the addresses, counted before it is written. It only ever
-     ADDS a Unit: a record already marked by hand is left alone, and a record
-     with no unit marker is left alone too, because "no slash in the address"
-     is not the same as "this is a house" and writing House onto 493 records
-     on that basis would bury the ones nobody has actually checked. */
+  /* NO LONGER WIRED TO ANYTHING. The Detect types button is gone: this guessed
+     a unit from a slash in the address, which earned its place when nothing
+     knew what a property was, and RP Data answers outright now. A guess parked
+     beside an answer is a way to overwrite the answer.
+
+     Kept rather than deleted because it is self-contained and correct for what
+     it does — if a city is ever added with no RP Data behind it, re-wiring a
+     button to this is a one-line job. ptypeFromName() it leans on is still
+     live: the importer falls back to it for a file with no type column. */
   function detectTypes(){
     var all = loadProps(), scope = cityProps(all);
     if (!scope.length) { $('messages').innerHTML = msg('warn', activeCity
@@ -7549,7 +7562,6 @@ var MHP_FROM='1980-03', MHP={
           'They are now compared against the Cotality unit series.');
       });
   }
-  $('btnDetectType').addEventListener('click', detectTypes);
   $('btnPropsCsv').addEventListener('click', exportProps);
   $('btnPropsClear').addEventListener('click', function(){
     var n = loadProps().length;
