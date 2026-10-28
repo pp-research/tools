@@ -823,6 +823,7 @@ td.pd .src-link:hover{color:var(--text)}
    is the longest label of the six and wraps to two lines rather than setting
    the width for all of them. */
 #propsBody th.sw,#propsBody td.sw{width:116px;min-width:116px}
+#propsBody th.ptype,#propsBody td.ptype{width:92px;min-width:92px;white-space:nowrap}
 #propsBody th.sw{white-space:normal;line-height:14px}
 /* The last of the three is wider because in the market view it holds the gap
    and the two growth rates behind it on one line. IRR takes the same width so
@@ -4678,6 +4679,9 @@ var MHP_FROM='1980-03', MHP={
         /* blank sorts last like every other empty value, so an unfiled
            property does not jump to the top of an A–Z */
         category: function(d){ return (d.e.category||'').trim().toLowerCase() || null; },
+        /* Null, not "House", so the ones nobody has checked sit at the bottom
+           with every other empty value instead of among the real houses. */
+        ptype:    function(d){ return d.e.ptype ? ptypeLabel(ptypeOf(d.e)) : null; },
         purchase: function(d){ return d.e.purchaseDate; },
         sold:     function(d){ return d.e.soldDate; },
         /* The price is the bold figure in those two cells and the date is the
@@ -4730,11 +4734,7 @@ var MHP_FROM='1980-03', MHP={
            are the ones with nothing else to carry them: a note, what the sold
            check said, and the reason a property is outside the advice. */
         '<td class="name">'+mark(e.name, $('fSearch').value.trim())+
-          /* Houses are the norm and go unmarked; a unit is marked because it
-             is being measured against a different line and the register
-             should not make you open the record to find that out. */
-          (ptypeOf(e) === 'H' ? '' :
-            '<br><span class="cat aside-chip">'+ptypeLabel(ptypeOf(e))+'</span>') +
+          /* The type used to hang here as a chip. It has a column now. */
           ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +
           ((e.soldCheck||'').trim() ? '<br><span class="cat check-chip">Sold check: '+esc(e.soldCheck)+'</span>' : '') +
           (function(){
@@ -4750,6 +4750,13 @@ var MHP_FROM='1980-03', MHP={
             ? '<br><span class="cat aside-chip">outside of advice'+
               ((e.outsideReason||'').trim() ? ' — '+esc(e.outsideReason) : '')+'</span>'
             : '') +'</td>'+
+        /* Recorded, or a dash. An empty field is measured AS a house, but
+           saying "House" here would claim someone had checked. "Development
+           site" is shortened because the column is narrow and the words are
+           longer than the fact. */
+        '<td class="ptype">'+(e.ptype
+            ? (ptypeOf(e) === 'D' ? 'Dev site' : esc(ptypeLabel(ptypeOf(e))))
+            : '<span class="muted">'+dash+'</span>')+'</td>'+
         priceCell(e.purchasePrice)+ dateCell(new Date(e.purchaseDate))+
         (d.held ? heldCells() : soldCell(e))+
         (regView === 'market'
@@ -4788,6 +4795,7 @@ var MHP_FROM='1980-03', MHP={
        while sorting by the one stacked on top of it. Four columns now. */
     var cols = [
       { key:'name', label:'Property', cls:'' },
+      { key:'ptype', label:'Type', cls:'ptype' },
       { key:'purchasePrice', label:'Purchase price', cls:'num' },
       { key:'purchase',      label:'Purchase date',  cls:'num' },
       { key:'soldPrice',     label:'Sold price',     cls:'num' },
