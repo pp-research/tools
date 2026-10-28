@@ -753,6 +753,9 @@ table.cmp td.cmp-best{background:rgba(var(--accent-rgb),.16)}
 td.pd{text-align:right;white-space:nowrap;vertical-align:top}
 td.pd b{display:block;font-weight:600;font-variant-numeric:tabular-nums lining-nums}
 td.pd span{display:block;font-size:11px;line-height:15px;color:var(--muted)}
+/* A date is not a quantity: it keeps the column's alignment but drops the
+   bold and the tabular figures that make a price scan as money. */
+td.pd b.dcell{font-weight:500;color:var(--muted)}
 /* Where a sold price came from, on its own line under the date. Two tones, and
    the difference is whether anybody checked: a figure somebody typed in is not
    the same claim as one matched against RP Data, and colouring them alike would
@@ -807,17 +810,6 @@ th[aria-sort] .arrow{opacity:1}
    header stacks too: the column's name, then the two things you can sort it
    by. The whole-column lighting has to be undone inside the pair, or sorting
    by price would light "date" as well and say nothing. */
-th .col-h{display:block;font:700 11px/14px 'Montserrat',sans-serif;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--muted);margin-bottom:3px}
-th.num .col-h{text-align:right}
-th .col-pair{display:flex;gap:10px}
-th.num .col-pair{justify-content:flex-end}
-th .col-pair .sortbtn{width:auto;font-weight:600;font-size:11px;letter-spacing:.02em;text-transform:none}
-th[aria-sort] .col-pair .sortbtn{color:var(--muted)}
-th[aria-sort] .col-pair .arrow{opacity:0}
-th .col-pair .sortbtn.is-on{color:var(--accent-300)}
-th .col-pair .sortbtn.is-on .arrow{opacity:1}
-th .col-pair .sortbtn:hover{color:var(--text)}
 
 .sum{width:100%;font-size:14px}
 .sum td{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -3002,16 +2994,23 @@ window.stopCheck=false;
      book showed as a blank row with no explanation. Being held is a normal
      state, not an error: there is no IRR to work out and the row says so. */
   function isHeld(e){ return !(Number(e.soldPrice) > 0) || !e.soldDate; }
-  function heldCell(){
-    return '<td class="pd"><b class="faint">Held</b><span class="faint">not sold yet</span></td>';
+  /* Two cells now, not one: sold price and sold date are separate columns, so
+     a held property has to leave both of them empty rather than one. */
+  function heldCells(){
+    return '<td class="pd"><b class="faint">Held</b></td>'+
+           '<td class="pd"><span class="faint">not sold yet</span></td>';
   }
   /* A property can be on the register before anybody has filled in what it cost
      — an address list is a legitimate starting point — so a missing price or
      date says so rather than rendering as NaN. */
-  function pdCell(price, date){
-    var p = Number(price) > 0 ? aud(price) : '<span class="faint">—</span>';
-    var d = (date && isFinite(date.getTime())) ? dLabel(date) : '<span class="faint">no date</span>';
-    return '<td class="pd"><b>'+p+'</b><span>'+d+'</span></td>';
+  function priceCell(price){
+    return '<td class="pd"><b>'+
+      (Number(price) > 0 ? aud(price) : '<span class="faint">—</span>')+'</b></td>';
+  }
+  function dateCell(date){
+    return '<td class="pd"><b class="dcell">'+
+      ((date && isFinite(date.getTime())) ? dLabel(date) : '<span class="faint">no date</span>')+
+      '</b></td>';
   }
   /* The Sold cell carries where its figure came from. A price with no source is
      what every row in the book has had until now, so it renders exactly as it
@@ -3047,12 +3046,15 @@ window.stopCheck=false;
     var v = verifiedOf(e);
     var link = String(e.soldLink || '').trim();
     var safe = /^https?:\/\//i.test(link);
+    /* The source chip and the link belong to the PRICE — they say where that
+       figure came from — so they stay in this cell and the date moves out to
+       its own column beside it. */
     return '<td class="pd"><b>'+aud(e.soldPrice)+'</b>'+
-      '<span>'+dLabel(new Date(e.soldDate))+'</span>'+
       (v ? '<span class="src'+(/^manual/i.test(v) ? '' : ' checked')+'">'+esc(v)+'</span>' : '')+
       (safe ? '<a class="src-link" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+
               'Open in '+esc(linkSite(v))+' ↗</a>' : '')+
-      '</td>';
+      '</td>'+
+      '<td class="pd"><b class="dcell">'+dLabel(new Date(e.soldDate))+'</b></td>';
   }
   function autoName(s){ return mLabel(s.purchaseDate)+' → '+mLabel(s.soldDate); }
   function ordinal(n){ var s=['th','st','nd','rd'], v=n%100; return s[(v-20)%10]||s[v]||s[0]; }
@@ -4061,7 +4063,8 @@ window.stopCheck=false;
             ? '<br><span class="cat aside-chip">outside of advice'+
               ((e.outsideReason||'').trim() ? ' — '+esc(e.outsideReason) : '')+'</span>'
             : '') +'</td>'+
-        pdCell(e.purchasePrice, new Date(e.purchaseDate))+ (d.held ? heldCell() : soldCell(e))+
+        priceCell(e.purchasePrice)+ dateCell(new Date(e.purchaseDate))+
+        (d.held ? heldCells() : soldCell(e))+
         '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
         '<td class="num"><strong>'+irr+'</strong></td>'+
         /* Open · Archive · Delete, in that order: the two you reach for often
@@ -4082,15 +4085,16 @@ window.stopCheck=false;
       '</tr>';
     };
 
-    /* Purchased and Sold each hold two numbers, so each gets two sort
-       targets stacked the way the cell under them is: the price on top, the
-       date beneath. The other columns hold one number and keep one button. */
+    /* One column, one number, one sort button. Purchase and sale each used to
+       be a single column holding a price above a date, with two buttons in
+       the header to sort by either — which meant reading down one number
+       while sorting by the one stacked on top of it. Four columns now. */
     var cols = [
       { key:'name', label:'Property', cls:'' },
-      { label:'Purchased', cls:'num',
-        pair:[{ key:'purchasePrice', label:'price' }, { key:'purchase', label:'date' }] },
-      { label:'Sold', cls:'num',
-        pair:[{ key:'soldPrice', label:'price' }, { key:'sold', label:'date' }] },
+      { key:'purchasePrice', label:'Purchase price', cls:'num' },
+      { key:'purchase',      label:'Purchase date',  cls:'num' },
+      { key:'soldPrice',     label:'Sold price',     cls:'num' },
+      { key:'sold',          label:'Sold date',      cls:'num' },
       { key:'hold', label:'Hold',       cls:'num' },
       { key:'net',  label:'Net profit', cls:'num' },
       { key:'irr',  label:'IRR',        cls:'num' }
@@ -4099,17 +4103,8 @@ window.stopCheck=false;
       return '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span>';
     };
     var head = cols.map(function(c){
-      var keys = c.pair ? c.pair.map(function(p){ return p.key; }) : [c.key];
-      var on = keys.indexOf(sortKey) >= 0;
-      var inner = c.pair
-        ? '<span class="col-h">'+c.label+'</span><span class="col-pair">'+
-            c.pair.map(function(p){
-              var lit = (sortKey === p.key);
-              return '<button type="button" class="sortbtn'+(lit?' is-on':'')+'" data-sortby="'+p.key+'" '+
-                     'aria-label="Sort by '+esc(c.label.toLowerCase()+' '+p.label)+'">'+
-                     p.label+arrow(lit)+'</button>';
-            }).join('')+'</span>'
-        : '<button type="button" class="sortbtn'+(on?' is-on':'')+'" data-sortby="'+c.key+'">'+
+      var on = (sortKey === c.key);
+      var inner = '<button type="button" class="sortbtn'+(on?' is-on':'')+'" data-sortby="'+c.key+'">'+
           c.label+arrow(on)+'</button>';
       return '<th scope="col"'+(c.cls?' class="'+c.cls+'"':'')+
         (on ? ' aria-sort="'+(sortDir===1?'ascending':'descending')+'"' : '')+'>'+inner+'</th>';
