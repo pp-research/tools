@@ -564,6 +564,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
    pushes the tracks wider than the card and scrolls the page on a phone. */
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin-bottom:var(--sp-4)}
 @media (min-width:768px){ .kpis{grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (min-width:768px){ .kpis.kpis-3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* The market row gets a heading, because it is a different kind of number
+   from the eight above it: somebody else's series, not the book's own. */
+.ov-sub{font-size:11px;line-height:16px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--faint);margin:var(--sp-5) 0 var(--sp-3)}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:var(--sp-4);min-width:0}
 .kpi .k-label{font-size:11px;line-height:16px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .kpi .k-value{font-size:clamp(21px,4.6vw,28px);line-height:1.26;font-weight:800;margin-top:var(--sp-1);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.03em;overflow-wrap:anywhere}
@@ -3520,6 +3525,33 @@ window.stopCheck=false;
      is a real transaction date, and the list under the card shows the others
      so the span it was picked from is never hidden. `days` is already sorted
      ascending and already at UTC midnight, so the first one needs no work. */
+  /* ══════════ THE MARKET, FOR COMPARISON ══════════
+     Cotality "median sales price last 3 months", capital-city HOUSES, one
+     value a month from Jan 2008 to Jul 2026. Three months trailing rather
+     than twelve because a purchase happened in a month, not across a year.
+
+     It is the median of what SOLD, not an index of what everything is worth,
+     so it moves with the mix as well as with values — a quarter heavy with
+     cheaper stock pulls it down on its own. Good enough to put a purchase and
+     a sale in context, which is all these three cards claim to do; the
+     per-property work against a proper index lives outside this tool.
+
+     Houses only. A register of units compared against this would be reading
+     the wrong line. */
+var MHP_FROM='2008-01', MHP={
+  'Adelaide':[355000,362500,360000,359533,360000,363000,365000,362000,360000,355000,355000,355000,355000,353000,352000,352000,355000,355000,360000,367500,370000,371000,375000,384000,397500,400000,404000,403050,405000,409000,410000,405000,400000,398000,400000,405000,411000,411000,407500,400000,400000,400000,398000,390000,390000,388000,387250,387000,390000,390000,380000,380000,385000,390000,390000,385000,385000,387500,395000,398000,400000,399500,395000,395000,399000,400000,400000,395000,398000,395000,400788,407000,420000,417000,412000,411100,415000,417500,410155,411450,412000,415000,418000,422000,428250,427500,425000,422250,425000,425000,426000,425000,427575,425000,435000,440000,449000,442000,435000,440000,445000,447500,445000,440000,440000,440000,445000,450000,455000,450100,455000,454000,460000,453000,455000,450000,450000,445000,450000,460000,470000,469500,463062,460000,463000,465000,468000,485000,480000,475000,482000,487500,490000,490000,487000,487000,490000,490000,485000,482750,484000,480000,491000,500000,505000,495000,465250,470000,475000,473000,475000,480000,494500,505000,510000,511500,521000,521250,530000,530450,540000,541550,551000,561625,571000,582500,608250,620000,632000,640000,650000,650000,654000,663000,670000,670000,662000,660000,665000,671000,672000,675000,685000,691000,700000,701575,710000,712000,720000,720000,740000,750000,760000,765000,770000,770000,780000,790000,805000,805000,805000,810000,825750,846500,850000,840000,845000,850000,850000,850000,850000,865000,872000,890000,905000,935000,945000,960000,980000,984500,971500,965000,960000],
+  'Brisbane':[427000,431000,435000,440000,439000,435000,429000,421000,420000,415000,410000,405000,405000,405000,410000,415000,420000,428500,435000,435000,438000,447100,456000,465000,462500,465000,469800,472000,475000,472000,470000,460000,460000,457750,460000,460000,458000,455000,450000,450000,447000,445000,445000,440000,435000,430000,433000,435000,435000,433000,435000,437000,440000,436000,440000,435000,439000,438000,442985,450000,445000,448000,445000,450000,450000,450000,454000,455000,455000,460000,465000,473000,469000,468000,470000,480000,480000,480000,478500,478500,475000,475000,480000,487500,485000,480000,480000,483500,485000,485000,485000,485000,490000,495000,500000,507000,502000,497000,495500,500000,505000,507500,508550,507500,505000,510000,520000,520000,520000,510000,511430,515000,517000,518950,520000,520000,525000,525000,535000,535000,530000,520000,525000,530000,535000,530000,540000,550000,555000,560000,560000,560000,550000,545000,550000,560000,555000,550000,550000,555000,555000,560000,568000,575000,563000,560000,545000,551800,550000,549000,550000,558000,560000,570000,575000,581000,580500,590000,608000,620000,630000,640000,650000,650000,665000,710000,730000,740000,750000,755000,768000,780000,776000,775000,760000,750000,750000,752250,751000,750000,745000,590000,755000,763000,770000,776696,790000,790000,800000,806500,825000,835000,837250,845000,850000,870000,882250,895000,885000,880000,877777,900000,910000,920000,910000,910000,920500,940000,950000,959000,960000,990000,1005000,1060000,1090000,1100000,1100000,1100000,1155000,1175000,1180000,1170000,1150000]
+};
+  function mhpAt(city, date){
+    var a = MHP[city];
+    if (!a || !date || !isFinite(date.getTime())) return null;
+    var from = MHP_FROM.split('-');
+    var i = (date.getUTCFullYear() - Number(from[0])) * 12 +
+            (date.getUTCMonth() + 1 - Number(from[1]));
+    if (i < 0 || i >= a.length) return null;
+    var v = a[i];
+    return (typeof v === 'number' && v > 0) ? v : null;
+  }
   function midDay(m){
     if (!m || !m.days.length) return null;
     var d = new Date(m.days[0]);
@@ -3830,6 +3862,53 @@ window.stopCheck=false;
            (sold - nets.length - heldN > 0
               ? ' · ' + (sold - nets.length - heldN) + ' with no sale price' : ''))+
       '</div>';
+
+    /* ── against the market ──
+       A second row rather than three more cards in the first: these are not
+       the book's own figures, they are somebody else's series, and mixing
+       them in would read as though the tool had worked them out.
+       Both months come from the same place the price cards do — the EARLIEST
+       date behind the median price — so the comparison lines up with what the
+       two cards above it say. */
+    var mkBuy = midDay(buyMid), mkSell = midDay(sellMid);
+    var mhpBuy = mhpAt(activeCity, mkBuy), mhpSell = mhpAt(activeCity, mkSell);
+    var monthOf = function(d){
+      return d ? MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : '—';
+    };
+    var mhpNote = function(d){
+      if (!activeCity) return 'no city selected';
+      if (!d) return 'no median month to look up';
+      if (!MHP[activeCity]) return 'no Cotality series for ' + esc(cityLabel());
+      return esc(cityLabel()) + ' houses · ' + monthOf(d);
+    };
+    h += '<h3 class="ov-sub">Against the market</h3>' +
+      '<div class="kpis kpis-3">' +
+      card('Cotality median — purchase month',
+           mhpBuy ? aud(mhpBuy) : '—', mhpNote(mkBuy)) +
+      card('Cotality median — sale month',
+           mhpSell ? aud(mhpSell) : '—', mhpNote(mkSell)) +
+      (function(){
+        var ours = (buyMid && sellMid && buyMid.median > 0)
+          ? sellMid.median / buyMid.median - 1 : null;
+        var mkt  = (mhpBuy && mhpSell) ? mhpSell / mhpBuy - 1 : null;
+        if (ours === null || mkt === null)
+          return card('Growth comparison', '—',
+                      'needs a median purchase and sale, and a series for this city');
+        var gap = (ours - mkt) * 100;
+        return card('Growth comparison',
+          '<span class="' + (gap >= 0 ? 'pos' : 'neg') + '">' +
+            (gap >= 0 ? '+' : '') + gap.toFixed(1) + ' pts</span>',
+          'ours ' + pct(ours) + ' · Cotality ' + pct(mkt) +
+          ' · ' + monthOf(mkBuy) + ' to ' + monthOf(mkSell));
+      })() +
+      '</div>' +
+      /* Said on the page, not just in a handover: these two medians are
+         across DIFFERENT properties, so the ratio is not anybody's gain. */
+      '<p class="count-line">The two medians are taken across all sold properties, so they are not the '+
+      'same properties — this sets the middle of what was bought against the middle of what was sold, '+
+      'which is not a like-for-like gain. Cotality is the median of what SOLD in those months, so it '+
+      'moves with the mix as well as with values. For a real score, compare each property with the '+
+      'market over its own dates.</p>';
 
     /* ── distribution ──
        Built from `spread`, which has every filter applied except the band, so
