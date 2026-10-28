@@ -2042,6 +2042,10 @@ window.stopCheck=false;
      about it. Null while the sheet has not answered, which is the difference
      between "no row for this one" and "no answer from the sheet at all". */
   let sheetSeen = null;
+  /* Only a reply that says so sets this. A sheet that did not answer leaves
+     it false, which is the safe way round: a sweep that cannot confirm the
+     endpoint understands it does not run. */
+  let endpointTakesTypes = false;
   if (SHEET_URL) {
     try {
       const d = await withTimeout(
@@ -2049,6 +2053,7 @@ window.stopCheck=false;
         20000, 'asking the sheet what it already has');
       /* Both sides are yyyy-mm-dd, so a string compare IS a date compare and
          nothing has to be parsed back into a Date to be got wrong. */
+      endpointTakesTypes = !!(d && d.kinds && d.kinds.indexOf('type') >= 0);
       const since = ymd(periodStart());
       sheetSeen = new Set();
       ((d && d.rows) || []).forEach(r => {
@@ -2077,6 +2082,18 @@ window.stopCheck=false;
       console.warn('Could not ask the sheet what it already has, so this is a ' +
                    'full run: ' + e.message);
     }
+  }
+  /* Stop before a single row is posted. The old endpoint would not reject a
+     type post, it would misread one, and the damage would be silent. */
+  if (TYPES_ONLY && SHEET_URL && !endpointTakesTypes) {
+    console.error('%cThis sheet is still on the older Apps Script, which has ' +
+      'never heard of a type sweep.\n' +
+      'Running anyway would blank the Status, Sold date, Sold price and ' +
+      'Checked at columns of every property it touched, so it has stopped.\n\n' +
+      'Deploy the new version first: Deploy > Manage deployments > the pencil > ' +
+      'Version: New version > Deploy. Then click this bookmark again.',
+      'font-weight:bold;font-size:13px;color:#c0392b');
+    return;
   }
   /* A row deleted in the sheet is a property to ask about again, so the note
      taken alongside it goes too. See forgetDeleted(). */
