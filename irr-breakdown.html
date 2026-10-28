@@ -824,6 +824,14 @@ td.pd .src-link:hover{color:var(--text)}
    the width for all of them. */
 #propsBody th.sw,#propsBody td.sw{width:116px;min-width:116px}
 #propsBody th.sw{white-space:normal;line-height:14px}
+/* The last of the three is wider because in the market view it holds the gap
+   and the two growth rates behind it on one line. IRR takes the same width so
+   the two views still line up exactly. */
+#propsBody th.sw3,#propsBody td.sw3{width:150px;min-width:150px}
+/* Small, muted, and never coloured: the headline above carries whether we beat
+   the market, and repeating the colour here would make three things shout. */
+.vs-parts{margin-top:2px;font-size:11px;line-height:14px;font-weight:400;
+  color:var(--muted);white-space:nowrap}
 /* Open · Edit · Archive · Delete as one row of equal controls. Open is a text
    button and the other three are icons; left alone they are inline-block and
    inline-flex sitting on a shared baseline, which put Open 2px taller and 3px
@@ -3502,7 +3510,7 @@ window.stopCheck=false;
   }
   function deriveOne(e, opts){
     var d = { e:e, irr:null, net:null, hold:null, held:isHeld(e),
-              mkBuy:null, mkSell:null, vsMkt:null };
+              mkBuy:null, mkSell:null, vsMkt:null, ourCagr:null, mktCagr:null };
     if (d.held) return d;          /* nothing to discount until there is a sale */
     try {
       var r = window.IRRBreakdown.computeBreakdown(e, opts);
@@ -3513,8 +3521,12 @@ window.stopCheck=false;
       d.mkBuy = mhpOn(e.purchaseDate); d.mkSell = mhpOn(e.soldDate);
       if (d.mkBuy && d.mkSell && d.hold > 0 &&
           Number(e.purchasePrice) > 0 && Number(e.soldPrice) > 0) {
-        d.vsMkt = Math.pow(e.soldPrice / e.purchasePrice, 1 / d.hold) -
-                  Math.pow(d.mkSell / d.mkBuy, 1 / d.hold);
+        /* Both sides are kept, not just the subtraction. A gap of +0.8% reads
+           one way when the market did 2% and another when it did 12%, and the
+           cell cannot say which unless it carries them. */
+        d.ourCagr = Math.pow(e.soldPrice / e.purchasePrice, 1 / d.hold) - 1;
+        d.mktCagr = Math.pow(d.mkSell / d.mkBuy, 1 / d.hold) - 1;
+        d.vsMkt = d.ourCagr - d.mktCagr;
       }
     } catch (err) {}
     return d;
@@ -4278,12 +4290,15 @@ var MHP_FROM='2008-01', MHP={
         (regView === 'market'
           ? '<td class="num sw">'+(d.mkBuy  ? aud(d.mkBuy)  : dash)+'</td>'+
             '<td class="num sw">'+(d.mkSell ? aud(d.mkSell) : dash)+'</td>'+
-            '<td class="num sw"><strong>'+(d.vsMkt === null ? dash :
+            '<td class="num sw sw3"><strong>'+(d.vsMkt === null ? dash :
               '<span class="'+(d.vsMkt >= 0 ? 'pos' : 'neg')+'">'+
                 (d.vsMkt >= 0 ? '+' : '') + (d.vsMkt * 100).toFixed(2) + '%</span>')+
-            '</strong></td>'
+            '</strong>'+
+            (d.vsMkt === null ? '' :
+              '<div class="vs-parts">PPA '+pct(d.ourCagr)+' &middot; Mkt '+pct(d.mktCagr)+'</div>')+
+            '</td>'
           : '<td class="num sw">'+hold+'</td><td class="num sw">'+net+'</td>'+
-            '<td class="num sw"><strong>'+irr+'</strong></td>')+
+            '<td class="num sw sw3"><strong>'+irr+'</strong></td>')+
         /* Open · Archive · Delete, in that order: the two you reach for often
            come first, and the irreversible one sits on its own at the end
            rather than between them where a mis-aimed click finds it. */
@@ -4318,11 +4333,11 @@ var MHP_FROM='2008-01', MHP={
     ].concat(regView === 'market' ? [
       { key:'mkBuy',  label:'Market at purchase', cls:'num sw' },
       { key:'mkSell', label:'Market at sale',     cls:'num sw' },
-      { key:'vsMkt',  label:'vs Market',          cls:'num sw' }
+      { key:'vsMkt',  label:'vs Market',          cls:'num sw sw3' }
     ] : [
       { key:'hold', label:'Hold',       cls:'num sw' },
       { key:'net',  label:'Net profit', cls:'num sw' },
-      { key:'irr',  label:'IRR',        cls:'num sw' }
+      { key:'irr',  label:'IRR',        cls:'num sw sw3' }
     ]);
     var arrow = function(on){
       return '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span>';
