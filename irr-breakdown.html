@@ -153,7 +153,11 @@ header img{height:40px;width:auto;display:block}
 .card-head h2{margin:0}
 
 /* ═══ LAYOUT ═══ */
-.cols{display:grid;grid-template-columns:1fr;gap:var(--sp-4)}
+/* align-content:start, because .cols carries a min-height and auto rows: the
+   spare height was being handed out ACROSS THE ROWS, so a shorter panel made
+   the settings row swell and pushed the tabs down the page. Switching tab
+   should not move the furniture. */
+.cols{display:grid;grid-template-columns:1fr;gap:var(--sp-4);align-content:start}
 /* min-width:0 stops a wide table forcing the grid column open (grid items
    default to min-width:auto) and scrolling the whole page. Each panel is a
    flex column so a hidden card drops out of the gap. */
@@ -162,7 +166,11 @@ header img{height:40px;width:auto;display:block}
    The toggles and the assumptions, in one line above the tabs. Collapsed, the
    assumptions sit at the right-hand end of that line; opened, they break to a
    row of their own so the toggles keep their place. */
-.set-bar{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-6);padding:var(--sp-3) var(--sp-4)}
+/* A grid item stretches to its row by default, so this strip grew to match
+   whatever card shared its row — taller on Calculation, taller again on Sold
+   check, with its contents re-centred each time. It is a toolbar: it should be
+   its own height and stay there. */
+.set-bar{align-self:start;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-6);padding:var(--sp-3) var(--sp-4)}
 .set-bar h2{margin:0;flex:0 0 auto}
 .set-bar .seg-row{display:flex;align-items:center;gap:var(--sp-2);margin:0;flex:0 0 auto}
 .set-bar .seg-label{white-space:nowrap}
