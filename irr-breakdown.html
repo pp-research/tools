@@ -3966,9 +3966,14 @@ var MHP_FROM='1980-03', MHP={
      not evidence of a house; it is the absence of evidence, and the two must
      not be confused when the result is written onto a record. */
   /* A written property type, mapped onto the two lines Cotality publishes.
-     Returns 'U', 'D', or nothing at all — never 'H', because an unrecognised
-     word is not evidence of a house and the caller stores a house by leaving
-     the field empty. */
+     Returns 'U', 'D', 'H', or nothing at all.
+
+     'H' and nothing are NOT the same answer. 'H' is "this was checked and it
+     is a house"; nothing is "no one has looked". They are measured
+     identically — ptypeOf() reads an empty field as 'H' — but only one of
+     them is a fact, and a register that cannot tell them apart cannot show
+     its own coverage. An unrecognised word still returns nothing: a word we
+     do not know is not evidence of anything. */
   function ptypeFromLabel(raw){
     var s = String(raw || '').trim();
     if (!s) return undefined;
@@ -3978,7 +3983,7 @@ var MHP_FROM='1980-03', MHP={
     /* Torrens: the owner holds the land. Semis, terraces and duplexes sit
        here with detached houses, which is Cotality's line, not the eye's. */
     if (/\b(house|detached|semi|terrace|duplex|villa\s*home|fronter|cottage|dwelling)\b/i.test(s))
-      return undefined;
+      return 'H';
     return undefined;
   }
   var PT_SPELT = /^\s*(?:unit|apt|apartment|flat|villa|townhouse|town\s*house)\b/i;
@@ -5201,8 +5206,8 @@ var MHP_FROM='1980-03', MHP={
     e.category = $('eCat').value.trim() || undefined;
     /* Stored only when it is a unit. A house is the default, so writing 'H'
        onto every record would churn the shared book for no information. */
-    e.ptype = ($('ePType').value === 'U' || $('ePType').value === 'D')
-      ? $('ePType').value : undefined;
+    /* Choosing House in the form is a statement, so it is recorded as one. */
+    e.ptype = /^[HUD]$/.test($('ePType').value) ? $('ePType').value : undefined;
     e.purchasePrice = price;
     e.purchaseDate = date;
     if (sPrice === '') { e.soldPrice = undefined; e.soldDate = undefined; }
@@ -5449,7 +5454,11 @@ var MHP_FROM='1980-03', MHP={
       if (String(a) === String(b)) return;
       /* "House → Unit", not "— → U". The letter is how it is stored; the word
          is what somebody approving the import is being asked about. */
-      var fmt = k === 'ptype'    ? function(v){ return ptypeLabel(ptypeOf({ ptype: v })); }
+      /* An empty field reads as "House" everywhere a number is worked out,
+         but in a line describing a CHANGE it has to say what it really is,
+         or recording a house looks like "House -> House". */
+      var fmt = k === 'ptype'    ? function(v){ return v === '' ? 'not recorded'
+                                                               : ptypeLabel(ptypeOf({ ptype: v })); }
               : /Price$/.test(k) ? function(v){ return v === '' ? '—' : aud(Number(v)); }
                                  : function(v){ return v === '' ? '—' : String(v); };
       out.push(FIELD_NAMES[k] + ': ' + fmt(a) + ' → ' + fmt(b));
@@ -5879,7 +5888,15 @@ var MHP_FROM='1980-03', MHP={
     var ph = findHeader(rows, PURCH_COLS);
     var head = asText(ph === null ? rows[0] : rows[ph]);
     var nm = (ph === null) ? { map:{}, skipped:[] } : mapNamed(head, PURCH_COLS);
-    if (nm.map.address !== undefined && (nm.map.price !== undefined || nm.map.date !== undefined)) {
+    /* An address plus ANYTHING this understands is a named import. It used to
+       insist on a price or a date, which quietly discarded a file whose point
+       was the property type — the rows matched by name, nothing changed, and
+       the preview reported them all as "existing". True of the deal, silent
+       about the type. */
+    if (nm.map.address !== undefined &&
+        (nm.map.price !== undefined || nm.map.date !== undefined ||
+         nm.map.ptype !== undefined || nm.map.market !== undefined ||
+         nm.map.soldprice !== undefined || nm.map.solddate !== undefined)) {
       var cat = $('impCat').value.trim();
       var entries = [], skipped = [];
       rows.slice(ph + 1).forEach(function(r){
