@@ -775,6 +775,9 @@ td.pd .src-link:hover{color:var(--text)}
    to two lines so a long label stops dictating the column width */
 #bdTable th,#bdTable td{padding:8px 10px}
 #bdTable thead th{white-space:normal;line-height:14px}
+/* Centred, like the register's figure columns. Month stays ranged left:
+   it is the label the row is read by, not one of its figures. */
+#bdTable th.num, #bdTable td.num{text-align:center}
 /* The properties table has to fit its panel without scrolling sideways: the
    third row action was the 18px that pushed it over, and a table you have to
    scroll to see the IRR of is a table you misread. Tighter gutters here only —
