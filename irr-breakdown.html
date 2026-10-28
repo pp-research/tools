@@ -1133,6 +1133,16 @@ details .body strong{color:var(--text)}
               <h2 id="props-h">Register</h2>
             </div>
             <div class="btns" style="margin:0">
+              <!-- Swapped, not added. Three more columns beside the three
+                   that are here would push the table into a sideways scroll,
+                   and a register you have to scroll to read the IRR of is a
+                   register you misread. -->
+              <div class="seg seg-sm" role="radiogroup" aria-label="Which figures to show">
+                <input type="radio" name="regView" id="regView-r" value="returns" checked>
+                <label for="regView-r">Returns</label>
+                <input type="radio" name="regView" id="regView-m" value="market">
+                <label for="regView-m">vs Market</label>
+              </div>
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
@@ -3362,6 +3372,11 @@ window.stopCheck=false;
      on every reload is the sort of thing you stop bothering to set. Its own key:
      it is a view preference, not data, and must never ride inside the book. */
   var SORT_KEY = 'pp-irr-sort-v1';
+  /* Which three columns the register is showing. Remembered per browser:
+     somebody comparing against the market is doing it for a while. */
+  var REGVIEW_KEY = 'pp-irr-regview-v1';
+  var regView = 'returns';
+  try { if (localStorage.getItem(REGVIEW_KEY) === 'market') regView = 'market'; } catch (e) {}
   var sortKey = null, sortDir = -1;   // -1 desc, 1 asc
   try {
     var ss = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
@@ -3462,12 +3477,29 @@ window.stopCheck=false;
   /* One property, one set of numbers. Pulled out of the render so the overview
      can strike its own set over its own scope without a second copy of this
      drifting away from the first. */
+  /* The market on the day this property changed hands. Null when the date is
+     missing or falls outside the series — the register shows that as a dash
+     rather than quietly leaving the property out of an average. */
+  function mhpOn(raw){
+    var t = dayStamp(raw);
+    return t === null ? null : mhpAt(activeCity, new Date(t));
+  }
   function deriveOne(e, opts){
-    var d = { e:e, irr:null, net:null, hold:null, held:isHeld(e) };
+    var d = { e:e, irr:null, net:null, hold:null, held:isHeld(e),
+              mkBuy:null, mkSell:null, vsMkt:null };
     if (d.held) return d;          /* nothing to discount until there is a sale */
     try {
       var r = window.IRRBreakdown.computeBreakdown(e, opts);
       d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears;
+      /* What the market did over THIS property's own months — the only
+         comparison where both sides faced the same years. Per year, because
+         holds differ and a cumulative gap just measures the longer hold. */
+      d.mkBuy = mhpOn(e.purchaseDate); d.mkSell = mhpOn(e.soldDate);
+      if (d.mkBuy && d.mkSell && d.hold > 0 &&
+          Number(e.purchasePrice) > 0 && Number(e.soldPrice) > 0) {
+        d.vsMkt = Math.pow(e.soldPrice / e.purchasePrice, 1 / d.hold) -
+                  Math.pow(d.mkSell / d.mkBuy, 1 / d.hold);
+      }
     } catch (err) {}
     return d;
   }
@@ -4177,7 +4209,10 @@ var MHP_FROM='2008-01', MHP={
         soldPrice:     function(d){ var v = Number(d.e.soldPrice);     return (isFinite(v) && v > 0) ? v : null; },
         hold:     function(d){ return d.hold; },
         net:      function(d){ return d.net; },
-        irr:      function(d){ return d.irr; }
+        irr:      function(d){ return d.irr; },
+        mkBuy:    function(d){ return d.mkBuy; },
+        mkSell:   function(d){ return d.mkSell; },
+        vsMkt:    function(d){ return d.vsMkt; }
       }[sortKey];
       data.sort(function(a,b){
         var x = get(a), y = get(b);
@@ -4199,6 +4234,7 @@ var MHP_FROM='2008-01', MHP={
       var irr = d.irr === null ? '—' : pct(d.irr);
       var net = d.net === null ? '—' : signed(d.net);
       var hold = d.hold === null ? '—' : d.hold.toFixed(2);
+      var dash = '<span class="faint">—</span>';
       var on = picked.indexOf(e.id) >= 0;
       return '<tr'+(on?' class="is-picked"':'')+'>'+
         '<td class="pick"><input type="checkbox" data-pick="'+e.id+'"'+
@@ -4227,8 +4263,15 @@ var MHP_FROM='2008-01', MHP={
             : '') +'</td>'+
         priceCell(e.purchasePrice)+ dateCell(new Date(e.purchaseDate))+
         (d.held ? heldCells() : soldCell(e))+
-        '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
-        '<td class="num"><strong>'+irr+'</strong></td>'+
+        (regView === 'market'
+          ? '<td class="num">'+(d.mkBuy  ? aud(d.mkBuy)  : dash)+'</td>'+
+            '<td class="num">'+(d.mkSell ? aud(d.mkSell) : dash)+'</td>'+
+            '<td class="num"><strong>'+(d.vsMkt === null ? dash :
+              '<span class="'+(d.vsMkt >= 0 ? 'pos' : 'neg')+'">'+
+                (d.vsMkt >= 0 ? '+' : '') + (d.vsMkt * 100).toFixed(2) + '%</span>')+
+            '</strong></td>'
+          : '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
+            '<td class="num"><strong>'+irr+'</strong></td>')+
         /* Open · Archive · Delete, in that order: the two you reach for often
            come first, and the irreversible one sits on its own at the end
            rather than between them where a mis-aimed click finds it. */
@@ -4257,10 +4300,15 @@ var MHP_FROM='2008-01', MHP={
       { key:'purchase',      label:'Purchase date',  cls:'num' },
       { key:'soldPrice',     label:'Sold price',     cls:'num' },
       { key:'sold',          label:'Sold date',      cls:'num' },
+    ].concat(regView === 'market' ? [
+      { key:'mkBuy',  label:'Market at purchase', cls:'num' },
+      { key:'mkSell', label:'Market at sale',     cls:'num' },
+      { key:'vsMkt',  label:'vs Market',          cls:'num' }
+    ] : [
       { key:'hold', label:'Hold',       cls:'num' },
       { key:'net',  label:'Net profit', cls:'num' },
       { key:'irr',  label:'IRR',        cls:'num' }
-    ];
+    ]);
     var arrow = function(on){
       return '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span>';
     };
@@ -6844,6 +6892,17 @@ var MHP_FROM='2008-01', MHP={
     d.open = open;
     this.setAttribute('aria-expanded', open ? 'true' : 'false');
     this.textContent = open ? 'Hide assumptions' : 'View assumptions';
+  });
+  /* The markup ships with Returns checked; the remembered choice has to be
+     put back on the control, or the register shows one view while the
+     switch claims the other. */
+  (function(){ var el = $('regView-' + (regView === 'market' ? 'm' : 'r')); if (el) el.checked = true; })();
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="regView"]'), function(el){
+    el.addEventListener('change', function(){
+      regView = (radioVal('regView') === 'market') ? 'market' : 'returns';
+      try { localStorage.setItem(REGVIEW_KEY, regView); } catch (e) {}
+      renderProps();
+    });
   });
   $('btnRenameCat').addEventListener('click', renameCategory);
   $('prYes').addEventListener('click', function(){
