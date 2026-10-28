@@ -161,9 +161,16 @@ header img{height:40px;width:auto;display:block}
 .set-bar h2{margin:0;flex:0 0 auto}
 .set-bar .seg-row{display:flex;align-items:center;gap:var(--sp-2);margin:0;flex:0 0 auto}
 .set-bar .seg-label{white-space:nowrap}
-.set-bar #assumpBox{flex:0 0 auto;margin-left:auto;border-top:0;padding-top:0;margin-top:0}
+/* The snapshot: one quiet line of what is in force, between the label and
+   the button. It wraps rather than truncating — a setting you cannot read
+   is the same as a setting nobody told you about. */
+.set-bar .set-snap{flex:1 1 320px;min-width:0;font-size:12px;line-height:18px;color:var(--muted)}
+.set-bar .snap-sep{margin:0 8px;opacity:.5}
+.set-bar #btnEditAssump{flex:0 0 auto;margin-left:auto}
+.set-bar #assumpBox[open]{flex:1 0 100%;margin-left:0;
+  border-top:1px solid var(--border);padding-top:var(--sp-3);margin-top:var(--sp-1)}
+.set-bar #assumpBox:not([open]){display:none}
 /* Open, it is a row of its own, so the rule earns its place again. */
-.set-bar #assumpBox[open]{flex:1 0 100%;margin-left:0;border-top:1px solid var(--border);padding-top:var(--sp-3);margin-top:var(--sp-1)}
 /* Two fields to a pair, so a pair needs its own width before it wraps. */
 .set-bar #assumpBox[open] .body{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
   gap:0 var(--sp-6);align-items:start;max-width:none;margin-top:var(--sp-3)}
@@ -245,10 +252,6 @@ header img{height:40px;width:auto;display:block}
   border:1px solid var(--border);border-radius:var(--r-md);
   padding:var(--sp-3) var(--sp-4);box-shadow:var(--edge);
 }
-/* On its own above the tabs. Not full width: it is one field, and a search
-   box the width of the page reads as a command bar rather than a filter. */
-.search-bar{display:flex;align-items:flex-end;margin-bottom:var(--sp-3)}
-.search-bar .fb-field.fb-search{flex:0 1 420px;min-width:160px}
 .fb-row{display:flex;align-items:flex-end;gap:var(--sp-3);flex-wrap:wrap}
 .fb-field{margin:0;flex:22 1 0;min-width:130px}
 .fb-field.fb-search{flex:30 1 0;min-width:150px}
@@ -929,38 +932,45 @@ details .body strong{color:var(--text)}
          row of their own underneath rather than crushing the toggles. -->
     <section class="card set-bar" id="setCard" aria-labelledby="set-h">
       <h2 id="set-h">Settings</h2>
-
-        <div class="seg-row">
-          <span class="seg-label" id="lbl-rate">Cash rate</span>
-          <div class="seg" role="radiogroup" aria-labelledby="lbl-rate">
-            <input type="radio" name="tRate" id="tRate-a" value="Normalised" checked>
-            <label for="tRate-a">Normalised</label>
-            <input type="radio" name="tRate" id="tRate-b" value="Actual">
-            <label for="tRate-b">Actual</label>
-          </div>
-        </div>
-        <div class="seg-row">
-          <span class="seg-label" id="lbl-ng">Neg. gearing</span>
-          <div class="seg" role="radiogroup" aria-labelledby="lbl-ng">
-            <input type="radio" name="tNg" id="tNg-a" value="Off" checked>
-            <label for="tNg-a">Off</label>
-            <input type="radio" name="tNg" id="tNg-b" value="On">
-            <label for="tNg-b">On</label>
-          </div>
-        </div>
-        <div class="seg-row">
-          <span class="seg-label" id="lbl-rent">Rent</span>
-          <div class="seg" role="radiogroup" aria-labelledby="lbl-rent">
-            <input type="radio" name="tRent" id="tRent-a" value="Growing" checked>
-            <label for="tRent-a">Growing</label>
-            <input type="radio" name="tRent" id="tRent-b" value="Flat">
-            <label for="tRent-b">Midpoint</label>
-          </div>
-        </div>
+      <!-- A snapshot, not a control panel. The three toggles and the ten
+           numbers all live behind the button now: they are set once and
+           then read, and a row of live controls across the top of every tab
+           was spending the most valuable strip on screen saying things that
+           rarely change. What they currently say is here in one line. -->
+      <span class="set-snap" id="setSnap"></span>
+      <button type="button" class="btn-ghost btn-sm" id="btnEditAssump"
+              aria-expanded="false" aria-controls="assumpBox">Edit assumptions</button>
 
         <details id="assumpBox">
-          <summary>View assumptions <span class="edited-chip" id="assumpEdited" hidden>edited</span></summary>
+          <summary class="sr-only">Assumptions <span class="edited-chip" id="assumpEdited" hidden>edited</span></summary>
           <div class="body" style="color:inherit">
+            <div class="seg-row">
+              <span class="seg-label" id="lbl-rate">Cash rate</span>
+              <div class="seg" role="radiogroup" aria-labelledby="lbl-rate">
+                <input type="radio" name="tRate" id="tRate-a" value="Normalised" checked>
+                <label for="tRate-a">Normalised</label>
+                <input type="radio" name="tRate" id="tRate-b" value="Actual">
+                <label for="tRate-b">Actual</label>
+              </div>
+            </div>
+            <div class="seg-row">
+              <span class="seg-label" id="lbl-ng">Neg. gearing</span>
+              <div class="seg" role="radiogroup" aria-labelledby="lbl-ng">
+                <input type="radio" name="tNg" id="tNg-a" value="Off" checked>
+                <label for="tNg-a">Off</label>
+                <input type="radio" name="tNg" id="tNg-b" value="On">
+                <label for="tNg-b">On</label>
+              </div>
+            </div>
+            <div class="seg-row">
+              <span class="seg-label" id="lbl-rent">Rent</span>
+              <div class="seg" role="radiogroup" aria-labelledby="lbl-rent">
+                <input type="radio" name="tRent" id="tRent-a" value="Growing" checked>
+                <label for="tRent-a">Growing</label>
+                <input type="radio" name="tRent" id="tRent-b" value="Flat">
+                <label for="tRent-b">Midpoint</label>
+              </div>
+            </div>
             <div class="pair">
               <div class="field"><label for="aDep">Deposit + fee</label><div class="suffix"><input id="aDep" type="number" step="0.1" value="18.5"><span>%</span></div></div>
               <div class="field"><label for="aLvr">LVR</label><div class="suffix"><input id="aLvr" type="number" step="1" value="90"><span>%</span></div></div>
@@ -995,39 +1005,19 @@ details .body strong{color:var(--text)}
     <div class="main">
       <div id="messages" role="status" aria-live="polite"></div>
 
-      <!-- ══ SEARCH ══
-           Above the tabs and showing on all of them. Every tab reads it —
-           the Overview's figures, the register's rows, the sold check's
-           list — so keeping it inside the Register's filter row meant a
-           search could be narrowing a number on a tab that had nothing on
-           screen to say it was on. The rest of the filters stay below,
-           where they are the Register's own controls. -->
-      <div class="search-bar">
-        <div class="fb-field fb-search">
-          <label for="fSearch">Search</label>
-          <input id="fSearch" type="search" placeholder="Name or address" autocomplete="off">
-        </div>
-      </div>
-
-      <div class="tabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
-        <button type="button" role="tab" id="tab-register" aria-controls="panel-register" aria-selected="true">Register <span class="badge" id="badgeProps">0</span></button>
-        <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
-        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check</button>
-        <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
-      </div>
-
-      <!-- ══ FILTERS ══
-           Under the tab strip and on the Register alone — they read as the
-           Register's own row of controls, which is what they are used as.
-           Search is no longer among them: it sits above the tabs, because it
-           applies everywhere and ought to be visible everywhere.
-           These still narrow the Overview's numbers, because both tabs read
-           one filter set; the Overview's scope line names whatever is on so a
-           figure is never quietly smaller than the book with nothing on that
-           tab to say why. -->
-      <div class="filter-bar" id="filterBar" hidden>
+      <!-- ══ SEARCH AND FILTERS ══
+           Above the tabs and showing on all of them. Every tab reads this
+           strip — the Overview's figures, the register's rows, the sold
+           check's list — so sitting below the tabs on the Register alone
+           meant a filter could be narrowing a number on a tab with nothing
+           on screen to say it was on. The Overview's scope line still names
+           whatever is set; now the controls themselves are in sight too. -->
+      <div class="filter-bar" id="filterBar">
         <div class="fb-row">
+          <div class="fb-field fb-search">
+            <label for="fSearch">Search</label>
+            <input id="fSearch" type="search" placeholder="Name or address" autocomplete="off">
+          </div>
           <!-- Which kinds of property the list is about. Sold, held and
                archived are three states one property can be in, so this is
                tickboxes rather than one choice — and the archive stopped
@@ -1070,6 +1060,14 @@ details .body strong{color:var(--text)}
           </div>
           <button type="button" class="btn-ghost btn-sm fb-clear" id="btnClearFilters" hidden>Clear</button>
         </div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Sections">
+        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
+        <button type="button" role="tab" id="tab-register" aria-controls="panel-register" aria-selected="true">Register <span class="badge" id="badgeProps">0</span></button>
+        <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
+        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check</button>
+        <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
       </div>
 
       <!-- ── RESULT ── -->
@@ -3172,7 +3170,6 @@ window.stopCheck=false;
     /* The bar belongs to the Register and shows with it. What it is set to
        still reaches the Overview, which reads the same filters — that tab
        names them in its scope line rather than leaving them invisible. */
-    $('filterBar').hidden = (name !== 'register');
     if (name === 'history') showHistory();   // always the live log, never a stale one
     if (name === 'overview' && ovStale) drawOverview();
     /* The how-to shows itself the first time this browser opens the tab —
@@ -3683,6 +3680,28 @@ var MHP_FROM='2008-01', MHP={
             radioVal('tRent') === 'Flat' ? 'midpoint rent' : 'growing rent']
            .join(' · ') + (assumptionsEdited() ? ' · assumptions edited' : '');
   }
+  /* One line saying what is in force — the three bases, anything off the
+     workbook's defaults, and whatever the filter strip is doing. Rebuilt on
+     every settings change and every render, because a snapshot that goes
+     stale is worse than no snapshot. */
+  function filterSnap(){
+    var f = readFilters(), bits = [], q = $('fSearch').value.trim();
+    bits.push(showWordsCaps().toLowerCase());
+    if (q) bits.push('search “' + q + '”');
+    if (f.soldFrom || f.soldTo)
+      bits.push('sold ' + (f.soldFrom ? dmy(f.soldFrom) : 'any') +
+                ' to ' + (f.soldTo ? dmy(f.soldTo) : 'any'));
+    if (f.holdMin !== null || f.holdMax !== null)
+      bits.push('hold ' + (f.holdMin === null ? 'any' : f.holdMin) +
+                ' to ' + (f.holdMax === null ? 'any' : f.holdMax) + ' yrs');
+    if (f.band !== null) bits.push('IRR ' + IRR_BINS[f.band].full);
+    return bits.join(' · ');
+  }
+  function syncSetSnap(){
+    var el = $('setSnap'); if (!el) return;
+    el.innerHTML = esc(basisText()) +
+      '<span class="snap-sep" aria-hidden="true">·</span>' + esc(filterSnap());
+  }
   function syncAssumpFlag(){
     var dirty = assumptionsDirty(), chip = $('assumpEdited');
     if (chip) {
@@ -3691,6 +3710,7 @@ var MHP_FROM='2008-01', MHP={
     }
     var save = $('btnSaveAssump'); if (save) save.disabled = !dirty;
     var undo = $('btnDiscardAssump'); if (undo) undo.hidden = !dirty;
+    syncSetSnap();
   }
 
   var ovStale = true;
@@ -6817,6 +6837,12 @@ var MHP_FROM='2008-01', MHP={
 
   $('btnTheme').addEventListener('click', function(){
     applyTheme(currentTheme() === 'light' ? 'dark' : 'light', true);
+  });
+  $('btnEditAssump').addEventListener('click', function(){
+    var d = $('assumpBox'), open = !d.open;
+    d.open = open;
+    this.setAttribute('aria-expanded', open ? 'true' : 'false');
+    this.textContent = open ? 'Done' : 'Edit assumptions';
   });
   $('btnRenameCat').addEventListener('click', renameCategory);
   $('prYes').addEventListener('click', function(){
