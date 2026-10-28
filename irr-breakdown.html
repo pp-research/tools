@@ -1858,9 +1858,14 @@ window.stopCheck=false;
      unlucky — it was going too fast and RP Data stopped answering. A check
      that takes twice as long and is right is cheaper than one that is quick
      and has to be done again. */
-  const PAUSE     = 12000;        // ms between properties
-  const JITTER    = 4000;         // random extra, so the pace is not robotic
-  const LONG_REST = [15, 90000];  // every 15 properties, pause 90s
+  /* The sold-check passes keep the slower numbers: they run every week,
+     forever, over a few dozen properties, and have nowhere to be. The sweep
+     is a single pass over the whole book and is paced to finish in an
+     evening. Both are still paced and still jittered. */
+  const PAUSE     = TYPES_ONLY ? 6000 : 12000;        // ms between properties
+  const JITTER    = TYPES_ONLY ? 2000 : 4000;         // random extra, so the pace is not robotic
+  const LONG_REST = TYPES_ONLY ? [20, 45000]          // every 20 properties, pause 45s
+                               : [15, 90000];         // every 15 properties, pause 90s
   /* If it stops answering, stop asking. Grinding through 600 properties
      writing "no match" to all of them is worse than stopping at 8: it fills
      the sheet with rows that look like answers. */
@@ -2320,7 +2325,10 @@ window.stopCheck=false;
   /* Counted so the console can say "the wording has moved" once, rather than
      once per property for an hour. */
   let typeMisses = 0;
-  function readPropertyType() {
+  /* `quiet` is for polling. Asking every 250ms while a page renders would
+     spend all five diagnostic slots on pages that simply had not finished
+     drawing yet, which is the opposite of what they are for. */
+  function readPropertyType(quiet) {
     const t = document.body.innerText.replace(/\n{2,}/g, '\n');
     let cut = t.length;
     /* The same cut as the sale reader uses, deliberately: first marker wins,
@@ -2344,7 +2352,7 @@ window.stopCheck=false;
       const m = sub.slice(0, 1200).match(TYPE_WORD);
       if (m) raw = m[1];
     }
-    if (!raw && typeMisses < 5) {
+    if (!raw && !quiet && typeMisses < 5) {
       typeMisses++;
       /* Every digit masked before it is printed. The labels are what would
          be needed to fix the pattern; the street number is not, and this
@@ -2849,7 +2857,13 @@ window.stopCheck=false;
     if (!moved) return noMatch || { status: 'did not open', shape: shape(),
                                     offered: offered[order[0]] };
 
-    await waitFor(readLastSold, 9000);       // let the detail panel render
+    /* Wait for the thing this run reads. A sweep throws the sale away, so
+       waiting on the sale panel is up to nine seconds spent rendering
+       something it will never look at — and on a page with no sale on record
+       it is nine seconds spent waiting for something that is never coming.
+       Same ceiling, same safety; it just stops as soon as the answer is up. */
+    await waitFor(TYPES_ONLY ? function () { return readPropertyType(true).raw || null; }
+                             : readLastSold, 9000);
 
     /* Checked again on the page itself, because the suggestion and the page it
        opens are two different things and only the second one has the sale. */
