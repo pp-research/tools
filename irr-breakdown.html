@@ -2198,20 +2198,37 @@ window.stopCheck=false;
      a house, semis, terraces and duplexes with it. That is the split the
      market series is published on, so it is the split that makes a property
      comparable to it. */
+  /* Labels first, most specific to least, and the last of them takes
+     WHATEVER follows a bare "Type" at the start of a line — no word list.
+     A wording nobody has seen before is still worth writing down: the raw
+     column exists to be read and argued with, and a blank cell teaches
+     nobody anything.
+
+     Anchoring that last pattern to a line break is what keeps "Owner Type"
+     and "Vendor Type" out of it. Those never BEGIN a line with the word
+     Type, so the label does the filtering and there is no blocklist to keep
+     up to date. If something odd does land in the column, it lands in plain
+     sight rather than quietly becoming a House. */
   const TYPE_PAT = [
-    /Property\s*Type\s*:?\s*\n?\s*([A-Za-z][A-Za-z \-\/]{1,28})/i,
-    /\bLand\s*Use\s*:?\s*\n?\s*([A-Za-z][A-Za-z \-\/]{1,28})/i,
-    /\bType\s*:?\s*\n?\s*(House|Unit|Flat|Apartment|Townhouse|Town House|Semi[- ]?Detached|Duplex|Villa|Terrace|Studio|Vacant Land|Land)\b/i
+    /Property\s*Type\s*:?\s*\n?\s*([A-Za-z][A-Za-z \-\/&']{1,28})/i,
+    /Property\s*Category\s*:?\s*\n?\s*([A-Za-z][A-Za-z \-\/&']{1,28})/i,
+    /Dwelling\s*Type\s*:?\s*\n?\s*([A-Za-z][A-Za-z \-\/&']{1,28})/i,
+    /(?:Primary\s*)?Land\s*Use\s*:?\s*\n?\s*([A-Za-z][A-Za-z \-\/&']{1,28})/i,
+    /(?:^|\n)\s*Type\s*:?\s*\n?\s*([A-Za-z][A-Za-z \-\/&']{1,28})/i
   ];
+  /* Last resort, and deliberately a short list. "Land" is NOT in it: every
+     house page carries "Land Size", and a bare-word scan would read that as
+     a development site on the lot of them. */
   const TYPE_WORD =
-    /\b(House|Unit|Flat|Apartment|Townhouse|Town House|Semi[- ]?Detached|Duplex|Villa|Terrace|Vacant Land)\b/i;
+    /\b(House|Unit|Flat|Apartment|Townhouse|Town House|Semi[- ]?Detached|Duplex|Villa|Terrace|Studio|Vacant Land)\b/i;
 
   function mapType(raw) {
     const s = String(raw || '').trim();
     if (!s) return '';
-    if (/\b(vacant|land|site|lot|development|subdivision)\b/i.test(s)) return 'Development site';
-    if (/\b(unit|apartment|apt|flat|strata|townhouse|town\s*house|villa|studio)\b/i.test(s)) return 'Unit';
-    if (/\b(house|detached|semi|terrace|duplex|cottage|dwelling)\b/i.test(s)) return 'House';
+    if (/\b(vacant|land|sites?|lots?|development|subdivision)\b/i.test(s)) return 'Development site';
+    if (/\bsingle\s*unit\b/i.test(s)) return 'House';
+    if (/\b(units?|apartments?|apt|flats?|strata|townhouses?|town\s*houses?|villas?|studios?)\b/i.test(s)) return 'Unit';
+    if (/\b(houses?|detached|semis?|terraces?|terraced|duplexe?s?|cottages?|dwellings?|residences?)\b/i.test(s)) return 'House';
     return '';                       /* saw something, could not place it */
   }
 
@@ -2221,9 +2238,14 @@ window.stopCheck=false;
   function readPropertyType() {
     const t = document.body.innerText.replace(/\n{2,}/g, '\n');
     let cut = t.length;
-    for (const k of ['Nearby', 'Similar']) {
+    /* The marker has to be deep enough to BE the comparables section. A
+       "Nearby schools" link in the navigation sits in the first few hundred
+       characters, and cutting there leaves nothing to read — which comes out
+       as "this property has no type" when the truth is that nothing was
+       looked at. */
+    for (const k of ['Nearby', 'Similar', 'Comparable']) {
       const i = t.indexOf(k);
-      if (i >= 0 && i < cut) cut = i;
+      if (i >= 400 && i < cut) cut = i;
     }
     const sub = t.slice(0, cut);
     let raw = '';
@@ -2235,13 +2257,14 @@ window.stopCheck=false;
       const m = sub.slice(0, 1200).match(TYPE_WORD);
       if (m) raw = m[1];
     }
-    if (!raw && typeMisses < 3) {
+    if (!raw && typeMisses < 5) {
       typeMisses++;
       /* Every digit masked before it is printed. The labels are what would
          be needed to fix the pattern; the street number is not, and this
          line is the one somebody might copy out of the console. */
-      console.warn('No property type found on this page. The attributes read:\n' +
-        sub.slice(0, 600).replace(/\d/g, '#'));
+      console.warn('No property type found on this page. Paste this back to me ' +
+        'and the pattern can be widened — the attributes read:\n' +
+        sub.slice(0, 800).replace(/\d/g, '#'));
     }
     return { raw, ptype: mapType(raw) };
   }
@@ -3012,6 +3035,14 @@ window.stopCheck=false;
     console.table(unknown, ['address','city','status','resolved']);
     console.log('These are in window.rpUnresolved, ready for the Pricefinder pass.');
   }
+
+  /* Worth one line at the end: a blank type column could mean the page was
+     silent or could mean the run never asked, and those want different
+     fixes. */
+  const noType = results.filter(r => !r.rpType).length;
+  if (noType) console.log(`${noType} of ${results.length} showed no property type. ` +
+    `"RP Data type" carries the page's own wording whenever there is one, so a ` +
+    `blank there means the page did not say it — not that it was dropped.`);
 
   if (SHEET_URL) { console.log('All rows sent to your sheet.'); return; }
 
