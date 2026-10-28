@@ -50,6 +50,10 @@
   /* the gain/loss figures are small text, so they need more lift than the
      chrome colours: brand red on the dark panel is only 2.93:1 */
   --money-pos:#8FCB74; --money-neg:#FF94A6;
+  /* Celestial Blue, from the brand's secondary set. Not teal, because teal
+     means "this button acts", and not green/amber/red, because those are
+     reserved for how a number is doing. */
+  --view-on:#54A6DE; --view-ink:#0A1A2A;
   --note-bg:rgba(255,169,31,.12); --note-line:rgba(255,169,31,.45); --note-ink:#FFD79A;
   --accent-text:#00A0B4;
   --row-alt:rgba(255,255,255,.022);
@@ -88,6 +92,7 @@
   --text:#171B24; --muted:rgba(23,27,36,.66); --faint:rgba(23,27,36,.63);
   --green:#3F7D2E; --red:#C1122F; --yellow:#8A5A00;
   --money-pos:#367020; --money-neg:#C1122F;
+  --view-on:#2E86C8; --view-ink:#FFFFFF;
   --note-bg:rgba(160,105,0,.10); --note-line:rgba(160,105,0,.40); --note-ink:#7A4E00;
   --row-alt:rgba(23,27,36,.028);
   --row-line:rgba(23,27,36,.07);
@@ -345,6 +350,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 .seg label:hover{color:var(--text);background:var(--panel-2)}
 .seg input:checked + label{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
 .seg input:focus-visible + label{outline:2px solid var(--accent-300);outline-offset:2px}
+/* A switch that changes which columns you are reading, not one that changes a
+   figure or fires an action. It sits beside a teal primary button, and two
+   teal things side by side read as two buttons — one of which does nothing
+   when you press it. Colour answers "what is this" before the label does. */
+.seg-view input:checked + label{background-color:var(--view-on);background-image:none;
+  color:var(--view-ink);box-shadow:none}
+.seg-view input:focus-visible + label{outline-color:var(--view-on)}
 /* The same segmented look built from buttons rather than radios, for a switch
    that changes what you are looking at rather than a value that gets saved.
    aria-pressed carries the state, so the styling and the screen reader cannot
@@ -806,6 +818,12 @@ td.pd .src-link:hover{color:var(--text)}
    scroll to see the IRR of is a table you misread. Tighter gutters here only —
    the monthly breakdown and the compare table keep the roomier default. */
 #propsBody th,#propsBody td{padding-left:8px;padding-right:8px}
+/* The three that swap between Returns and vs Market. One width for both sets,
+   so nothing to their left moves when the view changes. "Market at purchase"
+   is the longest label of the six and wraps to two lines rather than setting
+   the width for all of them. */
+#propsBody th.sw,#propsBody td.sw{width:116px;min-width:116px}
+#propsBody th.sw{white-space:normal;line-height:14px}
 /* Open · Edit · Archive · Delete as one row of equal controls. Open is a text
    button and the other three are icons; left alone they are inline-block and
    inline-flex sitting on a shared baseline, which put Open 2px taller and 3px
@@ -1135,7 +1153,7 @@ details .body strong{color:var(--text)}
                    that are here would push the table into a sideways scroll,
                    and a register you have to scroll to read the IRR of is a
                    register you misread. -->
-              <div class="seg seg-sm" role="radiogroup" aria-label="Which figures to show">
+              <div class="seg seg-view" role="radiogroup" aria-label="Which figures to show">
                 <input type="radio" name="regView" id="regView-r" value="returns" checked>
                 <label for="regView-r">Returns</label>
                 <input type="radio" name="regView" id="regView-m" value="market">
@@ -4258,14 +4276,14 @@ var MHP_FROM='2008-01', MHP={
         priceCell(e.purchasePrice)+ dateCell(new Date(e.purchaseDate))+
         (d.held ? heldCells() : soldCell(e))+
         (regView === 'market'
-          ? '<td class="num">'+(d.mkBuy  ? aud(d.mkBuy)  : dash)+'</td>'+
-            '<td class="num">'+(d.mkSell ? aud(d.mkSell) : dash)+'</td>'+
-            '<td class="num"><strong>'+(d.vsMkt === null ? dash :
+          ? '<td class="num sw">'+(d.mkBuy  ? aud(d.mkBuy)  : dash)+'</td>'+
+            '<td class="num sw">'+(d.mkSell ? aud(d.mkSell) : dash)+'</td>'+
+            '<td class="num sw"><strong>'+(d.vsMkt === null ? dash :
               '<span class="'+(d.vsMkt >= 0 ? 'pos' : 'neg')+'">'+
                 (d.vsMkt >= 0 ? '+' : '') + (d.vsMkt * 100).toFixed(2) + '%</span>')+
             '</strong></td>'
-          : '<td class="num">'+hold+'</td><td class="num">'+net+'</td>'+
-            '<td class="num"><strong>'+irr+'</strong></td>')+
+          : '<td class="num sw">'+hold+'</td><td class="num sw">'+net+'</td>'+
+            '<td class="num sw"><strong>'+irr+'</strong></td>')+
         /* Open · Archive · Delete, in that order: the two you reach for often
            come first, and the irreversible one sits on its own at the end
            rather than between them where a mis-aimed click finds it. */
@@ -4294,14 +4312,17 @@ var MHP_FROM='2008-01', MHP={
       { key:'purchase',      label:'Purchase date',  cls:'num' },
       { key:'soldPrice',     label:'Sold price',     cls:'num' },
       { key:'sold',          label:'Sold date',      cls:'num' },
+    /* `sw` marks the three that swap. They are pinned to one width in both
+       views so the columns to their left do not shuffle when you flip —
+       a table that reflows on a view toggle makes you find your row again. */
     ].concat(regView === 'market' ? [
-      { key:'mkBuy',  label:'Market at purchase', cls:'num' },
-      { key:'mkSell', label:'Market at sale',     cls:'num' },
-      { key:'vsMkt',  label:'vs Market',          cls:'num' }
+      { key:'mkBuy',  label:'Market at purchase', cls:'num sw' },
+      { key:'mkSell', label:'Market at sale',     cls:'num sw' },
+      { key:'vsMkt',  label:'vs Market',          cls:'num sw' }
     ] : [
-      { key:'hold', label:'Hold',       cls:'num' },
-      { key:'net',  label:'Net profit', cls:'num' },
-      { key:'irr',  label:'IRR',        cls:'num' }
+      { key:'hold', label:'Hold',       cls:'num sw' },
+      { key:'net',  label:'Net profit', cls:'num sw' },
+      { key:'irr',  label:'IRR',        cls:'num sw' }
     ]);
     var arrow = function(on){
       return '<span class="arrow" aria-hidden="true">'+(on && sortDir===1 ? '▲' : '▼')+'</span>';
