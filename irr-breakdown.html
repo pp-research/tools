@@ -164,13 +164,13 @@ header img{height:40px;width:auto;display:block}
 /* The snapshot: one quiet line of what is in force, between the label and
    the button. It wraps rather than truncating — a setting you cannot read
    is the same as a setting nobody told you about. */
-.set-bar .set-snap{flex:1 1 100%;min-width:0;font-size:12px;line-height:18px;color:var(--muted);order:2}
-.set-bar .edited-chip{order:2;flex:0 0 auto;align-self:center}
-.set-bar .snap-sep{margin:0 8px;opacity:.5}
+.set-bar .edited-chip{order:1;flex:0 0 auto;align-self:center}
 .set-bar #btnEditAssump{flex:0 0 auto;margin-left:auto;order:1}
 .set-bar .seg-row{order:1}
 .set-bar h2{order:1}
-.set-bar #assumpBox[open]{flex:1 0 100%;margin-left:0;
+/* order:3 keeps it last. Without it the panel defaults to 0 and opens
+   ABOVE the toggles it belongs to, which reads as the strip jumping. */
+.set-bar #assumpBox[open]{order:3;flex:1 0 100%;margin-left:0;
   border-top:1px solid var(--border);padding-top:var(--sp-3);margin-top:var(--sp-1)}
 .set-bar #assumpBox:not([open]){display:none}
 /* Open, it is a row of its own, so the rule earns its place again. */
@@ -935,11 +935,6 @@ details .body strong{color:var(--text)}
          row of their own underneath rather than crushing the toggles. -->
     <section class="card set-bar" id="setCard" aria-labelledby="set-h">
       <h2 id="set-h">Settings</h2>
-      <!-- A snapshot, not a control panel. The three toggles and the ten
-           numbers all live behind the button now: they are set once and
-           then read, and a row of live controls across the top of every tab
-           was spending the most valuable strip on screen saying things that
-           rarely change. What they currently say is here in one line. -->
         <div class="seg-row">
           <span class="seg-label" id="lbl-rate">Cash rate</span>
           <div class="seg" role="radiogroup" aria-labelledby="lbl-rate">
@@ -967,10 +962,9 @@ details .body strong{color:var(--text)}
             <label for="tRent-b">Midpoint</label>
           </div>
         </div>
-      <span class="set-snap" id="setSnap"></span>
       <span class="edited-chip" id="assumpEdited" hidden>edited</span>
       <button type="button" class="btn-ghost btn-sm" id="btnEditAssump"
-              aria-expanded="false" aria-controls="assumpBox">Edit</button>
+              aria-expanded="false" aria-controls="assumpBox">View assumptions</button>
 
         <details id="assumpBox">
           <summary class="sr-only">Assumptions</summary>
@@ -3684,29 +3678,6 @@ var MHP_FROM='2008-01', MHP={
             radioVal('tRent') === 'Flat' ? 'midpoint rent' : 'growing rent']
            .join(' · ') + (assumptionsEdited() ? ' · assumptions edited' : '');
   }
-  /* The ten numbers, as they are IN FORCE — not as the fields currently read.
-     A half-typed field is a draft until Save, and the chip beside this line
-     is what says so. The three bases are not in here: they are live on the
-     strip, where you can see them without reading a sentence. */
-  var OPT_SNAP = [
-    ['aDep','Deposit + fee','%'], ['aLvr','LVR','%'], ['aRun','Running cost','%'],
-    ['aYield','Rental yield','%'], ['aNorm','Normalised rate','%'],
-    ['aTax','Marginal tax','%'], ['aComm','Selling commission','%'],
-    ['aSpend','Selling spend','$'], ['aMargin','Bank margin','%'],
-    ['aApra','APRA buffer','%']
-  ];
-  function numsSnap(){
-    var o = committedOpts || fieldOpts();
-    return OPT_SNAP.map(function(x){
-      var v = o[x[0]];
-      if (v === undefined || v === '') return null;
-      return (x[2] === '$' ? aud(Number(v)) : (v + '%')) + ' ' + x[1];
-    }).filter(Boolean).join(' · ');
-  }
-  function syncSetSnap(){
-    var el = $('setSnap'); if (!el) return;
-    el.textContent = numsSnap();
-  }
   function syncAssumpFlag(){
     var dirty = assumptionsDirty(), chip = $('assumpEdited');
     if (chip) {
@@ -3715,7 +3686,6 @@ var MHP_FROM='2008-01', MHP={
     }
     var save = $('btnSaveAssump'); if (save) save.disabled = !dirty;
     var undo = $('btnDiscardAssump'); if (undo) undo.hidden = !dirty;
-    syncSetSnap();
   }
 
   var ovStale = true;
@@ -6871,7 +6841,7 @@ var MHP_FROM='2008-01', MHP={
     var d = $('assumpBox'), open = !d.open;
     d.open = open;
     this.setAttribute('aria-expanded', open ? 'true' : 'false');
-    this.textContent = open ? 'Done' : 'Edit';
+    this.textContent = open ? 'Hide assumptions' : 'View assumptions';
   });
   $('btnRenameCat').addEventListener('click', renameCategory);
   $('prYes').addEventListener('click', function(){
