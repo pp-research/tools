@@ -2130,11 +2130,14 @@ window.stopCheck=false;
        2  archived, which this register stores as `outside`. Still collected,
           still last: these are out of advice and out of the comparison.  */
   if (TYPES_ONLY) {
-    var rank = function (p) {
+    /* NOT `rank`. There is a rank(want, offered) in this same scope that
+       decides which suggestion is the right property, and a `var` of the same
+       name hoists over it and silently replaces it. */
+    var sweepPriority = function (p) {
       if (p.outside) return 2;
       return (p.soldDate && p.soldPrice) ? 0 : 1;
     };
-    held.sort(function (a, b) { return rank(a) - rank(b); });
+    held.sort(function (a, b) { return sweepPriority(a) - sweepPriority(b); });
   }
   const skipped = done.size ? all.filter(p => done.has(p.name)).length : 0;
   const retried = all.filter(p => asked.has(p.name)).length;
