@@ -3078,10 +3078,18 @@ window.stopCheck=false;
 
        The sweep asked what kind of property this is. A sold property that
        reports no current sale has answered that question perfectly well — the
-       page opened and its attributes were read. Only a page that would not
-       open, or that could not be identified, is a failure here. */
+       page opened and its attributes were read. Only a page that never opened
+       is a failure here.
+
+       Asked as a POSITIVE signal, not a list of failure phrases. `resolved`
+       is set from location once the property page is open, and every failure
+       path returns without it. A first attempt at this listed the phrases
+       instead and missed "no confident match" — which does not contain "no
+       match" — so the guard silently stopped guarding and the run ground on
+       writing empty types. A wording nobody anticipated must not be able to
+       do that again. */
     var answered = TYPES_ONLY
-      ? !/did not open|no match|none matched/i.test(r.status || '')
+      ? !!r.resolved
       : /still held|SOLD SINCE PURCHASE/.test(r.status);
     if (answered) misses = 0; else misses++;
 
