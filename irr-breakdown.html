@@ -4428,15 +4428,12 @@ var MHP_FROM='1980-03', MHP={
         /* EVERY city, not the one in view. A table that answered for whichever
            tab was open would be read as the whole answer, and it is not. */
         var fAll = readFilters(), optAll = readOpts();
-        /* Every filter she has set still applies — Show, the search, the sold
-           date range — except the category, which is not a filter she set but
-           the city tab she happens to be on. */
-        var fEvery = {};
-        for (var fk in fAll) if (Object.prototype.hasOwnProperty.call(fAll, fk)) fEvery[fk] = fAll[fk];
-        fEvery.cat = '';
-        var every = filterEntries(loadProps(), fEvery)
+        /* The city tab scopes this like it scopes everything else on the page.
+           One table covering more than the rest of the Overview is the kind of
+           difference nobody notices until a figure is quoted out of it. */
+        var every = filterEntries(cityProps(loadProps()), fAll)
           .map(function(e){ return deriveOne(e, optAll); })
-          .filter(function(d){ return passDerived(d, fEvery, true); })
+          .filter(function(d){ return passDerived(d, fAll, true); })
           .filter(function(d){ return d.vsMkt !== null; });
         if (!every.length) {
           return '<p class="count-line">Nothing sold can be set against the series yet &mdash; ' +
