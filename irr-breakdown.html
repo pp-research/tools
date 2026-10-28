@@ -842,7 +842,7 @@ td.pd .src-link:hover{color:var(--text)}
    number split across two lines stops reading as a number. The row labels
    stay put so a column is still identifiable once it has scrolled. */
 .mkt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:var(--sp-2) 0}
-.mkt-table{font-size:12px;min-width:900px}
+.mkt-table{font-size:12px;min-width:1000px}
 .mkt-table th,.mkt-table td{white-space:nowrap;vertical-align:top}
 .mkt-table th[scope=row]{position:sticky;left:0;background:var(--surface);z-index:1;
   text-align:left;font-weight:400}
@@ -4481,6 +4481,11 @@ var MHP_FROM='1980-03', MHP={
           return '<tr' + (strong ? ' class="is-total"' : '') + '>' +
             '<th scope="row">' + open + label + shut + '</th>' +
             '<td class="num">' + list.length + '</td>' +
+            '<td class="num">' + (function(){
+              var hv = median(list.map(function(d){ return d.hold; })
+                .filter(function(v){ return v !== null && isFinite(v); }));
+              return (hv === null) ? dash : hv.toFixed(1) + ' yrs';
+            })() + '</td>' +
             '<td class="num">' + priceWhen(buy) + '</td>' +
             '<td class="num">' + priceWhen(sell) + '</td>' +
             '<td class="num">' + level(cBuy) + '</td>' +
@@ -4515,13 +4520,14 @@ var MHP_FROM='1980-03', MHP={
         return '<div class="mkt-wrap"><table class="mini mkt-table"><thead><tr>' +
           '<th scope="col">Where</th>' +
           '<th scope="col" class="num">Sold</th>' +
+          '<th scope="col" class="num">Median hold</th>' +
           '<th scope="col" class="num">Median purchase</th>' +
           '<th scope="col" class="num">Median sale</th>' +
           '<th scope="col" class="num">Cotality at purchase</th>' +
           '<th scope="col" class="num">Cotality at sale</th>' +
-          '<th scope="col" class="num">PPA</th>' +
-          '<th scope="col" class="num">Market</th>' +
-          '<th scope="col" class="num">Gap</th>' +
+          '<th scope="col" class="num">PPA %/yr</th>' +
+          '<th scope="col" class="num">Market %/yr</th>' +
+          '<th scope="col" class="num">Gap pts/yr</th>' +
           '<th scope="col" class="num">Beat the market</th>' +
           '</tr></thead><tbody>' + body + '</tbody></table></div>' +
           '<p class="count-line">The two <strong>price</strong> columns are medians across ' +
@@ -4531,8 +4537,10 @@ var MHP_FROM='1980-03', MHP={
           'property&rsquo;s own month, on its own city and its own line: houses against the house ' +
           'series, units against the unit series.</p>' +
           '<p class="count-line"><strong>PPA</strong>, <strong>Market</strong> and ' +
-          '<strong>Gap</strong> are the real score. Each is a median across properties, compounded ' +
-          'over each property&rsquo;s own hold, so a long hold and a short one count once each. ' +
+          '<strong>Gap</strong> are the real score, and they are <strong>rates per year</strong>, ' +
+          'not totals &mdash; 8% a year over a nine-year hold is roughly a doubling. Each is a ' +
+          'median across properties, compounded over each property&rsquo;s own hold, so a long ' +
+          'hold and a short one count once each. ' +
           'The gap is the median of the per-property gaps &mdash; not the difference between the ' +
           'two columns beside it, which is a different statistic and nobody&rsquo;s result. ' +
           'Development sites are left out: Cotality publishes no series for land' +
