@@ -4454,6 +4454,15 @@ var MHP_FROM='1980-03', MHP={
                    missing: miss, carried: carried };
         };
         var medOf = function(list, k){ return median(list.map(function(d){ return d[k]; })); };
+        var medList = function(vals){
+          var ok = vals.filter(function(v){ return v !== null && isFinite(v); });
+          return ok.length ? median(ok) : null;
+        };
+        var pctOrDash = function(v){ return (v === null || !isFinite(v)) ? dash : pct(v); };
+        var signedPct = function(v){
+          if (v === null || !isFinite(v)) return dash;
+          return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+        };
         var priceWhen = function(m){
           if (!m || !(m.median > 0)) return dash;
           var d = midDay(m);
@@ -4476,6 +4485,18 @@ var MHP_FROM='1980-03', MHP={
           carriedTotal += cBuy.carried + cSell.carried;
           missingTotal += cBuy.missing + cSell.missing;
           var g = medOf(list, 'vsMkt');
+          /* Totals, taken per property and then medianed — not the two medians
+             above divided, which would be a ratio across different properties
+             and nobody's result. */
+          var ourT = medList(list.map(function(d){
+            var a = Number(d.e.purchasePrice), b = Number(d.e.soldPrice);
+            return (a > 0 && b > 0) ? (b / a - 1) : null; }));
+          var mktT = medList(list.map(function(d){
+            return (d.mkBuy > 0 && d.mkSell > 0) ? (d.mkSell / d.mkBuy - 1) : null; }));
+          var gT = medList(list.map(function(d){
+            var a = Number(d.e.purchasePrice), b = Number(d.e.soldPrice);
+            if (!(a > 0 && b > 0) || !(d.mkBuy > 0 && d.mkSell > 0)) return null;
+            return (b / a) - (d.mkSell / d.mkBuy); }));
           var beat = list.filter(function(d){ return d.vsMkt >= 0; }).length;
           var open = strong ? '<strong>' : '', shut = strong ? '</strong>' : '';
           return '<tr' + (strong ? ' class="is-total"' : '') + '>' +
@@ -4490,10 +4511,13 @@ var MHP_FROM='1980-03', MHP={
             '<td class="num">' + priceWhen(sell) + '</td>' +
             '<td class="num">' + level(cBuy) + '</td>' +
             '<td class="num">' + level(cSell) + '</td>' +
-            '<td class="num">' + open + pct(medOf(list, 'ourCagr')) + shut + '</td>' +
-            '<td class="num">' + pct(medOf(list, 'mktCagr')) + '</td>' +
-            '<td class="num"><strong><span class="' + (g >= 0 ? 'pos' : 'neg') + '">' +
-              (g >= 0 ? '+' : '') + (g * 100).toFixed(2) + '%</span></strong></td>' +
+            '<td class="num">' + open + pctOrDash(ourT) + shut +
+              '<div class="vs-parts">' + pctOrDash(medOf(list, 'ourCagr')) + ' a year</div></td>' +
+            '<td class="num">' + pctOrDash(mktT) +
+              '<div class="vs-parts">' + pctOrDash(medOf(list, 'mktCagr')) + ' a year</div></td>' +
+            '<td class="num"><strong><span class="' + (gT >= 0 ? 'pos' : 'neg') + '">' +
+              signedPct(gT) + '</span></strong>' +
+              '<div class="vs-parts">' + signedPct(g) + ' a year</div></td>' +
             '<td class="num">' + beat + ' of ' + list.length + '</td></tr>';
         };
 
@@ -4525,9 +4549,9 @@ var MHP_FROM='1980-03', MHP={
           '<th scope="col" class="num">Median sale</th>' +
           '<th scope="col" class="num">Cotality at purchase</th>' +
           '<th scope="col" class="num">Cotality at sale</th>' +
-          '<th scope="col" class="num">PPA %/yr</th>' +
-          '<th scope="col" class="num">Market %/yr</th>' +
-          '<th scope="col" class="num">Gap pts/yr</th>' +
+          '<th scope="col" class="num">PPA growth</th>' +
+          '<th scope="col" class="num">Market growth</th>' +
+          '<th scope="col" class="num">Gap</th>' +
           '<th scope="col" class="num">Beat the market</th>' +
           '</tr></thead><tbody>' + body + '</tbody></table></div>' +
           '<p class="count-line">The two <strong>price</strong> columns are medians across ' +
@@ -4537,10 +4561,12 @@ var MHP_FROM='1980-03', MHP={
           'property&rsquo;s own month, on its own city and its own line: houses against the house ' +
           'series, units against the unit series.</p>' +
           '<p class="count-line"><strong>PPA</strong>, <strong>Market</strong> and ' +
-          '<strong>Gap</strong> are the real score, and they are <strong>rates per year</strong>, ' +
-          'not totals &mdash; 8% a year over a nine-year hold is roughly a doubling. Each is a ' +
-          'median across properties, compounded over each property&rsquo;s own hold, so a long ' +
-          'hold and a short one count once each. ' +
+          '<strong>Gap</strong> are the real score. The large figure is <strong>total growth ' +
+          'over the hold</strong>; the small one beneath it is the same thing <strong>per ' +
+          'year</strong>. Compare totals only within a row &mdash; a fifteen-year hold will ' +
+          'out-total a three-year one whatever either did &mdash; and use the yearly rate to ' +
+          'compare rows. Each figure is a median taken across properties one at a time, so a ' +
+          'long hold and a short one count once each. ' +
           'The gap is the median of the per-property gaps &mdash; not the difference between the ' +
           'two columns beside it, which is a different statistic and nobody&rsquo;s result. ' +
           'Development sites are left out: Cotality publishes no series for land' +
