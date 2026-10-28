@@ -164,9 +164,12 @@ header img{height:40px;width:auto;display:block}
 /* The snapshot: one quiet line of what is in force, between the label and
    the button. It wraps rather than truncating — a setting you cannot read
    is the same as a setting nobody told you about. */
-.set-bar .set-snap{flex:1 1 320px;min-width:0;font-size:12px;line-height:18px;color:var(--muted)}
+.set-bar .set-snap{flex:1 1 100%;min-width:0;font-size:12px;line-height:18px;color:var(--muted);order:2}
+.set-bar .edited-chip{order:2;flex:0 0 auto;align-self:center}
 .set-bar .snap-sep{margin:0 8px;opacity:.5}
-.set-bar #btnEditAssump{flex:0 0 auto;margin-left:auto}
+.set-bar #btnEditAssump{flex:0 0 auto;margin-left:auto;order:1}
+.set-bar .seg-row{order:1}
+.set-bar h2{order:1}
 .set-bar #assumpBox[open]{flex:1 0 100%;margin-left:0;
   border-top:1px solid var(--border);padding-top:var(--sp-3);margin-top:var(--sp-1)}
 .set-bar #assumpBox:not([open]){display:none}
@@ -937,40 +940,41 @@ details .body strong{color:var(--text)}
            then read, and a row of live controls across the top of every tab
            was spending the most valuable strip on screen saying things that
            rarely change. What they currently say is here in one line. -->
+        <div class="seg-row">
+          <span class="seg-label" id="lbl-rate">Cash rate</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-rate">
+            <input type="radio" name="tRate" id="tRate-a" value="Normalised" checked>
+            <label for="tRate-a">Normalised</label>
+            <input type="radio" name="tRate" id="tRate-b" value="Actual">
+            <label for="tRate-b">Actual</label>
+          </div>
+        </div>
+        <div class="seg-row">
+          <span class="seg-label" id="lbl-ng">Neg. gearing</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-ng">
+            <input type="radio" name="tNg" id="tNg-a" value="Off" checked>
+            <label for="tNg-a">Off</label>
+            <input type="radio" name="tNg" id="tNg-b" value="On">
+            <label for="tNg-b">On</label>
+          </div>
+        </div>
+        <div class="seg-row">
+          <span class="seg-label" id="lbl-rent">Rent</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-rent">
+            <input type="radio" name="tRent" id="tRent-a" value="Growing" checked>
+            <label for="tRent-a">Growing</label>
+            <input type="radio" name="tRent" id="tRent-b" value="Flat">
+            <label for="tRent-b">Midpoint</label>
+          </div>
+        </div>
       <span class="set-snap" id="setSnap"></span>
+      <span class="edited-chip" id="assumpEdited" hidden>edited</span>
       <button type="button" class="btn-ghost btn-sm" id="btnEditAssump"
-              aria-expanded="false" aria-controls="assumpBox">Edit assumptions</button>
+              aria-expanded="false" aria-controls="assumpBox">Edit</button>
 
         <details id="assumpBox">
-          <summary class="sr-only">Assumptions <span class="edited-chip" id="assumpEdited" hidden>edited</span></summary>
+          <summary class="sr-only">Assumptions</summary>
           <div class="body" style="color:inherit">
-            <div class="seg-row">
-              <span class="seg-label" id="lbl-rate">Cash rate</span>
-              <div class="seg" role="radiogroup" aria-labelledby="lbl-rate">
-                <input type="radio" name="tRate" id="tRate-a" value="Normalised" checked>
-                <label for="tRate-a">Normalised</label>
-                <input type="radio" name="tRate" id="tRate-b" value="Actual">
-                <label for="tRate-b">Actual</label>
-              </div>
-            </div>
-            <div class="seg-row">
-              <span class="seg-label" id="lbl-ng">Neg. gearing</span>
-              <div class="seg" role="radiogroup" aria-labelledby="lbl-ng">
-                <input type="radio" name="tNg" id="tNg-a" value="Off" checked>
-                <label for="tNg-a">Off</label>
-                <input type="radio" name="tNg" id="tNg-b" value="On">
-                <label for="tNg-b">On</label>
-              </div>
-            </div>
-            <div class="seg-row">
-              <span class="seg-label" id="lbl-rent">Rent</span>
-              <div class="seg" role="radiogroup" aria-labelledby="lbl-rent">
-                <input type="radio" name="tRent" id="tRent-a" value="Growing" checked>
-                <label for="tRent-a">Growing</label>
-                <input type="radio" name="tRent" id="tRent-b" value="Flat">
-                <label for="tRent-b">Midpoint</label>
-              </div>
-            </div>
             <div class="pair">
               <div class="field"><label for="aDep">Deposit + fee</label><div class="suffix"><input id="aDep" type="number" step="0.1" value="18.5"><span>%</span></div></div>
               <div class="field"><label for="aLvr">LVR</label><div class="suffix"><input id="aLvr" type="number" step="1" value="90"><span>%</span></div></div>
@@ -3680,27 +3684,28 @@ var MHP_FROM='2008-01', MHP={
             radioVal('tRent') === 'Flat' ? 'midpoint rent' : 'growing rent']
            .join(' · ') + (assumptionsEdited() ? ' · assumptions edited' : '');
   }
-  /* One line saying what is in force — the three bases, anything off the
-     workbook's defaults, and whatever the filter strip is doing. Rebuilt on
-     every settings change and every render, because a snapshot that goes
-     stale is worse than no snapshot. */
-  function filterSnap(){
-    var f = readFilters(), bits = [], q = $('fSearch').value.trim();
-    bits.push(showWordsCaps().toLowerCase());
-    if (q) bits.push('search “' + q + '”');
-    if (f.soldFrom || f.soldTo)
-      bits.push('sold ' + (f.soldFrom ? dmy(f.soldFrom) : 'any') +
-                ' to ' + (f.soldTo ? dmy(f.soldTo) : 'any'));
-    if (f.holdMin !== null || f.holdMax !== null)
-      bits.push('hold ' + (f.holdMin === null ? 'any' : f.holdMin) +
-                ' to ' + (f.holdMax === null ? 'any' : f.holdMax) + ' yrs');
-    if (f.band !== null) bits.push('IRR ' + IRR_BINS[f.band].full);
-    return bits.join(' · ');
+  /* The ten numbers, as they are IN FORCE — not as the fields currently read.
+     A half-typed field is a draft until Save, and the chip beside this line
+     is what says so. The three bases are not in here: they are live on the
+     strip, where you can see them without reading a sentence. */
+  var OPT_SNAP = [
+    ['aDep','Deposit + fee','%'], ['aLvr','LVR','%'], ['aRun','Running cost','%'],
+    ['aYield','Rental yield','%'], ['aNorm','Normalised rate','%'],
+    ['aTax','Marginal tax','%'], ['aComm','Selling commission','%'],
+    ['aSpend','Selling spend','$'], ['aMargin','Bank margin','%'],
+    ['aApra','APRA buffer','%']
+  ];
+  function numsSnap(){
+    var o = committedOpts || fieldOpts();
+    return OPT_SNAP.map(function(x){
+      var v = o[x[0]];
+      if (v === undefined || v === '') return null;
+      return (x[2] === '$' ? aud(Number(v)) : (v + '%')) + ' ' + x[1];
+    }).filter(Boolean).join(' · ');
   }
   function syncSetSnap(){
     var el = $('setSnap'); if (!el) return;
-    el.innerHTML = esc(basisText()) +
-      '<span class="snap-sep" aria-hidden="true">·</span>' + esc(filterSnap());
+    el.textContent = numsSnap();
   }
   function syncAssumpFlag(){
     var dirty = assumptionsDirty(), chip = $('assumpEdited');
@@ -6650,11 +6655,35 @@ var MHP_FROM='2008-01', MHP={
   function putOpts(o){
     OPT_IDS.forEach(function(id){ if (o[id] !== undefined) $(id).value = o[id]; });
   }
+  /* What a setting WAS, for the history. Read back from what was written
+     last time rather than kept in a variable someone has to remember to
+     update — the stored object is the only thing that is always right. */
+  var TOG_LABEL = { tRate:'Cash rate', tNg:'Negative gearing', tRent:'Rent basis' };
+  var OPT_LABEL = { aDep:'Deposit + fee', aLvr:'LVR', aRun:'Running cost p.a.',
+    aYield:'Rental yield', aNorm:'Normalised cash rate', aTax:'Marginal tax rate',
+    aComm:'Selling commission', aSpend:'Selling market spend',
+    aMargin:'Bank margin', aApra:'APRA buffer' };
+  function logSettings(was, now){
+    if (!was) return;
+    var rows = [];
+    var note = function(k, label, action){
+      if (was[k] === undefined) return;
+      if (String(was[k]) === String(now[k])) return;
+      rows.push({ action: action, property: label,
+                  detail: String(was[k]) + ' → ' + String(now[k]) });
+    };
+    Object.keys(TOG_LABEL).forEach(function(k){ note(k, TOG_LABEL[k], 'setting'); });
+    OPT_IDS.forEach(function(k){ note(k, OPT_LABEL[k] || k, 'assumption'); });
+    if (rows.length) logChange(rows);
+  }
   function saveAssumptions(){
     var o = {};
     OPT_IDS.forEach(function(id){ o[id] = (committedOpts || fieldOpts())[id]; });
     o.tRate = radioVal('tRate'); o.tNg = radioVal('tNg'); o.tRent = radioVal('tRent');
+    var was = null;
+    try { was = JSON.parse(localStorage.getItem(OPTS_KEY) || 'null'); } catch (e) {}
     try { localStorage.setItem(OPTS_KEY, JSON.stringify(o)); } catch (e) {}
+    logSettings(was, o);
     pushShared();
   }
   /* take what is in the fields, make it what is in force, and write it down */
@@ -6842,7 +6871,7 @@ var MHP_FROM='2008-01', MHP={
     var d = $('assumpBox'), open = !d.open;
     d.open = open;
     this.setAttribute('aria-expanded', open ? 'true' : 'false');
-    this.textContent = open ? 'Done' : 'Edit assumptions';
+    this.textContent = open ? 'Done' : 'Edit';
   });
   $('btnRenameCat').addEventListener('click', renameCategory);
   $('prYes').addEventListener('click', function(){
