@@ -3061,7 +3061,19 @@ window.stopCheck=false;
         { asked: p.name, status: r.status, offered: r.offered || '' });
     }
     /* consecutive failures, reset by any property that actually answered */
-    if (/still held|SOLD SINCE PURCHASE/.test(r.status)) misses = 0; else misses++;
+    /* What counts as an answer depends on what was asked.
+
+       The sold-check asked about a sale, so "no sale on record" really is a
+       non-answer and should count against it.
+
+       The sweep asked what kind of property this is. A sold property that
+       reports no current sale has answered that question perfectly well — the
+       page opened and its attributes were read. Only a page that would not
+       open, or that could not be identified, is a failure here. */
+    var answered = TYPES_ONLY
+      ? !/did not open|no match|none matched/i.test(r.status || '')
+      : /still held|SOLD SINCE PURCHASE/.test(r.status);
+    if (answered) misses = 0; else misses++;
 
     /* Two in a row is the shape of RP Data having started refusing rather
        than of two odd addresses. Breathe, and ask this one again before
