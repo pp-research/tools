@@ -1456,7 +1456,31 @@ details .body strong{color:var(--text)}
                  the other.</p>
             </div>
 
-            <h3>3 · What it tells you</h3>
+            <div id="bmTypes" hidden>
+              <h3>3 · RP Data — the property type sweep</h3>
+              <p>A one-off, and a different job from the other two. It reads
+                 <strong>what kind of property</strong> each one is — house, unit or
+                 development site — and writes nothing else.</p>
+              <p>It is the only one that opens the pages of properties you have
+                 <strong>already sold</strong>. The other two drop those before they
+                 start, and a sold property is exactly what a growth comparison is
+                 built from, so without this they never get a type at all.</p>
+              <p>It skips anything whose <strong>Property type</strong> cell is already
+                 filled — the column is its memory, so it resumes by itself and can be
+                 run from any machine. Sold properties go first, so an interrupted
+                 sweep has done the half that matters. To ask about one again, clear
+                 its cell.</p>
+              <div class="bm-row">
+                <a class="bm-drag" id="bmLinkTypes" href="#" draggable="true">&#127968; RP Data types</a>
+                <span class="hint" id="bmNoteTypes" style="margin:0">Drag me to your bookmarks bar</span>
+              </div>
+              <p class="hint">It never writes a sale date, a price or a verdict, and it
+                 leaves <em>Checked at</em> alone — so running it cannot bring forward
+                 or cancel the next sold check. Stop it any time with
+                 <code>stopCheck = true</code>.</p>
+            </div>
+
+            <h3>4 · What it tells you</h3>
             <ol class="bm-steps">
               <li><strong>Sold since purchase.</strong> The last sale on record is newer
                   than your purchase date, so it has changed hands. These are the ones
@@ -1791,10 +1815,20 @@ window.stopCheck=false;
      Substituted by the tool when it builds the bookmark, so one source
      serves both. An empty or unknown value is the weekly catch-up, which is
      the safe one: it never re-asks something already answered. */
-  const MODE = ('__MODE__'.toLowerCase() === 'monthly') ? 'monthly' : 'weekly';
+  /* Three jobs, one script. 'typesweep' is not a sold-check at all: it reads
+     property types and writes nothing else. An unsubstituted __MODE__ still
+     reads as 'weekly', so a stale build is never the long pass. */
+  const RAW_MODE = '__MODE__'.toLowerCase();
+  const MODE = (RAW_MODE === 'monthly') ? 'monthly'
+             : (RAW_MODE === 'typesweep') ? 'typesweep' : 'weekly';
+  const TYPES_ONLY = MODE === 'typesweep';
+  const MODE_LABEL = TYPES_ONLY ? 'type sweep' : MODE + ' pass';
   /* the words the console uses, so the two passes do not both say "Monday" */
-  const PARKED = MODE === 'monthly' ? 'already checked this month' : 'asked earlier this week and still unanswered';
-  const RELEASED = MODE === 'monthly' ? 'on the 1st' : 'on Monday';
+  const PARKED = TYPES_ONLY ? 'already typed'
+               : MODE === 'monthly' ? 'already checked this month'
+               : 'asked earlier this week and still unanswered';
+  const RELEASED = TYPES_ONLY ? 'once the Property type column is cleared'
+                 : MODE === 'monthly' ? 'on the 1st' : 'on Monday';
 
   /* ── settings ───────────────────────────────────────────────────────── */
   /* Every held property in the book, whatever capital it is in. One run and
@@ -1863,10 +1897,16 @@ window.stopCheck=false;
     .then(r => r.json()).then(rows => rows[0] && rows[0].body);
   if (!book) { console.error('Could not read the shared list.'); return; }
 
+  /* The sweep wants the opposite of what the sold-check wants. The sold ones
+     are the whole point — a growth comparison is purchase against sale, and
+     no sold-check will ever open their pages again. It keeps the
+     outside-of-advice properties too: what kind of building something is, is
+     a fact about the building, not a view about the advice. */
   const all = (book.properties || []).filter(p =>
-    p.name && !p.outside &&
+    p.name &&
     (!CITY || (p.category || '').trim() === CITY) &&
-    !(p.soldDate && p.soldPrice));
+    (TYPES_ONLY ? !p.ptype
+                : (!p.outside && !(p.soldDate && p.soldPrice))));
 
   /* ── 1b. what the sheet already holds ───────────────────────────────── */
   /* Matched on the address exactly as the register spells it, which is also
@@ -1918,7 +1958,8 @@ window.stopCheck=false;
      a list of her clients' addresses is not something to leave sitting in
      another company's local storage; a hash is enough to recognise one we
      already asked about. */
-  const ASKED = MODE === 'monthly' ? 'rpAskedMonthly' : 'rpAskedUnanswered';
+  const ASKED = MODE === 'monthly' ? 'rpAskedMonthly'
+              : TYPES_ONLY ? 'rpAskedTypes' : 'rpAskedUnanswered';
   function key_(s) {
     let h = 7;
     for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 4294967296;
@@ -1946,6 +1987,11 @@ window.stopCheck=false;
     return m;
   }
   function periodStart(from) {
+    /* A building does not change from a house into a unit, so a sweep's note
+       never goes stale and nothing is released back into it on a Monday or
+       on the 1st. The epoch keeps every note alive; clearing the Property
+       type column is how a property is asked about again. */
+    if (TYPES_ONLY) return new Date(0);
     return MODE === 'monthly' ? monthStart(from) : weekStart(from);
   }
   function ymd(d) {
@@ -2013,7 +2059,13 @@ window.stopCheck=false;
            was written: "still held" is exactly the answer it exists to take
            again. The weekly catch-up is the opposite — an answer is the
            reason to leave a property alone. */
-        if (MODE === 'monthly') {
+        /* For a sweep the question is not when the row was written but
+           whether it has a type in it. The column IS the record, so a sweep
+           run from another machine picks up where this one left off with no
+           second list to keep in step. */
+        if (TYPES_ONLY) {
+          if (r.ptype) asked.add(r.address);
+        } else if (MODE === 'monthly') {
           if (thisPeriod) asked.add(r.address);
         } else if (/still held|SOLD SINCE PURCHASE/.test(r.status || '')) {
           done.add(r.address);
@@ -2045,11 +2097,18 @@ window.stopCheck=false;
     try { localStorage.removeItem(ASKED); } catch (e) {}
   }
   const held = all.filter(p => !done.has(p.name) && !asked.has(p.name));
+  /* Sold first. Those are the ones the growth comparison is built from, and
+     the ones nothing else will ever come back to — so if the sweep is
+     interrupted, the half that matters is the half already done. */
+  if (TYPES_ONLY) held.sort(function (a, b) {
+    return ((b.soldDate && b.soldPrice) ? 1 : 0) -
+           ((a.soldDate && a.soldPrice) ? 1 : 0);
+  });
   const skipped = done.size ? all.filter(p => done.has(p.name)).length : 0;
   const retried = all.filter(p => asked.has(p.name)).length;
 
   if (!held.length) {
-    console.log('%cNothing left to check on the ' + MODE + ' pass — ' +
+    console.log('%cNothing left to check on the ' + MODE_LABEL + ' — ' +
       (skipped ? skipped + ' answered' : '') +
       (skipped && retried ? ', ' : '') +
       (retried ? retried + ' ' + PARKED : '') +
@@ -2061,7 +2120,7 @@ window.stopCheck=false;
       'font-weight:bold;font-size:13px');
     return;
   }
-  console.log(`%c${MODE} pass — ${held.length} propert${held.length === 1 ? 'y' : 'ies'} to check` +
+  console.log(`%c${MODE_LABEL} — ${held.length} propert${held.length === 1 ? 'y' : 'ies'} to check` +
     (CITY ? ` in ${CITY}` : ' across every capital') +
     (skipped ? ` — ${skipped} already answered` : '') +
     (retried ? ` — ${retried} ${PARKED}, left until ${RELEASED}` : '') +
@@ -2087,7 +2146,16 @@ window.stopCheck=false;
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ reset: !!reset, rows })
+        /* Trimmed here and not at the call site, so "a sweep writes no sale
+           data" is one fact in one place rather than a promise every caller
+           has to keep. The endpoint fills the two type columns and leaves
+           the rest of the row — including Checked at, which the sold-check
+           uses to decide when a property is next due — exactly as it was. */
+        body: JSON.stringify(TYPES_ONLY
+          ? { kind: 'type', rows: rows.map(function (r) {
+              return { address: r.address, city: r.city,
+                       ptype: r.ptype, rpType: r.rpType }; }) }
+          : { reset: !!reset, rows })
       }), 25000, 'writing to the sheet');
     } catch (e) {
       console.warn('sheet write failed:', e.message);
@@ -3027,6 +3095,17 @@ window.stopCheck=false;
   window.rpUnresolved = unknown.map(r => r.address);
 
   const left = all.length - done.size - results.length;
+  if (TYPES_ONLY) {
+    const got = results.filter(r => r.ptype).length;
+    window.rpSweepDone = true;          // so a later look can tell it finished
+    console.log(`%c\ntype sweep — ${got} of ${results.length} answered` +
+      (left > 0 ? ` · ${left} still to do — click the bookmark again` : ' · nothing left'),
+      'font-weight:bold;font-size:13px');
+    console.log('The verdicts are in "Property type". "RP Data type" holds the ' +
+      'page\'s own wording beside each one, so a blank verdict with wording ' +
+      'next to it means the page said something nobody has taught this to read.');
+    return;
+  }
   console.log(`%c\nchecked ${results.length} · ${sold.length} sold since purchase · ` +
     `${listed.length} showing a listing · ${unknown.length} need a second look` +
     (left > 0 ? ` · ${left} still to do — click the bookmark again` : ''),
@@ -6261,7 +6340,9 @@ var MHP_FROM='1980-03', MHP={
              .replace(/__WHO__/g,       function(){ return who; })
              /* Which pass this bookmark is. Empty means the weekly catch-up,
                 which is the safe default: it never re-asks what is answered. */
-             .replace(/__MODE__/g,      function(){ return mode === 'monthly' ? 'monthly' : ''; });
+             .replace(/__MODE__/g,      function(){
+               return mode === 'monthly'   ? 'monthly'
+                    : mode === 'typesweep' ? 'typesweep' : ''; });
     return 'javascript:' + encodeURIComponent('void function(){\n' + src + '\n}();');
   }
   var bmLast = null;             // what the href was last built from
@@ -6295,6 +6376,14 @@ var MHP_FROM='1980-03', MHP={
     if (mo && box) {
       box.hidden = !sheetUrl();
       if (!box.hidden) mo.href = buildBm('rpBmSrc', 'monthly') || '#';
+    }
+    /* The sweep needs the sheet for the same reason the monthly does, only
+       more so: the Property type column is not just where its answers go, it
+       is the only record of which properties it has already done. */
+    var ty = $('bmLinkTypes'), tbox = $('bmTypes');
+    if (ty && tbox) {
+      tbox.hidden = !sheetUrl();
+      if (!tbox.hidden) ty.href = buildBm('rpBmSrc', 'typesweep') || '#';
     }
   }
   /* ── the sheet address, shared with whoever can sign in ─────────────────
@@ -8249,7 +8338,8 @@ var MHP_FROM='1980-03', MHP={
   /* Clicking either bookmarklet would run it against this page, which is
      neither site: it would read the register, find no search box and throw.
      Say what to do instead. */
-  [['bmLink','bmNote'], ['bmLinkMonthly','bmNoteMonthly']].forEach(function(pair){
+  [['bmLink','bmNote'], ['bmLinkMonthly','bmNoteMonthly'],
+   ['bmLinkTypes','bmNoteTypes']].forEach(function(pair){
     $(pair[0]).addEventListener('click', function(ev){
       ev.preventDefault();
       var n = $(pair[1]);
