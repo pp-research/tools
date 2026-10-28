@@ -1185,6 +1185,7 @@ details .body strong{color:var(--text)}
                 <label for="regView-m">vs Market</label>
               </div>
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
+              <button type="button" class="btn-ghost btn-sm" id="btnDetectType">Detect types</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsClear">Clear all</button>
             </div>
@@ -3703,6 +3704,21 @@ var MHP_FROM='1980-03', MHP={
     return String((e && e.ptype) || '').toUpperCase().charAt(0) === 'U' ? 'U' : 'H';
   }
   function ptypeLabel(t){ return t === 'U' ? 'Unit' : 'House'; }
+  /* What an Australian address says about the dwelling behind it.
+     '12/34 Example Street' is a strata address, and Cotality counts every
+     attached dwelling — unit, townhouse, villa, duplex half — on the unit
+     line, so the slash is the signal regardless of what it is called.
+
+     It returns 'U' or nothing, never 'H'. An address with no unit marker is
+     not evidence of a house; it is the absence of evidence, and the two must
+     not be confused when the result is written onto a record. */
+  var PT_SPELT = /^\s*(?:unit|apt|apartment|flat|villa|townhouse|town\s*house)\b/i;
+  var PT_ULEAD = /^\s*[uU]\s*\d+\s*[\/,\-]/;
+  var PT_SLASH = /^\s*\d+[a-zA-Z]?\s*\/\s*\d/;
+  function ptypeFromName(name){
+    var s = String(name || '');
+    return (PT_SPELT.test(s) || PT_ULEAD.test(s) || PT_SLASH.test(s)) ? 'U' : null;
+  }
   function mhpSeries(city, type){
     var c = MHP[city];
     if (!c) return null;
@@ -5597,8 +5613,11 @@ var MHP_FROM='1980-03', MHP={
            belongs on the unit line even though people call it a house.
            Anything the column does not recognise is left as a house, which
            is what an empty cell means too. */
-        var pt = /^(u|unit|apartment|apt|flat|strata|townhouse|town\s*house|villa|terrace|duplex|semi)/i
-                   .test(cell('ptype')) ? 'U' : undefined;
+        var pt = cell('ptype')
+          ? (/^(u|unit|apartment|apt|flat|strata|townhouse|town\s*house|villa|terrace|duplex|semi)/i
+               .test(cell('ptype')) ? 'U' : undefined)
+          /* no column: the address is the only thing that knows */
+          : (ptypeFromName(full) || undefined);
         entries.push({ id: newId(), name: full,
           category: cat || cell('market') || undefined,
           ptype: pt,
@@ -7085,6 +7104,44 @@ var MHP_FROM='1980-03', MHP={
     var r = addEntries([entryFrom($('pName').value.trim() || autoName(last.summary), readDeal(), readOpts(), $('pCat').value)]);
     if (r) { closeQuick(); $('messages').innerHTML = msg('ok', r.updated ? 'Updated this property on the list.' : 'Saved to properties — this browser only.'); }
   });
+  /* A bulk tag from the addresses, counted before it is written. It only ever
+     ADDS a Unit: a record already marked by hand is left alone, and a record
+     with no unit marker is left alone too, because "no slash in the address"
+     is not the same as "this is a house" and writing House onto 493 records
+     on that basis would bury the ones nobody has actually checked. */
+  function detectTypes(){
+    var all = loadProps(), scope = cityProps(all);
+    if (!scope.length) { $('messages').innerHTML = msg('warn', activeCity
+      ? 'Nothing is filed under ' + cityLabel() + ' to read.' : 'No properties yet.'); return; }
+    var hits = scope.filter(function(e){
+      return !e.ptype && ptypeFromName(e.name) === 'U';
+    });
+    var already = scope.filter(function(e){ return ptypeOf(e) === 'U'; }).length;
+    if (!hits.length) {
+      $('messages').innerHTML = msg('ok', 'Nothing new to tag' +
+        (already ? ' — ' + already + ' already marked as units.' : '.') +
+        ' An address has to carry a unit number for this to read it.');
+      return;
+    }
+    askConfirm('Mark <strong>' + hits.length + '</strong> propert' +
+      (hits.length === 1 ? 'y' : 'ies') + ' as <strong>units</strong>? ' +
+      'Their addresses carry a unit number, which means a strata dwelling &mdash; ' +
+      'Cotality compares those against its unit series, not its house series. ' +
+      'The other ' + (scope.length - hits.length - already) + ' are left as they are: ' +
+      'an address without a unit number is not proof of a house, so nothing is ' +
+      'written onto them. You can change any of them by hand afterwards.',
+      'Mark as units', function(){
+        hits.forEach(function(e){ e.ptype = 'U'; });
+        if (!putProps(all)) return;
+        logChange(hits.map(function(e){
+          return { action:'edited', property:e.name, detail:'property type: House → Unit (from the address)' };
+        }));
+        renderProps();
+        $('messages').innerHTML = msg('ok', 'Marked ' + hits.length + ' as units. ' +
+          'They are now compared against the Cotality unit series.');
+      });
+  }
+  $('btnDetectType').addEventListener('click', detectTypes);
   $('btnPropsCsv').addEventListener('click', exportProps);
   $('btnPropsClear').addEventListener('click', function(){
     var n = loadProps().length;
