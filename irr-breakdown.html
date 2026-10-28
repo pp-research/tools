@@ -3821,6 +3821,7 @@ window.stopCheck=false;
   function deriveOne(e, opts){
     var d = { e:e, irr:null, net:null, hold:null, held:isHeld(e),
               mkBuy:null, mkSell:null, vsMkt:null, ourCagr:null, mktCagr:null,
+              ourTotal:null, mktTotal:null, vsMktTotal:null,
               mkBuyCarried:0, mkSellCarried:0 };
     if (d.held) return d;          /* nothing to discount until there is a sale */
     try {
@@ -3842,6 +3843,12 @@ window.stopCheck=false;
         d.ourCagr = Math.pow(e.soldPrice / e.purchasePrice, 1 / d.hold) - 1;
         d.mktCagr = Math.pow(d.mkSell / d.mkBuy, 1 / d.hold) - 1;
         d.vsMkt = d.ourCagr - d.mktCagr;
+        /* The same comparison without the annualising: what it actually did
+           over the years it was actually held, against what the market did
+           over those same months. */
+        d.ourTotal = e.soldPrice / e.purchasePrice - 1;
+        d.mktTotal = d.mkSell / d.mkBuy - 1;
+        d.vsMktTotal = d.ourTotal - d.mktTotal;
       }
     } catch (err) {}
     return d;
@@ -4796,7 +4803,10 @@ var MHP_FROM='1980-03', MHP={
         irr:      function(d){ return d.irr; },
         mkBuy:    function(d){ return d.mkBuy; },
         mkSell:   function(d){ return d.mkSell; },
-        vsMkt:    function(d){ return d.vsMkt; }
+        /* The displayed figure, not the annualised one it used to rank by —
+           a column that sorts on a number it is not showing is a column that
+           looks broken. */
+        vsMkt:    function(d){ return d.vsMktTotal; }
       }[sortKey];
       data.sort(function(a,b){
         var x = get(a), y = get(b);
@@ -4862,12 +4872,12 @@ var MHP_FROM='1980-03', MHP={
         (regView === 'market'
           ? '<td class="num sw">'+mktCell(d.mkBuy,  d.mkBuyCarried)+'</td>'+
             '<td class="num sw">'+mktCell(d.mkSell, d.mkSellCarried)+'</td>'+
-            '<td class="num sw sw3"><strong>'+(d.vsMkt === null ? dash :
-              '<span class="'+(d.vsMkt >= 0 ? 'pos' : 'neg')+'">'+
-                (d.vsMkt >= 0 ? '+' : '') + (d.vsMkt * 100).toFixed(2) + '%</span>')+
+            '<td class="num sw sw3"><strong>'+(d.vsMktTotal === null ? dash :
+              '<span class="'+(d.vsMktTotal >= 0 ? 'pos' : 'neg')+'">'+
+                (d.vsMktTotal >= 0 ? '+' : '') + (d.vsMktTotal * 100).toFixed(2) + '%</span>')+
             '</strong>'+
-            (d.vsMkt === null ? '' :
-              '<div class="vs-parts">PPA '+pct(d.ourCagr)+' &middot; Mkt '+pct(d.mktCagr)+'</div>')+
+            (d.vsMktTotal === null ? '' :
+              '<div class="vs-parts">PPA '+pct(d.ourTotal)+' &middot; Mkt '+pct(d.mktTotal)+'</div>')+
             '</td>'
           : '<td class="num sw">'+hold+'</td><td class="num sw">'+net+'</td>'+
             '<td class="num sw sw3"><strong>'+irr+'</strong></td>')+
