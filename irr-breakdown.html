@@ -568,6 +568,15 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* The market row gets a heading, because it is a different kind of number
    from the eight above it: somebody else's series, not the book's own. */
 .warn-ink{color:var(--yellow)}
+/* Two figures in one card, each labelled. Smaller than a k-value because
+   there are two of them and neither is the headline on its own. */
+.kpi .k-cmp{list-style:none;margin:var(--sp-2) 0 0;padding:0;display:grid;gap:6px}
+.kpi .k-cmp li{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3)}
+.kpi .k-cmp span{font-size:12px;line-height:16px;color:var(--muted);min-width:0}
+.kpi .k-cmp b{font-size:20px;line-height:1.2;font-weight:800;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
+/* the note is about the pair, not about the row above it */
+.kpi .k-cmp + .k-note{margin-top:var(--sp-3)}
 .ov-sub{font-size:11px;line-height:16px;font-weight:800;letter-spacing:.08em;
   text-transform:uppercase;color:var(--faint);margin:var(--sp-5) 0 var(--sp-3)}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:var(--sp-4);min-width:0}
@@ -3924,14 +3933,26 @@ var MHP_FROM='2008-01', MHP={
           ? sellMid.median / buyMid.median - 1 : null;
         var mkt  = (mhpBuy && mhpSell) ? mhpSell / mhpBuy - 1 : null;
         if (ours === null || mkt === null)
-          return card('Growth comparison', '—',
+          return card('Growth', '—',
                       'needs a median purchase and sale, and a series for this city');
-        var gap = (ours - mkt) * 100;
-        return card('Growth comparison',
-          '<span class="' + (gap >= 0 ? 'pos' : 'neg') + '">' +
-            (gap >= 0 ? '+' : '') + gap.toFixed(1) + ' pts</span>',
-          'ours ' + pct(ours) + ' · Cotality ' + pct(mkt) +
-          ' · across ' + mBuy.n + ' purchases and ' + mSell.n + ' sales');
+        /* Both figures, each against the name of whoever earned it. A single
+           signed gap makes the reader work out which way round it runs, and
+           on a card that gets screenshotted that is one step too many. The
+           market goes first because it is the thing being measured against. */
+        var ahead = (ours >= mkt);
+        var mktName = (activeCity && activeCity !== NO_CAT)
+          ? 'Greater ' + esc(cityLabel()) : esc(cityLabel());
+        return '<div class="kpi">' +
+          '<div class="k-label">Growth</div>' +
+          '<ul class="k-cmp">' +
+            '<li><span>' + mktName + '</span><b>' + pct(mkt) + '</b></li>' +
+            '<li><span>Performance Property</span>' +
+              '<b class="' + (ahead ? 'pos' : 'neg') + '">' + pct(ours) + '</b></li>' +
+          '</ul>' +
+          '<div class="k-note">' + (ahead ? 'ahead by ' : 'behind by ') +
+            Math.abs((ours - mkt) * 100).toFixed(1) + ' points · across ' +
+            mBuy.n + ' purchases and ' + mSell.n + ' sales</div>' +
+        '</div>';
       })() +
       '</div>' +
       /* Said on the page, not just in a handover: these two medians are
