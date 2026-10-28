@@ -838,6 +838,17 @@ td.pd .src-link:hover{color:var(--text)}
 /* A small matrix, not eight more cards. Six numbers a row read as a
    comparison when they are in line with each other and as six facts when
    they are in boxes. */
+/* Ten columns of figures: scrolls sideways rather than wrapping, because a
+   number split across two lines stops reading as a number. The row labels
+   stay put so a column is still identifiable once it has scrolled. */
+.mkt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:var(--sp-2) 0}
+.mkt-table{font-size:12px;min-width:900px}
+.mkt-table th,.mkt-table td{white-space:nowrap;vertical-align:top}
+.mkt-table th[scope=row]{position:sticky;left:0;background:var(--surface);z-index:1;
+  text-align:left;font-weight:400}
+.mkt-table tr.is-total th[scope=row],.mkt-table tr.is-total td{background:var(--well);
+  font-weight:600}
+.mkt-table tr.is-total th[scope=row]{font-weight:700}
 .ov-sub4{margin:var(--sp-4) 0 var(--sp-2);font-size:12px;line-height:16px;font-weight:700;
   letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 table.mini{width:100%;border-collapse:collapse;margin-bottom:var(--sp-2)}
@@ -4408,91 +4419,121 @@ var MHP_FROM='1980-03', MHP={
                       ' outside the series</span>' : '');
     };
     h += '<h3 class="ov-sub">Against the market</h3>' +
-      '<div class="kpis">' +
-      card('Cotality median — purchase months',
-           mhpBuy ? aud(mhpBuy) : '—', mhpNote(mBuy)) +
-      card('Cotality median — sale months',
-           mhpSell ? aud(mhpSell) : '—', mhpNote(mSell)) +
       (function(){
-        var ours = (buyMid && sellMid && buyMid.median > 0)
-          ? sellMid.median / buyMid.median - 1 : null;
-        var mkt  = (mhpBuy && mhpSell) ? mhpSell / mhpBuy - 1 : null;
-        var why = 'needs a median purchase and sale, and a series for this city';
-        if (ours === null || mkt === null)
-          return card('Growth', '—', why) + card('Difference', '—', why);
-        /* Two cards, not one. Growth carries both figures against the name of
-           whoever earned it; Difference carries the gap on its own, said in
-           words as well as a sign — on a card that gets screenshotted,
-           "behind" should not have to be inferred from a minus. */
-        var ahead = (ours >= mkt);
-        var mktName = (activeCity && activeCity !== NO_CAT)
-          ? 'Greater ' + esc(cityLabel()) : esc(cityLabel());
-        var pts = Math.abs((ours - mkt) * 100).toFixed(1);
-        return '<div class="kpi">' +
-          '<div class="k-label">Growth</div>' +
-          '<ul class="k-cmp">' +
-            '<li><span>' + mktName + '</span><b>' + pct(mkt) + '</b></li>' +
-            '<li><span>Performance Property</span>' +
-              '<b class="' + (ahead ? 'pos' : 'neg') + '">' + pct(ours) + '</b></li>' +
-          '</ul>' +
-          '<div class="k-note">median sale price over median purchase price</div>' +
-        '</div>' +
-        card('Difference',
-          '<span class="' + (ahead ? 'pos' : 'neg') + '">' +
-            (ahead ? '+' : '&minus;') + pts + ' pts</span>',
-          'Performance Property ' + (ahead ? 'ahead of ' : 'behind ') + mktName +
-          ' · across ' + mBuy.n + ' purchases and ' + mSell.n + ' sales');
-      })() +
-      '</div>' +
-      /* Said on the page, not just in a handover: these two medians are
-         across DIFFERENT properties, so the ratio is not anybody's gain. */
-      '<p class="count-line">Each Cotality figure is the median of the market at <strong>every '+
-      'property&rsquo;s own month</strong>, so it reads the whole book rather than the one or two '+
-      'properties that happen to define the median price. The two price medians are still across '+
-      'different properties, so this sets the middle of what was bought against the middle of what '+
-      'was sold — close to a gain, but not a like-for-like one. Cotality is the median of what SOLD '+
-      'in those months, so it moves with the mix as well as with values. For a real score, compare '+
-      'each property with the market over its own dates.</p>' +
-      /* And here it is. Every sold property against the market over its own
-         months, split by what it is: the gap above is one ratio built from
-         two different sets of properties, this is a median of real results. */
-      (function(){
-        var rows = (data || []).filter(function(d){ return d.vsMkt !== null; });
-        if (!rows.length) return '';
-        var med = function(list, k){
-          return median(list.map(function(d){ return d[k]; }));
+        /* EVERY city, not the one in view. A table that answered for whichever
+           tab was open would be read as the whole answer, and it is not. */
+        var fAll = readFilters(), optAll = readOpts();
+        var every = filterEntries(loadProps(), fAll)
+          .map(function(e){ return deriveOne(e, optAll); })
+          .filter(function(d){ return passDerived(d, fAll, true); })
+          .filter(function(d){ return d.vsMkt !== null; });
+        if (!every.length) {
+          return '<p class="count-line">Nothing sold can be set against the series yet &mdash; ' +
+                 'a property needs a purchase, a sale, and months the Cotality series reaches.</p>';
+        }
+
+        /* Each property read against ITS OWN city and kind, so a row covering
+           both cities is still every property against its own market. */
+        var levelOf = function(list, dk){
+          var vals = [], miss = 0, carried = 0;
+          list.forEach(function(d){
+            var t = dayStamp(d.e[dk]);
+            if (t === null) { miss++; return; }
+            var r = mhpLook((d.e.category || '').trim(), new Date(t), ptypeOf(d.e));
+            if (r.v === null) { miss++; return; }
+            if (r.carried) carried++;
+            vals.push(r.v);
+          });
+          return { median: vals.length ? median(vals) : null, n: vals.length,
+                   missing: miss, carried: carried };
         };
-        var band = function(label, list){
+        var medOf = function(list, k){ return median(list.map(function(d){ return d[k]; })); };
+        var priceWhen = function(m){
+          if (!m || !(m.median > 0)) return dash;
+          var d = midDay(m);
+          return aud(m.median) + (d ? '<div class="vs-parts">' + monthOf(d) + '</div>' : '');
+        };
+        var level = function(x){
+          if (!x || x.median === null) return dash;
+          return aud(x.median) +
+            '<div class="vs-parts">' + x.n + ' month' + (x.n === 1 ? '' : 's') +
+            (x.carried ? ' &middot; ' + x.carried + ' carried' : '') + '</div>';
+        };
+
+        var carriedTotal = 0, missingTotal = 0;
+        var line = function(label, list, strong) {
           if (!list.length) return '';
-          var g = med(list, 'vsMkt');
+          var buy = medianRow(list, 'purchasePrice', 'purchaseDate');
+          var sell = medianRow(list, 'soldPrice', 'soldDate');
+          var cBuy = levelOf(list, 'purchaseDate');
+          var cSell = levelOf(list, 'soldDate');
+          carriedTotal += cBuy.carried + cSell.carried;
+          missingTotal += cBuy.missing + cSell.missing;
+          var g = medOf(list, 'vsMkt');
           var beat = list.filter(function(d){ return d.vsMkt >= 0; }).length;
-          return '<tr><th scope="row">'+label+'</th>'+
-            '<td class="num">'+list.length+'</td>'+
-            '<td class="num">'+pct(med(list, 'ourCagr'))+'</td>'+
-            '<td class="num">'+pct(med(list, 'mktCagr'))+'</td>'+
-            '<td class="num"><strong><span class="'+(g >= 0 ? 'pos' : 'neg')+'">'+
-              (g >= 0 ? '+' : '')+(g * 100).toFixed(2)+'%</span></strong></td>'+
-            '<td class="num">'+beat+' of '+list.length+'</td></tr>';
+          var open = strong ? '<strong>' : '', shut = strong ? '</strong>' : '';
+          return '<tr' + (strong ? ' class="is-total"' : '') + '>' +
+            '<th scope="row">' + open + label + shut + '</th>' +
+            '<td class="num">' + list.length + '</td>' +
+            '<td class="num">' + priceWhen(buy) + '</td>' +
+            '<td class="num">' + priceWhen(sell) + '</td>' +
+            '<td class="num">' + level(cBuy) + '</td>' +
+            '<td class="num">' + level(cSell) + '</td>' +
+            '<td class="num">' + open + pct(medOf(list, 'ourCagr')) + shut + '</td>' +
+            '<td class="num">' + pct(medOf(list, 'mktCagr')) + '</td>' +
+            '<td class="num"><strong><span class="' + (g >= 0 ? 'pos' : 'neg') + '">' +
+              (g >= 0 ? '+' : '') + (g * 100).toFixed(2) + '%</span></strong></td>' +
+            '<td class="num">' + beat + ' of ' + list.length + '</td></tr>';
         };
-        var H = rows.filter(function(d){ return ptypeOf(d.e) === 'H'; });
-        var U = rows.filter(function(d){ return ptypeOf(d.e) === 'U'; });
-        return '<h4 class="ov-sub4">Per property, by type</h4>' +
-          '<table class="mini"><thead><tr>'+
-          '<th scope="col">Property type</th>'+
-          '<th scope="col" class="num">Sold</th>'+
-          '<th scope="col" class="num">Performance Property</th>'+
-          '<th scope="col" class="num">Market</th>'+
-          '<th scope="col" class="num">Gap</th>'+
-          '<th scope="col" class="num">Beat the market</th>'+
-          '</tr></thead><tbody>'+
-          band('Houses', H) + band('Units', U) +
-          (H.length && U.length ? band('All', rows) : '') +
-          '</tbody></table>'+
-          '<p class="count-line">Each figure is a median across properties and compounded over '+
-          'each property&rsquo;s own hold, so a long hold and a short one count once each. '+
-          'The gap is the median of the per-property gaps &mdash; not the difference between the '+
-          'two medians beside it, which is a different statistic and nobody&rsquo;s result. '+
-          'Properties the series cannot reach are left out of every column.</p>';
+
+        var cities = [];
+        every.forEach(function(d){
+          var c = (d.e.category || '').trim() || 'Unfiled';
+          if (cities.indexOf(c) < 0) cities.push(c);
+        });
+        cities.sort();
+
+        var body = '';
+        cities.forEach(function(c){
+          var inCity = every.filter(function(d){
+            return ((d.e.category || '').trim() || 'Unfiled') === c;
+          });
+          var H = inCity.filter(function(d){ return ptypeOf(d.e) === 'H'; });
+          var U = inCity.filter(function(d){ return ptypeOf(d.e) === 'U'; });
+          body += line(esc(c) + ' &middot; houses', H) +
+                  line(esc(c) + ' &middot; units',  U) +
+                  ((H.length && U.length) ? line(esc(c) + ' &middot; all', inCity, true) : '');
+        });
+        if (cities.length > 1) body += line('Both cities', every, true);
+
+        return '<div class="mkt-wrap"><table class="mini mkt-table"><thead><tr>' +
+          '<th scope="col">Where</th>' +
+          '<th scope="col" class="num">Sold</th>' +
+          '<th scope="col" class="num">Median purchase</th>' +
+          '<th scope="col" class="num">Median sale</th>' +
+          '<th scope="col" class="num">Cotality at purchase</th>' +
+          '<th scope="col" class="num">Cotality at sale</th>' +
+          '<th scope="col" class="num">PPA</th>' +
+          '<th scope="col" class="num">Market</th>' +
+          '<th scope="col" class="num">Gap</th>' +
+          '<th scope="col" class="num">Beat the market</th>' +
+          '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+          '<p class="count-line">The two <strong>price</strong> columns are medians across ' +
+          'different properties &mdash; the middle of what was bought against the middle of what ' +
+          'was sold &mdash; so they are context, not anybody&rsquo;s gain. The two ' +
+          '<strong>Cotality</strong> columns are the median of the market at every ' +
+          'property&rsquo;s own month, on its own city and its own line: houses against the house ' +
+          'series, units against the unit series.</p>' +
+          '<p class="count-line"><strong>PPA</strong>, <strong>Market</strong> and ' +
+          '<strong>Gap</strong> are the real score. Each is a median across properties, compounded ' +
+          'over each property&rsquo;s own hold, so a long hold and a short one count once each. ' +
+          'The gap is the median of the per-property gaps &mdash; not the difference between the ' +
+          'two columns beside it, which is a different statistic and nobody&rsquo;s result. ' +
+          'Development sites are left out: Cotality publishes no series for land' +
+          (missingTotal ? ', and ' + missingTotal + ' month' + (missingTotal === 1 ? '' : 's') +
+            ' fell outside the series' : '') +
+          (carriedTotal ? ' &middot; ' + carriedTotal + ' carried from the latest month on record' : '') +
+          '.</p>';
       })();
 
     /* ── distribution ──
