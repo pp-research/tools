@@ -700,9 +700,7 @@ td.city{color:var(--muted);font-weight:600}
 td.pick,th:first-child:has(.sr-only){width:1%}
 td.pick{padding-right:0}
 /* the row number: present but quiet, and never wider than it needs to be */
-th.rownum,td.rownum{width:1%;text-align:right;padding-left:8px;padding-right:10px;
-  color:var(--faint);font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
-th.rownum{font-size:11px;font-weight:700;letter-spacing:.05em}
+
 td.pick input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
 td.pick input:disabled{cursor:not-allowed;opacity:.35}
 tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
@@ -4225,11 +4223,7 @@ var MHP_FROM='2008-01', MHP={
       });
     }
 
-    /* `i` is the second argument map() already passes. The number is the row's
-       place in the order on screen, so sorting by price makes it the rank by
-       price — which is how you walk to the middle of the list and find the
-       property a median belongs to. */
-    var rowHtml = function(d, i){
+    var rowHtml = function(d){
       var e = d.e;
       var irr = d.irr === null ? '—' : pct(d.irr);
       var net = d.net === null ? '—' : signed(d.net);
@@ -4240,7 +4234,7 @@ var MHP_FROM='2008-01', MHP={
         '<td class="pick"><input type="checkbox" data-pick="'+e.id+'"'+
           (on?' checked':'')+
           ' aria-label="Select '+esc(e.name||'this property')+'"></td>'+
-        '<td class="rownum">'+(i + 1)+'</td>'+
+
         /* No capital city here, as a column or as a chip: the register is one
            city at a time and the header says which. The chips that are left
            are the ones with nothing else to carry them: a note, what the sold
@@ -4328,7 +4322,7 @@ var MHP_FROM='2008-01', MHP={
       '<th scope="col" class="pick-all"><input type="checkbox" id="selAll"'+
         (onNow && onNow === shown.length ? ' checked' : '')+
         ' aria-label="Select every property shown"></th>'+
-      '<th scope="col" class="rownum" title="Place in the order on screen">#</th>'+head+
+      head+
       '<th scope="col"><span class="sr-only">Actions</span></th>'+
       '</tr></thead><tbody>'+data.map(rowHtml).join('')+'</tbody></table></div>';
     /* indeterminate is a property, not an attribute, so it can only be set
