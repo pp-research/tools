@@ -3793,9 +3793,13 @@ window.stopCheck=false;
   /* The market on the day this property changed hands. Null when the date is
      missing or falls outside the series — the register shows that as a dash
      rather than quietly leaving the property out of an average. */
-  function mhpOn(raw, type){
+  /* `city` is the property's OWN city. It used to be read from activeCity,
+     which agreed with the property in every view that showed one city at a
+     time and silently disagreed in any view that did not. */
+  function mhpOn(raw, type, city){
     var t = dayStamp(raw);
-    return t === null ? { v:null, carried:0 } : mhpLook(activeCity, new Date(t), type);
+    return t === null ? { v:null, carried:0 }
+                      : mhpLook(city || activeCity, new Date(t), type);
   }
   function deriveOne(e, opts){
     var d = { e:e, irr:null, net:null, hold:null, held:isHeld(e),
@@ -3809,7 +3813,8 @@ window.stopCheck=false;
          comparison where both sides faced the same years. Per year, because
          holds differ and a cumulative gap just measures the longer hold. */
       var pt = ptypeOf(e);
-      var lb = mhpOn(e.purchaseDate, pt), ls = mhpOn(e.soldDate, pt);
+      var city = (e.category || '').trim() || activeCity;
+      var lb = mhpOn(e.purchaseDate, pt, city), ls = mhpOn(e.soldDate, pt, city);
       d.mkBuy = lb.v; d.mkBuyCarried = lb.carried;
       d.mkSell = ls.v; d.mkSellCarried = ls.carried;
       if (d.mkBuy && d.mkSell && d.hold > 0 &&
