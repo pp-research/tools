@@ -1552,6 +1552,7 @@ details .body strong{color:var(--text)}
                 <select id="ePType">
                   <option value="H">House</option>
                   <option value="U">Unit</option>
+                  <option value="D">Development site</option>
                 </select>
               </div>
             </div>
@@ -3701,17 +3702,38 @@ var MHP_FROM='1980-03', MHP={
      measured against — so an unset type stays a house rather than quietly
      restating numbers people have quoted. */
   function ptypeOf(e){
-    return String((e && e.ptype) || '').toUpperCase().charAt(0) === 'U' ? 'U' : 'H';
+    var c = String((e && e.ptype) || '').toUpperCase().charAt(0);
+    return (c === 'U' || c === 'D') ? c : 'H';
   }
-  function ptypeLabel(t){ return t === 'U' ? 'Unit' : 'House'; }
+  function ptypeLabel(t){
+    return t === 'U' ? 'Unit' : t === 'D' ? 'Development site' : 'House';
+  }
   /* What an Australian address says about the dwelling behind it.
-     '12/34 Example Street' is a strata address, and Cotality counts every
-     attached dwelling — unit, townhouse, villa, duplex half — on the unit
-     line, so the slash is the signal regardless of what it is called.
+     '12/34 Example Street' is a strata address, and strata title is exactly
+     what puts a property on Cotality's unit line — so the slash is the
+     signal, whether it is called a unit, a villa or a townhouse. A
+     Torrens-titled semi usually carries a plain street number and stays a
+     house, which is Cotality's answer too.
 
      It returns 'U' or nothing, never 'H'. An address with no unit marker is
      not evidence of a house; it is the absence of evidence, and the two must
      not be confused when the result is written onto a record. */
+  /* A written property type, mapped onto the two lines Cotality publishes.
+     Returns 'U', 'D', or nothing at all — never 'H', because an unrecognised
+     word is not evidence of a house and the caller stores a house by leaving
+     the field empty. */
+  function ptypeFromLabel(raw){
+    var s = String(raw || '').trim();
+    if (!s) return undefined;
+    if (/\b(dev|development|land|site|lot|block|subdivision)\b/i.test(s)) return 'D';
+    /* strata: owners share the land under them */
+    if (/\b(unit|apartment|apt|flat|strata|townhouse|town\s*house|villa)\b/i.test(s)) return 'U';
+    /* Torrens: the owner holds the land. Semis, terraces and duplexes sit
+       here with detached houses, which is Cotality's line, not the eye's. */
+    if (/\b(house|detached|semi|terrace|duplex|villa\s*home|fronter|cottage|dwelling)\b/i.test(s))
+      return undefined;
+    return undefined;
+  }
   var PT_SPELT = /^\s*(?:unit|apt|apartment|flat|villa|townhouse|town\s*house)\b/i;
   var PT_ULEAD = /^\s*[uU]\s*\d+\s*[\/,\-]/;
   var PT_SLASH = /^\s*\d+[a-zA-Z]?\s*\/\s*\d/;
@@ -3722,7 +3744,13 @@ var MHP_FROM='1980-03', MHP={
   function mhpSeries(city, type){
     var c = MHP[city];
     if (!c) return null;
-    return (String(type || '').toUpperCase().charAt(0) === 'U') ? c.U : c.H;
+    var t = String(type || '').toUpperCase().charAt(0);
+    /* A development site has no line to read. Cotality's series cover
+       dwellings sold as dwellings; measuring a block bought to build on
+       against the median house gives a number, and the number means
+       nothing. Better that the cell says nothing. */
+    if (t === 'D') return null;
+    return (t === 'U') ? c.U : c.H;
   }
   function mhpLook(city, date, type){
     var miss = { v:null, carried:0 };
@@ -4453,7 +4481,8 @@ var MHP_FROM='1980-03', MHP={
           /* Houses are the norm and go unmarked; a unit is marked because it
              is being measured against a different line and the register
              should not make you open the record to find that out. */
-          (ptypeOf(e) === 'U' ? '<br><span class="cat aside-chip">Unit</span>' : '') +
+          (ptypeOf(e) === 'H' ? '' :
+            '<br><span class="cat aside-chip">'+ptypeLabel(ptypeOf(e))+'</span>') +
           ((e.note||'').trim() ? '<br><span class="cat note-chip">'+esc(e.note)+'</span>' : '') +
           ((e.soldCheck||'').trim() ? '<br><span class="cat check-chip">Sold check: '+esc(e.soldCheck)+'</span>' : '') +
           (function(){
@@ -4925,7 +4954,8 @@ var MHP_FROM='1980-03', MHP={
     e.category = $('eCat').value.trim() || undefined;
     /* Stored only when it is a unit. A house is the default, so writing 'H'
        onto every record would churn the shared book for no information. */
-    e.ptype = $('ePType').value === 'U' ? 'U' : undefined;
+    e.ptype = ($('ePType').value === 'U' || $('ePType').value === 'D')
+      ? $('ePType').value : undefined;
     e.purchasePrice = price;
     e.purchaseDate = date;
     if (sPrice === '') { e.soldPrice = undefined; e.soldDate = undefined; }
@@ -5609,13 +5639,15 @@ var MHP_FROM='1980-03', MHP={
           return nm.map[k] !== undefined ? String(r[nm.map[k]] || '').trim() : '';
         };
         var out = cell('scope').toLowerCase().indexOf('outside') >= 0;
-        /* Cotality splits detached from attached, so a townhouse or villa
-           belongs on the unit line even though people call it a house.
-           Anything the column does not recognise is left as a house, which
-           is what an empty cell means too. */
-        var pt = cell('ptype')
-          ? (/^(u|unit|apartment|apt|flat|strata|townhouse|town\s*house|villa|terrace|duplex|semi)/i
-               .test(cell('ptype')) ? 'U' : undefined)
+        /* Cotality splits on TITLE, not on whether the walls touch: a
+           Torrens-titled property is a house to them, including semis,
+           terraces and duplexes, while anything on strata title is a unit,
+           including villas and townhouses. So "Semi" is a HOUSE here, which
+           is the opposite of what the building form suggests.
+           A development site is neither and is marked as such.
+           Anything unrecognised is left as a house, which is also what an
+           empty cell means. */
+        var pt = cell('ptype') ? ptypeFromLabel(cell('ptype'))
           /* no column: the address is the only thing that knows */
           : (ptypeFromName(full) || undefined);
         entries.push({ id: newId(), name: full,
@@ -7125,8 +7157,9 @@ var MHP_FROM='1980-03', MHP={
     }
     askConfirm('Mark <strong>' + hits.length + '</strong> propert' +
       (hits.length === 1 ? 'y' : 'ies') + ' as <strong>units</strong>? ' +
-      'Their addresses carry a unit number, which means a strata dwelling &mdash; ' +
-      'Cotality compares those against its unit series, not its house series. ' +
+      'Their addresses carry a unit number, which means strata title &mdash; and ' +
+      'strata is what puts a property on Cotality&rsquo;s unit series rather than ' +
+      'its house series. ' +
       'The other ' + (scope.length - hits.length - already) + ' are left as they are: ' +
       'an address without a unit number is not proof of a house, so nothing is ' +
       'written onto them. You can change any of them by hand afterwards.',
