@@ -2238,14 +2238,16 @@ window.stopCheck=false;
   function readPropertyType() {
     const t = document.body.innerText.replace(/\n{2,}/g, '\n');
     let cut = t.length;
-    /* The marker has to be deep enough to BE the comparables section. A
-       "Nearby schools" link in the navigation sits in the first few hundred
-       characters, and cutting there leaves nothing to read — which comes out
-       as "this property has no type" when the truth is that nothing was
-       looked at. */
-    for (const k of ['Nearby', 'Similar', 'Comparable']) {
+    /* The same cut as the sale reader uses, deliberately: first marker wins,
+       however early it falls. There is no minimum offset, and adding one is a
+       mistake worth not repeating — on a short page the comparables heading
+       can sit forty characters in, and anything that reads past it picks up a
+       NEIGHBOUR's type. A blank type is visible and can be chased; a
+       confident wrong one scores a house against the unit series and nobody
+       ever looks at it again. */
+    for (const k of ['Nearby', 'Similar']) {
       const i = t.indexOf(k);
-      if (i >= 400 && i < cut) cut = i;
+      if (i >= 0 && i < cut) cut = i;
     }
     const sub = t.slice(0, cut);
     let raw = '';
@@ -5275,6 +5277,12 @@ var MHP_FROM='1980-03', MHP={
       soldVerified:  e.soldVerified || old.soldVerified,
       soldLink:      e.soldLink || old.soldLink,
       soldCheck:     e.soldCheck || old.soldCheck,
+      /* A file can give a property a type, or change one it already has, but
+         it cannot take one away by saying nothing: an import with no type
+         column leaves every type exactly as it was. House is stored as the
+         absence of a value, which is why silence and "it is a house" look
+         alike here and the edit form is where a Unit gets corrected back. */
+      ptype: e.ptype || old.ptype,
       /* the filing is a deliberate act and outlives an import, so a file only
          fills these in when they are empty */
       category: (old.category||'').trim() ? old.category : (e.category || old.category),
@@ -5282,11 +5290,12 @@ var MHP_FROM='1980-03', MHP={
     };
   }
   var MERGED_FIELDS = ['purchasePrice','purchaseDate','soldPrice','soldDate',
-                       'soldVerified','soldLink','soldCheck','category','note'];
+                       'soldVerified','soldLink','soldCheck','ptype','category','note'];
   var FIELD_NAMES = { purchasePrice:'purchase price', purchaseDate:'purchase date',
                       soldPrice:'sold price', soldDate:'sold date',
                       soldVerified:'verified by', soldLink:'link',
-                      soldCheck:'sold check', category:'capital city', note:'note' };
+                      soldCheck:'sold check', ptype:'property type',
+                      category:'capital city', note:'note' };
   /* An update overwrites a figure that is already there, so reviewing one means
      seeing what it was as well as what it becomes. "1 to update" tells you
      nothing you can check. */
@@ -5295,7 +5304,10 @@ var MHP_FROM='1980-03', MHP={
     MERGED_FIELDS.forEach(function(k){
       var a = old[k] == null ? '' : old[k], b = m[k] == null ? '' : m[k];
       if (String(a) === String(b)) return;
-      var fmt = /Price$/.test(k) ? function(v){ return v === '' ? '—' : aud(Number(v)); }
+      /* "House → Unit", not "— → U". The letter is how it is stored; the word
+         is what somebody approving the import is being asked about. */
+      var fmt = k === 'ptype'    ? function(v){ return ptypeLabel(ptypeOf({ ptype: v })); }
+              : /Price$/.test(k) ? function(v){ return v === '' ? '—' : aud(Number(v)); }
                                  : function(v){ return v === '' ? '—' : String(v); };
       out.push(FIELD_NAMES[k] + ': ' + fmt(a) + ' → ' + fmt(b));
     });
