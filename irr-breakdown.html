@@ -859,11 +859,13 @@ td.pd .src-link:hover{color:var(--text)}
 /* Wide tables scroll sideways rather than wrapping, because a number split
    across two lines stops reading as a number. */
 /* ── growth comparison ──
-   One bar, not two. The market is a BENCHMARK, not a second series, so it is
-   drawn as a reference rule the way a grid line is; the band between the bar
-   and the rule is the gap itself. Two coloured bars would have needed a second
-   categorical hue, and the only brand colour that separates cleanly from teal
-   for a colour-blind reader is cobalt, which shouts on every screen. */
+   One bar, not two. The market is the bar - the ground the book is measured
+   against - and where Performance Property landed is a rule drawn across it;
+   the band between them is the gap itself. Two coloured bars would have needed
+   a second categorical hue, and the only brand colour that separates cleanly
+   from teal for a colour-blind reader is cobalt, which shouts on every screen.
+   Teal belongs to Performance Property everywhere else in this tool, so it
+   follows PPA onto the rule and the bar takes the neutral. */
 .gc-ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-4);
   margin-bottom:var(--sp-3)}
 .gc-ctl{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
@@ -876,17 +878,17 @@ td.pd .src-link:hover{color:var(--text)}
 .gc-tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--border)}
 .gc-ticklab{position:absolute;bottom:-18px;transform:translateX(-50%);font-size:11px;
   line-height:15px;color:var(--faint);white-space:nowrap}
-.gc-bar{position:absolute;left:0;top:24px;height:24px;background:var(--accent);
+.gc-bar{position:absolute;left:0;top:24px;height:24px;background:var(--muted);
   border-radius:0 4px 4px 0;z-index:1}
 .gc-span{position:absolute;top:24px;height:24px;z-index:2}
 .gc-span.ahead{background:rgba(113,179,87,.45)}
 .gc-span.behind{background:rgba(231,35,71,.30)}
-.gc-rule{position:absolute;top:20px;bottom:1px;width:2px;background:var(--muted);z-index:3}
+.gc-rule{position:absolute;top:20px;bottom:1px;width:2px;background:var(--accent);z-index:3}
 /* centred on the rule, the rule ran straight through the text */
 .gc-rulelab{position:absolute;top:0;font-size:11px;line-height:15px;font-weight:700;
-  color:var(--muted);white-space:nowrap;z-index:3}
+  color:var(--text);white-space:nowrap;z-index:3}
 .gc-barlab{position:absolute;top:24px;height:24px;display:flex;align-items:center;
-  padding-left:9px;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;z-index:4}
+  padding-left:9px;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;z-index:4}
 
 .gc-all{font-size:12px;min-width:720px}
 .gc-all th,.gc-all td{white-space:nowrap}
@@ -4463,12 +4465,12 @@ var MHP_FROM='1980-03', MHP={
     h += '<div class="gc-track">' +
       '<div class="gc-span ' + (ahead ? 'ahead' : 'behind') + '" style="left:' +
         Math.min(xp, xm) + '%;width:' + Math.abs(xp - xm) + '%"></div>' +
-      '<div class="gc-bar" style="width:' + xp + '%"></div>' +
-      '<div class="gc-barlab" style="left:' + xp + '%">' + gpct(cur.ppa) + '</div>' +
-      '<div class="gc-rule" style="left:' + xm + '%"></div>' +
-      '<div class="gc-rulelab" style="left:' + xm + '%;transform:' +
-        (xm > 80 ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)') + '">market ' +
-        gpct(cur.mkt) + '</div>' +
+      '<div class="gc-bar" style="width:' + xm + '%"></div>' +
+      '<div class="gc-barlab" style="left:' + xm + '%">market ' + gpct(cur.mkt) + '</div>' +
+      '<div class="gc-rule" style="left:' + xp + '%"></div>' +
+      '<div class="gc-rulelab" style="left:' + xp + '%;transform:' +
+        (xp > 80 ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)') + '">PPA ' +
+        gpct(cur.ppa) + '</div>' +
       ticks + '<div class="gc-axis"></div></div>';
 
     /* ── the numbers ── */
