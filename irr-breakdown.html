@@ -4284,12 +4284,14 @@ var MHP_FROM='1980-03', MHP={
      takes the median of those, so a mixed set is no harder than a pure one. */
   var GC_METHODS = [
     ['A', 'Price first', 'Median price first',
-     'The median price is found first, and the month is the one that price falls in.'],
+     'The median price comes first: the month is the one the median-priced property ' +
+     'transacted in, and the market is read there.'],
     ['B', 'Every month', 'Every month',
-     'No single month &mdash; the median of the market across every month we transacted in.'],
+     'No single month: every property is read against the market in its own month, ' +
+     'and the figure here is the median of those.'],
     ['C', 'Date first',  'Median date first',
-     'The median month is calculated from all eligible months, separate from the ' +
-     'properties&rsquo; median price, and the market figure is that month&rsquo;s median price.']
+     'The month comes first: the median of all eligible months, worked out on its own ' +
+     'with no reference to the median price, and the market is read there.']
   ];
   var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
   var gcState = { type:'All', method:'A' };
@@ -4499,9 +4501,9 @@ var MHP_FROM='1980-03', MHP={
     /* ── every combination for this city ── */
     h += '<h3 class="ov-sub">Every combination</h3>' +
       '<div class="mkt-wrap"><table class="mini gc-all"><thead><tr>' +
-      '<th scope="col">Type</th><th scope="col" class="num">Sold</th>' +
+      '<th scope="col">Type</th><th scope="col" class="num">Properties</th>' +
       '<th scope="col">Method</th>' +
-      '<th scope="col" class="num">Bought</th><th scope="col" class="num">Sold in</th>' +
+      '<th scope="col" class="num">Bought</th><th scope="col" class="num">Sold</th>' +
       '<th scope="col" class="num">Market growth</th>' +
       '<th scope="col" class="num">PPA growth</th>' +
       '<th scope="col" class="num">Gap</th></tr></thead><tbody>';
@@ -4525,7 +4527,7 @@ var MHP_FROM='1980-03', MHP={
     h += '</tbody></table></div>';
 
     h += '<p class="count-line">Sold properties only, on the filters the Register ' +
-      'is set to. A property still held has no sale price, so including them would ' +
+      'is set to. Properties still held have no sale price, so including them would ' +
       'set a purchase median drawn from the whole book against a sale median drawn ' +
       'from part of it &mdash; two different sets of properties, and a growth figure ' +
       'that is not like-for-like. Houses read against the house series, units against ' +
