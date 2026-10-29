@@ -884,26 +884,27 @@ td.pd .src-link:hover{color:var(--text)}
 .gc-why-tail{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .gc-why-tail strong{display:inline;margin:0;font-size:inherit;line-height:inherit;
   letter-spacing:0;text-transform:none}
-.gc-track{position:relative;height:78px;margin:var(--sp-4) 8px var(--sp-6)}
-.gc-axis{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--border)}
-.gc-tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--border)}
-.gc-ticklab{position:absolute;bottom:-18px;transform:translateX(-50%);font-size:11px;
+/* One bar each on a shared axis: name, bar, figure. It reads the same whether
+   we are ahead or behind, which the fill-against-target version did not. */
+.gc-bars{margin:var(--sp-4) 0 var(--sp-6)}
+.gc-brow{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) 86px;
+  align-items:center;gap:var(--sp-3);margin-bottom:6px}
+.gc-bname{font-size:12px;line-height:16px;font-weight:600;text-align:right;
+  color:var(--muted);min-width:0}
+.gc-btrack{position:relative;height:20px;background:var(--bg);border-radius:4px}
+.gc-bbar{position:absolute;left:0;top:0;height:20px;border-radius:0 4px 4px 0}
+.gc-bbar.mkt{background:var(--muted);opacity:.5}
+.gc-bbar.ppa{background:var(--accent)}
+.gc-bval{font-size:13px;line-height:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.gc-bticks{position:relative;height:17px}
+.gc-axis{position:absolute;left:0;right:0;top:0;height:1px;background:var(--border)}
+.gc-tick{position:absolute;top:0;width:1px;height:4px;background:var(--border)}
+.gc-ticklab{position:absolute;top:6px;transform:translateX(-50%);font-size:11px;
   line-height:15px;color:var(--faint);white-space:nowrap}
-/* the market: the distance that had to be covered */
-.gc-mkt{position:absolute;left:0;top:24px;height:24px;z-index:1;
-  background:rgba(var(--accent-rgb),.22);border-radius:0 4px 4px 0}
-/* us, filling it - square-ended, because something always continues past it */
-.gc-fill{position:absolute;left:0;top:24px;height:24px;z-index:2;background:var(--accent)}
-/* and past the end of the bar when we got further */
-.gc-over{position:absolute;top:24px;height:24px;z-index:2;
-  background:var(--money-pos);border-radius:0 4px 4px 0}
-/* Both labels sit OFF the bar - PPA above, market below. On the bar, each
-   would land on a fill whose colour depends on the result, and no one ink is
-   legible on solid teal, on green and on a 22% tint. */
-.gc-ppalab{position:absolute;top:0;font-size:11px;line-height:15px;font-weight:700;
-  color:var(--text);white-space:nowrap;z-index:4}
-.gc-mktlab{position:absolute;top:52px;font-size:11px;line-height:15px;font-weight:700;
-  color:var(--muted);white-space:nowrap;z-index:4}
+@media (max-width:620px){
+  .gc-brow{grid-template-columns:minmax(0,1fr) 86px;gap:var(--sp-2) var(--sp-3)}
+  .gc-bname{grid-column:1 / -1;text-align:left}
+}
 
 /* houses and units sit under the line they belong to, indented and quieter -
    the line above them is the one a reader is meant to land on first */
@@ -4658,21 +4659,20 @@ var MHP_FROM='1980-03', MHP={
                '<div class="gc-ticklab" style="left:' + x(v) + '%">' +
                Math.round(v * 100) + '%</div>';
     }
-    /* A label hanging off the right edge of the track gets clipped, so near
-       the end it hangs off its own left instead. */
-    var hang = function(v){
-      return v > 80 ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)';
+    var bar = function(name, cls, w, val, valCls){
+      return '<div class="gc-brow">' +
+        '<div class="gc-bname">' + name + '</div>' +
+        '<div class="gc-btrack"><div class="gc-bbar ' + cls +
+          '" style="width:' + w + '%"></div></div>' +
+        '<div class="gc-bval ' + (valCls || '') + '">' + val + '</div></div>';
     };
-    h += '<div class="gc-track">' +
-      '<div class="gc-mkt" style="width:' + xm + '%"></div>' +
-      '<div class="gc-fill" style="width:' + Math.min(xp, xm) + '%"></div>' +
-      (ahead ? '<div class="gc-over" style="left:' + xm + '%;width:' +
-        (xp - xm) + '%"></div>' : '') +
-      '<div class="gc-ppalab" style="left:' + xp + '%;transform:' + hang(xp) + '">PPA ' +
-        gpct(cur.ppa) + '</div>' +
-      '<div class="gc-mktlab" style="left:' + xm + '%;transform:' + hang(xm) + '">market ' +
-        gpct(cur.mkt) + '</div>' +
-      ticks + '<div class="gc-axis"></div></div>';
+    h += '<div class="gc-bars">' +
+      bar(esc(cityLabel()) + ' &middot; the market', 'mkt', xm, gpct(cur.mkt), '') +
+      bar('Performance Property', 'ppa', xp, gpct(cur.ppa), ahead ? 'pos' : 'neg') +
+      '<div class="gc-brow"><div></div>' +
+        '<div class="gc-bticks">' + ticks + '<div class="gc-axis"></div></div>' +
+        '<div></div></div>' +
+      '</div>';
 
     /* ── the numbers ── */
     h += '<div class="mkt-wrap"><table class="mini"><thead><tr>' +
