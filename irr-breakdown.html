@@ -4655,6 +4655,70 @@ var MHP_FROM='1980-03', MHP={
       '</tbody></table></div>';
 
 
+    /* ── the per-property median ──
+       A different question from the one above, answered on the same set. */
+    h += '<h3 class="ov-sub">Median of property growth</h3>';
+    (function(){
+      var cut = gcOfType(all, gcState.type);
+      var medOf = function(list, k){
+        var v = [];
+        list.forEach(function(d){
+          var x = d[k];
+          if (x !== null && x !== undefined && isFinite(x)) v.push(x);
+        });
+        return v.length ? median(v) : null;
+      };
+      var line = function(label, list, ourKey, themKey, gapKey, note){
+        if (!list.length) {
+          return '<tr><th scope="row">' + label + '</th>' +
+            '<td class="num">0</td><td class="num" colspan="4">' +
+            '<span class="muted">' + note + '</span></td></tr>';
+        }
+        var g = medOf(list, gapKey);
+        var beat = 0;
+        list.forEach(function(d){ if (d[gapKey] >= 0) beat++; });
+        return '<tr><th scope="row">' + label + '</th>' +
+          '<td class="num">' + list.length + '</td>' +
+          '<td class="num">' + gpct(medOf(list, ourKey)) + '</td>' +
+          '<td class="num">' + gpct(medOf(list, themKey)) + '</td>' +
+          '<td class="num"><strong><span class="' +
+            (g !== null && g >= 0 ? 'pos' : 'neg') + '">' + gsign(g) + '</span></strong></td>' +
+          '<td class="num">' + beat + ' of ' + list.length + '</td></tr>';
+      };
+      var withCouncil = cut.filter(function(d){ return d.vsLgaTotal !== null; });
+      var noCouncil = cut.length - withCouncil.length;
+
+      h += '<div class="mkt-wrap"><table class="mini"><thead><tr>' +
+        '<th scope="col">Against</th>' +
+        '<th scope="col" class="num">Properties</th>' +
+        '<th scope="col" class="num">Median PPA growth</th>' +
+        '<th scope="col" class="num">Median benchmark growth</th>' +
+        '<th scope="col" class="num">Median gap</th>' +
+        '<th scope="col" class="num">Beat it</th>' +
+        '</tr></thead><tbody>' +
+        line('The market &middot; ' + esc(cityLabel()), cut,
+             'ourTotal', 'mktTotal', 'vsMktTotal', 'nothing to compare') +
+        line('Its own council', withCouncil,
+             'ourTotal', 'lgaTotal', 'vsLgaTotal',
+             'no council figure for any of these properties') +
+        '</tbody></table></div>';
+
+      h += '<p class="count-line">Every property scored on <strong>its own ' +
+        'months</strong>, then the middle score taken &mdash; so a fifteen-year ' +
+        'hold and a three-year one count once each. This does not move when the ' +
+        'method above changes: the methods choose which months to read <em>one ' +
+        'pair of medians</em> on, and nothing here reads a median price at all.</p>' +
+        '<p class="count-line">The <strong>Median gap</strong> is the middle of the ' +
+        'per-property gaps &mdash; not the difference between the two columns ' +
+        'beside it, which is a different statistic and nobody&rsquo;s result. ' +
+        'The council row covers fewer properties' +
+        (noCouncil ? ' &mdash; <strong>' + noCouncil + '</strong> of these ' +
+          (noCouncil === 1 ? 'has' : 'have') +
+          ' no council figure, either because the address resolves to no council ' +
+          'or because that council has no Cotality reading for one of those months' : '') +
+        '.</p>';
+    })();
+
     /* ── every combination for this city ── */
     h += '<h3 class="ov-sub">Every combination</h3>' +
       '<div class="mkt-wrap"><table class="mini gc-all"><thead><tr>' +
