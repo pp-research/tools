@@ -4704,14 +4704,16 @@ var MHP_FROM='1980-03', MHP={
               function(x){
                 var note = serNote(x.c);
                 return esc(cityLabel()) + ' &middot; the market' +
+                  ' <span class="muted">(All)</span>' +
                   (note ? '<div class="vs-parts vs-wrap">' + note + '</div>' : '');
               }) +
          trio(function(x, cls, label){ return moneyRow(x, cls, label, 'ppa'); },
-              function(x){ return 'Performance Property' +
+              function(x){ return 'Performance Property' + ' <span class="muted">(All)</span>' +
                 '<div class="vs-parts">' + (x.c ? x.c.n : 0) + ' sold propert' +
                 (x.c && x.c.n === 1 ? 'y' : 'ies') + ' only</div>'; }) +
          byType.map(function(x, i){
-           return gapRow(x, i ? 'gc-subrow' : 'is-total', i ? x.label : 'Gap');
+           return gapRow(x, i ? 'gc-subrow' : 'is-total',
+                         i ? x.label : 'Gap <span class="muted">(All)</span>');
          }).join('') +
       '</tbody></table></div>';
 
@@ -4765,9 +4767,9 @@ var MHP_FROM='1980-03', MHP={
         '<th scope="col" class="num">Median gap</th>' +
         '<th scope="col" class="num">Beat it</th>' +
         '</tr></thead><tbody>' +
-        band('The market &middot; ' + esc(cityLabel()),
+        band('The market &middot; ' + esc(cityLabel()) + ' <span class="muted">(All)</span>',
              function(){ return true; }, 'mktTotal', 'vsMktTotal', 'nothing to compare') +
-        band('Its own council', hasCouncil,
+        band('Its own council <span class="muted">(All)</span>', hasCouncil,
              'lgaTotal', 'vsLgaTotal', 'no council figure for these') +
         '</tbody></table></div>';
 
