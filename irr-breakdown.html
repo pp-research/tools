@@ -873,10 +873,13 @@ td.pd .src-link:hover{color:var(--text)}
 .gc-ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-4);
   margin-bottom:var(--sp-3)}
 .gc-ctl{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
-/* The selected method says what it measures, on the same line as the toggle
-   that chose it. It wraps to its own line when the row runs out of room. */
-.gc-why{flex:1 1 280px;min-width:0;margin:0;font-size:12px;line-height:17px;
-  color:var(--faint)}
+/* The selected method, explained under both toggles. Beside them it had room
+   for a sentence; here it has room to be checked. */
+.gc-why{margin:0 0 var(--sp-4);padding:11px 13px;background:var(--well);
+  border:1px solid var(--border);border-radius:var(--r-md);
+  font-size:12px;line-height:18px;color:var(--muted)}
+.gc-why strong{display:block;margin-bottom:4px;font-size:11px;line-height:15px;
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
 .gc-track{position:relative;height:78px;margin:var(--sp-4) 8px var(--sp-6)}
 .gc-axis{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--border)}
 .gc-tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--border)}
@@ -4294,14 +4297,28 @@ var MHP_FROM='1980-03', MHP={
      takes the median of those, so a mixed set is no harder than a pure one. */
   var GC_METHODS = [
     ['A', 'Price first', 'Median price first',
-     'The median price comes first: the month is the one the median-priced property ' +
-     'transacted in, and the market is read there.'],
+     'The price picks the month. Sort the properties by purchase price, find the one ' +
+     'sitting on the median, and take its own purchase month &mdash; where several ' +
+     'share that price, the earliest-dated of them. The Cotality median for that month ' +
+     'is the market at purchase. The sale side is worked out the same way but ' +
+     'separately, from the median sale price, so the two readings usually come from ' +
+     'two different properties. Each is read on its own property&rsquo;s city and its ' +
+     'own line: a house against the house series, a unit against the unit series.'],
     ['B', 'Date first',  'Median date first',
-     'The month comes first: the median of all eligible months, worked out on its own ' +
-     'with no reference to the median price, and the market is read there.'],
+     'The months pick themselves, and price plays no part. Sort every purchase month ' +
+     'in the set and take the middle one &mdash; an even count takes the earlier of ' +
+     'the two middles, because a midpoint between two months is a day nothing happened ' +
+     'on. The Cotality median for that month is the market at purchase, read on the ' +
+     'line matching the property that transacted in it. The sale side is the same, ' +
+     'using sale months.'],
     ['C', 'Every month', 'Every month',
-     'No single month: every property is read against the market in its own month, ' +
-     'and the figure here is the median of those.']
+     'There is no single month. Every property is read against the Cotality median for ' +
+     'its <em>own</em> purchase month, on its own line, and the market at purchase is ' +
+     'the median of all those readings; the sale side is the same with sale months. ' +
+     'Because each property is read on the series that matches it, this is the only ' +
+     'method that never has to choose between the house line and the unit line for a ' +
+     'mixed set &mdash; but the figure is a median of dollar values, not of months, so ' +
+     'there is no date to show.']
   ];
   var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
   var gcState = { type:'All', method:'A' };
@@ -4444,13 +4461,19 @@ var MHP_FROM='1980-03', MHP={
             (gcState.method === m[0] ? 'true' : 'false') + '">' + m[0] +
             ' &middot; ' + m[1] + '</button>';
         }).join('') + '</div></div>' +
-      '<p class="gc-why">' + (function(){
-        for (var k = 0; k < GC_METHODS.length; k++) {
-          if (GC_METHODS[k][0] === gcState.method) return GC_METHODS[k][3];
-        }
-        return '';
-      })() + '</p>' +
       '</div>';
+
+    /* Under both toggles, and before the no-figure branch below - the method
+       is worth explaining even when this particular cut has nothing to show. */
+    h += '<div class="gc-why">' + (function(){
+      for (var k = 0; k < GC_METHODS.length; k++) {
+        if (GC_METHODS[k][0] === gcState.method) {
+          return '<strong>Method ' + GC_METHODS[k][0] + ' &middot; ' +
+                 GC_METHODS[k][2] + '</strong>' + GC_METHODS[k][3];
+        }
+      }
+      return '';
+    })() + '</div>';
 
     if (!cur || cur.gap === null) {
       h += '<p class="count-line">No market figure for this combination &mdash; ' +
