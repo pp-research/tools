@@ -924,6 +924,9 @@ table.mini tbody th{font-weight:600;color:var(--text)}
 table.mini tbody tr:last-child th,table.mini tbody tr:last-child td{border-bottom:0}
 .vs-parts{margin-top:2px;font-size:11px;line-height:14px;font-weight:400;
   color:var(--muted);white-space:nowrap}
+/* the council line carries a NAME as well as two figures, and some councils
+   are long enough to push the table sideways on one row */
+.vs-parts.vs-wrap{white-space:normal}
 /* Open · Edit · Archive · Delete as one row of equal controls. Open is a text
    button and the other three are icons; left alone they are inline-block and
    inline-flex sitting on a shared baseline, which put Open 2px taller and 3px
@@ -1259,6 +1262,8 @@ details .body strong{color:var(--text)}
                 <label for="regView-r">Returns</label>
                 <input type="radio" name="regView" id="regView-m" value="market">
                 <label for="regView-m">vs Market</label>
+                <input type="radio" name="regView" id="regView-l" value="lga">
+                <label for="regView-l">vs Council</label>
               </div>
               <button type="button" class="btn-primary btn-sm" id="btnAddOpen">+ Add properties</button>
               <button type="button" class="btn-ghost btn-sm" id="btnPropsCsv">Export CSV</button>
@@ -1889,6 +1894,7 @@ details .body strong{color:var(--text)}
 <script src="irr-breakdown-engine.js?v=2"></script>
 <!-- which council each suburb is in; see the file for where it comes from -->
 <script src="suburb-lga.js?v=1"></script>
+<script src="lga-median.js?v=1"></script>
 <!-- The RP Data check, carried as text so the browser never runs it here. The
      Sold check tab reads it out, substitutes the city and the sheet address
      from this browser's own settings, and builds the bookmarklet from that.
@@ -3766,7 +3772,10 @@ window.stopCheck=false;
      somebody comparing against the market is doing it for a while. */
   var REGVIEW_KEY = 'pp-irr-regview-v1';
   var regView = 'returns';
-  try { if (localStorage.getItem(REGVIEW_KEY) === 'market') regView = 'market'; } catch (e) {}
+  try {
+    var rv = localStorage.getItem(REGVIEW_KEY);
+    if (rv === 'market' || rv === 'lga') regView = rv;
+  } catch (e) {}
   var sortKey = null, sortDir = -1;   // -1 desc, 1 asc
   try {
     var ss = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
@@ -3873,6 +3882,43 @@ window.stopCheck=false;
   /* `city` is the property's OWN city. It used to be read from activeCity,
      which agreed with the property in every view that showed one city at a
      time and silently disagreed in any view that did not. */
+  /* ── the council series ──
+     lga-median.js, built to the same shape as MHP above: one array per
+     council per type from PP_LGA_FROM, 0 meaning no figure. Nothing is
+     carried past the end of a series and nothing falls back to the capital
+     city - at council level a missing month is missing, and a figure
+     borrowed from somewhere else would not be the council's. */
+  function lgaSeries(council, type){
+    var M = window.PP_LGA;
+    if (!M || !council) return null;
+    var c = M[council];
+    if (!c) return null;
+    var t = String(type || '').toUpperCase().charAt(0);
+    if (t === 'D') return null;        /* no line for land, as with the city */
+    return (t === 'U') ? c.U : c.H;
+  }
+  function lgaLook(council, date, type){
+    var a = lgaSeries(council, type);
+    if (!a || !a.length || !date || !isFinite(date.getTime())) return null;
+    var from = String(window.PP_LGA_FROM || '').split('-');
+    if (from.length < 2) return null;
+    var i = (date.getUTCFullYear() - Number(from[0])) * 12 +
+            (date.getUTCMonth() + 1 - Number(from[1]));
+    if (i < 0 || i >= a.length) return null;
+    var v = a[i];
+    return (typeof v === 'number' && v > 0) ? v : null;
+  }
+  /* Which council a property sits in, from the same suburb map the register
+     already checks spellings against. */
+  function lgaOf(e){
+    var sub = tidy(splitAddr(e.name).suburb || '');
+    if (!sub) return '';
+    return baselineCouncil(sub, (e.category || '').trim() || activeCity);
+  }
+  function lgaOn(raw, type, council){
+    var t = dayStamp(raw);
+    return t === null ? null : lgaLook(council, new Date(t), type);
+  }
   function mhpOn(raw, type, city){
     var t = dayStamp(raw);
     return t === null ? { v:null, carried:0 }
@@ -3882,6 +3928,7 @@ window.stopCheck=false;
     var d = { e:e, irr:null, net:null, hold:null, held:isHeld(e),
               mkBuy:null, mkSell:null, vsMkt:null, ourCagr:null, mktCagr:null,
               ourTotal:null, mktTotal:null, vsMktTotal:null,
+              lga:'', lgaBuy:null, lgaSell:null, lgaTotal:null, vsLgaTotal:null,
               mkBuyCarried:0, mkSellCarried:0 };
     if (d.held) return d;          /* nothing to discount until there is a sale */
     try {
@@ -3909,6 +3956,19 @@ window.stopCheck=false;
         d.ourTotal = e.soldPrice / e.purchasePrice - 1;
         d.mktTotal = d.mkSell / d.mkBuy - 1;
         d.vsMktTotal = d.ourTotal - d.mktTotal;
+      }
+      /* The same question asked of the property's own council. Separate from
+         the city figures above: a property can have one and not the other,
+         and the view that shows each says so on its own terms. */
+      d.lga = lgaOf(e);
+      if (d.lga) {
+        d.lgaBuy  = lgaOn(e.purchaseDate, pt, d.lga);
+        d.lgaSell = lgaOn(e.soldDate,     pt, d.lga);
+        if (d.lgaBuy && d.lgaSell &&
+            Number(e.purchasePrice) > 0 && Number(e.soldPrice) > 0) {
+          d.lgaTotal = d.lgaSell / d.lgaBuy - 1;
+          d.vsLgaTotal = (e.soldPrice / e.purchasePrice - 1) - d.lgaTotal;
+        }
       }
     } catch (err) {}
     return d;
@@ -5057,7 +5117,10 @@ var MHP_FROM='1980-03', MHP={
         /* The displayed figure, not the annualised one it used to rank by —
            a column that sorts on a number it is not showing is a column that
            looks broken. */
-        vsMkt:    function(d){ return d.vsMktTotal; }
+        vsMkt:    function(d){ return d.vsMktTotal; },
+        lgaBuy:   function(d){ return d.lgaBuy; },
+        lgaSell:  function(d){ return d.lgaSell; },
+        vsLga:    function(d){ return d.vsLgaTotal; }
       }[sortKey];
       data.sort(function(a,b){
         var x = get(a), y = get(b);
@@ -5130,6 +5193,18 @@ var MHP_FROM='1980-03', MHP={
             (d.vsMktTotal === null ? '' :
               '<div class="vs-parts">PPA '+pct(d.ourTotal)+' &middot; Mkt '+pct(d.mktTotal)+'</div>')+
             '</td>'
+          : regView === 'lga'
+          ? '<td class="num sw">'+(d.lgaBuy ? aud(d.lgaBuy) : dash)+'</td>'+
+            '<td class="num sw">'+(d.lgaSell ? aud(d.lgaSell) : dash)+'</td>'+
+            '<td class="num sw sw3"><strong>'+(d.vsLgaTotal === null ? dash :
+              '<span class="'+(d.vsLgaTotal >= 0 ? 'pos' : 'neg')+'">'+
+                (d.vsLgaTotal >= 0 ? '+' : '') + (d.vsLgaTotal * 100).toFixed(2) + '%</span>')+
+            '</strong>'+
+            (d.vsLgaTotal === null
+              ? (d.lga ? '<div class="vs-parts vs-wrap">'+esc(d.lga)+'</div>' : '')
+              : '<div class="vs-parts vs-wrap">PPA '+pct(d.ourTotal)+' &middot; '+
+                esc(d.lga)+' '+pct(d.lgaTotal)+'</div>')+
+            '</td>'
           : '<td class="num sw">'+hold+'</td><td class="num sw">'+net+'</td>'+
             '<td class="num sw sw3"><strong>'+irr+'</strong></td>')+
         /* Open · Archive · Delete, in that order: the two you reach for often
@@ -5168,6 +5243,10 @@ var MHP_FROM='1980-03', MHP={
       { key:'mkBuy',  label:'Market at purchase', cls:'num sw' },
       { key:'mkSell', label:'Market at sale',     cls:'num sw' },
       { key:'vsMkt',  label:'vs Market',          cls:'num sw sw3' }
+    ] : regView === 'lga' ? [
+      { key:'lgaBuy',  label:'Council at purchase', cls:'num sw' },
+      { key:'lgaSell', label:'Council at sale',     cls:'num sw' },
+      { key:'vsLga',   label:'vs Council',          cls:'num sw sw3' }
     ] : [
       { key:'hold', label:'Hold',       cls:'num sw' },
       { key:'net',  label:'Net profit', cls:'num sw' },
@@ -5188,7 +5267,26 @@ var MHP_FROM='1980-03', MHP={
     var shown = data.map(function(d){ return d.e.id; });
     var onNow = shown.filter(function(id){ return picked.indexOf(id) >= 0; }).length;
 
-    $('propsBody').innerHTML = '<div class="tbl-scroll short"><table><thead><tr>'+
+    /* A column of dashes with no explanation reads as a broken feature. This
+       says which it is: how many rows got a council figure, and what stopped
+       the rest - no council for the address, or a council with no figure for
+       that month. */
+    var lgaNote = '';
+    if (regView === 'lga') {
+      var got = 0, noCouncil = 0, noFigure = 0;
+      data.forEach(function(d){
+        if (d.vsLgaTotal !== null) { got++; return; }
+        if (!d.lga) noCouncil++; else noFigure++;
+      });
+      lgaNote = '<p class="count-line"><strong>' + got + ' of ' + data.length +
+        '</strong> compared against their own council' +
+        (noCouncil ? ' &middot; ' + noCouncil + ' with no council for the address' : '') +
+        (noFigure ? ' &middot; ' + noFigure +
+          ' in a council with no figure for one of those months' : '') +
+        '. Cotality publishes nothing for a quarter under 30 sales, which at ' +
+        'council level leaves the smaller ones thin, units most of all.</p>';
+    }
+    $('propsBody').innerHTML = lgaNote + '<div class="tbl-scroll short"><table><thead><tr>'+
       '<th scope="col" class="pick-all"><input type="checkbox" id="selAll"'+
         (onNow && onNow === shown.length ? ' checked' : '')+
         ' aria-label="Select every property shown"></th>'+
@@ -7855,10 +7953,14 @@ var MHP_FROM='1980-03', MHP={
   /* The markup ships with Returns checked; the remembered choice has to be
      put back on the control, or the register shows one view while the
      switch claims the other. */
-  (function(){ var el = $('regView-' + (regView === 'market' ? 'm' : 'r')); if (el) el.checked = true; })();
+  (function(){
+    var el = $('regView-' + (regView === 'market' ? 'm' : regView === 'lga' ? 'l' : 'r'));
+    if (el) el.checked = true;
+  })();
   Array.prototype.forEach.call(document.querySelectorAll('input[name="regView"]'), function(el){
     el.addEventListener('change', function(){
-      regView = (radioVal('regView') === 'market') ? 'market' : 'returns';
+      var v = radioVal('regView');
+      regView = (v === 'market' || v === 'lga') ? v : 'returns';
       try { localStorage.setItem(REGVIEW_KEY, regView); } catch (e) {}
       renderProps();
     });
