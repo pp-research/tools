@@ -4381,12 +4381,12 @@ var MHP_FROM='1980-03', MHP={
      'figure. The sale side is the same, using sale dates.'],
     ['C', 'Every month', 'Every month',
      'There is no single month. Every property is read against the Cotality median for ' +
-     'its <em>own</em> purchase month, on its own line, and the market at purchase is ' +
-     'the median of all those readings; the sale side is the same with sale months. ' +
-     'Because each property is read on the series that matches it, this is the only ' +
-     'method that never has to choose between the house line and the unit line for a ' +
-     'mixed set &mdash; but the figure is a median of dollar values, not of months, so ' +
-     'there is no date to show.']
+     'its <em>own</em> purchase month, and the market at purchase is the median of all ' +
+     'those readings; the sale side is the same with sale months. On the Houses and ' +
+     'Units rows each property is read on the line that matches it; on the All row ' +
+     'every one is read on the house line, as it is under the other two methods, so ' +
+     'the three All figures mean the same thing. The figure is a median of dollar ' +
+     'values, not of months, so there is no date to show.']
   ];
   var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
   var gcState = { type:'All', method:'A' };
@@ -4441,9 +4441,9 @@ var MHP_FROM='1980-03', MHP={
   }
   /* The market across a span of months, counting every month in it rather
      than only the two ends. */
-  function gcSpanLevel(sp){
+  function gcSpanLevel(sp, force){
     if (!sp) return { v:null, n:0 };
-    var city = (sp.e.category || '').trim(), t = ptypeOf(sp.e);
+    var city = (sp.e.category || '').trim(), t = force || ptypeOf(sp.e);
     var a = new Date(sp.lo), b = new Date(sp.hi);
     var d = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1));
     var end = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), 1);
@@ -4469,7 +4469,11 @@ var MHP_FROM='1980-03', MHP={
     return gcSpanOf((n % 2) ? [pairs[i]] : [pairs[i], pairs[i + 1]]);
   }
 
-  function gcCombo(list, method){
+  /* `force` pins which Cotality line to read - 'H' for the All row, so a
+     mixed set is never scored unit-at-purchase against house-at-sale.
+     Left unset, each side reads the line of the property that anchors it,
+     which is right for a cut that is already all one kind. */
+  function gcCombo(list, method, force){
     if (!list.length) return null;
     var buy  = medianRow(list, 'purchasePrice', 'purchaseDate');
     var sell = medianRow(list, 'soldPrice', 'soldDate');
@@ -4481,8 +4485,9 @@ var MHP_FROM='1980-03', MHP={
         list.forEach(function(d){
           var t = dayStamp(d.e[dk]);
           if (t === null) return;
-          var r = mhpLook((d.e.category || '').trim(), new Date(t), ptypeOf(d.e));
-          if (r.v !== null) { vals.push(r.v); kinds[ptypeOf(d.e)] = 1; }
+          var ser = force || ptypeOf(d.e);
+          var r = mhpLook((d.e.category || '').trim(), new Date(t), ser);
+          if (r.v !== null) { vals.push(r.v); kinds[ser] = 1; }
         });
         var k = Object.keys(kinds);
         return { v: vals.length ? median(vals) : null, from:null, to:null,
@@ -4491,16 +4496,17 @@ var MHP_FROM='1980-03', MHP={
       if (method === 'A') {
         var spA = gcSpan(m);
         if (!spA) return { v:null, from:null, to:null, n:0, ser:'' };
-        var levA = gcSpanLevel(spA);
+        var levA = gcSpanLevel(spA, force);
         return { v: levA.v, from: spA.lo, to: spA.hi, n: levA.n,
-                 ser: ptypeOf(spA.e) };
+                 ser: force || ptypeOf(spA.e) };
       }
       /* B: the window comes from the dates instead of the prices, and is then
          read exactly as A reads its own. */
       var sp = gcMidSpan(list, dk);
       if (!sp) return { v:null, from:null, to:null, n:0, ser:'' };
-      var lev = gcSpanLevel(sp);
-      return { v: lev.v, from: sp.lo, to: sp.hi, n: lev.n, ser: ptypeOf(sp.e) };
+      var lev = gcSpanLevel(sp, force);
+      return { v: lev.v, from: sp.lo, to: sp.hi, n: lev.n,
+               ser: force || ptypeOf(sp.e) };
     };
 
     var mb = readAt('purchaseDate', buy), ms = readAt('soldDate', sell);
@@ -4554,14 +4560,15 @@ var MHP_FROM='1980-03', MHP={
     };
 
 
-    var cur = gcCombo(gcOfType(all, gcState.type), gcState.method);
+    var cur = gcCombo(gcOfType(all, gcState.type), gcState.method,
+                      gcState.type === 'All' ? 'H' : null);
 
     /* The axis is scaled to the whole city, not to the selection, so switching
        type or method moves the bar instead of redrawing the ruler under it. */
     var top = 0;
     GC_TYPES.forEach(function(t){
       GC_METHODS.forEach(function(m){
-        var c = gcCombo(gcOfType(all, t[0]), m[0]);
+        var c = gcCombo(gcOfType(all, t[0]), m[0], t[0] === 'All' ? 'H' : null);
         if (!c) return;
         if (c.ppa !== null && isFinite(c.ppa)) top = Math.max(top, c.ppa);
         if (c.mkt !== null && isFinite(c.mkt)) top = Math.max(top, c.mkt);
@@ -4640,7 +4647,9 @@ var MHP_FROM='1980-03', MHP={
     /* Each benchmark on three lines: the whole city, then its houses and its
        units. byType[0] is ALL and is the figure the bar above is drawn from. */
     var byType = GC_TYPES.map(function(t){
-      return { key:t[0], label:t[1], c:gcCombo(gcOfType(all, t[0]), gcState.method) };
+      return { key:t[0], label:t[1],
+               c:gcCombo(gcOfType(all, t[0]), gcState.method,
+                         t[0] === 'All' ? 'H' : null) };
     });
     var moneyRow = function(x, cls, label, priceKey) {
       var c = x.c;
