@@ -4723,6 +4723,61 @@ var MHP_FROM='1980-03', MHP={
       '</tbody></table></div>';
 
 
+    /* ── how All reads against the two series ──
+       A temporary comparison: same months, three ways of reading the market. */
+    (function(){
+      var allList = gcOfType(all, 'All');
+      if (!allList.length) return;
+      var cH = byType[0].c;                                   /* house line */
+      var cU = gcCombo(allList, gcState.method, 'U');         /* unit line  */
+      if (!cH || !cU) return;
+      var nH = 0, nU = 0;
+      allList.forEach(function(d){
+        var t = ptypeOf(d.e);
+        if (t === 'H') nH++; else if (t === 'U') nU++;
+      });
+      var mix = (nH + nU) ? nH / (nH + nU) : 1;
+      var blend = function(a, b, w){
+        return (a > 0 && b > 0) ? (a * w + b * (1 - w)) : null;
+      };
+      var ppaG = cH.ppa;
+      var row = function(label, buy, sell, note){
+        var g = (buy > 0 && sell > 0) ? (sell / buy - 1) : null;
+        var gap = (g === null || ppaG === null) ? null : ppaG - g;
+        return '<tr><th scope="row">' + label +
+          (note ? '<div class="vs-parts vs-wrap">' + note + '</div>' : '') + '</th>' +
+          '<td class="num">' + (buy > 0 ? aud(buy) : '&mdash;') + '</td>' +
+          '<td class="num">' + (sell > 0 ? aud(sell) : '&mdash;') + '</td>' +
+          '<td class="num">' + gpct(g) + '</td>' +
+          '<td class="num"><strong><span class="' +
+            (gap !== null && gap >= 0 ? 'pos' : 'neg') + '">' + gsign(gap) +
+          '</span></strong></td></tr>';
+      };
+      h += '<h3 class="ov-sub">How All reads against the two series</h3>' +
+        '<div class="mkt-wrap"><table class="mini"><thead><tr>' +
+        '<th scope="col">Market read as</th>' +
+        '<th scope="col" class="num">At purchase</th>' +
+        '<th scope="col" class="num">At sale</th>' +
+        '<th scope="col" class="num">Market growth</th>' +
+        '<th scope="col" class="num">Gap</th></tr></thead><tbody>' +
+        row('House line only', cH.buyMkt, cH.sellMkt, 'what the tab does now') +
+        row('Average of both lines',
+            blend(cH.buyMkt, cU.buyMkt, 0.5), blend(cH.sellMkt, cU.sellMkt, 0.5),
+            'house and unit medians, weighted equally') +
+        row('Weighted by the mix',
+            blend(cH.buyMkt, cU.buyMkt, mix), blend(cH.sellMkt, cU.sellMkt, mix),
+            nH + ' house' + (nH === 1 ? '' : 's') + ' to ' + nU + ' unit' +
+            (nU === 1 ? '' : 's') + ' &mdash; ' + Math.round(mix * 100) + '% house') +
+        '</tbody></table></div>' +
+        '<p class="count-line">Performance Property grew <strong>' + gpct(ppaG) +
+        '</strong> either way &mdash; only the market side moves, so the Gap column ' +
+        'is the whole comparison. All three read the <strong>same months</strong>; ' +
+        'the months come from the prices or the dates, never from the series. ' +
+        'The unit line is read at the All row&rsquo;s own months, which is not the ' +
+        'same as the Units row above &mdash; that one uses the unit properties&rsquo; ' +
+        'own months.</p>';
+    })();
+
     /* ── the per-property median ──
        A different question from the one above, answered on the same set. */
     h += '<h3 class="ov-sub">Median of property growth</h3>';
