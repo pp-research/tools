@@ -880,6 +880,10 @@ td.pd .src-link:hover{color:var(--text)}
   font-size:12px;line-height:18px;color:var(--muted)}
 .gc-why strong{display:block;margin-bottom:4px;font-size:11px;line-height:15px;
   font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
+/* the standing rule sits under the method's own description, not inside it */
+.gc-why-tail{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.gc-why-tail strong{display:inline;margin:0;font-size:inherit;line-height:inherit;
+  letter-spacing:0;text-transform:none}
 .gc-track{position:relative;height:78px;margin:var(--sp-4) 8px var(--sp-6)}
 .gc-axis{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--border)}
 .gc-tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--border)}
@@ -4360,35 +4364,27 @@ var MHP_FROM='1980-03', MHP={
      takes the median of those, so a mixed set is no harder than a pure one. */
   var GC_METHODS = [
     ['A', 'Price first', 'Median price first',
-     'The price picks the months. Sort the properties by purchase price and find the ' +
-     'median. Where one property sits on it, the market at purchase is the Cotality ' +
-     'median for its own purchase month. Where several do &mdash; or where an even ' +
-     'count makes the median the average of the two prices either side of it &mdash; ' +
-     'the market is read for <em>every</em> month from the first of their dates to ' +
-     'the last, and averaged, rather than read at one month picked out of the span. ' +
-     'The sale side is worked out the same way but separately, from the median sale ' +
-     'price, so the two spans usually come from two different properties. The series ' +
-     'is the one matching whichever property falls nearest the middle of the span: ' +
-     'a house against the house series, a unit against the unit series.'],
+     'The market median price is based on which months the property median prices ' +
+     'fall in. If a median price came from two different months, the market is the ' +
+     'average of every month across that span. Purchase and sale are worked out ' +
+     'separately.'],
     ['B', 'Date first',  'Median date first',
-     'The dates pick the months, and price plays no part. Sort every purchase date in ' +
-     'the set and take the middle one; where the count is even there is no single ' +
-     'middle, so <em>both</em> of the two middle dates are taken. The market is then ' +
-     'read for every month from the first of those dates to the last and averaged &mdash; ' +
-     'the same way method A reads its own window, so the two differ only in what ' +
-     'chooses the window, never in how it is read. An odd count, or two middles ' +
-     'landing in the same month, gives a span of one month and reads as a single ' +
-     'figure. The sale side is the same, using sale dates.'],
+     'The months come from the dates, not the prices: the middle purchase date and ' +
+     'the middle sold date. If there are two middle dates, the market is the average ' +
+     'of every month across that span. Read the same way as A &mdash; only what ' +
+     'chooses the months is different.'],
     ['C', 'Every month', 'Every month',
-     'There is no single month. Every property is read against the Cotality median for ' +
-     'its <em>own</em> purchase month, and the market at purchase is the median of all ' +
-     'those readings; the sale side is the same with sale months. On the Houses and ' +
-     'Units rows each property is read on the line that matches it; on the All row ' +
-     'every one is read on the house line, as it is under the other two methods, so ' +
-     'the three All figures mean the same thing. The figure is a median of dollar ' +
-     'values, not of months, so there is no date to show.']
+     'No single month. Every property is read against the market in its <em>own</em> ' +
+     'month, and the figure is the median of all those readings. Because it is a ' +
+     'median of prices rather than of months, there is no date to show.']
   ];
   var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
+  /* True under every method, so it is said once rather than three times -
+     repeated in each description it would read as something that varies. */
+  var GC_SCOPE_NOTE =
+    '<div class="gc-why-tail"><strong>All</strong> is always measured against the ' +
+    'Cotality median <strong>house</strong> price. <strong>Houses</strong> and ' +
+    '<strong>Units</strong> are measured against their own house or unit series.</div>';
   var gcState = { type:'All', method:'A' };
   var gcStale = true;
 
@@ -4604,7 +4600,7 @@ var MHP_FROM='1980-03', MHP={
       for (var k = 0; k < GC_METHODS.length; k++) {
         if (GC_METHODS[k][0] === gcState.method) {
           return '<strong>Method ' + GC_METHODS[k][0] + ' &middot; ' +
-                 GC_METHODS[k][2] + '</strong>' + GC_METHODS[k][3];
+                 GC_METHODS[k][2] + '</strong>' + GC_METHODS[k][3] + GC_SCOPE_NOTE;
         }
       }
       return '';
