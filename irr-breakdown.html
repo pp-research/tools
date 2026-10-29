@@ -4580,7 +4580,9 @@ var MHP_FROM='1980-03', MHP={
         '<td class="num">' + gspan(cur, 'sell') + '</td>' +
         '<td class="num">' + aud(cur.sellMkt) + '</td>' +
         '<td class="num"><strong>' + gpct(cur.mkt) + '</strong></td></tr>' +
-      '<tr><th scope="row">Performance Property</th>' +
+      '<tr><th scope="row">Performance Property' +
+        '<div class="vs-parts">' + cur.n + ' sold propert' +
+        (cur.n === 1 ? 'y' : 'ies') + ' only &mdash; nothing still held</div></th>' +
         '<td class="num">' + gspan(cur, 'buy') + '</td>' +
         '<td class="num">' + aud(cur.buyPpa) + '</td>' +
         '<td class="num">' + gspan(cur, 'sell') + '</td>' +
