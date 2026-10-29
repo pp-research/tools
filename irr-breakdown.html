@@ -859,13 +859,17 @@ td.pd .src-link:hover{color:var(--text)}
 /* Wide tables scroll sideways rather than wrapping, because a number split
    across two lines stops reading as a number. */
 /* ── growth comparison ──
-   One bar, not two. The market is the bar - the ground the book is measured
-   against - and where Performance Property landed is a rule drawn across it;
-   the band between them is the gap itself. Two coloured bars would have needed
-   a second categorical hue, and the only brand colour that separates cleanly
-   from teal for a colour-blind reader is cobalt, which shouts on every screen.
-   Teal belongs to Performance Property everywhere else in this tool, so it
-   follows PPA onto the rule and the bar takes the neutral. */
+   A fill against a target. The faded teal bar is the market - the distance
+   that had to be covered - and solid teal fills it to wherever Performance
+   Property actually got. One hue, two weights: no second categorical colour
+   to separate, which matters because the only brand colour that reads clearly
+   against teal for a colour-blind viewer is cobalt, and cobalt shouts.
+
+   Past the end of the bar the fill continues in green. That is the whole
+   answer to "what if we beat it": nothing is capped, nothing is rescaled, and
+   the teal-to-green boundary is the market level, so the bar needs no separate
+   marker to say where the target was. Short of it, the boundary is where the
+   solid stops and the faded carries on - unfilled reads as shortfall. */
 .gc-ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-4);
   margin-bottom:var(--sp-3)}
 .gc-ctl{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
@@ -878,17 +882,21 @@ td.pd .src-link:hover{color:var(--text)}
 .gc-tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--border)}
 .gc-ticklab{position:absolute;bottom:-18px;transform:translateX(-50%);font-size:11px;
   line-height:15px;color:var(--faint);white-space:nowrap}
-.gc-bar{position:absolute;left:0;top:24px;height:24px;background:var(--muted);
-  border-radius:0 4px 4px 0;z-index:1}
-.gc-span{position:absolute;top:24px;height:24px;z-index:2}
-.gc-span.ahead{background:rgba(113,179,87,.45)}
-.gc-span.behind{background:rgba(231,35,71,.30)}
-.gc-rule{position:absolute;top:20px;bottom:1px;width:2px;background:var(--accent);z-index:3}
-/* centred on the rule, the rule ran straight through the text */
-.gc-rulelab{position:absolute;top:0;font-size:11px;line-height:15px;font-weight:700;
-  color:var(--text);white-space:nowrap;z-index:3}
-.gc-barlab{position:absolute;top:24px;height:24px;display:flex;align-items:center;
-  padding-left:9px;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;z-index:4}
+/* the market: the distance that had to be covered */
+.gc-mkt{position:absolute;left:0;top:24px;height:24px;z-index:1;
+  background:rgba(var(--accent-rgb),.22);border-radius:0 4px 4px 0}
+/* us, filling it - square-ended, because something always continues past it */
+.gc-fill{position:absolute;left:0;top:24px;height:24px;z-index:2;background:var(--accent)}
+/* and past the end of the bar when we got further */
+.gc-over{position:absolute;top:24px;height:24px;z-index:2;
+  background:var(--money-pos);border-radius:0 4px 4px 0}
+/* Both labels sit OFF the bar - PPA above, market below. On the bar, each
+   would land on a fill whose colour depends on the result, and no one ink is
+   legible on solid teal, on green and on a 22% tint. */
+.gc-ppalab{position:absolute;top:0;font-size:11px;line-height:15px;font-weight:700;
+  color:var(--text);white-space:nowrap;z-index:4}
+.gc-mktlab{position:absolute;top:52px;font-size:11px;line-height:15px;font-weight:700;
+  color:var(--muted);white-space:nowrap;z-index:4}
 
 .gc-all{font-size:12px;min-width:720px}
 .gc-all th,.gc-all td{white-space:nowrap}
@@ -4462,15 +4470,20 @@ var MHP_FROM='1980-03', MHP={
                '<div class="gc-ticklab" style="left:' + x(v) + '%">' +
                Math.round(v * 100) + '%</div>';
     }
+    /* A label hanging off the right edge of the track gets clipped, so near
+       the end it hangs off its own left instead. */
+    var hang = function(v){
+      return v > 80 ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)';
+    };
     h += '<div class="gc-track">' +
-      '<div class="gc-span ' + (ahead ? 'ahead' : 'behind') + '" style="left:' +
-        Math.min(xp, xm) + '%;width:' + Math.abs(xp - xm) + '%"></div>' +
-      '<div class="gc-bar" style="width:' + xm + '%"></div>' +
-      '<div class="gc-barlab" style="left:' + xm + '%">market ' + gpct(cur.mkt) + '</div>' +
-      '<div class="gc-rule" style="left:' + xp + '%"></div>' +
-      '<div class="gc-rulelab" style="left:' + xp + '%;transform:' +
-        (xp > 80 ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)') + '">PPA ' +
+      '<div class="gc-mkt" style="width:' + xm + '%"></div>' +
+      '<div class="gc-fill" style="width:' + Math.min(xp, xm) + '%"></div>' +
+      (ahead ? '<div class="gc-over" style="left:' + xm + '%;width:' +
+        (xp - xm) + '%"></div>' : '') +
+      '<div class="gc-ppalab" style="left:' + xp + '%;transform:' + hang(xp) + '">PPA ' +
         gpct(cur.ppa) + '</div>' +
+      '<div class="gc-mktlab" style="left:' + xm + '%;transform:' + hang(xm) + '">market ' +
+        gpct(cur.mkt) + '</div>' +
       ticks + '<div class="gc-axis"></div></div>';
 
     /* ── the numbers ── */
