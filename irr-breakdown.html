@@ -9266,13 +9266,27 @@ var MHP_FROM='1980-03', MHP={
      computes from it, so it does not travel; neither does savedAt. Stripping
      both keeps the document well inside its 256 KiB ceiling with 314
      properties and room for the notes she types. */
+  /* Every field an entry can carry. The shared copy is rebuilt from this list,
+     so a field missing here is a field DELETED from the book the next time
+     anyone saves - the local copy pushes a body without it, and the next
+     applyShared() hands that body back as the truth.
+     That is exactly how every property type was lost: ptype was not on the
+     list, so one edit stripped the types off the whole book. Add to this list
+     when you add a field to an entry. */
+  var SHARE_FIELDS = ['name','category','ptype','purchasePrice','purchaseDate',
+    'soldPrice','soldDate','soldVerified','soldLink','soldCheck','note',
+    'outsideReason'];
   function shareBody(){
     var list = loadProps().map(function(e){
-      var o = { id:e.id, name:e.name, purchasePrice:e.purchasePrice,
-                purchaseDate:e.purchaseDate, soldPrice:e.soldPrice, soldDate:e.soldDate };
-      if ((e.category||'').trim()) o.category = e.category;
-      if ((e.note||'').trim()) o.note = e.note;
-      if (e.outside) { o.outside = 1; if ((e.outsideReason||'').trim()) o.outsideReason = e.outsideReason; }
+      var o = { id:e.id };
+      SHARE_FIELDS.forEach(function(k){
+        var v = e[k];
+        if (v === undefined || v === null) return;
+        if (typeof v === 'string' && !v.trim()) return;
+        o[k] = v;
+      });
+      /* kept as a flag rather than the raw value, as it always has been */
+      if (e.outside) o.outside = 1; else delete o.outsideReason;
       return o;
     });
     var a = {};
