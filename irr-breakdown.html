@@ -4371,12 +4371,10 @@ var MHP_FROM='1980-03', MHP={
     ['B', 'Date first',  'Median date first',
      'The months come from the dates, not the prices: the middle purchase date and ' +
      'the middle sold date. If there are two middle dates, the market is the average ' +
-     'of every month across that span. Read the same way as A &mdash; only what ' +
-     'chooses the months is different.'],
+     'of every month across that span.'],
     ['C', 'Every month', 'Every month',
-     'No single month. Every property is read against the market in its <em>own</em> ' +
-     'month, and the figure is the median of all those readings. Because it is a ' +
-     'median of prices rather than of months, there is no date to show.']
+     'We take all eligible months and get the Cotality median price of each. ' +
+     'Then find the median of these prices.']
   ];
   var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
   /* True under every method, so it is said once rather than three times -
@@ -4384,7 +4382,9 @@ var MHP_FROM='1980-03', MHP={
   var GC_SCOPE_NOTE =
     '<div class="gc-why-tail"><strong>All</strong> is always measured against the ' +
     'Cotality median <strong>house</strong> price. <strong>Houses</strong> and ' +
-    '<strong>Units</strong> are measured against their own house or unit series.</div>';
+    '<strong>Units</strong> are measured against their own house or unit series. ' +
+    'Performance Property numbers are computed only from the <strong>sold</strong> ' +
+    'and <strong>not archived</strong> properties.</div>';
   var gcState = { type:'All', method:'A' };
   var gcStale = true;
 
