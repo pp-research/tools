@@ -859,6 +859,49 @@ td.pd .src-link:hover{color:var(--text)}
 /* Ten columns of figures: scrolls sideways rather than wrapping, because a
    number split across two lines stops reading as a number. The row labels
    stay put so a column is still identifiable once it has scrolled. */
+/* ── growth comparison ──
+   One bar, not two. The market is a BENCHMARK, not a second series, so it is
+   drawn as a reference rule the way a grid line is; the band between the bar
+   and the rule is the gap itself. Two coloured bars would have needed a second
+   categorical hue, and the only brand colour that separates cleanly from teal
+   for a colour-blind reader is cobalt, which shouts on every screen. */
+.gc-ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-4);
+  margin-bottom:var(--sp-3)}
+.gc-ctl{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.gc-verdict{display:flex;align-items:flex-start;gap:var(--sp-4);flex-wrap:wrap}
+.gc-num{font-size:38px;line-height:1;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+.gc-say{flex:1 1 300px;min-width:0;color:var(--muted);font-size:13px;line-height:19px;margin:0}
+.gc-say strong{color:var(--text);font-weight:700}
+.gc-track{position:relative;height:78px;margin:var(--sp-4) 8px var(--sp-6)}
+.gc-axis{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--border)}
+.gc-tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--border)}
+.gc-ticklab{position:absolute;bottom:-18px;transform:translateX(-50%);font-size:11px;
+  line-height:15px;color:var(--faint);white-space:nowrap}
+.gc-bar{position:absolute;left:0;top:24px;height:24px;background:var(--accent);
+  border-radius:0 4px 4px 0;z-index:1}
+.gc-span{position:absolute;top:24px;height:24px;z-index:2}
+.gc-span.ahead{background:rgba(113,179,87,.45)}
+.gc-span.behind{background:rgba(231,35,71,.30)}
+.gc-rule{position:absolute;top:20px;bottom:1px;width:2px;background:var(--muted);z-index:3}
+/* centred on the rule, the rule ran straight through the text */
+.gc-rulelab{position:absolute;top:0;font-size:11px;line-height:15px;font-weight:700;
+  color:var(--muted);white-space:nowrap;z-index:3}
+.gc-barlab{position:absolute;top:24px;height:24px;display:flex;align-items:center;
+  padding-left:9px;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;z-index:4}
+.gc-methods{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:var(--sp-2);margin-bottom:var(--sp-3)}
+.gc-mcell{text-align:left;background:var(--well);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:10px 12px;cursor:pointer;font:inherit;color:var(--text)}
+.gc-mcell:hover{border-color:var(--border-hover)}
+.gc-mcell[aria-pressed="true"]{border-color:var(--accent);background:rgba(var(--accent-rgb),.10)}
+.gc-mcell:focus-visible{outline:2px solid var(--accent-300);outline-offset:2px}
+.gc-mk{font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--muted)}
+.gc-mv{font-size:19px;line-height:25px;font-weight:800}
+.gc-md{font-size:12px;line-height:16px;color:var(--faint)}
+.gc-all{font-size:12px;min-width:720px}
+.gc-all th,.gc-all td{white-space:nowrap}
+.gc-all tbody tr.on td,.gc-all tbody tr.on th[scope=row]{background:rgba(var(--accent-rgb),.10)}
 .mkt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:var(--sp-2) 0}
 .mkt-table{font-size:12px;min-width:1000px}
 .mkt-table th,.mkt-table td{white-space:nowrap;vertical-align:top}
@@ -1132,8 +1175,9 @@ details .body strong{color:var(--text)}
       </div>
 
       <div class="tabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
         <button type="button" role="tab" id="tab-register" aria-controls="panel-register" aria-selected="true">Register <span class="badge" id="badgeProps">0</span></button>
+        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
+        <button type="button" role="tab" id="tab-growth" aria-controls="panel-growth" aria-selected="false" tabindex="-1">Growth comparison</button>
         <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
         <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check</button>
         <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
@@ -1267,6 +1311,19 @@ details .body strong{color:var(--text)}
                than the book with no control in sight to explain it. -->
           <p class="count-line" id="ovScope"></p>
           <div id="ovBody"></div>
+        </section>
+      </div>
+
+      <!-- ══════════ GROWTH COMPARISON — the aggregate question ══════════
+           The median we bought at and the median we sold at, against the
+           market on the months those medians sit in. Scoped to the city tab
+           like everything else. -->
+      <div class="panel" id="panel-growth" role="tabpanel" aria-labelledby="tab-growth" hidden>
+        <section class="card" aria-labelledby="gc-h">
+          <div class="card-head">
+            <h2 id="gc-h">Growth comparison</h2>
+          </div>
+          <div id="gcBody"></div>
         </section>
       </div>
 
@@ -3494,7 +3551,7 @@ window.stopCheck=false;
 
   /* ══════════ TABS ══════════ */
   /* order matches the strip left to right, so the arrow keys track it */
-  var TABS = ['overview','register','calc','check','history'];
+  var TABS = ['register','overview','growth','calc','check','history'];
   function showTab(name){
     /* An armed bin must not survive you leaving the tab and coming back: the
        second click would land on a page you had stopped reading. */
@@ -3510,6 +3567,7 @@ window.stopCheck=false;
        names them in its scope line rather than leaving them invisible. */
     if (name === 'history') showHistory();   // always the live log, never a stale one
     if (name === 'overview' && ovStale) drawOverview();
+    if (name === 'growth' && gcStale) drawGrowth();
     /* The how-to shows itself the first time this browser opens the tab —
        it is a setup you do once, and a window you have to go looking for
        is one nobody reads. After that it waits behind its button. */
@@ -4201,7 +4259,12 @@ var MHP_FROM='1980-03', MHP={
      screen and simply marked out of date the rest of the time. */
   function markOverviewStale(){
     ovStale = true;
+    /* The growth tab reads the same book through the same filters, so it goes
+       out of date at exactly the same moments. One hook, two tabs - a second
+       set of call sites would be a second thing to forget. */
+    gcStale = true;
     if (currentTab() === 'overview') drawOverview();
+    if (currentTab() === 'growth') drawGrowth();
   }
   function drawOverview(){
     var all = cityProps(loadProps());
@@ -4217,6 +4280,306 @@ var MHP_FROM='1980-03', MHP={
     ovStale = false;
     renderOverview(data, spread, scoped.length);
   }
+  /* ══════════ GROWTH COMPARISON ══════════
+     Aggregate, not per-property. Take the median purchase price and the median
+     sale price across the set, work out which MONTHS those medians sit in, and
+     read the Cotality series there. The three methods differ only in how that
+     month is chosen, and they disagree by up to twelve points — which is the
+     reason all three are on screen at once rather than one being picked
+     quietly behind the scenes.
+
+     Where the market is read for a mixed Houses-and-units set: methods A and C
+     rest on one anchor property — the one holding the median price, or the one
+     holding the median date — and that property's own series is the one read.
+     Method B needs no anchor: it reads every property on its own line and
+     takes the median of those, so a mixed set is no harder than a pure one. */
+  var GC_METHODS = [
+    ['A', 'Price first', 'Median price first',
+     'The median price is found first, and the month is the one that price falls in.'],
+    ['B', 'Every month', 'Every month',
+     'No single month &mdash; the median of the market across every month we transacted in.'],
+    ['C', 'Date first',  'Median date first',
+     'The median month is found first, and the market figure is that month&rsquo;s median price.']
+  ];
+  var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
+  var gcState = { type:'All', method:'A' };
+  var gcStale = true;
+
+  /* The same eligible set the Overview's market table uses: filters applied,
+     sold only, and both months inside the series. Nothing sold can be set
+     against the market without all three. */
+  function gcRows(){
+    var f = readFilters(), opts = readOpts();
+    return filterEntries(cityProps(loadProps()), f)
+      .map(function(e){ return deriveOne(e, opts); })
+      .filter(function(d){ return passDerived(d, f, true); })
+      .filter(function(d){ return d.vsMkt !== null; });
+  }
+  function gcOfType(list, t){
+    if (t === 'All') return list;
+    return list.filter(function(d){ return ptypeOf(d.e) === t; });
+  }
+
+  /* The anchor behind a median price: the earliest-dated of the properties
+     sitting on it. `at` is already sorted ascending with undated last, so the
+     first one with a date is it. */
+  function gcAnchor(m){
+    if (!m || !m.at) return null;
+    for (var i = 0; i < m.at.length; i++) if (m.at[i].t !== null) return m.at[i];
+    return null;
+  }
+  /* The middle month. An even count takes the LOWER of the two middles, not a
+     midpoint between them — a midpoint is a day nothing happened on, and the
+     market has no figure for it. */
+  function gcMidDay(list, dk){
+    var days = list.map(function(d){ return dayStamp(d.e[dk]); })
+      .filter(function(v){ return v !== null; })
+      .sort(function(a, b){ return a - b; });
+    if (!days.length) return null;
+    return days[Math.ceil(days.length / 2) - 1];
+  }
+
+  function gcCombo(list, method){
+    if (!list.length) return null;
+    var buy  = medianRow(list, 'purchasePrice', 'purchaseDate');
+    var sell = medianRow(list, 'soldPrice', 'soldDate');
+    if (!buy || !sell || !(buy.median > 0) || !(sell.median > 0)) return null;
+
+    var readAt = function(dk, m){
+      if (method === 'B') {
+        var vals = [];
+        list.forEach(function(d){
+          var t = dayStamp(d.e[dk]);
+          if (t === null) return;
+          var r = mhpLook((d.e.category || '').trim(), new Date(t), ptypeOf(d.e));
+          if (r.v !== null) vals.push(r.v);
+        });
+        return { v: vals.length ? median(vals) : null, day:null, n: vals.length };
+      }
+      var a = null;
+      if (method === 'A') {
+        a = gcAnchor(m);
+      } else {
+        var day = gcMidDay(list, dk);
+        if (day !== null) {
+          for (var i = 0; i < list.length; i++) {
+            if (dayStamp(list[i].e[dk]) === day) { a = { e:list[i].e, t:day }; break; }
+          }
+        }
+      }
+      if (!a) return { v:null, day:null, n:0 };
+      var r = mhpLook((a.e.category || '').trim(), new Date(a.t), ptypeOf(a.e));
+      return { v:r.v, day:a.t, n:1, carried:r.carried };
+    };
+
+    var mb = readAt('purchaseDate', buy), ms = readAt('soldDate', sell);
+    var mkt = (mb.v > 0 && ms.v > 0) ? (ms.v / mb.v - 1) : null;
+    var ppa = sell.median / buy.median - 1;
+    return {
+      n: list.length, method: method,
+      buyPpa: buy.median, sellPpa: sell.median,
+      buyMkt: mb.v, sellMkt: ms.v, buyDay: mb.day, sellDay: ms.day,
+      months: (method === 'B') ? Math.min(mb.n, ms.n) : 0,
+      mkt: mkt, ppa: ppa, gap: (mkt === null) ? null : ppa - mkt
+    };
+  }
+
+  function drawGrowth(){
+    gcStale = false;
+    var host = $('gcBody');
+    if (!host) return;
+    var all = gcRows();
+    if (!all.length) {
+      host.innerHTML = '<div class="empty"><h3>Nothing to compare yet</h3>' +
+        '<p>A property needs a purchase, a sale, and months the Cotality series ' +
+        'reaches before it can be set against the market.</p></div>';
+      return;
+    }
+
+    var gpct = function(v){
+      return (v === null || !isFinite(v)) ? '&mdash;' : (v * 100).toFixed(2) + '%';
+    };
+    var gsign = function(v){
+      if (v === null || !isFinite(v)) return '&mdash;';
+      return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+    };
+    var gday = function(t, m){
+      if (m && m.method === 'B') return 'every month';
+      if (t === null || t === undefined) return '&mdash;';
+      var d = new Date(t);
+      return isFinite(d.getTime())
+        ? MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : '&mdash;';
+    };
+
+    var cur = gcCombo(gcOfType(all, gcState.type), gcState.method);
+
+    /* The axis is scaled to the whole city, not to the selection, so switching
+       type or method moves the bar instead of redrawing the ruler under it. */
+    var top = 0;
+    GC_TYPES.forEach(function(t){
+      GC_METHODS.forEach(function(m){
+        var c = gcCombo(gcOfType(all, t[0]), m[0]);
+        if (!c) return;
+        if (c.ppa !== null && isFinite(c.ppa)) top = Math.max(top, c.ppa);
+        if (c.mkt !== null && isFinite(c.mkt)) top = Math.max(top, c.mkt);
+      });
+    });
+    var AX = Math.max(1, Math.ceil((top + 0.08) * 4) / 4);
+    var x = function(v){ return Math.max(0, Math.min(1, v / AX)) * 100; };
+
+    var h = '';
+
+    /* ── the two toggles ── */
+    h += '<div class="gc-ctl-row">' +
+      '<div class="gc-ctl"><span class="seg-label">Type</span>' +
+        '<div class="seg-btns">' + GC_TYPES.map(function(t){
+          return '<button type="button" data-gct="' + t[0] + '" aria-pressed="' +
+            (gcState.type === t[0] ? 'true' : 'false') + '">' + t[1] + '</button>';
+        }).join('') + '</div></div>' +
+      '<div class="gc-ctl"><span class="seg-label">Method</span>' +
+        '<div class="seg-btns">' + GC_METHODS.map(function(m){
+          return '<button type="button" data-gcm="' + m[0] + '" aria-pressed="' +
+            (gcState.method === m[0] ? 'true' : 'false') + '">' + m[0] +
+            ' &middot; ' + m[1] + '</button>';
+        }).join('') + '</div></div>' +
+      '</div>';
+
+    if (!cur || cur.gap === null) {
+      h += '<p class="count-line">No market figure for this combination &mdash; ' +
+           'the months behind it fall outside the series.</p>';
+      host.innerHTML = h;
+      return;
+    }
+
+    var ahead = cur.gap >= 0;
+    var kindWord = gcState.type === 'H' ? 'house'
+                 : gcState.type === 'U' ? 'unit' : 'property';
+
+    /* ── the verdict ── */
+    h += '<div class="gc-verdict">' +
+      '<div class="gc-num ' + (ahead ? 'pos' : 'neg') + '">' + gsign(cur.gap) + '</div>' +
+      '<p class="gc-say">Over the same months, the ' + esc(cityLabel()) + ' median ' +
+      kindWord + ' grew <strong>' + gpct(cur.mkt) + '</strong>. We grew <strong>' +
+      gpct(cur.ppa) + '</strong> &mdash; ' + (ahead ? 'ahead' : 'behind') + ' by <strong>' +
+      Math.abs(cur.gap * 100).toFixed(2) + ' percentage points</strong>, across ' +
+      cur.n + ' propert' + (cur.n === 1 ? 'y' : 'ies') + ' bought and sold.</p></div>';
+
+    /* ── the bar ── */
+    var xp = x(cur.ppa), xm = x(cur.mkt);
+    var ticks = '';
+    for (var v = 0; v <= AX + 1e-9; v += 0.25) {
+      ticks += '<div class="gc-tick" style="left:' + x(v) + '%"></div>' +
+               '<div class="gc-ticklab" style="left:' + x(v) + '%">' +
+               Math.round(v * 100) + '%</div>';
+    }
+    h += '<div class="gc-track">' +
+      '<div class="gc-span ' + (ahead ? 'ahead' : 'behind') + '" style="left:' +
+        Math.min(xp, xm) + '%;width:' + Math.abs(xp - xm) + '%"></div>' +
+      '<div class="gc-bar" style="width:' + xp + '%"></div>' +
+      '<div class="gc-barlab" style="left:' + xp + '%">' + gpct(cur.ppa) + '</div>' +
+      '<div class="gc-rule" style="left:' + xm + '%"></div>' +
+      '<div class="gc-rulelab" style="left:' + xm + '%;transform:' +
+        (xm > 80 ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)') + '">market ' +
+        gpct(cur.mkt) + '</div>' +
+      ticks + '<div class="gc-axis"></div></div>';
+
+    /* ── the numbers ── */
+    h += '<div class="mkt-wrap"><table class="mini"><thead><tr>' +
+      '<th scope="col"></th>' +
+      '<th scope="col" class="num">Median purchase date</th>' +
+      '<th scope="col" class="num">Median purchase price</th>' +
+      '<th scope="col" class="num">Median sold date</th>' +
+      '<th scope="col" class="num">Median sold price</th>' +
+      '<th scope="col" class="num">Growth</th></tr></thead><tbody>' +
+      '<tr><th scope="row">' + esc(cityLabel()) + ' &middot; the market</th>' +
+        '<td class="num">' + gday(cur.buyDay, cur) + '</td>' +
+        '<td class="num">' + aud(cur.buyMkt) + '</td>' +
+        '<td class="num">' + gday(cur.sellDay, cur) + '</td>' +
+        '<td class="num">' + aud(cur.sellMkt) + '</td>' +
+        '<td class="num"><strong>' + gpct(cur.mkt) + '</strong></td></tr>' +
+      '<tr><th scope="row">Performance Property</th>' +
+        '<td class="num">' + gday(cur.buyDay, cur) + '</td>' +
+        '<td class="num">' + aud(cur.buyPpa) + '</td>' +
+        '<td class="num">' + gday(cur.sellDay, cur) + '</td>' +
+        '<td class="num">' + aud(cur.sellPpa) + '</td>' +
+        '<td class="num"><strong>' + gpct(cur.ppa) + '</strong></td></tr>' +
+      '<tr class="is-total"><th scope="row">Gap</th>' +
+        '<td class="num" colspan="4"></td>' +
+        '<td class="num"><strong><span class="' + (ahead ? 'pos' : 'neg') + '">' +
+        gsign(cur.gap) + '</span></strong></td></tr>' +
+      '</tbody></table></div>';
+
+    /* ── does the answer depend on the method? ── */
+    h += '<h3 class="ov-sub">Does the answer depend on the method?</h3>' +
+      '<div class="gc-methods">' + GC_METHODS.map(function(m){
+        var c = gcCombo(gcOfType(all, gcState.type), m[0]);
+        var g = c ? c.gap : null;
+        var up = (g !== null && g >= 0);
+        return '<button type="button" class="gc-mcell" data-gcm="' + m[0] + '" aria-pressed="' +
+          (gcState.method === m[0] ? 'true' : 'false') + '">' +
+          '<div class="gc-mk">Method ' + m[0] + ' &middot; ' + m[2] + '</div>' +
+          '<div class="gc-mv ' + (g === null ? '' : (up ? 'pos' : 'neg')) + '">' +
+            gsign(g) + '</div>' +
+          '<div class="gc-md">' + (!c ? '&mdash;' : m[0] === 'B' ? 'across every month'
+            : gday(c.buyDay, c) + ' to ' + gday(c.sellDay, c)) + '</div></button>';
+      }).join('') + '</div>';
+
+    /* ── every combination for this city ── */
+    h += '<h3 class="ov-sub">Every combination</h3>' +
+      '<div class="mkt-wrap"><table class="mini gc-all"><thead><tr>' +
+      '<th scope="col">Type</th><th scope="col" class="num">Sold</th>' +
+      '<th scope="col">Method</th>' +
+      '<th scope="col" class="num">Bought</th><th scope="col" class="num">Sold in</th>' +
+      '<th scope="col" class="num">Market growth</th>' +
+      '<th scope="col" class="num">PPA growth</th>' +
+      '<th scope="col" class="num">Gap</th></tr></thead><tbody>';
+    GC_TYPES.forEach(function(t){
+      GC_METHODS.forEach(function(m){
+        var c = gcCombo(gcOfType(all, t[0]), m[0]);
+        var on = (gcState.type === t[0] && gcState.method === m[0]);
+        var g = c ? c.gap : null, up = (g !== null && g >= 0);
+        h += '<tr' + (on ? ' class="on"' : '') + '>' +
+          '<th scope="row">' + t[1] + '</th>' +
+          '<td class="num">' + (c ? c.n : 0) + '</td>' +
+          '<td>' + m[0] + ' &middot; ' + m[2] + '</td>' +
+          '<td class="num">' + (c ? gday(c.buyDay, c) : '&mdash;') + '</td>' +
+          '<td class="num">' + (c ? gday(c.sellDay, c) : '&mdash;') + '</td>' +
+          '<td class="num">' + (c ? gpct(c.mkt) : '&mdash;') + '</td>' +
+          '<td class="num">' + (c ? gpct(c.ppa) : '&mdash;') + '</td>' +
+          '<td class="num"><strong><span class="' + (g === null ? '' : (up ? 'pos' : 'neg')) +
+            '">' + gsign(g) + '</span></strong></td></tr>';
+      });
+    });
+    h += '</tbody></table></div>';
+
+    h += '<p class="count-line">Sold properties only, on the filters the Register ' +
+      'is set to. A property still held has no sale price, so including them would ' +
+      'set a purchase median drawn from the whole book against a sale median drawn ' +
+      'from part of it &mdash; two different sets of properties, and a growth figure ' +
+      'that is not like-for-like. Houses read against the house series, units against ' +
+      'the unit series; development sites are left out, because Cotality publishes no ' +
+      'series for land.</p>' +
+      '<p class="count-line">This is the <strong>aggregate</strong> question: the middle ' +
+      'of what we bought against the middle of what we sold. The Overview&rsquo;s ' +
+      '<strong>Against the market</strong> table answers a different one &mdash; every ' +
+      'property scored on its own months and the median of those results taken &mdash; ' +
+      'and the two will not agree. That table is the per-deal score; this one is the ' +
+      'headline a client hears. Quote whichever you mean, and say which.</p>';
+
+    host.innerHTML = h;
+  }
+
+  /* One listener for the panel: the controls are rebuilt on every draw, so
+     binding them individually would mean rebinding them individually. */
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest ? ev.target.closest('[data-gct],[data-gcm]') : null;
+    if (!b || !$('gcBody') || !$('gcBody').contains(b)) return;
+    var t = b.getAttribute('data-gct'), m = b.getAttribute('data-gcm');
+    if (t) gcState.type = t;
+    if (m) gcState.method = m;
+    drawGrowth();
+  });
+
   /* Which kinds Show is set to, shouted. The kind is the thing most easily
      misread off a page of numbers — a median over sold and held is not the
      same figure as a median over sold — so it is the one word in the line
