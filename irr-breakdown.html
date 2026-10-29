@@ -4400,7 +4400,16 @@ var MHP_FROM='1980-03', MHP={
     return filterEntries(cityProps(loadProps()), f)
       .map(function(e){ return deriveOne(e, opts); })
       .filter(function(d){ return passDerived(d, f, true); })
-      .filter(function(d){ return d.vsMkt !== null; });
+      /* Sold and not archived, and priced at both ends so it can sit in both
+         medians. NOT "has a market reading" - that dropped development sites
+         and anything outside the series, which belong in the book even when
+         nothing can be read against them. kindOf is what keeps held
+         properties out now; the market reading used to do it by accident. */
+      .filter(function(d){
+        return kindOf(d.e) === 'sold' &&
+               Number(d.e.purchasePrice) > 0 &&
+               dayStamp(d.e.purchaseDate) !== null;
+      });
   }
   function gcOfType(list, t){
     if (t === 'All') return list;
@@ -4768,14 +4777,18 @@ var MHP_FROM='1980-03', MHP={
         '<th scope="col" class="num">Beat it</th>' +
         '</tr></thead><tbody>' +
         band('The market &middot; ' + esc(cityLabel()) + ' <span class="muted">(All)</span>',
-             function(){ return true; }, 'mktTotal', 'vsMktTotal', 'nothing to compare') +
+             function(d){ return d.vsMktTotal !== null; },
+             'mktTotal', 'vsMktTotal', 'nothing to compare') +
         band('Its own council <span class="muted">(All)</span>', hasCouncil,
              'lgaTotal', 'vsLgaTotal', 'no council figure for these') +
         '</tbody></table></div>';
 
       h += '<p class="count-line">Every property scored on <strong>its own ' +
         'months</strong>, then the middle score taken &mdash; so a fifteen-year ' +
-        'hold and a three-year one count once each. This does not move when the ' +
+        'hold and a three-year one count once each. Only properties that could be ' +
+        'scored are counted, so a row here can be smaller than the same row above: ' +
+        'a development site has prices but no series to be scored against. ' +
+        'This does not move when the ' +
         'method above changes: the methods choose which months to read <em>one ' +
         'pair of medians</em> on, and nothing here reads a median price at all.</p>' +
         '<p class="count-line">The <strong>Median gap</strong> is the middle of the ' +
@@ -4794,9 +4807,13 @@ var MHP_FROM='1980-03', MHP={
       'is set to. Properties still held have no sale price, so including them would ' +
       'set a purchase median drawn from the whole book against a sale median drawn ' +
       'from part of it &mdash; two different sets of properties, and a growth figure ' +
-      'that is not like-for-like. Houses read against the house series, units against ' +
-      'the unit series; development sites are left out, because Cotality publishes no ' +
-      'series for land.</p>' +
+      'that is not like-for-like. <strong>All</strong> is every sold property, ' +
+      'development sites and untyped ones included, read against the median ' +
+      '<strong>house</strong> price. The <strong>Houses</strong> and ' +
+      '<strong>Units</strong> rows cover only those two types and read their own ' +
+      'series, so the two of them do not add up to All. Cotality publishes no line ' +
+      'for land, so a development site has prices here but can never be scored ' +
+      'against its own kind.</p>' +
       '<p class="count-line">This is the <strong>aggregate</strong> question: the middle ' +
       'of what we bought against the middle of what we sold, and the market on those ' +
       'same months. It is not an average of what each deal did &mdash; one median ' +
