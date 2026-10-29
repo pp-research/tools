@@ -940,6 +940,8 @@ table.mini tbody tr:last-child th,table.mini tbody tr:last-child td{border-botto
    inline-flex sitting on a shared baseline, which put Open 2px taller and 3px
    lower than the icons beside it. Same height, same centring, aligned on the
    middle rather than the baseline. */
+/* the moment after a copy: the tick is a result, not a control */
+#propsBody td.acts button.copied{color:var(--money-pos);border-color:transparent}
 #propsBody td.acts button{
   display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
   height:32px;min-height:32px;padding:0 10px;margin-right:3px;
@@ -3403,6 +3405,11 @@ window.stopCheck=false;
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
     '<path d="M21.17 2.83a2.83 2.83 0 0 0-4 0L3 17v4h4L21.17 6.83a2.83 2.83 0 0 0 0-4z"/>'+
     '<path d="M15 5l4 4"/></svg>';
+  /* Lucide "copy" - put this property's address on the clipboard */
+  var COPY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '+
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
+    '<rect x="9" y="9" width="12" height="12" rx="2"/>'+
+    '<path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
   /* take it / leave it, on an import's updates */
   var TICK = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '+
     'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
@@ -3563,6 +3570,48 @@ window.stopCheck=false;
       purchasePrice: Number($('pPrice').value), purchaseDate: $('pDate').value,
       soldPrice: Number($('sPrice').value), soldDate: $('sDate').value
     };
+  }
+
+  /* Says so on the button that was pressed, so a copy made halfway down a long
+     list confirms itself where you are looking rather than at the top of the
+     page. The tick replaces the icon for a moment and goes back on its own. */
+  function copyDone(btn){
+    if (!btn || btn.dataset.copying) return;
+    var was = btn.innerHTML;
+    btn.dataset.copying = '1';
+    btn.innerHTML = TICK;
+    btn.classList.add('copied');
+    setTimeout(function(){
+      btn.innerHTML = was;
+      btn.classList.remove('copied');
+      delete btn.dataset.copying;
+    }, 1100);
+  }
+  /* navigator.clipboard needs a secure context and is not there on a file://
+     copy of this page, so the old selection trick stays as the fallback -
+     the button is no use at all if it quietly does nothing off a web server. */
+  function copyAddress(btn, text){
+    if (!text) return;
+    var ok = function(){ copyDone(btn); };
+    var fallback = function(){
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:-100px;left:0;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        var done = document.execCommand && document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (done) ok();
+        else $('messages').innerHTML = msg('warn','This browser would not let the page copy. Select the address and copy it by hand.');
+      } catch (e) {
+        $('messages').innerHTML = msg('warn','This browser would not let the page copy. Select the address and copy it by hand.');
+      }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, fallback);
+    } else fallback();
   }
 
   /* ══════════ TABS ══════════ */
@@ -5369,7 +5418,12 @@ var MHP_FROM='1980-03', MHP={
         /* Open · Archive · Delete, in that order: the two you reach for often
            come first, and the irreversible one sits on its own at the end
            rather than between them where a mis-aimed click finds it. */
-        '<td class="acts"><button type="button" class="btn-ghost btn-sm" data-open="'+e.id+'">Open</button>'+
+        '<td class="acts">'+
+          /* first, and present even when the book is read-only: copying
+             changes nothing, so it is not a write */
+          '<button type="button" class="btn-ghost btn-sm icon-btn" data-copy="'+e.id+'" '+
+          'aria-label="Copy the address of '+esc(e.name)+'" title="Copy address">'+COPY+'</button>'+
+          '<button type="button" class="btn-ghost btn-sm" data-open="'+e.id+'">Open</button>'+
           (share.canWrite === false ? '' :
            /* straight to the details, without going through the calculation:
               fixing a misspelt suburb should not be a three-step journey */
@@ -8192,6 +8246,11 @@ var MHP_FROM='1980-03', MHP={
          snapping it back on open would contradict the list you just read. */
       // the note belongs in the Result panel, not as a banner over everything
       if (e) { openEntryId = e.id; loadIntoForm(e.name, e, e.category); syncEditBtn(); showTab('calc'); }
+    }
+    if (b.dataset.copy) {
+      var ce = loadProps().filter(function(x){ return x.id === b.dataset.copy; })[0];
+      if (ce) copyAddress(b, String(ce.name || ''));
+      return;
     }
     if (b.dataset.edit) { openEntryId = b.dataset.edit; syncEditBtn(); openEdit(); return; }
     if (b.dataset.aside) { setAside([b.dataset.aside]); return; }
