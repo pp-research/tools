@@ -4297,16 +4297,16 @@ var MHP_FROM='1980-03', MHP={
      takes the median of those, so a mixed set is no harder than a pure one. */
   var GC_METHODS = [
     ['A', 'Price first', 'Median price first',
-     'The price picks the month. Sort the properties by purchase price and find the ' +
-     'median. Where one property sits on it, its own purchase month is the month. ' +
-     'Where several do &mdash; or where an even count makes the median the average of ' +
-     'the two prices either side of it &mdash; the month is the one <em>between</em> ' +
-     'their dates, and the series read is that of whichever of them falls closest to ' +
-     'it. The Cotality median for that month is the market at purchase. The sale side ' +
-     'is worked out the same way but separately, from the median sale price, so the ' +
-     'two readings usually come from two different properties. Each is read on its ' +
-     'own city and its own line: a house against the house series, a unit against ' +
-     'the unit series.'],
+     'The price picks the months. Sort the properties by purchase price and find the ' +
+     'median. Where one property sits on it, the market at purchase is the Cotality ' +
+     'median for its own purchase month. Where several do &mdash; or where an even ' +
+     'count makes the median the average of the two prices either side of it &mdash; ' +
+     'the market is read for <em>every</em> month from the first of their dates to ' +
+     'the last, and averaged, rather than read at one month picked out of the span. ' +
+     'The sale side is worked out the same way but separately, from the median sale ' +
+     'price, so the two spans usually come from two different properties. The series ' +
+     'is the one matching whichever property falls nearest the middle of the span: ' +
+     'a house against the house series, a unit against the unit series.'],
     ['B', 'Date first',  'Median date first',
      'The months pick themselves, and price plays no part. Sort every purchase month ' +
      'in the set and take the middle one &mdash; an even count takes the earlier of ' +
@@ -4345,27 +4345,45 @@ var MHP_FROM='1980-03', MHP={
   /* The anchor behind a median price: the earliest-dated of the properties
      sitting on it. `at` is already sorted ascending with undated last, so the
      first one with a date is it. */
-  function gcAnchor(m){
+  /* The months a median price rests on: first to last, and a property to take
+     the city and the house-or-unit line from. One property on the median ->
+     a span of one month, which is the ordinary case and needs no special
+     handling further down. */
+  function gcSpan(m){
     if (!m || !m.at) return null;
     var dated = m.at.filter(function(x){ return x.t !== null; });
     if (!dated.length) return null;
-    if (dated.length === 1) return dated[0];
-    /* The month between them: the mean of their dates, which for the two
-       properties either side of an even-count median is exactly the midpoint.
-       A midpoint DAY would be a day nothing happened on - the reason this
-       used to take the earliest - but a midpoint MONTH is a month Cotality
-       published a figure for, and a month is all this reads. */
-    var sum = 0;
-    dated.forEach(function(x){ sum += x.t; });
+    var lo = dated[0].t, hi = dated[0].t, sum = 0;
+    dated.forEach(function(x){
+      if (x.t < lo) lo = x.t;
+      if (x.t > hi) hi = x.t;
+      sum += x.t;
+    });
+    /* A span has no type of its own, so the series comes from whichever of
+       the properties sits nearest the middle of it. */
     var mid = sum / dated.length;
-    /* A midpoint has no city and no house-or-unit line, so those come from
-       whichever of the tied properties sits closest to it. */
     var near = dated[0], best = Math.abs(dated[0].t - mid);
     for (var i = 1; i < dated.length; i++) {
       var gapTo = Math.abs(dated[i].t - mid);
       if (gapTo < best) { best = gapTo; near = dated[i]; }
     }
-    return { e: near.e, t: mid };
+    return { lo: lo, hi: hi, e: near.e };
+  }
+  /* The market across a span of months, counting every month in it rather
+     than only the two ends. */
+  function gcSpanLevel(sp){
+    if (!sp) return { v:null, n:0 };
+    var city = (sp.e.category || '').trim(), t = ptypeOf(sp.e);
+    var a = new Date(sp.lo), b = new Date(sp.hi);
+    var d = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1));
+    var end = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), 1);
+    var sum = 0, n = 0, guard = 0;
+    while (d.getTime() <= end && guard++ < 1200) {
+      var r = mhpLook(city, d, t);
+      if (r.v !== null) { sum += r.v; n++; }
+      d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+    }
+    return { v: n ? sum / n : null, n: n };
   }
   /* The middle month. An even count takes the LOWER of the two middles, not a
      midpoint between them — a midpoint is a day nothing happened on, and the
@@ -4393,12 +4411,16 @@ var MHP_FROM='1980-03', MHP={
           var r = mhpLook((d.e.category || '').trim(), new Date(t), ptypeOf(d.e));
           if (r.v !== null) vals.push(r.v);
         });
-        return { v: vals.length ? median(vals) : null, day:null, n: vals.length };
+        return { v: vals.length ? median(vals) : null, from:null, to:null, n: vals.length };
+      }
+      if (method === 'A') {
+        var sp = gcSpan(m);
+        if (!sp) return { v:null, from:null, to:null, n:0 };
+        var lev = gcSpanLevel(sp);
+        return { v: lev.v, from: sp.lo, to: sp.hi, n: lev.n };
       }
       var a = null;
-      if (method === 'A') {
-        a = gcAnchor(m);
-      } else {
+      {
         var day = gcMidDay(list, dk);
         if (day !== null) {
           for (var i = 0; i < list.length; i++) {
@@ -4406,9 +4428,9 @@ var MHP_FROM='1980-03', MHP={
           }
         }
       }
-      if (!a) return { v:null, day:null, n:0 };
+      if (!a) return { v:null, from:null, to:null, n:0 };
       var r = mhpLook((a.e.category || '').trim(), new Date(a.t), ptypeOf(a.e));
-      return { v:r.v, day:a.t, n:1, carried:r.carried };
+      return { v:r.v, from:a.t, to:a.t, n:1, carried:r.carried };
     };
 
     var mb = readAt('purchaseDate', buy), ms = readAt('soldDate', sell);
@@ -4417,7 +4439,8 @@ var MHP_FROM='1980-03', MHP={
     return {
       n: list.length, method: method,
       buyPpa: buy.median, sellPpa: sell.median,
-      buyMkt: mb.v, sellMkt: ms.v, buyDay: mb.day, sellDay: ms.day,
+      buyMkt: mb.v, sellMkt: ms.v,
+      buyFrom: mb.from, buyTo: mb.to, sellFrom: ms.from, sellTo: ms.to,
       months: (method === 'C') ? Math.min(mb.n, ms.n) : 0,
       mkt: mkt, ppa: ppa, gap: (mkt === null) ? null : ppa - mkt
     };
@@ -4442,13 +4465,23 @@ var MHP_FROM='1980-03', MHP={
       if (v === null || !isFinite(v)) return '&mdash;';
       return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
     };
-    var gday = function(t, m){
-      if (m && m.method === 'C') return 'every month';
-      if (t === null || t === undefined) return '&mdash;';
+    var gmon = function(t){
+      if (t === null || t === undefined) return '';
       var d = new Date(t);
       return isFinite(d.getTime())
-        ? MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : '&mdash;';
+        ? MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : '';
     };
+    /* One month reads as a month; a span reads as a span, because that is
+       what the figure beside it was averaged over. */
+    var gspan = function(c, side){
+      if (!c) return '&mdash;';
+      if (c.method === 'C') return 'every month';
+      var lo = gmon(side === 'buy' ? c.buyFrom : c.sellFrom);
+      var hi = gmon(side === 'buy' ? c.buyTo   : c.sellTo);
+      if (!lo) return '&mdash;';
+      return (lo === hi) ? lo : lo + ' &ndash; ' + hi;
+    };
+
 
     var cur = gcCombo(gcOfType(all, gcState.type), gcState.method);
 
@@ -4538,15 +4571,15 @@ var MHP_FROM='1980-03', MHP={
       '<th scope="col" class="num">Median sold price</th>' +
       '<th scope="col" class="num">Growth</th></tr></thead><tbody>' +
       '<tr><th scope="row">' + esc(cityLabel()) + ' &middot; the market</th>' +
-        '<td class="num">' + gday(cur.buyDay, cur) + '</td>' +
+        '<td class="num">' + gspan(cur, 'buy') + '</td>' +
         '<td class="num">' + aud(cur.buyMkt) + '</td>' +
-        '<td class="num">' + gday(cur.sellDay, cur) + '</td>' +
+        '<td class="num">' + gspan(cur, 'sell') + '</td>' +
         '<td class="num">' + aud(cur.sellMkt) + '</td>' +
         '<td class="num"><strong>' + gpct(cur.mkt) + '</strong></td></tr>' +
       '<tr><th scope="row">Performance Property</th>' +
-        '<td class="num">' + gday(cur.buyDay, cur) + '</td>' +
+        '<td class="num">' + gspan(cur, 'buy') + '</td>' +
         '<td class="num">' + aud(cur.buyPpa) + '</td>' +
-        '<td class="num">' + gday(cur.sellDay, cur) + '</td>' +
+        '<td class="num">' + gspan(cur, 'sell') + '</td>' +
         '<td class="num">' + aud(cur.sellPpa) + '</td>' +
         '<td class="num"><strong>' + gpct(cur.ppa) + '</strong></td></tr>' +
       '<tr class="is-total"><th scope="row">Gap</th>' +
@@ -4574,8 +4607,8 @@ var MHP_FROM='1980-03', MHP={
           '<th scope="row">' + t[1] + '</th>' +
           '<td class="num">' + (c ? c.n : 0) + '</td>' +
           '<td>' + m[0] + ' &middot; ' + m[2] + '</td>' +
-          '<td class="num">' + (c ? gday(c.buyDay, c) : '&mdash;') + '</td>' +
-          '<td class="num">' + (c ? gday(c.sellDay, c) : '&mdash;') + '</td>' +
+          '<td class="num">' + (c ? gspan(c, 'buy') : '&mdash;') + '</td>' +
+          '<td class="num">' + (c ? gspan(c, 'sell') : '&mdash;') + '</td>' +
           '<td class="num">' + (c ? gpct(c.mkt) : '&mdash;') + '</td>' +
           '<td class="num">' + (c ? gpct(c.ppa) : '&mdash;') + '</td>' +
           '<td class="num"><strong><span class="' + (g === null ? '' : (up ? 'pos' : 'neg')) +
