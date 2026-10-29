@@ -856,9 +856,8 @@ td.pd .src-link:hover{color:var(--text)}
 /* A small matrix, not eight more cards. Six numbers a row read as a
    comparison when they are in line with each other and as six facts when
    they are in boxes. */
-/* Ten columns of figures: scrolls sideways rather than wrapping, because a
-   number split across two lines stops reading as a number. The row labels
-   stay put so a column is still identifiable once it has scrolled. */
+/* Wide tables scroll sideways rather than wrapping, because a number split
+   across two lines stops reading as a number. */
 /* ── growth comparison ──
    One bar, not two. The market is a BENCHMARK, not a second series, so it is
    drawn as a reference rule the way a grid line is; the band between the bar
@@ -903,13 +902,13 @@ td.pd .src-link:hover{color:var(--text)}
 .gc-all th,.gc-all td{white-space:nowrap}
 .gc-all tbody tr.on td,.gc-all tbody tr.on th[scope=row]{background:rgba(var(--accent-rgb),.10)}
 .mkt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:var(--sp-2) 0}
-.mkt-table{font-size:12px;min-width:1000px}
-.mkt-table th,.mkt-table td{white-space:nowrap;vertical-align:top}
-.mkt-table th[scope=row]{position:sticky;left:0;background:var(--surface);z-index:1;
-  text-align:left;font-weight:400}
-.mkt-table tr.is-total th[scope=row],.mkt-table tr.is-total td{background:var(--well);
+/* The Overview's market comparison table is gone, and the class that styled
+   it went with it. Only the total-row emphasis was worth keeping, repointed
+   at table.mini so the Gap row on the Growth comparison tab still reads as
+   a total. */
+table.mini tr.is-total th[scope=row],table.mini tr.is-total td{background:var(--well);
   font-weight:600}
-.mkt-table tr.is-total th[scope=row]{font-weight:700}
+table.mini tr.is-total th[scope=row]{font-weight:700}
 .ov-sub4{margin:var(--sp-4) 0 var(--sp-2);font-size:12px;line-height:16px;font-weight:700;
   letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 table.mini{width:100%;border-collapse:collapse;margin-bottom:var(--sp-2)}
@@ -4560,11 +4559,12 @@ var MHP_FROM='1980-03', MHP={
       'the unit series; development sites are left out, because Cotality publishes no ' +
       'series for land.</p>' +
       '<p class="count-line">This is the <strong>aggregate</strong> question: the middle ' +
-      'of what we bought against the middle of what we sold. The Overview&rsquo;s ' +
-      '<strong>Against the market</strong> table answers a different one &mdash; every ' +
-      'property scored on its own months and the median of those results taken &mdash; ' +
-      'and the two will not agree. That table is the per-deal score; this one is the ' +
-      'headline a client hears. Quote whichever you mean, and say which.</p>';
+      'of what we bought against the middle of what we sold, and the market on those ' +
+      'same months. It is not an average of what each deal did &mdash; one median ' +
+      'divided by another is nobody&rsquo;s individual result, and a property that ' +
+      'doubled counts here no more heavily than one that barely moved. For the ' +
+      'per-deal score, the Register&rsquo;s <strong>vs Market</strong> view sets each ' +
+      'property against the market on its own months, one row at a time.</p>';
 
     host.innerHTML = h;
   }
@@ -4780,190 +4780,6 @@ var MHP_FROM='1980-03', MHP={
            (sold - nets.length - heldN > 0
               ? ' · ' + (sold - nets.length - heldN) + ' with no sale price' : ''))+
       '</div>';
-
-    /* ── against the market ──
-       A second row rather than three more cards in the first: these are not
-       the book's own figures, they are somebody else's series, and mixing
-       them in would read as though the tool had worked them out.
-       Both months come from the same place the price cards do — the EARLIEST
-       date behind the median price — so the comparison lines up with what the
-       two cards above it say. */
-    var mBuy  = mhpSpread(data, activeCity, 'purchaseDate');
-    var mSell = mhpSpread(data, activeCity, 'soldDate');
-    var mhpBuy = mBuy.median, mhpSell = mSell.median;
-    var monthOf = function(d){
-      return d ? MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : '—';
-    };
-    var mhpNote = function(sp){
-      if (!activeCity) return 'no city selected';
-      if (!MHP[activeCity]) return 'no Cotality series for ' + esc(cityLabel());
-      if (!sp || !sp.n) return 'no months the series reaches';
-      /* Say which line was read. A median taken across both series is a
-         different statistic from one taken across houses, and a note that
-         says "houses" either way would be stating something untrue. */
-      var k = sp.kinds || { H:0, U:0 };
-      var kind = (k.U && k.H) ? ' houses and units' : (k.U ? ' units' : ' houses');
-      return esc(cityLabel()) + kind + ' · median of ' + sp.n + ' month' +
-        (sp.n === 1 ? '' : 's') + ' · ' + monthOf(sp.first) + ' to ' + monthOf(sp.last) +
-        (sp.carried ? ' · ' + sp.carried + ' carried from ' +
-                      (mhpLastMonth(activeCity) ? mLabel(mhpLastMonth(activeCity)) : 'the latest month') : '') +
-        (sp.skipped ? ' · <span class="warn-ink">' + sp.skipped +
-                      ' outside the series</span>' : '');
-    };
-    h += '<h3 class="ov-sub">Against the market</h3>' +
-      (function(){
-        /* EVERY city, not the one in view. A table that answered for whichever
-           tab was open would be read as the whole answer, and it is not. */
-        var fAll = readFilters(), optAll = readOpts();
-        /* The city tab scopes this like it scopes everything else on the page.
-           One table covering more than the rest of the Overview is the kind of
-           difference nobody notices until a figure is quoted out of it. */
-        var every = filterEntries(cityProps(loadProps()), fAll)
-          .map(function(e){ return deriveOne(e, optAll); })
-          .filter(function(d){ return passDerived(d, fAll, true); })
-          .filter(function(d){ return d.vsMkt !== null; });
-        if (!every.length) {
-          return '<p class="count-line">Nothing sold can be set against the series yet &mdash; ' +
-                 'a property needs a purchase, a sale, and months the Cotality series reaches.</p>';
-        }
-
-        /* Each property read against ITS OWN city and kind, so a row covering
-           both cities is still every property against its own market. */
-        var levelOf = function(list, dk){
-          var vals = [], miss = 0, carried = 0;
-          list.forEach(function(d){
-            var t = dayStamp(d.e[dk]);
-            if (t === null) { miss++; return; }
-            var r = mhpLook((d.e.category || '').trim(), new Date(t), ptypeOf(d.e));
-            if (r.v === null) { miss++; return; }
-            if (r.carried) carried++;
-            vals.push(r.v);
-          });
-          return { median: vals.length ? median(vals) : null, n: vals.length,
-                   missing: miss, carried: carried };
-        };
-        var medOf = function(list, k){ return median(list.map(function(d){ return d[k]; })); };
-        var medList = function(vals){
-          var ok = vals.filter(function(v){ return v !== null && isFinite(v); });
-          return ok.length ? median(ok) : null;
-        };
-        var pctOrDash = function(v){ return (v === null || !isFinite(v)) ? dash : pct(v); };
-        var signedPct = function(v){
-          if (v === null || !isFinite(v)) return dash;
-          return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
-        };
-        var priceWhen = function(m){
-          if (!m || !(m.median > 0)) return dash;
-          var d = midDay(m);
-          return aud(m.median) + (d ? '<div class="vs-parts">' + monthOf(d) + '</div>' : '');
-        };
-        var level = function(x){
-          if (!x || x.median === null) return dash;
-          return aud(x.median) +
-            '<div class="vs-parts">' + x.n + ' month' + (x.n === 1 ? '' : 's') +
-            (x.carried ? ' &middot; ' + x.carried + ' carried' : '') + '</div>';
-        };
-
-        var carriedTotal = 0, missingTotal = 0;
-        var line = function(label, list, strong) {
-          if (!list.length) return '';
-          var buy = medianRow(list, 'purchasePrice', 'purchaseDate');
-          var sell = medianRow(list, 'soldPrice', 'soldDate');
-          var cBuy = levelOf(list, 'purchaseDate');
-          var cSell = levelOf(list, 'soldDate');
-          carriedTotal += cBuy.carried + cSell.carried;
-          missingTotal += cBuy.missing + cSell.missing;
-          var g = medOf(list, 'vsMkt');
-          /* Totals, taken per property and then medianed — not the two medians
-             above divided, which would be a ratio across different properties
-             and nobody's result. */
-          var ourT = medList(list.map(function(d){
-            var a = Number(d.e.purchasePrice), b = Number(d.e.soldPrice);
-            return (a > 0 && b > 0) ? (b / a - 1) : null; }));
-          var mktT = medList(list.map(function(d){
-            return (d.mkBuy > 0 && d.mkSell > 0) ? (d.mkSell / d.mkBuy - 1) : null; }));
-          var gT = medList(list.map(function(d){
-            var a = Number(d.e.purchasePrice), b = Number(d.e.soldPrice);
-            if (!(a > 0 && b > 0) || !(d.mkBuy > 0 && d.mkSell > 0)) return null;
-            return (b / a) - (d.mkSell / d.mkBuy); }));
-          var beat = list.filter(function(d){ return d.vsMkt >= 0; }).length;
-          var open = strong ? '<strong>' : '', shut = strong ? '</strong>' : '';
-          return '<tr' + (strong ? ' class="is-total"' : '') + '>' +
-            '<th scope="row">' + open + label + shut + '</th>' +
-            '<td class="num">' + list.length + '</td>' +
-            '<td class="num">' + (function(){
-              var hv = median(list.map(function(d){ return d.hold; })
-                .filter(function(v){ return v !== null && isFinite(v); }));
-              return (hv === null) ? dash : hv.toFixed(1) + ' yrs';
-            })() + '</td>' +
-            '<td class="num">' + priceWhen(buy) + '</td>' +
-            '<td class="num">' + priceWhen(sell) + '</td>' +
-            '<td class="num">' + level(cBuy) + '</td>' +
-            '<td class="num">' + level(cSell) + '</td>' +
-            '<td class="num">' + open + pctOrDash(ourT) + shut +
-              '<div class="vs-parts">' + pctOrDash(medOf(list, 'ourCagr')) + ' a year</div></td>' +
-            '<td class="num">' + pctOrDash(mktT) +
-              '<div class="vs-parts">' + pctOrDash(medOf(list, 'mktCagr')) + ' a year</div></td>' +
-            '<td class="num"><strong><span class="' + (gT >= 0 ? 'pos' : 'neg') + '">' +
-              signedPct(gT) + '</span></strong>' +
-              '<div class="vs-parts">' + signedPct(g) + ' a year</div></td>' +
-            '<td class="num">' + beat + ' of ' + list.length + '</td></tr>';
-        };
-
-        var cities = [];
-        every.forEach(function(d){
-          var c = (d.e.category || '').trim() || 'Unfiled';
-          if (cities.indexOf(c) < 0) cities.push(c);
-        });
-        cities.sort();
-
-        var body = '';
-        cities.forEach(function(c){
-          var inCity = every.filter(function(d){
-            return ((d.e.category || '').trim() || 'Unfiled') === c;
-          });
-          var H = inCity.filter(function(d){ return ptypeOf(d.e) === 'H'; });
-          var U = inCity.filter(function(d){ return ptypeOf(d.e) === 'U'; });
-          body += line(esc(c) + ' &middot; houses', H) +
-                  line(esc(c) + ' &middot; units',  U) +
-                  ((H.length && U.length) ? line(esc(c) + ' &middot; all', inCity, true) : '');
-        });
-        if (cities.length > 1) body += line('Both cities', every, true);
-
-        return '<div class="mkt-wrap"><table class="mini mkt-table"><thead><tr>' +
-          '<th scope="col">Where</th>' +
-          '<th scope="col" class="num">Sold</th>' +
-          '<th scope="col" class="num">Median hold</th>' +
-          '<th scope="col" class="num">Median purchase</th>' +
-          '<th scope="col" class="num">Median sale</th>' +
-          '<th scope="col" class="num">Cotality at purchase</th>' +
-          '<th scope="col" class="num">Cotality at sale</th>' +
-          '<th scope="col" class="num">PPA growth</th>' +
-          '<th scope="col" class="num">Market growth</th>' +
-          '<th scope="col" class="num">Gap</th>' +
-          '<th scope="col" class="num">Beat the market</th>' +
-          '</tr></thead><tbody>' + body + '</tbody></table></div>' +
-          '<p class="count-line">The two <strong>price</strong> columns are medians across ' +
-          'different properties &mdash; the middle of what was bought against the middle of what ' +
-          'was sold &mdash; so they are context, not anybody&rsquo;s gain. The two ' +
-          '<strong>Cotality</strong> columns are the median of the market at every ' +
-          'property&rsquo;s own month, on its own city and its own line: houses against the house ' +
-          'series, units against the unit series.</p>' +
-          '<p class="count-line"><strong>PPA</strong>, <strong>Market</strong> and ' +
-          '<strong>Gap</strong> are the real score. The large figure is <strong>total growth ' +
-          'over the hold</strong>; the small one beneath it is the same thing <strong>per ' +
-          'year</strong>. Compare totals only within a row &mdash; a fifteen-year hold will ' +
-          'out-total a three-year one whatever either did &mdash; and use the yearly rate to ' +
-          'compare rows. Each figure is a median taken across properties one at a time, so a ' +
-          'long hold and a short one count once each. ' +
-          'The gap is the median of the per-property gaps &mdash; not the difference between the ' +
-          'two columns beside it, which is a different statistic and nobody&rsquo;s result. ' +
-          'Development sites are left out: Cotality publishes no series for land' +
-          (missingTotal ? ', and ' + missingTotal + ' month' + (missingTotal === 1 ? '' : 's') +
-            ' fell outside the series' : '') +
-          (carriedTotal ? ' &middot; ' + carriedTotal + ' carried from the latest month on record' : '') +
-          '.</p>';
-      })();
 
     /* ── distribution ──
        Built from `spread`, which has every filter applied except the band, so
