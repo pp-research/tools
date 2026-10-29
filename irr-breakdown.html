@@ -867,10 +867,10 @@ td.pd .src-link:hover{color:var(--text)}
 .gc-ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-4);
   margin-bottom:var(--sp-3)}
 .gc-ctl{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
-.gc-verdict{display:flex;align-items:flex-start;gap:var(--sp-4);flex-wrap:wrap}
-.gc-num{font-size:38px;line-height:1;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
-.gc-say{flex:1 1 300px;min-width:0;color:var(--muted);font-size:13px;line-height:19px;margin:0}
-.gc-say strong{color:var(--text);font-weight:700}
+/* The selected method says what it measures, on the same line as the toggle
+   that chose it. It wraps to its own line when the row runs out of room. */
+.gc-why{flex:1 1 280px;min-width:0;margin:0;font-size:12px;line-height:17px;
+  color:var(--faint)}
 .gc-track{position:relative;height:78px;margin:var(--sp-4) 8px var(--sp-6)}
 .gc-axis{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--border)}
 .gc-tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--border)}
@@ -887,17 +887,7 @@ td.pd .src-link:hover{color:var(--text)}
   color:var(--muted);white-space:nowrap;z-index:3}
 .gc-barlab{position:absolute;top:24px;height:24px;display:flex;align-items:center;
   padding-left:9px;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;z-index:4}
-.gc-methods{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:var(--sp-2);margin-bottom:var(--sp-3)}
-.gc-mcell{text-align:left;background:var(--well);border:1px solid var(--border);
-  border-radius:var(--r-md);padding:10px 12px;cursor:pointer;font:inherit;color:var(--text)}
-.gc-mcell:hover{border-color:var(--border-hover)}
-.gc-mcell[aria-pressed="true"]{border-color:var(--accent);background:rgba(var(--accent-rgb),.10)}
-.gc-mcell:focus-visible{outline:2px solid var(--accent-300);outline-offset:2px}
-.gc-mk{font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;
-  text-transform:uppercase;color:var(--muted)}
-.gc-mv{font-size:19px;line-height:25px;font-weight:800}
-.gc-md{font-size:12px;line-height:16px;color:var(--faint)}
+
 .gc-all{font-size:12px;min-width:720px}
 .gc-all th,.gc-all td{white-space:nowrap}
 .gc-all tbody tr.on td,.gc-all tbody tr.on th[scope=row]{background:rgba(var(--accent-rgb),.10)}
@@ -4441,6 +4431,12 @@ var MHP_FROM='1980-03', MHP={
             (gcState.method === m[0] ? 'true' : 'false') + '">' + m[0] +
             ' &middot; ' + m[1] + '</button>';
         }).join('') + '</div></div>' +
+      '<p class="gc-why">' + (function(){
+        for (var k = 0; k < GC_METHODS.length; k++) {
+          if (GC_METHODS[k][0] === gcState.method) return GC_METHODS[k][3];
+        }
+        return '';
+      })() + '</p>' +
       '</div>';
 
     if (!cur || cur.gap === null) {
@@ -4450,18 +4446,8 @@ var MHP_FROM='1980-03', MHP={
       return;
     }
 
+    /* Still needed below: it colours the band on the bar and the Gap row. */
     var ahead = cur.gap >= 0;
-    var kindWord = gcState.type === 'H' ? 'house'
-                 : gcState.type === 'U' ? 'unit' : 'property';
-
-    /* ── the verdict ── */
-    h += '<div class="gc-verdict">' +
-      '<div class="gc-num ' + (ahead ? 'pos' : 'neg') + '">' + gsign(cur.gap) + '</div>' +
-      '<p class="gc-say">Over the same months, the ' + esc(cityLabel()) + ' median ' +
-      kindWord + ' grew <strong>' + gpct(cur.mkt) + '</strong>. We grew <strong>' +
-      gpct(cur.ppa) + '</strong> &mdash; ' + (ahead ? 'ahead' : 'behind') + ' by <strong>' +
-      Math.abs(cur.gap * 100).toFixed(2) + ' percentage points</strong>, across ' +
-      cur.n + ' propert' + (cur.n === 1 ? 'y' : 'ies') + ' bought and sold.</p></div>';
 
     /* ── the bar ── */
     var xp = x(cur.ppa), xm = x(cur.mkt);
@@ -4508,20 +4494,6 @@ var MHP_FROM='1980-03', MHP={
         gsign(cur.gap) + '</span></strong></td></tr>' +
       '</tbody></table></div>';
 
-    /* ── does the answer depend on the method? ── */
-    h += '<h3 class="ov-sub">Does the answer depend on the method?</h3>' +
-      '<div class="gc-methods">' + GC_METHODS.map(function(m){
-        var c = gcCombo(gcOfType(all, gcState.type), m[0]);
-        var g = c ? c.gap : null;
-        var up = (g !== null && g >= 0);
-        return '<button type="button" class="gc-mcell" data-gcm="' + m[0] + '" aria-pressed="' +
-          (gcState.method === m[0] ? 'true' : 'false') + '">' +
-          '<div class="gc-mk">Method ' + m[0] + ' &middot; ' + m[2] + '</div>' +
-          '<div class="gc-mv ' + (g === null ? '' : (up ? 'pos' : 'neg')) + '">' +
-            gsign(g) + '</div>' +
-          '<div class="gc-md">' + (!c ? '&mdash;' : m[0] === 'B' ? 'across every month'
-            : gday(c.buyDay, c) + ' to ' + gday(c.sellDay, c)) + '</div></button>';
-      }).join('') + '</div>';
 
     /* ── every combination for this city ── */
     h += '<h3 class="ov-sub">Every combination</h3>' +
