@@ -901,6 +901,11 @@ td.pd .src-link:hover{color:var(--text)}
 .gc-mktlab{position:absolute;top:52px;font-size:11px;line-height:15px;font-weight:700;
   color:var(--muted);white-space:nowrap;z-index:4}
 
+/* houses and units sit under the line they belong to, indented and quieter -
+   the line above them is the one a reader is meant to land on first */
+table.mini tr.gc-subrow th[scope=row]{padding-left:26px;font-weight:400;
+  color:var(--muted)}
+table.mini tr.gc-subrow td{color:var(--muted)}
 .gc-all{font-size:12px;min-width:720px}
 .gc-all th,.gc-all td{white-space:nowrap}
 .gc-all tbody tr.on td,.gc-all tbody tr.on th[scope=row]{background:rgba(var(--accent-rgb),.10)}
@@ -4567,11 +4572,6 @@ var MHP_FROM='1980-03', MHP={
 
     /* ── the two toggles ── */
     h += '<div class="gc-ctl-row">' +
-      '<div class="gc-ctl"><span class="seg-label">Type</span>' +
-        '<div class="seg-btns">' + GC_TYPES.map(function(t){
-          return '<button type="button" data-gct="' + t[0] + '" aria-pressed="' +
-            (gcState.type === t[0] ? 'true' : 'false') + '">' + t[1] + '</button>';
-        }).join('') + '</div></div>' +
       '<div class="gc-ctl"><span class="seg-label">Method</span>' +
         '<div class="seg-btns">' + GC_METHODS.map(function(m){
           return '<button type="button" data-gcm="' + m[0] + '" aria-pressed="' +
@@ -4633,25 +4633,52 @@ var MHP_FROM='1980-03', MHP={
       '<th scope="col" class="num">Median purchase price</th>' +
       '<th scope="col" class="num">Median sold date</th>' +
       '<th scope="col" class="num">Median sold price</th>' +
-      '<th scope="col" class="num">Growth</th></tr></thead><tbody>' +
-      '<tr><th scope="row">' + esc(cityLabel()) + ' &middot; the market</th>' +
-        '<td class="num">' + gspan(cur, 'buy') + '</td>' +
-        '<td class="num">' + aud(cur.buyMkt) + '</td>' +
-        '<td class="num">' + gspan(cur, 'sell') + '</td>' +
-        '<td class="num">' + aud(cur.sellMkt) + '</td>' +
-        '<td class="num"><strong>' + gpct(cur.mkt) + '</strong></td></tr>' +
-      '<tr><th scope="row">Performance Property' +
-        '<div class="vs-parts">' + cur.n + ' sold propert' +
-        (cur.n === 1 ? 'y' : 'ies') + ' only</div></th>' +
-        '<td class="num">' + gspan(cur, 'buy') + '</td>' +
-        '<td class="num">' + aud(cur.buyPpa) + '</td>' +
-        '<td class="num">' + gspan(cur, 'sell') + '</td>' +
-        '<td class="num">' + aud(cur.sellPpa) + '</td>' +
-        '<td class="num"><strong>' + gpct(cur.ppa) + '</strong></td></tr>' +
-      '<tr class="is-total"><th scope="row">Gap</th>' +
+      '<th scope="col" class="num">Growth</th></tr></thead><tbody>';
+
+    /* Each benchmark on three lines: the whole city, then its houses and its
+       units. byType[0] is ALL and is the figure the bar above is drawn from. */
+    var byType = GC_TYPES.map(function(t){
+      return { key:t[0], label:t[1], c:gcCombo(gcOfType(all, t[0]), gcState.method) };
+    });
+    var moneyRow = function(x, cls, label, priceKey) {
+      var c = x.c;
+      if (!c) {
+        return '<tr class="' + cls + '"><th scope="row">' + label + '</th>' +
+          '<td class="num" colspan="5"><span class="muted">nothing to compare</span>' +
+          '</td></tr>';
+      }
+      return '<tr class="' + cls + '"><th scope="row">' + label + '</th>' +
+        '<td class="num">' + gspan(c, 'buy') + '</td>' +
+        '<td class="num">' + aud(c[priceKey === 'ppa' ? 'buyPpa' : 'buyMkt']) + '</td>' +
+        '<td class="num">' + gspan(c, 'sell') + '</td>' +
+        '<td class="num">' + aud(c[priceKey === 'ppa' ? 'sellPpa' : 'sellMkt']) + '</td>' +
+        '<td class="num"><strong>' +
+          gpct(priceKey === 'ppa' ? c.ppa : c.mkt) + '</strong></td></tr>';
+    };
+    var gapRow = function(x, cls, label) {
+      var g = x.c ? x.c.gap : null;
+      return '<tr class="' + cls + '"><th scope="row">' + label + '</th>' +
         '<td class="num" colspan="4"></td>' +
-        '<td class="num"><strong><span class="' + (ahead ? 'pos' : 'neg') + '">' +
-        gsign(cur.gap) + '</span></strong></td></tr>' +
+        '<td class="num"><strong><span class="' +
+          (g !== null && g >= 0 ? 'pos' : 'neg') + '">' + gsign(g) +
+        '</span></strong></td></tr>';
+    };
+    var trio = function(make, head) {
+      var out = '';
+      byType.forEach(function(x, i) {
+        out += make(x, i ? 'gc-subrow' : '', i ? x.label : head(x));
+      });
+      return out;
+    };
+    h += trio(function(x, cls, label){ return moneyRow(x, cls, label, 'mkt'); },
+              function(){ return esc(cityLabel()) + ' &middot; the market'; }) +
+         trio(function(x, cls, label){ return moneyRow(x, cls, label, 'ppa'); },
+              function(x){ return 'Performance Property' +
+                '<div class="vs-parts">' + (x.c ? x.c.n : 0) + ' sold propert' +
+                (x.c && x.c.n === 1 ? 'y' : 'ies') + ' only</div>'; }) +
+         byType.map(function(x, i){
+           return gapRow(x, i ? 'gc-subrow' : 'is-total', i ? x.label : 'Gap');
+         }).join('') +
       '</tbody></table></div>';
 
 
@@ -4668,16 +4695,17 @@ var MHP_FROM='1980-03', MHP={
         });
         return v.length ? median(v) : null;
       };
-      var line = function(label, list, ourKey, themKey, gapKey, note){
+      var line = function(label, list, ourKey, themKey, gapKey, note, cls){
+        cls = cls || '';
         if (!list.length) {
-          return '<tr><th scope="row">' + label + '</th>' +
+          return '<tr class="' + cls + '"><th scope="row">' + label + '</th>' +
             '<td class="num">0</td><td class="num" colspan="4">' +
             '<span class="muted">' + note + '</span></td></tr>';
         }
         var g = medOf(list, gapKey);
         var beat = 0;
         list.forEach(function(d){ if (d[gapKey] >= 0) beat++; });
-        return '<tr><th scope="row">' + label + '</th>' +
+        return '<tr class="' + cls + '"><th scope="row">' + label + '</th>' +
           '<td class="num">' + list.length + '</td>' +
           '<td class="num">' + gpct(medOf(list, ourKey)) + '</td>' +
           '<td class="num">' + gpct(medOf(list, themKey)) + '</td>' +
@@ -4685,9 +4713,16 @@ var MHP_FROM='1980-03', MHP={
             (g !== null && g >= 0 ? 'pos' : 'neg') + '">' + gsign(g) + '</span></strong></td>' +
           '<td class="num">' + beat + ' of ' + list.length + '</td></tr>';
       };
-      var withCouncil = cut.filter(function(d){ return d.vsLgaTotal !== null; });
-      var noCouncil = cut.length - withCouncil.length;
-
+      var hasCouncil = function(d){ return d.vsLgaTotal !== null; };
+      var noCouncil = cut.length - cut.filter(hasCouncil).length;
+      /* the same three lines as the table above: all, then houses, then units */
+      var band = function(head, pick, themKey, gapKey, note) {
+        return GC_TYPES.map(function(t, i) {
+          var list = gcOfType(all, t[0]).filter(pick);
+          return line(i ? t[1] : head, list, 'ourTotal', themKey, gapKey, note,
+                      i ? 'gc-subrow' : '');
+        }).join('');
+      };
       h += '<div class="mkt-wrap"><table class="mini"><thead><tr>' +
         '<th scope="col">Against</th>' +
         '<th scope="col" class="num">Properties</th>' +
@@ -4696,11 +4731,10 @@ var MHP_FROM='1980-03', MHP={
         '<th scope="col" class="num">Median gap</th>' +
         '<th scope="col" class="num">Beat it</th>' +
         '</tr></thead><tbody>' +
-        line('The market &middot; ' + esc(cityLabel()), cut,
-             'ourTotal', 'mktTotal', 'vsMktTotal', 'nothing to compare') +
-        line('Its own council', withCouncil,
-             'ourTotal', 'lgaTotal', 'vsLgaTotal',
-             'no council figure for any of these properties') +
+        band('The market &middot; ' + esc(cityLabel()),
+             function(){ return true; }, 'mktTotal', 'vsMktTotal', 'nothing to compare') +
+        band('Its own council', hasCouncil,
+             'lgaTotal', 'vsLgaTotal', 'no council figure for these') +
         '</tbody></table></div>';
 
       h += '<p class="count-line">Every property scored on <strong>its own ' +
@@ -4731,7 +4765,7 @@ var MHP_FROM='1980-03', MHP={
     GC_TYPES.forEach(function(t){
       GC_METHODS.forEach(function(m){
         var c = gcCombo(gcOfType(all, t[0]), m[0]);
-        var on = (gcState.type === t[0] && gcState.method === m[0]);
+        var on = (gcState.method === m[0]);
         var g = c ? c.gap : null, up = (g !== null && g >= 0);
         h += '<tr' + (on ? ' class="on"' : '') + '>' +
           '<th scope="row">' + t[1] + '</th>' +
@@ -4768,10 +4802,9 @@ var MHP_FROM='1980-03', MHP={
   /* One listener for the panel: the controls are rebuilt on every draw, so
      binding them individually would mean rebinding them individually. */
   document.addEventListener('click', function(ev){
-    var b = ev.target.closest ? ev.target.closest('[data-gct],[data-gcm]') : null;
+    var b = ev.target.closest ? ev.target.closest('[data-gcm]') : null;
     if (!b || !$('gcBody') || !$('gcBody').contains(b)) return;
-    var t = b.getAttribute('data-gct'), m = b.getAttribute('data-gcm');
-    if (t) gcState.type = t;
+    var m = b.getAttribute('data-gcm');
     if (m) gcState.method = m;
     drawGrowth();
   });
