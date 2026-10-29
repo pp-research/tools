@@ -3994,7 +3994,7 @@ window.stopCheck=false;
       /* What the market did over THIS property's own months — the only
          comparison where both sides faced the same years. Per year, because
          holds differ and a cumulative gap just measures the longer hold. */
-      var pt = ptypeOf(e);
+      var pt = seriesKind(e);
       var city = (e.category || '').trim() || activeCity;
       var lb = mhpOn(e.purchaseDate, pt, city), ls = mhpOn(e.soldDate, pt, city);
       d.mkBuy = lb.v; d.mkBuyCarried = lb.carried;
@@ -4172,6 +4172,16 @@ var MHP_FROM='1980-03', MHP={
   }
   function ptypeLabel(t){
     return t === 'U' ? 'Unit' : t === 'D' ? 'Development site' : 'House';
+  }
+  /* Which Cotality line this property is measured against - 'H' or 'U', never
+     'D'. Cotality publishes houses and units and nothing else, so a
+     development site has to be read on one of them or not at all, and the unit
+     line is the closer of the two: a site is bought for what can be built on
+     it, and what gets built is attached dwellings. This is separate from
+     ptypeOf() on purpose - the Register still calls it a Dev site, because
+     that is what it is; only the series it is scored against is a unit's. */
+  function seriesKind(e){
+    return ptypeOf(e) === 'H' ? 'H' : 'U';
   }
   /* What an Australian address says about the dwelling behind it.
      '12/34 Example Street' is a strata address, and strata title is exactly
@@ -4430,12 +4440,13 @@ var MHP_FROM='1980-03', MHP={
   /* True under every method, so it is said once rather than three times -
      repeated in each description it would read as something that varies. */
   var GC_SCOPE_NOTE =
-    '<div class="gc-why-tail"><strong>All</strong> is measured against the Cotality ' +
-    'median house and unit prices <strong>blended by how many of each we hold</strong>. ' +
-    '<strong>Houses</strong> and <strong>Units</strong> are measured against their ' +
-    'own house or unit series. ' +
-    'Performance Property numbers are computed only from the <strong>sold</strong> ' +
-    'and <strong>not archived</strong> properties.</div>';
+    '<div class="gc-why-tail"><strong>All</strong> is the <strong>weighted average ' +
+    'of the Houses and Units rows</strong>, weighted by how many of each we sold, ' +
+    'so it always sits between them. <strong>Houses</strong> and ' +
+    '<strong>Units</strong> are each measured against their own Cotality series, ' +
+    'and a <strong>development site</strong> is counted as a unit. Performance ' +
+    'Property numbers are computed only from the <strong>sold</strong> and ' +
+    '<strong>not archived</strong> properties.</div>';
   var gcState = { type:'All', method:'A' };
   var gcStale = true;
 
@@ -4460,7 +4471,7 @@ var MHP_FROM='1980-03', MHP={
   }
   function gcOfType(list, t){
     if (t === 'All') return list;
-    return list.filter(function(d){ return ptypeOf(d.e) === t; });
+    return list.filter(function(d){ return seriesKind(d.e) === t; });
   }
 
   /* The anchor behind a median price: the earliest-dated of the properties
@@ -4499,7 +4510,7 @@ var MHP_FROM='1980-03', MHP={
      than only the two ends. */
   function gcSpanLevel(sp, force){
     if (!sp) return { v:null, n:0 };
-    var city = (sp.e.category || '').trim(), t = force || ptypeOf(sp.e);
+    var city = (sp.e.category || '').trim(), t = force || seriesKind(sp.e);
     var a = new Date(sp.lo), b = new Date(sp.hi);
     var d = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1));
     var end = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), 1);
@@ -4529,36 +4540,47 @@ var MHP_FROM='1980-03', MHP={
      mixed set is never scored unit-at-purchase against house-at-sale.
      Left unset, each side reads the line of the property that anchors it,
      which is right for a cut that is already all one kind. */
-  /* The All row: the house line and the unit line at the same months, blended
-     by how many of each the set holds. Builds on the house-line combo and
-     replaces only the market figures on it, so every other field - the dates,
-     the spans, the PPA medians - stays exactly as gcCombo worked it out. */
+  /* The All row: the Houses result and the Units result, weighted by how many
+     of each we sold. It is a SUMMARY of the two rows below it, not a
+     measurement of its own, and that is the whole point - the old All took a
+     median over houses and units together and then read the market on
+     whichever one or two properties happened to sit on that median, which let
+     it land outside both of the rows it sits above.
+     Both sides are blended, not just the market: a weighted average of the
+     gaps is only meaningful if the two figures it differences were weighted
+     the same way. */
   function gcComboAll(list, method){
-    var cH = gcCombo(list, method, 'H');
-    if (!cH) return null;
-    var cU = gcCombo(list, method, 'U');
-    var nH = 0, nU = 0;
-    list.forEach(function(d){
-      var t = ptypeOf(d.e);
-      if (t === 'H') nH++; else if (t === 'U') nU++;
-    });
-    var w = (nH + nU) ? nH / (nH + nU) : 1;
-    /* With one line missing there is nothing to blend, so the other stands
-       alone rather than the whole figure collapsing. */
-    var mix = function(a, b){
-      if (!(a > 0)) return (b > 0) ? b : null;
-      if (!(b > 0)) return a;
-      return a * w + b * (1 - w);
+    var lH = gcOfType(list, 'H'), lU = gcOfType(list, 'U');
+    var cH = lH.length ? gcCombo(lH, method, 'H') : null;
+    var cU = lU.length ? gcCombo(lU, method, 'U') : null;
+    /* A side with no market figure cannot be weighted into one, so the
+       weights are taken over the sides that produced a result - which is also
+       what makes a city with no sold units read as 100% house rather than as
+       nothing at all. */
+    var parts = [];
+    if (cH && cH.gap !== null) parts.push({ c:cH, n:lH.length });
+    if (cU && cU.gap !== null) parts.push({ c:cU, n:lU.length });
+    if (!parts.length) return null;
+    var tot = 0;
+    parts.forEach(function(p){ tot += p.n; });
+    if (!tot) return null;
+    var blend = function(k){
+      var v = 0;
+      parts.forEach(function(p){ v += p.c[k] * (p.n / tot); });
+      return v;
     };
-    if (cU) {
-      cH.buyMkt  = mix(cH.buyMkt,  cU.buyMkt);
-      cH.sellMkt = mix(cH.sellMkt, cU.sellMkt);
-    }
-    cH.mkt = (cH.buyMkt > 0 && cH.sellMkt > 0) ? (cH.sellMkt / cH.buyMkt - 1) : null;
-    cH.gap = (cH.mkt === null || cH.ppa === null) ? null : cH.ppa - cH.mkt;
-    cH.wH = nH; cH.wU = nU; cH.w = w;
-    cH.buySer = cH.sellSer = 'blend';
-    return cH;
+    /* wH/wU are the real counts, not the weighted ones: the note under the row
+       says how many of each we sold, and that is true whether or not both
+       sides reached the series. */
+    return {
+      n: lH.length + lU.length, method: method, blend: 1,
+      w: (cH && cH.gap !== null) ? lH.length / tot : 0,
+      wH: lH.length, wU: lU.length,
+      buyPpa: null, sellPpa: null, buyMkt: null, sellMkt: null,
+      buyFrom: null, buyTo: null, sellFrom: null, sellTo: null,
+      buySer: 'blend', sellSer: 'blend', months: 0,
+      ppa: blend('ppa'), mkt: blend('mkt'), gap: blend('gap')
+    };
   }
   function gcCombo(list, method, force){
     if (!list.length) return null;
@@ -4572,7 +4594,7 @@ var MHP_FROM='1980-03', MHP={
         list.forEach(function(d){
           var t = dayStamp(d.e[dk]);
           if (t === null) return;
-          var ser = force || ptypeOf(d.e);
+          var ser = force || seriesKind(d.e);
           var r = mhpLook((d.e.category || '').trim(), new Date(t), ser);
           if (r.v !== null) { vals.push(r.v); kinds[ser] = 1; }
         });
@@ -4585,7 +4607,7 @@ var MHP_FROM='1980-03', MHP={
         if (!spA) return { v:null, from:null, to:null, n:0, ser:'' };
         var levA = gcSpanLevel(spA, force);
         return { v: levA.v, from: spA.lo, to: spA.hi, n: levA.n,
-                 ser: force || ptypeOf(spA.e) };
+                 ser: force || seriesKind(spA.e) };
       }
       /* B: the window comes from the dates instead of the prices, and is then
          read exactly as A reads its own. */
@@ -4593,7 +4615,7 @@ var MHP_FROM='1980-03', MHP={
       if (!sp) return { v:null, from:null, to:null, n:0, ser:'' };
       var lev = gcSpanLevel(sp, force);
       return { v: lev.v, from: sp.lo, to: sp.hi, n: lev.n,
-               ser: force || ptypeOf(sp.e) };
+               ser: force || seriesKind(sp.e) };
     };
 
     var mb = readAt('purchaseDate', buy), ms = readAt('soldDate', sell);
@@ -4747,6 +4769,19 @@ var MHP_FROM='1980-03', MHP={
           '<td class="num" colspan="5"><span class="muted">nothing to compare</span>' +
           '</td></tr>';
       }
+      /* Dashes, not numbers: All is an average of two results, so it has no
+         months of its own and no median price of its own. Printing the whole
+         set's medians here would invite dividing one by the other, which does
+         not give the growth in the last column. */
+      if (c.blend) {
+        return '<tr class="' + cls + '"><th scope="row">' + label + '</th>' +
+          '<td class="num"><span class="muted">&mdash;</span></td>' +
+          '<td class="num"><span class="muted">&mdash;</span></td>' +
+          '<td class="num"><span class="muted">&mdash;</span></td>' +
+          '<td class="num"><span class="muted">&mdash;</span></td>' +
+          '<td class="num"><strong>' +
+            gpct(priceKey === 'ppa' ? c.ppa : c.mkt) + '</strong></td></tr>';
+      }
       return '<tr class="' + cls + '"><th scope="row">' + label + '</th>' +
         '<td class="num">' + gspan(c, 'buy') + '</td>' +
         '<td class="num">' + aud(c[priceKey === 'ppa' ? 'buyPpa' : 'buyMkt']) + '</td>' +
@@ -4778,7 +4813,7 @@ var MHP_FROM='1980-03', MHP={
     var serNote = function(c){
       if (!c || !c.buySer) return '';
       if (c.buySer === 'blend') {
-        return 'house and unit lines, weighted ' + Math.round(c.w * 100) +
+        return 'the two rows below, weighted ' + Math.round(c.w * 100) +
                '% house &middot; ' + c.wH + ' house' + (c.wH === 1 ? '' : 's') +
                ' to ' + c.wU + ' unit' + (c.wU === 1 ? '' : 's');
       }
@@ -4872,7 +4907,8 @@ var MHP_FROM='1980-03', MHP={
         'months</strong>, then the middle score taken &mdash; so a fifteen-year ' +
         'hold and a three-year one count once each. Only properties that could be ' +
         'scored are counted, so a row here can be smaller than the same row above: ' +
-        'a development site has prices but no series to be scored against. ' +
+        'a property bought or sold in a month the series does not reach has prices ' +
+        'but nothing to be scored against. ' +
         'This does not move when the ' +
         'method above changes: the methods choose which months to read <em>one ' +
         'pair of medians</em> on, and nothing here reads a median price at all.</p>' +
@@ -4892,13 +4928,14 @@ var MHP_FROM='1980-03', MHP={
       'is set to. Properties still held have no sale price, so including them would ' +
       'set a purchase median drawn from the whole book against a sale median drawn ' +
       'from part of it &mdash; two different sets of properties, and a growth figure ' +
-      'that is not like-for-like. <strong>All</strong> is every sold property, ' +
-      'development sites and untyped ones included, read against the median ' +
-      '<strong>house</strong> price. The <strong>Houses</strong> and ' +
-      '<strong>Units</strong> rows cover only those two types and read their own ' +
-      'series, so the two of them do not add up to All. Cotality publishes no line ' +
-      'for land, so a development site has prices here but can never be scored ' +
-      'against its own kind.</p>' +
+      'that is not like-for-like. <strong>Houses</strong> and <strong>Units</strong> ' +
+      'are each measured on their own Cotality series, and between them they cover ' +
+      'every sold property: an untyped one is read as a house, a development site ' +
+      'as a unit. <strong>All</strong> is those two results averaged, weighted by ' +
+      'how many of each we sold &mdash; which is why its date and price cells are ' +
+      'blank. It is an average of two growth figures, not a measurement taken on ' +
+      'months of its own, and it therefore always sits between the two rows below ' +
+      'it.</p>' +
       '<p class="count-line">This is the <strong>aggregate</strong> question: the middle ' +
       'of what we bought against the middle of what we sold, and the market on those ' +
       'same months. It is not an average of what each deal did &mdash; one median ' +
