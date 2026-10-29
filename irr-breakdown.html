@@ -4288,7 +4288,8 @@ var MHP_FROM='1980-03', MHP={
     ['B', 'Every month', 'Every month',
      'No single month &mdash; the median of the market across every month we transacted in.'],
     ['C', 'Date first',  'Median date first',
-     'The median month is found first, and the market figure is that month&rsquo;s median price.']
+     'The median month is calculated from all eligible months, separate from the ' +
+     'properties&rsquo; median price, and the market figure is that month&rsquo;s median price.']
   ];
   var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
   var gcState = { type:'All', method:'A' };
