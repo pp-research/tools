@@ -906,11 +906,16 @@ td.pd .src-link:hover{color:var(--text)}
   .gc-bname{grid-column:1 / -1;text-align:left}
 }
 
-/* houses and units sit under the line they belong to, indented and quieter -
-   the line above them is the one a reader is meant to land on first */
+/* houses and units sit under the name of the question they answer, indented
+   and quieter; All sits under THEM, as the total row it now is */
 table.mini tr.gc-subrow th[scope=row]{padding-left:26px;font-weight:400;
   color:var(--muted)}
 table.mini tr.gc-subrow td{color:var(--muted)}
+/* The band's name, on a line of its own. It carries no figure, so it carries
+   no rule under it either - the name and its three rows read as one block. */
+table.mini tr.gc-head th{padding-top:14px;font-size:12px;line-height:16px;
+  font-weight:700;color:var(--text);border-bottom:0}
+table.mini tbody tr.gc-head:first-child th{padding-top:7px}
 
 .mkt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:var(--sp-2) 0}
 /* The Overview's market comparison table is gone, and the class that styled
@@ -4436,7 +4441,9 @@ var MHP_FROM='1980-03', MHP={
      'We take all eligible months and get the Cotality median price of each. ' +
      'Then find the median of these prices.']
   ];
-  var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
+  /* Houses and Units first, All last: All is computed from the two of them,
+     so it is a subtotal and belongs under what it totals. */
+  var GC_TYPES = [['H','Houses'], ['U','Units'], ['All','All']];
   /* True under every method, so it is said once rather than three times -
      repeated in each description it would read as something that varies. */
   var GC_SCOPE_NOTE =
@@ -4541,7 +4548,7 @@ var MHP_FROM='1980-03', MHP={
      Left unset, each side reads the line of the property that anchors it,
      which is right for a cut that is already all one kind. */
   /* The All row: the Houses result and the Units result, weighted by how many
-     of each we sold. It is a SUMMARY of the two rows below it, not a
+     of each we sold. It is a SUMMARY of the two rows above it, not a
      measurement of its own, and that is the whole point - the old All took a
      median over houses and units together and then read the market on
      whichever one or two properties happened to sit on that median, which let
@@ -4798,10 +4805,22 @@ var MHP_FROM='1980-03', MHP={
           (g !== null && g >= 0 ? 'pos' : 'neg') + '">' + gsign(g) +
         '</span></strong></td></tr>';
     };
-    var trio = function(make, head) {
-      var out = '';
-      byType.forEach(function(x, i) {
-        out += make(x, i ? 'gc-subrow' : '', i ? x.label : head(x));
+    /* The band: its name on a line of its own, then Houses, Units, and All
+       beneath them. `weigh` is set only on the market band - the note under
+       All says how the two rows above it were weighted, and saying it three
+       times over would be three times the words for one fact. */
+    var bandHead = function(label, note) {
+      return '<tr class="gc-head"><th scope="rowgroup" colspan="6">' + label +
+        (note ? '<div class="vs-parts vs-wrap">' + note + '</div>' : '') +
+        '</th></tr>';
+    };
+    var trio = function(make, head, note, weigh) {
+      var out = bandHead(head, note);
+      byType.forEach(function(x) {
+        var isAll = x.key === 'All';
+        var tail = (isAll && weigh) ? serNote(x.c) : '';
+        out += make(x, isAll ? 'is-total' : 'gc-subrow',
+          x.label + (tail ? '<div class="vs-parts vs-wrap">' + tail + '</div>' : ''));
       });
       return out;
     };
@@ -4813,7 +4832,7 @@ var MHP_FROM='1980-03', MHP={
     var serNote = function(c){
       if (!c || !c.buySer) return '';
       if (c.buySer === 'blend') {
-        return 'the two rows below, weighted ' + Math.round(c.w * 100) +
+        return 'the two rows above, weighted ' + Math.round(c.w * 100) +
                '% house &middot; ' + c.wH + ' house' + (c.wH === 1 ? '' : 's') +
                ' to ' + c.wU + ' unit' + (c.wU === 1 ? '' : 's');
       }
@@ -4829,21 +4848,17 @@ var MHP_FROM='1980-03', MHP={
       return 'read on the ' + serWord(c.buySer) + ' line at purchase, the ' +
              serWord(c.sellSer) + ' line at sale';
     };
+    /* How many properties the band covers, said once under its name rather
+       than on one of the rows - it is true of all three. */
+    var allOf = byType.filter(function(x){ return x.key === 'All'; })[0];
+    var nAll = (allOf && allOf.c) ? allOf.c.n : 0;
     h += trio(function(x, cls, label){ return moneyRow(x, cls, label, 'mkt'); },
-              function(x){
-                var note = serNote(x.c);
-                return esc(cityLabel()) + ' &middot; the market' +
-                  ' <span class="muted">(All)</span>' +
-                  (note ? '<div class="vs-parts vs-wrap">' + note + '</div>' : '');
-              }) +
+              esc(cityLabel()) + ' &middot; the market', '', true) +
          trio(function(x, cls, label){ return moneyRow(x, cls, label, 'ppa'); },
-              function(x){ return 'Performance Property' + ' <span class="muted">(All)</span>' +
-                '<div class="vs-parts">' + (x.c ? x.c.n : 0) + ' sold propert' +
-                (x.c && x.c.n === 1 ? 'y' : 'ies') + ' only</div>'; }) +
-         byType.map(function(x, i){
-           return gapRow(x, i ? 'gc-subrow' : 'is-total',
-                         i ? x.label : 'Gap <span class="muted">(All)</span>');
-         }).join('') +
+              'Performance Property',
+              nAll + ' sold propert' + (nAll === 1 ? 'y' : 'ies') + ' only', false) +
+         trio(function(x, cls, label){ return gapRow(x, cls, label); },
+              'Gap', '', false) +
       '</tbody></table></div>';
 
 
@@ -4880,13 +4895,17 @@ var MHP_FROM='1980-03', MHP={
       };
       var hasCouncil = function(d){ return d.vsLgaTotal !== null; };
       var noCouncil = cut.length - cut.filter(hasCouncil).length;
-      /* the same three lines as the table above: all, then houses, then units */
+      /* the same shape as the table above: the benchmark named on its own
+         line, then houses, units, and all beneath them */
       var band = function(head, pick, themKey, gapKey, note) {
-        return GC_TYPES.map(function(t, i) {
+        var out = '<tr class="gc-head"><th scope="rowgroup" colspan="6">' +
+          head + '</th></tr>';
+        GC_TYPES.forEach(function(t) {
           var list = gcOfType(all, t[0]).filter(pick);
-          return line(i ? t[1] : head, list, 'ourTotal', themKey, gapKey, note,
-                      i ? 'gc-subrow' : '');
-        }).join('');
+          out += line(t[1], list, 'ourTotal', themKey, gapKey, note,
+                      t[0] === 'All' ? 'is-total' : 'gc-subrow');
+        });
+        return out;
       };
       h += '<div class="mkt-wrap"><table class="mini"><thead><tr>' +
         '<th scope="col">Against</th>' +
@@ -4896,10 +4915,10 @@ var MHP_FROM='1980-03', MHP={
         '<th scope="col" class="num">Median gap</th>' +
         '<th scope="col" class="num">Beat it</th>' +
         '</tr></thead><tbody>' +
-        band('The market &middot; ' + esc(cityLabel()) + ' <span class="muted">(All)</span>',
+        band('The market &middot; ' + esc(cityLabel()),
              function(d){ return d.vsMktTotal !== null; },
              'mktTotal', 'vsMktTotal', 'nothing to compare') +
-        band('Its own council <span class="muted">(All)</span>', hasCouncil,
+        band('Its own council', hasCouncil,
              'lgaTotal', 'vsLgaTotal', 'no council figure for these') +
         '</tbody></table></div>';
 
@@ -4934,8 +4953,8 @@ var MHP_FROM='1980-03', MHP={
       'as a unit. <strong>All</strong> is those two results averaged, weighted by ' +
       'how many of each we sold &mdash; which is why its date and price cells are ' +
       'blank. It is an average of two growth figures, not a measurement taken on ' +
-      'months of its own, and it therefore always sits between the two rows below ' +
-      'it.</p>' +
+      'months of its own, and it therefore always sits between the two rows it ' +
+      'sits under.</p>' +
       '<p class="count-line">This is the <strong>aggregate</strong> question: the middle ' +
       'of what we bought against the middle of what we sold, and the market on those ' +
       'same months. It is not an average of what each deal did &mdash; one median ' +
