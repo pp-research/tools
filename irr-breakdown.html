@@ -4286,12 +4286,12 @@ var MHP_FROM='1980-03', MHP={
     ['A', 'Price first', 'Median price first',
      'The median price comes first: the month is the one the median-priced property ' +
      'transacted in, and the market is read there.'],
-    ['B', 'Every month', 'Every month',
-     'No single month: every property is read against the market in its own month, ' +
-     'and the figure here is the median of those.'],
-    ['C', 'Date first',  'Median date first',
+    ['B', 'Date first',  'Median date first',
      'The month comes first: the median of all eligible months, worked out on its own ' +
-     'with no reference to the median price, and the market is read there.']
+     'with no reference to the median price, and the market is read there.'],
+    ['C', 'Every month', 'Every month',
+     'No single month: every property is read against the market in its own month, ' +
+     'and the figure here is the median of those.']
   ];
   var GC_TYPES = [['All','All'], ['H','Houses'], ['U','Units']];
   var gcState = { type:'All', method:'A' };
@@ -4338,7 +4338,7 @@ var MHP_FROM='1980-03', MHP={
     if (!buy || !sell || !(buy.median > 0) || !(sell.median > 0)) return null;
 
     var readAt = function(dk, m){
-      if (method === 'B') {
+      if (method === 'C') {          /* every month - no single anchor */
         var vals = [];
         list.forEach(function(d){
           var t = dayStamp(d.e[dk]);
@@ -4371,7 +4371,7 @@ var MHP_FROM='1980-03', MHP={
       n: list.length, method: method,
       buyPpa: buy.median, sellPpa: sell.median,
       buyMkt: mb.v, sellMkt: ms.v, buyDay: mb.day, sellDay: ms.day,
-      months: (method === 'B') ? Math.min(mb.n, ms.n) : 0,
+      months: (method === 'C') ? Math.min(mb.n, ms.n) : 0,
       mkt: mkt, ppa: ppa, gap: (mkt === null) ? null : ppa - mkt
     };
   }
@@ -4396,7 +4396,7 @@ var MHP_FROM='1980-03', MHP={
       return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
     };
     var gday = function(t, m){
-      if (m && m.method === 'B') return 'every month';
+      if (m && m.method === 'C') return 'every month';
       if (t === null || t === undefined) return '&mdash;';
       var d = new Date(t);
       return isFinite(d.getTime())
