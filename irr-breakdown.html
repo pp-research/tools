@@ -4477,27 +4477,30 @@ var MHP_FROM='1980-03', MHP={
 
     var readAt = function(dk, m){
       if (method === 'C') {          /* every month - no single anchor */
-        var vals = [];
+        var vals = [], kinds = {};
         list.forEach(function(d){
           var t = dayStamp(d.e[dk]);
           if (t === null) return;
           var r = mhpLook((d.e.category || '').trim(), new Date(t), ptypeOf(d.e));
-          if (r.v !== null) vals.push(r.v);
+          if (r.v !== null) { vals.push(r.v); kinds[ptypeOf(d.e)] = 1; }
         });
-        return { v: vals.length ? median(vals) : null, from:null, to:null, n: vals.length };
+        var k = Object.keys(kinds);
+        return { v: vals.length ? median(vals) : null, from:null, to:null,
+                 n: vals.length, ser: k.length === 1 ? k[0] : 'mixed' };
       }
       if (method === 'A') {
         var spA = gcSpan(m);
-        if (!spA) return { v:null, from:null, to:null, n:0 };
+        if (!spA) return { v:null, from:null, to:null, n:0, ser:'' };
         var levA = gcSpanLevel(spA);
-        return { v: levA.v, from: spA.lo, to: spA.hi, n: levA.n };
+        return { v: levA.v, from: spA.lo, to: spA.hi, n: levA.n,
+                 ser: ptypeOf(spA.e) };
       }
       /* B: the window comes from the dates instead of the prices, and is then
          read exactly as A reads its own. */
       var sp = gcMidSpan(list, dk);
-      if (!sp) return { v:null, from:null, to:null, n:0 };
+      if (!sp) return { v:null, from:null, to:null, n:0, ser:'' };
       var lev = gcSpanLevel(sp);
-      return { v: lev.v, from: sp.lo, to: sp.hi, n: lev.n };
+      return { v: lev.v, from: sp.lo, to: sp.hi, n: lev.n, ser: ptypeOf(sp.e) };
     };
 
     var mb = readAt('purchaseDate', buy), ms = readAt('soldDate', sell);
@@ -4508,6 +4511,7 @@ var MHP_FROM='1980-03', MHP={
       buyPpa: buy.median, sellPpa: sell.median,
       buyMkt: mb.v, sellMkt: ms.v,
       buyFrom: mb.from, buyTo: mb.to, sellFrom: ms.from, sellTo: ms.to,
+      buySer: mb.ser || '', sellSer: ms.ser || '',
       months: (method === 'C') ? Math.min(mb.n, ms.n) : 0,
       mkt: mkt, ppa: ppa, gap: (mkt === null) ? null : ppa - mkt
     };
@@ -4668,8 +4672,31 @@ var MHP_FROM='1980-03', MHP={
       });
       return out;
     };
+    /* Which Cotality line the figure beside it came from. Only worth saying on
+       the All row: the other two can only have been read on their own. */
+    var serWord = function(t){
+      return t === 'U' ? 'unit' : t === 'H' ? 'house' : '';
+    };
+    var serNote = function(c){
+      if (!c || !c.buySer) return '';
+      if (c.method === 'C') {
+        return c.buySer === 'mixed' || c.sellSer === 'mixed'
+          ? 'each property on its own line'
+          : 'read on the ' + serWord(c.buySer) + ' line';
+      }
+      if (c.buySer === c.sellSer) {
+        var w = serWord(c.buySer);
+        return w ? 'read on the ' + w + ' line' : '';
+      }
+      return 'read on the ' + serWord(c.buySer) + ' line at purchase, the ' +
+             serWord(c.sellSer) + ' line at sale';
+    };
     h += trio(function(x, cls, label){ return moneyRow(x, cls, label, 'mkt'); },
-              function(){ return esc(cityLabel()) + ' &middot; the market'; }) +
+              function(x){
+                var note = serNote(x.c);
+                return esc(cityLabel()) + ' &middot; the market' +
+                  (note ? '<div class="vs-parts vs-wrap">' + note + '</div>' : '');
+              }) +
          trio(function(x, cls, label){ return moneyRow(x, cls, label, 'ppa'); },
               function(x){ return 'Performance Property' +
                 '<div class="vs-parts">' + (x.c ? x.c.n : 0) + ' sold propert' +
