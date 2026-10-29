@@ -4380,9 +4380,10 @@ var MHP_FROM='1980-03', MHP={
   /* True under every method, so it is said once rather than three times -
      repeated in each description it would read as something that varies. */
   var GC_SCOPE_NOTE =
-    '<div class="gc-why-tail"><strong>All</strong> is always measured against the ' +
-    'Cotality median <strong>house</strong> price. <strong>Houses</strong> and ' +
-    '<strong>Units</strong> are measured against their own house or unit series. ' +
+    '<div class="gc-why-tail"><strong>All</strong> is measured against the Cotality ' +
+    'median house and unit prices <strong>blended by how many of each we hold</strong>. ' +
+    '<strong>Houses</strong> and <strong>Units</strong> are measured against their ' +
+    'own house or unit series. ' +
     'Performance Property numbers are computed only from the <strong>sold</strong> ' +
     'and <strong>not archived</strong> properties.</div>';
   var gcState = { type:'All', method:'A' };
@@ -4478,6 +4479,37 @@ var MHP_FROM='1980-03', MHP={
      mixed set is never scored unit-at-purchase against house-at-sale.
      Left unset, each side reads the line of the property that anchors it,
      which is right for a cut that is already all one kind. */
+  /* The All row: the house line and the unit line at the same months, blended
+     by how many of each the set holds. Builds on the house-line combo and
+     replaces only the market figures on it, so every other field - the dates,
+     the spans, the PPA medians - stays exactly as gcCombo worked it out. */
+  function gcComboAll(list, method){
+    var cH = gcCombo(list, method, 'H');
+    if (!cH) return null;
+    var cU = gcCombo(list, method, 'U');
+    var nH = 0, nU = 0;
+    list.forEach(function(d){
+      var t = ptypeOf(d.e);
+      if (t === 'H') nH++; else if (t === 'U') nU++;
+    });
+    var w = (nH + nU) ? nH / (nH + nU) : 1;
+    /* With one line missing there is nothing to blend, so the other stands
+       alone rather than the whole figure collapsing. */
+    var mix = function(a, b){
+      if (!(a > 0)) return (b > 0) ? b : null;
+      if (!(b > 0)) return a;
+      return a * w + b * (1 - w);
+    };
+    if (cU) {
+      cH.buyMkt  = mix(cH.buyMkt,  cU.buyMkt);
+      cH.sellMkt = mix(cH.sellMkt, cU.sellMkt);
+    }
+    cH.mkt = (cH.buyMkt > 0 && cH.sellMkt > 0) ? (cH.sellMkt / cH.buyMkt - 1) : null;
+    cH.gap = (cH.mkt === null || cH.ppa === null) ? null : cH.ppa - cH.mkt;
+    cH.wH = nH; cH.wU = nU; cH.w = w;
+    cH.buySer = cH.sellSer = 'blend';
+    return cH;
+  }
   function gcCombo(list, method, force){
     if (!list.length) return null;
     var buy  = medianRow(list, 'purchasePrice', 'purchaseDate');
@@ -4565,15 +4597,17 @@ var MHP_FROM='1980-03', MHP={
     };
 
 
-    var cur = gcCombo(gcOfType(all, gcState.type), gcState.method,
-                      gcState.type === 'All' ? 'H' : null);
+    var cur = gcState.type === 'All'
+      ? gcComboAll(gcOfType(all, 'All'), gcState.method)
+      : gcCombo(gcOfType(all, gcState.type), gcState.method, null);
 
     /* The axis is scaled to the whole city, not to the selection, so switching
        type or method moves the bar instead of redrawing the ruler under it. */
     var top = 0;
     GC_TYPES.forEach(function(t){
       GC_METHODS.forEach(function(m){
-        var c = gcCombo(gcOfType(all, t[0]), m[0], t[0] === 'All' ? 'H' : null);
+        var c = t[0] === 'All' ? gcComboAll(gcOfType(all, 'All'), m[0])
+                               : gcCombo(gcOfType(all, t[0]), m[0], null);
         if (!c) return;
         if (c.ppa !== null && isFinite(c.ppa)) top = Math.max(top, c.ppa);
         if (c.mkt !== null && isFinite(c.mkt)) top = Math.max(top, c.mkt);
@@ -4653,8 +4687,9 @@ var MHP_FROM='1980-03', MHP={
        units. byType[0] is ALL and is the figure the bar above is drawn from. */
     var byType = GC_TYPES.map(function(t){
       return { key:t[0], label:t[1],
-               c:gcCombo(gcOfType(all, t[0]), gcState.method,
-                         t[0] === 'All' ? 'H' : null) };
+               c: t[0] === 'All'
+                 ? gcComboAll(gcOfType(all, 'All'), gcState.method)
+                 : gcCombo(gcOfType(all, t[0]), gcState.method, null) };
     });
     var moneyRow = function(x, cls, label, priceKey) {
       var c = x.c;
@@ -4693,6 +4728,11 @@ var MHP_FROM='1980-03', MHP={
     };
     var serNote = function(c){
       if (!c || !c.buySer) return '';
+      if (c.buySer === 'blend') {
+        return 'house and unit lines, weighted ' + Math.round(c.w * 100) +
+               '% house &middot; ' + c.wH + ' house' + (c.wH === 1 ? '' : 's') +
+               ' to ' + c.wU + ' unit' + (c.wU === 1 ? '' : 's');
+      }
       if (c.method === 'C') {
         return c.buySer === 'mixed' || c.sellSer === 'mixed'
           ? 'each property on its own line'
@@ -4722,61 +4762,6 @@ var MHP_FROM='1980-03', MHP={
          }).join('') +
       '</tbody></table></div>';
 
-
-    /* ── how All reads against the two series ──
-       A temporary comparison: same months, three ways of reading the market. */
-    (function(){
-      var allList = gcOfType(all, 'All');
-      if (!allList.length) return;
-      var cH = byType[0].c;                                   /* house line */
-      var cU = gcCombo(allList, gcState.method, 'U');         /* unit line  */
-      if (!cH || !cU) return;
-      var nH = 0, nU = 0;
-      allList.forEach(function(d){
-        var t = ptypeOf(d.e);
-        if (t === 'H') nH++; else if (t === 'U') nU++;
-      });
-      var mix = (nH + nU) ? nH / (nH + nU) : 1;
-      var blend = function(a, b, w){
-        return (a > 0 && b > 0) ? (a * w + b * (1 - w)) : null;
-      };
-      var ppaG = cH.ppa;
-      var row = function(label, buy, sell, note){
-        var g = (buy > 0 && sell > 0) ? (sell / buy - 1) : null;
-        var gap = (g === null || ppaG === null) ? null : ppaG - g;
-        return '<tr><th scope="row">' + label +
-          (note ? '<div class="vs-parts vs-wrap">' + note + '</div>' : '') + '</th>' +
-          '<td class="num">' + (buy > 0 ? aud(buy) : '&mdash;') + '</td>' +
-          '<td class="num">' + (sell > 0 ? aud(sell) : '&mdash;') + '</td>' +
-          '<td class="num">' + gpct(g) + '</td>' +
-          '<td class="num"><strong><span class="' +
-            (gap !== null && gap >= 0 ? 'pos' : 'neg') + '">' + gsign(gap) +
-          '</span></strong></td></tr>';
-      };
-      h += '<h3 class="ov-sub">How All reads against the two series</h3>' +
-        '<div class="mkt-wrap"><table class="mini"><thead><tr>' +
-        '<th scope="col">Market read as</th>' +
-        '<th scope="col" class="num">At purchase</th>' +
-        '<th scope="col" class="num">At sale</th>' +
-        '<th scope="col" class="num">Market growth</th>' +
-        '<th scope="col" class="num">Gap</th></tr></thead><tbody>' +
-        row('House line only', cH.buyMkt, cH.sellMkt, 'what the tab does now') +
-        row('Average of both lines',
-            blend(cH.buyMkt, cU.buyMkt, 0.5), blend(cH.sellMkt, cU.sellMkt, 0.5),
-            'house and unit medians, weighted equally') +
-        row('Weighted by the mix',
-            blend(cH.buyMkt, cU.buyMkt, mix), blend(cH.sellMkt, cU.sellMkt, mix),
-            nH + ' house' + (nH === 1 ? '' : 's') + ' to ' + nU + ' unit' +
-            (nU === 1 ? '' : 's') + ' &mdash; ' + Math.round(mix * 100) + '% house') +
-        '</tbody></table></div>' +
-        '<p class="count-line">Performance Property grew <strong>' + gpct(ppaG) +
-        '</strong> either way &mdash; only the market side moves, so the Gap column ' +
-        'is the whole comparison. All three read the <strong>same months</strong>; ' +
-        'the months come from the prices or the dates, never from the series. ' +
-        'The unit line is read at the All row&rsquo;s own months, which is not the ' +
-        'same as the Units row above &mdash; that one uses the unit properties&rsquo; ' +
-        'own months.</p>';
-    })();
 
     /* ── the per-property median ──
        A different question from the one above, answered on the same set. */
