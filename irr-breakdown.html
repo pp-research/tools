@@ -906,9 +906,7 @@ td.pd .src-link:hover{color:var(--text)}
 table.mini tr.gc-subrow th[scope=row]{padding-left:26px;font-weight:400;
   color:var(--muted)}
 table.mini tr.gc-subrow td{color:var(--muted)}
-.gc-all{font-size:12px;min-width:720px}
-.gc-all th,.gc-all td{white-space:nowrap}
-.gc-all tbody tr.on td,.gc-all tbody tr.on th[scope=row]{background:rgba(var(--accent-rgb),.10)}
+
 .mkt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:var(--sp-2) 0}
 /* The Overview's market comparison table is gone, and the class that styled
    it went with it. Only the total-row emphasis was worth keeping, repointed
@@ -4753,33 +4751,6 @@ var MHP_FROM='1980-03', MHP={
         '.</p>';
     })();
 
-    /* ── every combination for this city ── */
-    h += '<h3 class="ov-sub">Every combination</h3>' +
-      '<div class="mkt-wrap"><table class="mini gc-all"><thead><tr>' +
-      '<th scope="col">Type</th><th scope="col" class="num">Properties</th>' +
-      '<th scope="col">Method</th>' +
-      '<th scope="col" class="num">Bought</th><th scope="col" class="num">Sold</th>' +
-      '<th scope="col" class="num">Market growth</th>' +
-      '<th scope="col" class="num">PPA growth</th>' +
-      '<th scope="col" class="num">Gap</th></tr></thead><tbody>';
-    GC_TYPES.forEach(function(t){
-      GC_METHODS.forEach(function(m){
-        var c = gcCombo(gcOfType(all, t[0]), m[0]);
-        var on = (gcState.method === m[0]);
-        var g = c ? c.gap : null, up = (g !== null && g >= 0);
-        h += '<tr' + (on ? ' class="on"' : '') + '>' +
-          '<th scope="row">' + t[1] + '</th>' +
-          '<td class="num">' + (c ? c.n : 0) + '</td>' +
-          '<td>' + m[0] + ' &middot; ' + m[2] + '</td>' +
-          '<td class="num">' + (c ? gspan(c, 'buy') : '&mdash;') + '</td>' +
-          '<td class="num">' + (c ? gspan(c, 'sell') : '&mdash;') + '</td>' +
-          '<td class="num">' + (c ? gpct(c.mkt) : '&mdash;') + '</td>' +
-          '<td class="num">' + (c ? gpct(c.ppa) : '&mdash;') + '</td>' +
-          '<td class="num"><strong><span class="' + (g === null ? '' : (up ? 'pos' : 'neg')) +
-            '">' + gsign(g) + '</span></strong></td></tr>';
-      });
-    });
-    h += '</tbody></table></div>';
 
     h += '<p class="count-line">Sold properties only, on the filters the Register ' +
       'is set to. Properties still held have no sale price, so including them would ' +
