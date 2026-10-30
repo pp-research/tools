@@ -7561,7 +7561,11 @@ var MHP_FROM='1980-03', MHP={
      re-queue on every glance at the tab. */
   function queueFound(){
     var ids = (chk && chk.results || [])
-      .filter(function(r){ return r.status === 'sold' && !isPending(r.e); })
+      /* Not the archived ones. Setting a property outside of advice at review
+         is a decision, and a weekly re-run that put it straight back in the
+         queue would quietly undo it — the sold check still reports on them,
+         it just stops asking you to approve the same sale every Monday. */
+      .filter(function(r){ return r.status === 'sold' && !isPending(r.e) && !r.e.outside; })
       .map(function(r){ return r.e.id; });
     if (!ids.length) { syncReviewBadge(); return; }
     markSold(ids);
