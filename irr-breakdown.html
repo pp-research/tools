@@ -557,6 +557,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkBm #bmSheet{font:500 12px/18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:38px;padding:8px 10px}
 #chkBm .field{margin-bottom:var(--sp-5)}
 #chkBm #bmSheetLine{margin:0 0 var(--sp-4);font-size:13px;line-height:19px;color:var(--text)}
+#chkBm #bmWorklist{margin:calc(var(--sp-4) * -1) 0 var(--sp-4);font-size:12px;line-height:17px}
 #chkBm .bm-row{margin-bottom:var(--sp-4)}
 #bmMonthly{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
 /* The window's own prose and controls need room between them: a paragraph
@@ -1481,6 +1482,11 @@ details .body strong{color:var(--text)}
           </div>
           <div class="modal-body" id="chkBm">
             <p class="note note-info" id="bmSheetLine" hidden></p>
+            <!-- What the bookmarklets will actually work through, and how old
+                 it is. A worklist is a snapshot; saying when it was taken is
+                 the difference between a stale run you can see and one you
+                 cannot. -->
+            <p class="hint" id="bmWorklist" hidden></p>
 
             <!-- Shown only while this browser has no address. Once one is set it
                  goes away and stays away: it is a thing you do once, not a
@@ -1982,45 +1988,88 @@ window.stopCheck=false;
   const RUN_MARK = 'rpRunEndedAt'; // where a run was when the page went
 
   /* ── 1. the register ────────────────────────────────────────────────── */
-  /* WHERE THE REGISTER LIVES.
-     The address and the publishable key are read at run time rather than
-     baked into the bookmark: a link on a bookmarks bar gets copied, shared
-     and screenshotted, and nothing in it should outlive the page it came
-     from. The tool substitutes only WHICH file to read them out of, so the
-     standalone build reads its own project and the hub build reads the hub's.
-     An unsubstituted placeholder falls back to the standalone, which is where
-     this started and is the harmless answer if a stale bookmark is clicked. */
-  const CFG_SRC = '__CFG_SRC__'.charAt(0) === '_'
-    ? 'https://pp-research.github.io/tools/supabase-config.js'
-    : '__CFG_SRC__';
-  const cfgSrc = await fetch(CFG_SRC).then(r => r.text());
-  /* Two shapes to read: the standalone's  { url: '…', key: '…' }  config
-     object, and the hub's  const SUPABASE_URL = '…'  module constants. */
-  const pick = (a, b) => ((cfgSrc.match(a) || cfgSrc.match(b) || [])[1] || '');
-  const url = pick(/url:\s*'([^']+)'/, /SUPABASE_URL\s*=\s*'([^']+)'/);
-  const key = pick(/key:\s*'([^']+)'/, /SUPABASE_KEY\s*=\s*'([^']+)'/);
-  const row = (cfgSrc.match(/row:\s*'([^']+)'/) || [])[1] || 'adelaide';
-  if (!url || !key) {
-    console.error('Could not read the shared-list config from ' + CFG_SRC + '.');
+  /* WHERE THE REGISTER COMES FROM.
+     The sheet, not the database. This runs on RP Data's own pages, and the
+     register is behind a sign-in that lives on the tool's origin — one origin
+     cannot read another's, so this can never borrow it. Reading the database
+     directly would mean carrying a credential in the bookmark, and a link on
+     a bookmarks bar gets copied, shared and screenshotted.
+
+     So the IRR Calculator, which IS signed in, writes the worklist to the
+     sheet every time its Sold check tab is opened, and this reads it back
+     through the one address it already holds. One capability, not two — and
+     the register stays shut to anyone who is not signed in. */
+  if (!SHEET_URL) {
+    console.error('%cThis needs the Google Sheet address and does not have it.\n' +
+      'Open the IRR Calculator, go to Sold check, and drag the bookmark again.',
+      'font-weight:bold;font-size:13px;color:#c0392b');
     return;
   }
-  console.log('Register: ' + url.replace(/^https:\/\//, '') + ' · book "' + row + '"');
-
-  const book = await fetch(`${url}/rest/v1/irr_book?select=body&id=eq.${row}`,
-    { headers: { apikey: key, Authorization: 'Bearer ' + key } })
-    .then(r => r.json()).then(rows => rows[0] && rows[0].body);
-  if (!book) { console.error('Could not read the shared list.'); return; }
+  let reg = null;
+  try {
+    reg = await withTimeout(
+      fetch(SHEET_URL + (SHEET_URL.includes('?') ? '&' : '?') + 'register=1')
+        .then(r => r.json()),
+      25000, 'reading the register from the sheet');
+  } catch (e) {
+    console.error('Could not read the register from the sheet: ' + e.message);
+    return;
+  }
+  /* An older deployment has never heard of ?register=1 and answers with its
+     plain liveness reply instead — no rows, no error, which would read as
+     "nothing to do" and finish in a second looking like a success. */
+  if (!reg || !reg.ok || !Array.isArray(reg.rows)) {
+    console.error('%cThis sheet is still on an older Apps Script, which does not ' +
+      'hold the worklist yet.\n' +
+      'Deploy the new version first: Deploy > Manage deployments > the pencil > ' +
+      'Version: New version > Deploy. Then click this bookmark again.',
+      'font-weight:bold;font-size:13px;color:#c0392b');
+    return;
+  }
+  if (!reg.rows.length) {
+    console.error('%cThe worklist in the sheet is empty.\n' +
+      'Open the IRR Calculator and go to its Sold check tab — that is what ' +
+      'writes it — then click this bookmark again.',
+      'font-weight:bold;font-size:13px;color:#c0392b');
+    return;
+  }
+  console.log('Register: ' + reg.rows.length + ' properties, as the calculator had them' +
+              (reg.syncedAt ? ' at ' + reg.syncedAt : ' (no stamp)'));
+  /* A worklist is a snapshot. A stale one checks properties that have since
+     sold and misses ones since added — worth saying out loud, not worth
+     refusing to run over. */
+  if (reg.syncedAt) {
+    const age = Date.now() - new Date(reg.syncedAt.replace(' ', 'T')).getTime();
+    if (age > 7 * 864e5) {
+      console.warn('That worklist is ' + Math.round(age / 864e5) + ' days old. Open ' +
+                   'the calculator\'s Sold check tab to refresh it before a long run.');
+    }
+  }
 
   /* The sweep wants the opposite of what the sold-check wants. The sold ones
      are the whole point — a growth comparison is purchase against sale, and
      no sold-check will ever open their pages again. It keeps the
      outside-of-advice properties too: what kind of building something is, is
      a fact about the building, not a view about the advice. */
-  const all = (book.properties || []).filter(p =>
-    p.name &&
-    (!CITY || (p.category || '').trim() === CITY) &&
-    (TYPES_ONLY ? !p.ptype
-                : (!p.outside && !(p.soldDate && p.soldPrice))));
+  /* Back into the shape the rest of this file reads. The sheet speaks in
+     column names and everything below speaks in register fields; converting
+     once, here, keeps that difference in one place. */
+  const all = reg.rows
+    .filter(r =>
+      r.address &&
+      (!CITY || (r.city || '').trim() === CITY) &&
+      (TYPES_ONLY ? !r.ptype
+                  : (!r.outside && !(r.soldDate && r.soldPrice))))
+    .map(r => ({
+      name:          r.address,
+      category:      r.city,
+      ptype:         r.ptype,
+      outside:       r.outside,
+      purchaseDate:  r.purchased,
+      purchasePrice: r.purchasePrice,
+      soldDate:      r.soldDate,
+      soldPrice:     r.soldPrice
+    }));
 
   /* ── 1b. what the sheet already holds ───────────────────────────────── */
   /* Matched on the address exactly as the register spells it, which is also
@@ -7286,6 +7335,96 @@ var MHP_FROM='1980-03', MHP={
       bmSheetLink();
     }).catch(function(){ /* older deployment, or offline: no link, no harm */ });
   }
+  /* ── the worklist the bookmarklets read ──────────────────────────────
+     WHY THIS EXISTS AT ALL.
+
+     A bookmarklet runs on RP Data's pages. The register is behind a sign-in
+     that lives on this origin, and one origin cannot read another's, so a
+     bookmarklet can never borrow it. The alternatives were to open the
+     register to anyone holding the publishable key, or to bake a credential
+     into the bookmark — and a link on a bookmarks bar gets copied, shared and
+     screenshotted.
+
+     So the party that IS signed in writes the list down somewhere both can
+     reach: the sheet, which the bookmarklets already have the address of.
+     One capability between them instead of two, and the register stays shut.
+
+     Everything goes, not just what is due a check. Which properties are due
+     is the bookmarklet's decision and depends on which pass it is — the sweep
+     wants the ones with no type, the sold check wants the held ones — so the
+     list carries the facts and lets it choose. */
+  var regSentAt = 0;             // last successful POST, as this page saw it
+  function registerRows(){
+    return loadProps().filter(function(e){ return e.name; }).map(function(e){
+      return { address: e.name,
+               city: (e.category || '').trim(),
+               purchased: e.purchaseDate || '',
+               purchasePrice: e.purchasePrice || '',
+               soldDate: e.soldDate || '',
+               soldPrice: e.soldPrice || '',
+               ptype: e.ptype || '',
+               outside: e.outside ? 1 : 0 };
+    });
+  }
+  /* Opening the tab is the trigger, so this can run several times in a
+     sitting. Once a minute is plenty: the register does not change while you
+     are looking at the Sold check tab, and a sync is a whole-tab rewrite at
+     the other end. */
+  function syncRegisterToSheet(){
+    var u = sheetUrl();
+    if (!u || share.canWrite !== true) return;
+    var rows = registerRows();
+    if (!rows.length) return;
+    if (Date.now() - regSentAt < 60000) { bmWorklistLine(); return; }
+    regSentAt = Date.now();
+    var w = $('bmWorklist');
+    if (w) { w.hidden = false; w.textContent = 'Sending the worklist to the sheet…'; }
+    /* no-cors, text/plain: the same shape every other post to this endpoint
+       takes, and for the same reason — a preflight it cannot answer, and a
+       reply it cannot let us read. */
+    fetch(u, { method: 'POST', mode: 'no-cors',
+               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+               body: JSON.stringify({ kind: 'register', rows: rows }) })
+      .then(function(){
+        /* The write is not readable, so the read that follows is the receipt.
+           A moment's grace first: the script takes the lock, clears the tab
+           and writes it back, and asking mid-rewrite reports a short list. */
+        setTimeout(bmWorklistLine, 2500);
+      })
+      .catch(function(){
+        regSentAt = 0;           // it did not land; let the next visit retry
+        if (w) w.textContent = 'Could not send the worklist to the sheet. ' +
+          'The bookmarklets will use whatever it already holds.';
+      });
+  }
+  /* What the sheet says it is holding — read back, never assumed. If this
+     disagrees with the register, that difference is the thing worth seeing. */
+  function bmWorklistLine(){
+    var u = sheetUrl(), w = $('bmWorklist');
+    if (!w) return;
+    if (!u) { w.hidden = true; return; }
+    fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'register=1')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        w.hidden = false;
+        if (!d || !d.ok || !Array.isArray(d.rows)) {
+          w.innerHTML = ('This sheet is on an older Apps Script that does not ' +
+            'hold the worklist yet, so the bookmarklets have nothing to read. ' +
+            'Deploy the current <a href="sheet-endpoint.gs.txt" target="_blank" ' +
+            'rel="noopener">sheet-endpoint.gs</a> and open this tab again.');
+          return;
+        }
+        if (!d.rows.length) { w.textContent = 'The sheet is holding an empty worklist.'; return; }
+        var here = registerRows().length;
+        w.textContent = 'The bookmarklets will work from ' + d.rows.length +
+          ' propert' + (d.rows.length === 1 ? 'y' : 'ies') +
+          (d.syncedAt ? ', as at ' + d.syncedAt : '') +
+          (here && here !== d.rows.length
+             ? ' — the register here has ' + here + '.'
+             : '.');
+      })
+      .catch(function(){ w.hidden = true; });   // offline: say nothing rather than something wrong
+  }
   /* Signed in only, and only once there is something held to check. */
   function syncBmBox(pool){
     var box = $('chkBm');
@@ -7794,6 +7933,9 @@ var MHP_FROM='1980-03', MHP={
      in step with what is actually held. */
   function syncCheckTab(){
     syncBmBox(loadProps().filter(isHeld));
+    /* The bookmarklets read the register from the sheet, so opening this tab
+       is what keeps that copy current. See syncRegisterToSheet. */
+    syncRegisterToSheet();
   }
 
   /* ══════════ CSV OUT ══════════ */
