@@ -558,6 +558,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkBm .field{margin-bottom:var(--sp-5)}
 #chkBm #bmSheetLine{margin:0 0 var(--sp-4);font-size:13px;line-height:19px;color:var(--text)}
 #chkBm #bmWorklist{margin:calc(var(--sp-4) * -1) 0 var(--sp-4);font-size:12px;line-height:17px}
+#panel-review #revNote{margin:0 0 var(--sp-4)}
+#panel-review table.mini td:first-child,
+#panel-review table.mini th:first-child{width:28px;text-align:center}
+#panel-review .btns{margin-top:var(--sp-4)}
+#panel-review .btn-ghost.danger{color:var(--neg)}
+#tab-review .badge[hidden]{display:none}
 #chkBm .bm-row{margin-bottom:var(--sp-4)}
 #bmMonthly{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
 /* The window's own prose and controls need room between them: a paragraph
@@ -1201,6 +1207,7 @@ details .body strong{color:var(--text)}
         <button type="button" role="tab" id="tab-growth" aria-controls="panel-growth" aria-selected="false" tabindex="-1">Growth comparison</button>
         <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
         <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check</button>
+        <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" tabindex="-1">For review <span class="badge" id="badgeReview">0</span></button>
         <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
       </div>
 
@@ -1383,6 +1390,23 @@ details .body strong{color:var(--text)}
       </div>
 
       <!-- ══════════ HISTORY — append-only: what moved, which way, who, when ══════════ -->
+      <div class="panel" id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
+        <section class="card" aria-labelledby="rev-h">
+          <div class="card-head">
+            <h2 id="rev-h">For review</h2>
+            <button type="button" class="btn-ghost btn-sm" id="btnRevRefresh">Refresh</button>
+          </div>
+          <p class="note note-info" id="revNote"></p>
+          <div id="revMsg"></div>
+          <div id="revBody"></div>
+          <div class="btns" id="revActions" hidden>
+            <button type="button" class="btn-primary btn-sm" id="btnRevApprove">Approve</button>
+            <button type="button" class="btn-ghost btn-sm" id="btnRevArchive">Archive</button>
+            <button type="button" class="btn-ghost btn-sm danger" id="btnRevDelete">Delete</button>
+          </div>
+        </section>
+      </div>
+
       <div class="panel" id="panel-history" role="tabpanel" aria-labelledby="tab-history" hidden>
         <section class="card" aria-labelledby="hist-h">
           <div class="card-head">
@@ -3670,7 +3694,7 @@ window.stopCheck=false;
 
   /* ══════════ TABS ══════════ */
   /* order matches the strip left to right, so the arrow keys track it */
-  var TABS = ['register','overview','growth','calc','check','history'];
+  var TABS = ['register','overview','growth','calc','check','review','history'];
   function showTab(name){
     /* An armed bin must not survive you leaving the tab and coming back: the
        second click would land on a page you had stopped reading. */
@@ -3691,6 +3715,7 @@ window.stopCheck=false;
        it is a setup you do once, and a window you have to go looking for
        is one nobody reads. After that it waits behind its button. */
     if (name === 'check') { syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp(); }
+    if (name === 'review') drawReview();
   }
   function currentTab(){
     for (var i=0;i<TABS.length;i++) if ($('tab-'+TABS[i]).getAttribute('aria-selected')==='true') return TABS[i];
@@ -3698,18 +3723,59 @@ window.stopCheck=false;
   }
 
   /* ══════════ PROPERTIES STORE (localStorage — this browser only) ══════════ */
+  /* This browser's copy is a MIRROR. The shared copy is the record: it is
+     what everyone else reads and what this browser reads back on the next
+     load. So a mirror that cannot be written is a reason to say so, not a
+     reason to show an empty register.
+
+     It happens. This origin is shared with every other tool on the domain,
+     the whole of localStorage is about 5 MB between them, and a register of a
+     thousand properties is a couple of hundred KB. When the write is refused
+     the list is held here instead, which lasts as long as the tab. */
+  var memProps = null;              // set only while localStorage is refusing
+  var storageFull = false, storageKept = false;
   function loadProps(){
+    if (memProps) return memProps;
     try { var v = JSON.parse(localStorage.getItem(STORE) || '[]'); return Array.isArray(v) ? v : []; }
     catch (e) { return []; }
   }
-  function putProps(list){
+  /* Call this AFTER whatever renders next. calc() ends in showEmpty, showHeld
+     or showNoted and each of them clears #messages, so a warning written
+     before one of those is a warning nobody ever sees — which is why a full
+     browser presented as an empty book and not as a full browser. */
+  function sayStorage(kept){
+    if (kept !== undefined) storageKept = kept;
+    if (!storageFull) return;
+    $('messages').innerHTML = storageKept
+      ? msg('warn','This browser is out of room, so the register could not be kept here. ' +
+          'Nothing is lost — it is in the shared list, and on screen — but this tab is the ' +
+          'only local copy, so leave it open while you work. Clearing another tool’s saved ' +
+          'data on this site frees the space.')
+      : msg('err','Could not save — either this browser is blocking local storage, or the ' +
+          'list has outgrown it.');
+  }
+  /* fromRecord: this list came straight off the shared copy, so the record
+     already has it and holding it in the tab loses nothing. An EDIT is the
+     other case, and it is only safe if the record will take it. */
+  function putProps(list, fromRecord){
     try {
       localStorage.setItem(STORE, JSON.stringify(list));
+      memProps = null; storageFull = false;
       pushShared();      /* the one funnel every property change goes through */
       return true;
     }
     catch (e) {
-      $('messages').innerHTML = msg('err','Could not save — either this browser is blocking local storage, or the list has outgrown it.');
+      storageFull = true;
+      if (fromRecord) { memProps = list; sayStorage(true); return true; }
+      if (share.canWrite === true && (share.db || share.sb)) {
+        memProps = list;
+        pushShared();    /* the record still gets it */
+        sayStorage(true);
+        return true;
+      }
+      /* Nothing can hold this change, so the caller must abandon it rather
+         than show one that a reload would throw away. */
+      sayStorage(false);
       return false;
     }
   }
@@ -3736,7 +3802,7 @@ window.stopCheck=false;
   }
   /** Adds or updates; returns {added, updated}. Same name + dates replaces. */
   function addEntries(entries){
-    var list = loadProps(), added = 0, updated = 0;
+    var list = loadProps(), added = 0, updated = 0, fresh = [];
     // match on the trimmed name: 23 names in the source book carry a trailing
     // space, so a strict compare would file the same property twice
     var key = function(e){ return String(e.name||'').trim().toLowerCase() + '|' + e.purchaseDate + '|' + e.soldDate; };
@@ -3754,9 +3820,20 @@ window.stopCheck=false;
         if (!(e.note||'').trim() && (list[dup].note||'').trim()) e.note = list[dup].note;
         if (list[dup].outside) { e.outside = true; e.outsideReason = list[dup].outsideReason; }   /* set aside outlives an import, like a rename */
         list[dup] = e; updated++;
-      } else { list.push(e); added++; }
+      } else {
+        /* New on the register, so it waits for review. An UPDATE does not:
+           the property was approved once and a refreshed purchase price is
+           not a new property. */
+        e.review = 'new';
+        list.push(e); added++; fresh.push(e);
+      }
     });
     if (!putProps(list)) return null;
+    /* Adding was the one thing that never reached the History. It does now,
+       because it is the thing the queue is about. */
+    if (fresh.length) logChange(fresh.map(function(e){
+      return { action:'added', property:e.name, detail:'waiting for review' };
+    }));
     renderProps();
     return { added: added, updated: updated };
   }
@@ -4450,7 +4527,7 @@ var MHP_FROM='1980-03', MHP={
     if (currentTab() === 'growth') drawGrowth();
   }
   function drawOverview(){
-    var all = cityProps(loadProps());
+    var all = cityProps(reviewedProps());
     if (!all.length) { ovStale = false; renderOverview([], [], 0); return; }
     /* No override on f.show any more: Show is the only answer to "which
        kinds", and this tab reads it like the Register does. */
@@ -4511,7 +4588,7 @@ var MHP_FROM='1980-03', MHP={
      against the market without all three. */
   function gcRows(){
     var f = readFilters(), opts = readOpts();
-    return filterEntries(cityProps(loadProps()), f)
+    return filterEntries(cityProps(reviewedProps()), f)
       .map(function(e){ return deriveOne(e, opts); })
       .filter(function(d){ return passDerived(d, f, true); })
       /* Sold and not archived, and priced at both ends so it can sit in both
@@ -5338,6 +5415,7 @@ var MHP_FROM='1980-03', MHP={
     /* the badge counts what this view is about, which is what the Show filter
        selects — the other filters narrow it and the count line says by how much */
     $('badgeProps').textContent = scoped.length;
+    syncReviewBadge();
 
     syncFilterChrome(f);
 
@@ -6377,11 +6455,13 @@ var MHP_FROM='1980-03', MHP={
      filing, the archive reason and a note already written all outlive an
      import, exactly as they do in addEntries. */
   function mergeByName(entries){
-    var list = loadProps(), idx = {}, added = 0, updated = 0;
+    var list = loadProps(), idx = {}, added = 0, updated = 0, fresh = [];
     list.forEach(function(e, i){ idx[String(e.name||'').trim().toLowerCase()] = i; });
     entries.forEach(function(e){
       var k = String(e.name||'').trim().toLowerCase(), at = idx[k];
-      if (at === undefined) { list.push(e); idx[k] = list.length - 1; added++; return; }
+      /* New on the register, so it waits for review — the same rule
+         addEntries follows, in the other of the two add paths. */
+      if (at === undefined) { e.review = 'new'; list.push(e); idx[k] = list.length - 1; added++; fresh.push(e); return; }
       var old = list[at];
       if (sameDeal(old, e)) return;            // this import would change nothing
       var m = mergeFields(old, e);
@@ -6389,6 +6469,9 @@ var MHP_FROM='1980-03', MHP={
       updated++;
     });
     if (!putProps(list)) return null;
+    if (fresh.length) logChange(fresh.map(function(e){
+      return { action:'added', property:e.name, detail:'waiting for review' };
+    }));
     renderProps();
     return { added:added, updated:updated };
   }
@@ -6511,38 +6594,44 @@ var MHP_FROM='1980-03', MHP={
     p.hits.forEach(function(s){
       var e = byId[s.match.id];
       if (!e || !s.price || !s.date) return;
-      e.soldPrice = s.price; e.soldDate = s.date;
-      e.soldVerified = verified;
-      e.soldLink = /^https?:\/\//i.test(s.link || '') ? s.link : e.soldLink;
-      e.soldCheck = 'Sold';
+      /* Parked, not written — approving in For review is the only thing that
+         turns a found sale into a sale, whichever way it was found. */
+      e.review = 'sale';
+      e.pending = { price: s.price, date: s.date, src: verified,
+                    link: /^https?:\/\//i.test(s.link || '') ? s.link : '' };
       done++;
     });
-    var added = 0;
+    var added = 0, newOnes = [];
     if (p.addNew) {
       var cat = $('impCat').value.trim();      // one capital city for the whole import
       p.missing.forEach(function(s){
         if (!s.price || !s.date) return;
-        list.push({ id: newId(), name: s.raw, category: cat || undefined,
+        var fresh = { id: newId(), name: s.raw, category: cat || undefined,
                     purchasePrice: undefined, purchaseDate: undefined,
                     soldPrice: s.price, soldDate: s.date,
                     soldVerified: verified,
                     soldLink: /^https?:\/\//i.test(s.link || '') ? s.link : undefined,
-                    savedAt: new Date().toISOString() });
+                    /* a property nobody has reviewed, like any other */
+                    review: 'new',
+                    savedAt: new Date().toISOString() };
+        list.push(fresh); newOnes.push(fresh);
         added++;
       });
     }
     if (!done && !added) { dlgSay(msg('warn','Nothing to write — those rows have no price and date.')); return; }
     if (!putProps(list)) return;
     logChange([{ action:'recorded sales', property:null,
-                 detail: done + ' marked sold' + (added ? ', ' + added + ' added' : '') +
-                         ' from ' + p.source }]);
+                 detail: done + ' sent for review' + (added ? ', ' + added + ' added' : '') +
+                         ' from ' + p.source }].concat(newOnes.map(function(e){
+      return { action:'added', property:e.name, detail:'waiting for review' };
+    })));
     renderProps();
     closeAdd();
     $('pasteBox').value = '';
     clearAddPreview();
-    $('parseMsg').innerHTML = msg('ok', done + ' sale' + (done===1?'':'s') + ' recorded' +
+    $('parseMsg').innerHTML = msg('ok', done + ' sale' + (done===1?'':'s') + ' sent to review' +
       (added ? ' and ' + added + ' propert' + (added===1?'y':'ies') + ' added' : '') +
-      ' from ' + p.source + '. Each one is in <strong>History</strong>.');
+      ' from ' + p.source + '. Approve them in <strong>For review</strong>.');
   }
 
   /* the one preview renderer, so both modes answer in the same shape */
@@ -7437,6 +7526,163 @@ var MHP_FROM='1980-03', MHP={
     syncBm();
   }
 
+  /* ══════════ FOR REVIEW ══════════
+     Nothing joins the register, and no sale is written onto a property, until
+     somebody has looked at it and said so.
+
+     Two ways in — a property is added, or the sold check finds a sale — and
+     three ways out, each with a note and each in the History.
+
+     A property waiting on a SALE is still the held property it always was, so
+     it goes on counting as one everywhere; only the sale is held back. A
+     property waiting to be ADDED has never been reviewed at all, so it is
+     kept out of the Overview and the Growth comparison until it is, and the
+     headline figures only ever come from reviewed data. It still shows on the
+     Register, because a queue you cannot see the contents of is no use. */
+  function isPending(e){ return e.review === 'new' || e.review === 'sale'; }
+  /* What the figures are allowed to read. A pending SALE is not excluded:
+     the property is unchanged and dropping it would make the Overview flinch
+     every time the sold check ran. */
+  function reviewedProps(){
+    return loadProps().filter(function(e){ return e.review !== 'new'; });
+  }
+  function pendingProps(){ return cityProps(loadProps()).filter(isPending); }
+  function syncReviewBadge(){
+    var b = $('badgeReview'); if (!b) return;
+    var n = pendingProps().length;
+    b.textContent = n;
+    b.hidden = !n;
+  }
+  function revSay(html){ var m = $('revMsg'); if (m) m.innerHTML = html || ''; }
+  var revPicked = {};
+
+  /* Everything the sheet just said had sold, parked in one go. Called only
+     from chkLoadSheet: chkRun() runs on every redraw and queueing there would
+     re-queue on every glance at the tab. */
+  function queueFound(){
+    var ids = (chk && chk.results || [])
+      .filter(function(r){ return r.status === 'sold' && !isPending(r.e); })
+      .map(function(r){ return r.e.id; });
+    if (!ids.length) { syncReviewBadge(); return; }
+    markSold(ids);
+  }
+
+  function drawReview(){
+    var list = pendingProps();
+    var host = $('revBody'), note = $('revNote'), acts = $('revActions');
+    if (!host) return;
+    syncReviewBadge();
+    /* A tick that outlived the row it was on would act on the wrong property. */
+    var live = {}; list.forEach(function(e){ live[e.id] = 1; });
+    Object.keys(revPicked).forEach(function(id){ if (!live[id]) delete revPicked[id]; });
+
+    if (note) note.innerHTML = 'Nothing is counted in the <strong>Overview</strong> or the ' +
+      '<strong>Growth comparison</strong> until it has been approved here, and no sale is ' +
+      'written onto a property until then either. Every decision goes to the ' +
+      '<strong>History</strong> with whatever you type as the reason.';
+    if (!list.length) {
+      host.innerHTML = '<div class="empty"><h3>Nothing waiting</h3>' +
+        '<p>Properties arrive here when they are added to the register, and when the ' +
+        '<strong>Sold check</strong> finds a sale against one.</p></div>';
+      if (acts) acts.hidden = true;
+      return;
+    }
+    if (acts) acts.hidden = false;
+    var row = function(e){
+      var why = e.review === 'sale' ? 'Sale found' : 'Added';
+      var p = e.pending || {};
+      var detail;
+      if (e.review === 'sale') {
+        var d = p.date ? new Date(p.date + 'T00:00:00Z') : null;
+        detail = '<b>' + aud(p.price) + '</b> on ' + (d && !isNaN(d) ? dLabel(d) : '—') +
+          (p.src ? ' <span class="faint">· ' + esc(p.src) + '</span>' : '') +
+          (p.link ? ' <a href="' + esc(p.link) + '" target="_blank" rel="noopener">record</a>' : '');
+      } else {
+        var bd = e.purchaseDate ? new Date(e.purchaseDate + 'T00:00:00Z') : null;
+        detail = Number(e.purchasePrice) > 0
+          ? 'Bought <b>' + aud(e.purchasePrice) + '</b>' +
+            (bd && !isNaN(bd) ? ' on ' + dLabel(bd) : '')
+          : '<span class="faint">No purchase recorded</span>';
+      }
+      return '<tr><td><input type="checkbox" data-rev="' + esc(e.id) + '"' +
+          (revPicked[e.id] ? ' checked' : '') +
+          ' aria-label="Select ' + esc(e.name) + '"></td>' +
+        '<td>' + esc(e.name) + '</td>' +
+        '<td>' + esc((e.category || '').trim() || '—') + '</td>' +
+        '<td>' + why + '</td>' +
+        '<td>' + detail + '</td></tr>';
+    };
+    host.innerHTML = '<table class="mini"><thead><tr>' +
+      '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
+      '<th scope="col">Property</th><th scope="col">City</th>' +
+      '<th scope="col">Waiting on</th><th scope="col">What was found</th>' +
+      '</tr></thead><tbody>' + list.map(row).join('') + '</tbody></table>';
+  }
+
+  function revSelected(){
+    var ids = Object.keys(revPicked).filter(function(id){ return revPicked[id]; });
+    if (!ids.length) { revSay(msg('warn','Tick the ones you want to act on first.')); return null; }
+    return ids;
+  }
+  /* One shape for all three, because the difference between them is only what
+     happens to the property — the asking, the note, the logging and the
+     redraw are the same every time. */
+  function revAct(title, body, okLabel, verb, apply){
+    var ids = revSelected(); if (!ids) return;
+    var want = {}; ids.forEach(function(i){ want[i] = 1; });
+    askPrompt(title, body + ' <strong>' + ids.length + '</strong> propert' +
+        (ids.length === 1 ? 'y' : 'ies') + '.',
+      'Reason (goes to the History)', '', okLabel, function(value){
+        var reason = String(value || '').trim();
+        var list = loadProps(), touched = [], keep = [];
+        list.forEach(function(e){
+          if (!want[e.id]) { keep.push(e); return; }
+          var r = apply(e, reason);         // false = drop it from the register
+          touched.push({ action: verb, property: e.name, detail: reason });
+          if (r !== false) keep.push(e);
+        });
+        if (!touched.length) return;
+        if (!putProps(keep)) return;
+        logChange(touched);
+        revPicked = {};
+        renderProps();
+        ovStale = true; gcStale = true;     // the figures just changed
+        drawReview();
+        revSay(msg('ok', touched.length + ' propert' + (touched.length === 1 ? 'y' : 'ies') +
+          ' ' + verb + '. Each one is in <strong>History</strong>.'));
+      }, true);
+  }
+  function reviewApprove(){
+    revAct('Approve', 'Approve', 'Approve', 'approved', function(e){
+      /* The one place a parked sale becomes a sale. */
+      if (e.review === 'sale' && e.pending) {
+        e.soldPrice = e.pending.price;
+        e.soldDate = e.pending.date;
+        e.soldVerified = e.pending.src || undefined;
+        e.soldLink = e.pending.link || undefined;
+        e.soldCheck = 'Sold';
+      }
+      e.review = undefined; e.pending = undefined;
+    });
+  }
+  function reviewArchive(){
+    revAct('Archive', 'Set outside of advice', 'Archive', 'archived', function(e, reason){
+      e.outside = 1;
+      /* The Register shows this, so what was typed here is what it shows —
+         rather than a generic line that sends you to the History to find out
+         what actually happened. */
+      e.outsideReason = reason || 'Archived at review';
+      /* The parked sale goes with it: it was never approved, so it is not a
+         fact about the property and must not sit there looking like one. */
+      e.review = undefined; e.pending = undefined;
+    });
+  }
+  function reviewDelete(){
+    revAct('Delete', 'Permanently remove', 'Delete', 'deleted', function(){
+      return false;
+    });
+  }
+
   function chkLoadSheet(){
     var u = sheetUrl();
     if (!u) return;
@@ -7502,6 +7748,10 @@ var MHP_FROM='1980-03', MHP={
               (all.length - sold.length === 1 ? 'it is' : 'they are')+' not in the match.'
             : '')));
         chkRun();
+        /* Reading the sheet IS the act that finds the sales, so everything it
+           found goes to the queue there and then rather than waiting for
+           somebody to press a second button. */
+        queueFound();
       })
       .catch(function(e){
         chkSay(msg('err','Could not read the sheet: '+esc(e.message)+
@@ -7800,26 +8050,28 @@ var MHP_FROM='1980-03', MHP={
     list.forEach(function(e){
       var r = byId[e.id];
       if (!r || !r.hit || !r.hit.price || !r.hit.date) return;
-      e.soldPrice = r.hit.price;
-      e.soldDate = r.hit.date;
-      /* The row knows which site answered; the dropdown is only the fallback
-         for a list that does not say. Recording "RPData import" against a
-         price Pricefinder found would be a lie on the record. */
-      e.soldVerified = srcOf(r.hit) || (chk && chk.source) || undefined;
-      e.soldLink = /^https?:\/\//i.test(r.hit.link) ? r.hit.link : undefined;
-      e.soldCheck = 'Sold';
+      /* Parked, not written. The property stays exactly the held property it
+         was until somebody approves it in For review — see reviewApprove,
+         which is the only place these four become a sale. */
+      e.review = 'sale';
+      e.pending = { price: r.hit.price, date: r.hit.date,
+        /* The row knows which site answered; the dropdown is only the
+           fallback for a list that does not say. Recording "RPData import"
+           against a price Pricefinder found would be a lie on the record. */
+        src: srcOf(r.hit) || (chk && chk.source) || '',
+        link: /^https?:\/\//i.test(r.hit.link) ? r.hit.link : '' };
       done.push(e);
     });
-    if (!done.length) { chkSay(msg('warn','Nothing to write — those rows have no price and date.')); return; }
+    if (!done.length) { chkSay(msg('warn','Nothing to send — those rows have no price and date.')); return; }
     if (!putProps(list)) return;
     logChange(done.map(function(e){
-      return { action:'marked sold', property:e.name,
-               detail:'verified by ' + (e.soldVerified || 'an import') };
+      return { action:'sent for review', property:e.name,
+               detail:'sale found by ' + (e.pending.src || 'an import') };
     }));
     renderProps();
     chkRun();
     chkSay(msg('ok', done.length + ' propert' + (done.length===1?'y':'ies') +
-      ' marked sold. Each one is in <strong>History</strong>.'));
+      ' sent to <strong>For review</strong>. The sale is written when it is approved.'));
   }
 
   /* ── the suburb panel ──
@@ -9264,6 +9516,24 @@ var MHP_FROM='1980-03', MHP={
     dlgSay(msg('ok', esc(name) + (res.added ? ' added.' : ' was already on the register and has been updated.')));
   });
 
+  /* ── for review ── */
+  $('btnRevRefresh').addEventListener('click', function(){ revSay(''); drawReview(); });
+  $('btnRevApprove').addEventListener('click', reviewApprove);
+  $('btnRevArchive').addEventListener('click', reviewArchive);
+  $('btnRevDelete').addEventListener('click', reviewDelete);
+  $('revBody').addEventListener('change', function(ev){
+    var t = ev.target;
+    if (t && t.id === 'revAll') {
+      pendingProps().forEach(function(e){ revPicked[e.id] = t.checked; });
+      drawReview();
+      return;
+    }
+    if (t && t.getAttribute && t.getAttribute('data-rev')) {
+      var id = t.getAttribute('data-rev');
+      if (t.checked) revPicked[id] = 1; else delete revPicked[id];
+    }
+  });
+
   /* ── sold check ── */
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
   /* Typed in, never in this file. Saved as it is typed so there is no
@@ -9530,9 +9800,14 @@ var MHP_FROM='1980-03', MHP={
      That is exactly how every property type was lost: ptype was not on the
      list, so one edit stripped the types off the whole book. Add to this list
      when you add a field to an entry. */
+  /* `review` and `pending` are shared like everything else: a queue only one
+     browser can see is not a queue. ANY field left out of this list is
+     deleted from the book the next time anybody saves - that is what erased
+     the property type from 372 properties on 29 Oct - so a new per-property
+     field goes in here in the same breath as it is invented. */
   var SHARE_FIELDS = ['name','category','ptype','purchasePrice','purchaseDate',
     'soldPrice','soldDate','soldVerified','soldLink','soldCheck','note',
-    'outsideReason'];
+    'outsideReason','review','pending'];
   function shareBody(){
     var list = loadProps().map(function(e){
       var o = { id:e.id };
@@ -9651,7 +9926,7 @@ var MHP_FROM='1980-03', MHP={
     var onlyHere = loadProps().filter(function(e){ return e.id && !incoming[e.id]; });
     share.applying = true;
     try {
-      putProps(body.properties);
+      putProps(body.properties, true);
       if (body.assumptions) {
         OPT_IDS.forEach(function(id){
           var v = body.assumptions[id];
@@ -9665,6 +9940,7 @@ var MHP_FROM='1980-03', MHP={
       }
       share.sent = JSON.stringify(shareBody());
       syncAssumpFlag(); renderProps(); calc();
+      sayStorage();          // calc() clears #messages; this has to outlive it
     } finally { share.applying = false; }
     if (onlyHere.length) { stashUnsent(onlyHere); offerUnsent(onlyHere); }
   }
