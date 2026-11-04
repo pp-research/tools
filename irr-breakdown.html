@@ -1371,6 +1371,12 @@ details .body strong{color:var(--text)}
                      screen. Hidden entirely until this browser knows where the
                      sheet is — the address is a capability, never in this file. -->
                 <button type="button" class="btn-primary btn-sm" id="btnChkSheet" hidden>From Google Sheet</button>
+                <!-- A second source, and the only one that is ahead of the book
+                     rather than behind it: the advisory team writes a sale into
+                     the tracking sheet long before RP Data has it. Shown as soon
+                     as this browser knows the /exec address — unlike the reload
+                     beside it, it does not need anything loaded first. -->
+                <button type="button" class="btn-ghost btn-sm" id="btnChkAdl" hidden>Check ADL &ndash; Sold</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkHelp" hidden>How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
@@ -1389,7 +1395,10 @@ details .body strong{color:var(--text)}
           </section>
       </div>
 
-      <!-- ══════════ HISTORY — append-only: what moved, which way, who, when ══════════ -->
+      <!-- ══════════ FOR REVIEW — nothing counts until somebody has said so ══════════
+           Two ways in: a property added to the register, and a sale found
+           against one — by the sold check, or by the tracking sheet. Three ways
+           out, each with a reason, each a row in the History. -->
       <div class="panel" id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
         <section class="card" aria-labelledby="rev-h">
           <div class="card-head">
@@ -3715,7 +3724,7 @@ window.stopCheck=false;
        it is a setup you do once, and a window you have to go looking for
        is one nobody reads. After that it waits behind its button. */
     if (name === 'check') { syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp(); }
-    if (name === 'review') drawReview();
+    if (name === 'review') drawQueue();
   }
   function currentTab(){
     for (var i=0;i<TABS.length;i++) if ($('tab-'+TABS[i]).getAttribute('aria-selected')==='true') return TABS[i];
@@ -7261,6 +7270,9 @@ var MHP_FROM='1980-03', MHP={
   function syncSheetBtn(){
     var u = !!sheetUrl();
     $('btnChkSheet').hidden = !u || !chk;
+    /* The tracking sheet is a source in its own right, so this one only waits
+       on the address — there is nothing to load first. */
+    var adl = $('btnChkAdl'); if (adl) adl.hidden = !u;
     var big = $('btnChkLoadBig');          // only exists while the tab is empty
     if (big) big.hidden = !u;
   }
@@ -7571,7 +7583,7 @@ var MHP_FROM='1980-03', MHP={
     markSold(ids);
   }
 
-  function drawReview(){
+  function drawQueue(){
     var list = pendingProps();
     var host = $('revBody'), note = $('revNote'), acts = $('revActions');
     if (!host) return;
@@ -7586,8 +7598,10 @@ var MHP_FROM='1980-03', MHP={
       '<strong>History</strong> with whatever you type as the reason.';
     if (!list.length) {
       host.innerHTML = '<div class="empty"><h3>Nothing waiting</h3>' +
-        '<p>Properties arrive here when they are added to the register, and when the ' +
-        '<strong>Sold check</strong> finds a sale against one.</p></div>';
+        '<p>Properties arrive here when they are added to the register, when the ' +
+        '<strong>Sold check</strong> finds a sale against one, and when the ' +
+        '<strong>ADL &ndash; Sold</strong> tab of the tracking sheet has a sale the ' +
+        'register does not.</p></div>';
       if (acts) acts.hidden = true;
       return;
     }
@@ -7607,6 +7621,15 @@ var MHP_FROM='1980-03', MHP={
           ? 'Bought <b>' + aud(e.purchasePrice) + '</b>' +
             (bd && !isNaN(bd) ? ' on ' + dLabel(bd) : '')
           : '<span class="faint">No purchase recorded</span>';
+        /* A property can arrive already sold — one added from the tracking
+           sheet does. Showing only what it cost would hide half of what is
+           being approved. */
+        if (Number(e.soldPrice) > 0) {
+          var sd = e.soldDate ? new Date(e.soldDate + 'T00:00:00Z') : null;
+          detail += ', sold <b>' + aud(e.soldPrice) + '</b>' +
+            (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '') +
+            (e.soldVerified ? ' <span class="faint">· ' + esc(e.soldVerified) + '</span>' : '');
+        }
       }
       return '<tr><td><input type="checkbox" data-rev="' + esc(e.id) + '"' +
           (revPicked[e.id] ? ' checked' : '') +
@@ -7651,7 +7674,7 @@ var MHP_FROM='1980-03', MHP={
         revPicked = {};
         renderProps();
         ovStale = true; gcStale = true;     // the figures just changed
-        drawReview();
+        drawQueue();
         revSay(msg('ok', touched.length + ' propert' + (touched.length === 1 ? 'y' : 'ies') +
           ' ' + verb + '. Each one is in <strong>History</strong>.'));
       }, true);
@@ -7764,6 +7787,205 @@ var MHP_FROM='1980-03', MHP={
       });
   }
 
+
+  /* ── the Adelaide tracking sheet ─────────────────────────────────────────
+     "Adelaide Total Purchases & Sales - TrackingSheet", tab "ADL - Sold", is
+     where the advisory team records a sale by hand. It goes in there first —
+     before RP Data has it, and long before anybody thinks about this tool —
+     so it is the one source that can be AHEAD of the register rather than
+     behind it. That is the whole reason this button exists: everything else
+     on this tab asks a website what it knows, and this asks the people.
+
+     The browser cannot read that sheet itself: it is private and on another
+     origin. The read goes through the same /exec the sold check already uses,
+     which runs as somebody who can see it — see ?adl=1 in sheet-endpoint.gs,
+     where the spreadsheet id is pinned so that holding the address still only
+     buys you this one sheet. */
+  var adlFound = null;                     // the last check, waiting on a yes
+
+  /* A sale needs both halves. Approving a pending sale writes the price and
+     the date onto the property, and a blank date would leave it reading as
+     still held — a change that looks like it happened and did not. */
+  function adlWhole(r){ return Number(r.soldPrice) > 0 && !!r.soldDate; }
+
+  function adlSame(e, r){
+    return Number(e.soldPrice) === Number(r.soldPrice) &&
+           String(e.soldDate || '') === String(r.soldDate || '');
+  }
+
+  function chkAdlSold(){
+    var u = sheetUrl();
+    if (!u) {
+      chkSay(msg('err','This browser does not know where the sheet is yet — the box for '+
+        'the address is under <strong>How this works</strong>.'));
+      return;
+    }
+    showTab('check');
+    chkSay(msg('ok','Reading the ADL &ndash; Sold tab…'));
+    fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'adl=1')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        /* A deployment made before ?adl=1 existed does not reject it — it
+           ignores the parameter and answers the liveness reply, which is a
+           perfectly well-formed success with no rows on it. Reporting that as
+           "nothing new" would be the worst available answer, because it is the
+           one that looks like good news. */
+        if (d && d.ok && !d.rows && d.endpoint) {
+          throw new Error('the sheet endpoint is an older version and does not know this tab yet. '+
+            'Open the Apps Script, paste sheet-endpoint.gs over it, then Deploy → '+
+            'Manage deployments → pencil → Version: New version.');
+        }
+        if (!d || !d.ok) throw new Error(d && d.error ? d.error : 'the sheet did not answer');
+        var rows = (d.rows || []).filter(function(r){ return r.address; });
+        if (!rows.length) {
+          chkSay(msg('warn','The <strong>'+esc(d.tab || 'ADL &ndash; Sold')+'</strong> tab has no sales in it.'));
+          return;
+        }
+
+        /* Matched the same way a sold import is: the unit and the street type
+           have to agree for a tight match, the number, street and suburb for a
+           loose one, and an address that matches two properties matches
+           neither. */
+        var book = loadProps(), tight = {}, loose = {};
+        book.forEach(function(e){
+          var a = splitAddr(e.name);
+          (tight[tightKey(a)] = tight[tightKey(a)] || []).push(e);
+          (loose[looseKey(a)] = loose[looseKey(a)] || []).push(e);
+        });
+
+        var sales = [], fresh = [], agreed = [], differs = [],
+            waiting = [], archived = [], partial = [], ambiguous = [];
+        rows.forEach(function(r){
+          var a = splitAddr(r.address);
+          var t = tight[tightKey(a)], m = (t && t.length === 1) ? t[0] : null;
+          var many = !!(t && t.length > 1);
+          if (!m && !many) {
+            var l = loose[looseKey(a)];
+            if (l && l.length === 1) m = l[0];
+            else if (l && l.length > 1) many = true;
+          }
+          if (many) { ambiguous.push(r); return; }
+          if (!m) {
+            /* Not on the register at all. It still has to be a whole sale
+               before it is worth adding as one. */
+            (adlWhole(r) ? fresh : partial).push(r);
+            return;
+          }
+          r.match = m;
+          /* Already waiting on somebody, or set outside of advice. Queueing
+             either again would undo a decision that has been made — the same
+             rule the sheet load follows. */
+          if (isPending(m))  { waiting.push(r);  return; }
+          if (m.outside)     { archived.push(r); return; }
+          if (!isHeld(m))    { (adlSame(m, r) ? agreed : differs).push(r); return; }
+          (adlWhole(r) ? sales : partial).push(r);
+        });
+
+        adlFound = { sales: sales, fresh: fresh, differs: differs, tab: d.tab,
+                     title: d.title, sheetUrl: d.sheetUrl };
+
+        var n = function(a, one, many){
+          return '<strong>' + a.length + '</strong> ' + (a.length === 1 ? one : many);
+        };
+        var head = 'Read <strong>' + rows.length + '</strong> sale' + (rows.length === 1 ? '' : 's') +
+          ' from <strong>' + esc(d.tab || 'ADL – Sold') + '</strong>' +
+          (d.collapsed ? ' (' + d.collapsed + ' address' + (d.collapsed === 1 ? '' : 'es') +
+                         ' sold more than once, latest sale taken)' : '') + '.';
+
+        if (!sales.length && !fresh.length) {
+          chkSay(msg('ok', head + ' Nothing new: ' +
+            n(agreed, 'is', 'are') + ' already on the register with the same figures' +
+            (differs.length ? ', ' + n(differs, 'disagrees', 'disagree') + ' with it' : '') +
+            (waiting.length ? ', ' + n(waiting, 'is', 'are') + ' already waiting in For review' : '') +
+            (archived.length ? ', ' + n(archived, 'is', 'are') + ' set outside of advice' : '') +
+            (partial.length ? ', ' + n(partial, 'has', 'have') + ' no price and date' : '') +
+            (ambiguous.length ? ', ' + n(ambiguous, 'matches', 'match') + ' more than one property' : '') +
+            '.'));
+          return;
+        }
+
+        /* Said before anything is written, because this can be a lot of
+           properties at once and the count is the thing worth seeing. */
+        var body = '<p>' + head + '</p><ul>' +
+          (sales.length ? '<li>' + n(sales, 'property is', 'properties are') +
+             ' held on the register and sold in the sheet. The sale is parked, not written — ' +
+             'approving it in <strong>For review</strong> is what writes it.</li>' : '') +
+          (fresh.length ? '<li>' + n(fresh, 'is', 'are') +
+             ' not on the register at all. ' + (fresh.length === 1 ? 'It' : 'They') +
+             ' would be added, waiting for review, and counted in nothing until approved.</li>' : '') +
+          '</ul>' +
+          (differs.length || waiting.length || archived.length || partial.length || ambiguous.length
+            ? '<p class="hint">Left alone: ' +
+              [differs.length  ? differs.length + ' already sold on the register for a different figure' : '',
+               waiting.length  ? waiting.length + ' already waiting in For review' : '',
+               archived.length ? archived.length + ' set outside of advice' : '',
+               partial.length  ? partial.length + ' without both a price and a date' : '',
+               ambiguous.length ? ambiguous.length + ' matching more than one property' : ''
+              ].filter(Boolean).join(', ') + '.</p>'
+            : '');
+        askConfirm(body, 'Send ' + (sales.length + fresh.length) + ' to For review', adlApply);
+      })
+      .catch(function(e){
+        chkSay(msg('err','Could not read the tracking sheet: '+esc(e.message)));
+      });
+  }
+
+  function adlApply(){
+    var d = adlFound;
+    if (!d) return;
+    adlFound = null;
+    var list = loadProps(), byId = {};
+    list.forEach(function(e){ byId[e.id] = e; });
+    var touched = [], parked = 0, added = 0;
+
+    d.sales.forEach(function(r){
+      var e = byId[r.match.id];
+      if (!e) return;                        // the book moved under us
+      e.review = 'sale';
+      e.pending = { price: Number(r.soldPrice), date: r.soldDate, src: ADL_SRC,
+                    link: /^https?:\/\//i.test(r.link || '') ? r.link : '' };
+      parked++;
+      touched.push({ action:'sent for review', property:e.name,
+                     detail:'sale found in the ' + (d.tab || 'ADL – Sold') + ' tab' });
+    });
+
+    d.fresh.forEach(function(r){
+      /* A new property that has already sold is ONE record to accept or
+         reject, not two steps — so the sale goes straight onto it and the
+         whole thing waits as 'new'. reviewedProps() keeps anything marked
+         'new' out of the Overview and the Growth comparison, so none of it
+         reaches a figure before somebody has said yes. */
+      var e = { id: newId(), name: r.address,
+                category: (r.city || 'Adelaide').trim(),
+                purchasePrice: Number(r.purchasePrice) > 0 ? Number(r.purchasePrice) : '',
+                purchaseDate: r.purchased || '',
+                soldPrice: Number(r.soldPrice), soldDate: r.soldDate,
+                soldVerified: ADL_SRC, soldCheck: 'Sold',
+                review: 'new' };
+      var t = ptypeFromLabel(r.ptype);
+      if (t) e.ptype = t;
+      if (/^https?:\/\//i.test(r.link || '')) e.soldLink = r.link;
+      list.push(e);
+      added++;
+      touched.push({ action:'added', property:e.name,
+                     detail:'from the ' + (d.tab || 'ADL – Sold') + ' tab, waiting for review' });
+    });
+
+    if (!touched.length) { chkSay(msg('warn','Nothing left to send — the register has moved on.')); return; }
+    if (!putProps(list)) return;
+    logChange(touched);
+    renderProps();
+    ovStale = true; gcStale = true;
+    syncReviewBadge();
+    if (chk) chkRun();
+    chkSay(msg('ok',
+      (parked ? '<strong>'+parked+'</strong> sale'+(parked===1?'':'s')+' parked against '+
+                (parked===1?'a property':'properties')+' you already hold' : '') +
+      (parked && added ? ' and ' : '') +
+      (added ? '<strong>'+added+'</strong> new propert'+(added===1?'y':'ies')+' added' : '') +
+      '. '+(parked + added === 1 ? 'It is' : 'They are')+' in <strong>For review</strong>, '+
+      'and nothing is counted until approved.'));
+  }
 
   var pickId = null;
   function openPick(id){
@@ -8040,6 +8262,10 @@ var MHP_FROM='1980-03', MHP={
   /* ── writing a sale onto a property ── */
   /* The sheet names the site; the property record names the import. One
      word each way, kept in one place so the two cannot drift. */
+  /* What goes on the record as the thing that answered. Stored plainly, in
+     the same breath as "RPData import" and "Pricefinder import", so a figure
+     can always be traced back to where it came from. */
+  var ADL_SRC = 'ADL tracking sheet';
   function srcOf(hit){
     var s = (hit && hit.src) || '';
     if (/pricefinder/i.test(s)) return 'Pricefinder import';
@@ -9521,7 +9747,7 @@ var MHP_FROM='1980-03', MHP={
   });
 
   /* ── for review ── */
-  $('btnRevRefresh').addEventListener('click', function(){ revSay(''); drawReview(); });
+  $('btnRevRefresh').addEventListener('click', function(){ revSay(''); drawQueue(); });
   $('btnRevApprove').addEventListener('click', reviewApprove);
   $('btnRevArchive').addEventListener('click', reviewArchive);
   $('btnRevDelete').addEventListener('click', reviewDelete);
@@ -9529,7 +9755,7 @@ var MHP_FROM='1980-03', MHP={
     var t = ev.target;
     if (t && t.id === 'revAll') {
       pendingProps().forEach(function(e){ revPicked[e.id] = t.checked; });
-      drawReview();
+      drawQueue();
       return;
     }
     if (t && t.getAttribute && t.getAttribute('data-rev')) {
@@ -9540,6 +9766,7 @@ var MHP_FROM='1980-03', MHP={
 
   /* ── sold check ── */
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
+  $('btnChkAdl').addEventListener('click', chkAdlSold);
   /* Typed in, never in this file. Saved as it is typed so there is no
      button to forget to press. */
   $('bmSheet').addEventListener('input', function(){
