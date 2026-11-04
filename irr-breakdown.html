@@ -512,6 +512,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
   min-width:20px;padding:0 6px;border-radius:999px;background:var(--panel-2);color:var(--muted);
   font-size:11px;line-height:18px;font-weight:800;font-variant-numeric:tabular-nums lining-nums;
 }
+/* Something is waiting that nobody has looked at. The other badges are counts;
+   this one is a flag, so it does not wear the same grey. */
+.badge.badge-alert{background:var(--red);color:#fff}
+.tabs button[aria-selected="true"] .badge.badge-alert{background:#fff;color:var(--red)}
 .panel{display:flex;flex-direction:column;gap:var(--sp-4)}
 .panel[hidden]{display:none}
 /* ═══ SOLD CHECK ═══ */
@@ -3762,7 +3766,13 @@ window.stopCheck=false;
     /* The how-to shows itself the first time this browser opens the tab —
        it is a setup you do once, and a window you have to go looking for
        is one nobody reads. After that it waits behind its button. */
-    if (name === 'check') { syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp(); trackScan(); }
+    if (name === 'check') {
+      syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp();
+      trackScan();
+      /* trackScan only fetches once a day; the rest of the time this is what
+         acts on what it already knows. */
+      maybeAutoOpen();
+    }
     if (name === 'review') drawQueue();
   }
   function currentTab(){
@@ -8025,7 +8035,7 @@ var MHP_FROM='1980-03', MHP={
     catch (e) { return null; }
   }
   function trackNote(found, sources, failed){
-    var rec = { at: Date.now(), found: found, failed: failed || '',
+    var rec = { at: Date.now(), found: found, failed: failed || '', shown: false,
                 tabs: (sources || []).map(function(x){ return { tab:x.tab, count:x.count }; }) };
     try { localStorage.setItem(TRK_KEY, JSON.stringify(rec)); } catch (e) {}
     renderTrackNote(rec);
@@ -8033,7 +8043,11 @@ var MHP_FROM='1980-03', MHP={
   function renderTrackNote(rec){
     var p = $('chkDaily'), b = $('badgeCheck');
     if (!p) return;
-    if (!rec) { p.hidden = true; if (b) b.hidden = true; return; }
+    if (!rec) {
+      p.hidden = true;
+      if (b) { b.hidden = true; b.classList.remove('badge-alert'); }
+      return;
+    }
     var when = new Date(rec.at);
     var stamp = isNaN(when.getTime()) ? '' :
       dLabel(new Date(Date.UTC(when.getFullYear(), when.getMonth(), when.getDate()))) +
@@ -8042,10 +8056,14 @@ var MHP_FROM='1980-03', MHP={
       p.hidden = false;
       p.innerHTML = 'The daily check could not read the tracking sheets — ' + esc(rec.failed) +
         ' <span class="faint">(' + esc(stamp) + ')</span>';
-      if (b) b.hidden = true;
+      if (b) { b.hidden = true; b.classList.remove('badge-alert'); }
       return;
     }
-    if (b) { b.textContent = rec.found; b.hidden = !rec.found; }
+    if (b) {
+      b.textContent = rec.found;
+      b.hidden = !rec.found;
+      b.classList.toggle('badge-alert', !!rec.found);
+    }
     p.hidden = false;
     p.innerHTML = rec.found
       ? '<strong>' + rec.found + '</strong> sale' + (rec.found === 1 ? '' : 's') +
@@ -8096,6 +8114,35 @@ var MHP_FROM='1980-03', MHP={
     return out;
   }
 
+  /* Opening the tab IS the question "what have you got for me", so it should
+     not need a second button press to answer it. Once per scan result: if the
+     check found something and nobody has been shown it yet, the sold check
+     records load and the tracking check opens its confirm.
+
+     Only from the tab, never from the page load. A modal that appears while
+     somebody is reading the Overview is an interruption; one that appears when
+     they open the tab it belongs to is the answer to what they just asked. */
+  function markShown(){
+    var rec = trackSeen();
+    if (!rec) return;
+    rec.shown = true;
+    try { localStorage.setItem(TRK_KEY, JSON.stringify(rec)); } catch (e) {}
+  }
+  var autoOpening = false;
+  function maybeAutoOpen(){
+    if (currentTab() !== 'check') return;
+    if (!sheetUrl()) return;
+    var rec = trackSeen();
+    if (!rec || !rec.found || rec.shown) return;
+    if (autoOpening) return;           // the fetch below has not landed yet
+    autoOpening = true;
+    /* The records first, so the table is populated behind the dialog rather
+       than empty under it. It queues what it finds, which is what that button
+       has always done — opening this tab is the act that asked for it. */
+    if (!chk) chkLoadSheet();
+    setTimeout(chkAdlSold, chk ? 0 : 1400);
+  }
+
   var trackRunning = false;
   function trackScan(){
     var rec = trackSeen();
@@ -8120,6 +8167,7 @@ var MHP_FROM='1980-03', MHP={
         var rows = (d.rows || []).filter(function(x){ return x.address; });
         var b = trackBuckets(rows);
         trackNote(b.sales.length + b.fresh.length, d.sources || []);
+        maybeAutoOpen();               // if they are already looking at the tab
       })
       .catch(function(e){ trackNote(0, [], e.message || 'it did not answer'); })
       .then(function(){ trackRunning = false; });
@@ -8177,8 +8225,13 @@ var MHP_FROM='1980-03', MHP={
         adlFound = { sales: sales, fresh: fresh, differs: differs,
                      sources: d.sources || [] };
         /* The daily check and the button ask the same question, so pressing it
-           answers the day's. */
+           answers the day's — and being shown the answer is what "shown"
+           means, so it is set here rather than where the asking was decided.
+           trackNote writes a fresh record with shown:false, so the order of
+           these two lines is the whole of it. */
         trackNote(sales.length + fresh.length, d.sources || []);
+        markShown();
+        autoOpening = false;
 
         var n = function(a, one, many){
           return '<strong>' + a.length + '</strong> ' + (a.length === 1 ? one : many);
@@ -8227,6 +8280,7 @@ var MHP_FROM='1980-03', MHP={
         askConfirm(body, 'Send ' + (sales.length + fresh.length) + ' to For review', adlApply);
       })
       .catch(function(e){
+        autoOpening = false;
         chkSay(msg('err','Could not read the tracking sheet: '+esc(e.message)));
       });
   }
