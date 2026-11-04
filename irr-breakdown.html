@@ -7901,9 +7901,16 @@ var MHP_FROM='1980-03', MHP={
       });
   }
 
-  function chkLoadSheet(){
+  /* `quiet` loads the records WITHOUT queueing what they find: the table
+     fills, the count line reports, and nothing is written. That is what the
+     automatic path uses, so opening a tab can never queue anything on your
+     behalf — and, just as importantly, so the tracking check that runs after
+     it is counting the same book the badge counted.
+
+     The button still queues, because pressing it is asking for exactly that. */
+  function chkLoadSheet(quiet, onDone){
     var u = sheetUrl();
-    if (!u) return;
+    if (!u) { if (onDone) onDone(); return; }
     showTab('check');
     chkSay(msg('ok','Reading the Google Sheet…'));
     fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'rows=1')
@@ -7913,6 +7920,7 @@ var MHP_FROM='1980-03', MHP={
         var all = d.rows || [];
         if (!all.length) {
           chkSay(msg('err','The sheet has no rows yet — run the RP Data check first.'));
+          if (onDone) onDone();
           return;
         }
         /* Only the ones RP Data says changed hands AFTER the purchase. A row
@@ -7966,15 +7974,18 @@ var MHP_FROM='1980-03', MHP={
               (all.length - sold.length === 1 ? 'it is' : 'they are')+' not in the match.'
             : '')));
         chkRun();
-        /* Reading the sheet IS the act that finds the sales, so everything it
-           found goes to the queue there and then rather than waiting for
-           somebody to press a second button. */
-        queueFound();
+        /* Pressing the button IS the act that finds the sales, so everything
+           it found goes to the queue there and then rather than waiting for a
+           second press. The automatic path passes `quiet` and leaves them on
+           screen to be queued deliberately. */
+        if (!quiet) queueFound();
+        if (onDone) onDone();
       })
       .catch(function(e){
         chkSay(msg('err','Could not read the sheet: '+esc(e.message)+
           '<br>Check <code>localStorage.ppSheetUrl</code> points at the deployment’s '+
           '<code>/exec</code> address, and that it is deployed for “Anyone”.'));
+        if (onDone) onDone();
       });
   }
 
@@ -8137,10 +8148,11 @@ var MHP_FROM='1980-03', MHP={
     if (autoOpening) return;           // the fetch below has not landed yet
     autoOpening = true;
     /* The records first, so the table is populated behind the dialog rather
-       than empty under it. It queues what it finds, which is what that button
-       has always done — opening this tab is the act that asked for it. */
-    if (!chk) chkLoadSheet();
-    setTimeout(chkAdlSold, chk ? 0 : 1400);
+       than empty under it — but quietly, queueing nothing. Then the tracking
+       check, chained rather than timed, so it counts the same book the badge
+       counted and the two numbers agree. */
+    if (chk) chkAdlSold();
+    else chkLoadSheet(true, chkAdlSold);
   }
 
   var trackRunning = false;
@@ -8173,7 +8185,12 @@ var MHP_FROM='1980-03', MHP={
       .then(function(){ trackRunning = false; });
   }
 
+  /* One check at a time. The tab can start one and a press can start another
+     a moment later; two in flight would both write a note and both open a
+     dialog over each other. */
+  var chkTrackBusy = false;
   function chkAdlSold(){
+    if (chkTrackBusy) return;
     var u = sheetUrl();
     if (!u) {
       chkSay(msg('err','This browser does not know where the sheet is yet — the box for '+
@@ -8181,10 +8198,14 @@ var MHP_FROM='1980-03', MHP={
       return;
     }
     showTab('check');
+    chkTrackBusy = true;
     chkSay(msg('ok','Reading the tracking sheets…'));
     fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'tracking=1')
       .then(function(r){ return r.json(); })
       .then(function(d){
+        /* Released here rather than at each exit: everything below is
+           synchronous, and three of the branches return early. */
+        chkTrackBusy = false;
         /* A deployment made before ?adl=1 existed does not reject it — it
            ignores the parameter and answers the liveness reply, which is a
            perfectly well-formed success with no rows on it. Reporting that as
@@ -8281,6 +8302,7 @@ var MHP_FROM='1980-03', MHP={
       })
       .catch(function(e){
         autoOpening = false;
+        chkTrackBusy = false;
         chkSay(msg('err','Could not read the tracking sheet: '+esc(e.message)));
       });
   }
@@ -10179,7 +10201,9 @@ var MHP_FROM='1980-03', MHP={
   });
 
   /* ── sold check ── */
-  $('btnChkSheet').addEventListener('click', chkLoadSheet);
+  /* Wrapped: addEventListener would hand the click Event in as `quiet`, which
+     is truthy, and the button would silently stop queueing. */
+  $('btnChkSheet').addEventListener('click', function(){ chkLoadSheet(); });
   $('btnChkAdl').addEventListener('click', function(){ chkAdlSold(); });
   /* Typed in, never in this file. Saved as it is typed so there is no
      button to forget to press. */
