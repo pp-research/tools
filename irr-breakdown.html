@@ -1441,7 +1441,7 @@ details .body strong{color:var(--text)}
           <div class="btns" id="revActions" hidden>
             <button type="button" class="btn-primary btn-sm" id="btnRevApprove">Record</button>
             <button type="button" class="btn-ghost btn-sm" id="btnRevArchive">Archive</button>
-            <button type="button" class="btn-ghost btn-sm danger" id="btnRevDelete">Delete</button>
+            <button type="button" class="btn-ghost btn-sm danger" id="btnRevDelete">Reject</button>
           </div>
         </section>
       </div>
@@ -7589,6 +7589,16 @@ var MHP_FROM='1980-03', MHP={
      headline figures only ever come from reviewed data. It still shows on the
      Register, because a queue you cannot see the contents of is no use. */
   function isPending(e){ return e.review === 'new' || e.review === 'sale'; }
+  /* A sale that was looked at and refused. Remembered on the property, by its
+     figures, so the next check does not raise the same one again — a check
+     that re-asks a question you have answered is a check you stop reading.
+     Only THAT sale is silenced: a different price or a different date is new
+     information and still comes through. */
+  function saleRejected(e, price, date){
+    var r = e && e.rejected;
+    return !!r && Number(r.price) === Number(price) &&
+           String(r.date || '') === String(date || '');
+  }
   /* Which list a queued property came out of, in the words the For review tab
      prints. This is a different question from pending.src, which records the
      SITE that answered for a price — RP Data or Pricefinder — and still rides
@@ -7634,7 +7644,10 @@ var MHP_FROM='1980-03', MHP={
          is a decision, and a weekly re-run that put it straight back in the
          queue would quietly undo it — the sold check still reports on them,
          it just stops asking you to approve the same sale every Monday. */
-      .filter(function(r){ return r.status === 'sold' && !isPending(r.e) && !r.e.outside; })
+      .filter(function(r){
+        return r.status === 'sold' && !isPending(r.e) && !r.e.outside &&
+               !saleRejected(r.e, r.hit && r.hit.price, r.hit && r.hit.date);
+      })
       .map(function(r){ return r.e.id; });
     if (!ids.length) { syncReviewBadge(); return; }
     markSold(ids);
@@ -7657,7 +7670,9 @@ var MHP_FROM='1980-03', MHP={
       'the whole record, and until then it is counted in nothing at all.<br>' +
       'Either way the <strong>Overview</strong> and the <strong>Growth comparison</strong> ignore ' +
       'it until it is recorded, and every decision goes to the <strong>History</strong> with ' +
-      'whatever you type as the reason.';
+      'whatever you type as the reason.<br>' +
+      '<strong>Record</strong> accepts it · <strong>Archive</strong> keeps the property but sets it ' +
+      'outside of advice · <strong>Reject</strong> throws away what was found, not the property.';
     if (!list.length) {
       host.innerHTML = '<div class="empty"><h3>Nothing waiting</h3>' +
         '<p>Properties arrive here when they are added to the register, when the ' +
@@ -7717,14 +7732,14 @@ var MHP_FROM='1980-03', MHP={
         '<td>' + detail + '</td>' +
         '<td class="acts">' + act('data-rev-rec', 'Record', 'ok-btn') +
           act('data-rev-arc', 'Archive', '', ASIDE) +
-          act('data-rev-del', 'Delete', 'danger', TRASH) + '</td></tr>';
+          act('data-rev-del', 'Reject', 'danger', CROSS) + '</td></tr>';
     };
     host.innerHTML = '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
       '<th scope="col">Property</th><th scope="col">City</th>' +
       '<th scope="col">Waiting on</th>' +
       '<th scope="col">What was found</th>' +
-      '<th scope="col"><span class="sr-only">Record, archive or delete</span></th>' +
+      '<th scope="col"><span class="sr-only">Record, archive or reject</span></th>' +
       '</tr></thead><tbody>' + list.map(row).join('') + '</tbody></table></div>';
   }
 
@@ -7736,7 +7751,7 @@ var MHP_FROM='1980-03', MHP={
   /* One shape for all three, because the difference between them is only what
      happens to the property — the asking, the note, the logging and the
      redraw are the same every time. */
-  function revAct(title, body, okLabel, verb, apply, only){
+  function revAct(title, body, okLabel, verb, apply, only, noteFor){
     /* `only` is one property, from its own row button. Without it the ticked
        ones, from the buttons under the table. Everything after this point is
        the same either way, which is why there is one of these and not six. */
@@ -7749,16 +7764,20 @@ var MHP_FROM='1980-03', MHP={
     if (ids.length === 1) {
       named = loadProps().filter(function(e){ return e.id === ids[0]; })[0];
     }
+    var picked = loadProps().filter(function(e){ return want[e.id]; });
     askPrompt(title, body + ' ' + (named
         ? '<strong>' + esc(named.name) + '</strong>.'
         : '<strong>' + ids.length + '</strong> propert' +
-          (ids.length === 1 ? 'y' : 'ies') + '.'),
+          (ids.length === 1 ? 'y' : 'ies') + '.') +
+        (noteFor ? noteFor(picked) : ''),
       'Reason (goes to the History)', '', okLabel, function(value){
         var reason = String(value || '').trim();
         var list = loadProps(), touched = [], keep = [];
         list.forEach(function(e){
           if (!want[e.id]) { keep.push(e); return; }
-          var r = apply(e, reason);         // false = drop it from the register
+          /* apply may add rows of its own — a removed record goes to the
+             History as JSON, which is what puts Restore on it. */
+          var r = apply(e, reason, touched);   // false = drop it from the register
           touched.push({ action: verb, property: e.name, detail: reason });
           if (r !== false) keep.push(e);
         });
@@ -7784,6 +7803,7 @@ var MHP_FROM='1980-03', MHP={
         e.soldCheck = 'Sold';
       }
       e.review = undefined; e.pending = undefined; e.reviewSrc = undefined;
+      e.rejected = undefined;
     }, only);
   }
   function reviewArchive(only){
@@ -7793,15 +7813,53 @@ var MHP_FROM='1980-03', MHP={
          rather than a generic line that sends you to the History to find out
          what actually happened. */
       e.outsideReason = reason || 'Archived at review';
+      e.rejected = undefined;
       /* The parked sale goes with it: it was never approved, so it is not a
          fact about the property and must not sit there looking like one. */
       e.review = undefined; e.pending = undefined; e.reviewSrc = undefined;
     }, only);
   }
-  function reviewDelete(only){
-    revAct('Delete', 'Permanently remove', 'Delete', 'deleted', function(){
-      return false;
-    }, only);
+  /* Rejecting the FINDING, not the property.
+
+     A found sale is a claim about a property you already hold. Refusing the
+     claim should leave the property exactly as it was — the old button deleted
+     the whole record, purchase history and all, which is a very large thing to
+     do to say "that sale is wrong". The refused figures are remembered so the
+     same sale is not offered again.
+
+     A property that arrived WITH the finding is a different case: it is on the
+     register only because something added it, so refusing the finding and
+     removing the property are the same act. Its record goes to the History as
+     JSON, which is what puts Restore on the row — the old button logged only
+     the reason, so a property deleted here could never be got back. */
+  function reviewReject(only){
+    revAct('Reject', 'Reject what was found for', 'Reject', 'rejected',
+      function(e, reason, extra){
+        if (e.review === 'new') {
+          extra.push({ action:'deleted', property:e.name, detail: JSON.stringify(e) });
+          return false;
+        }
+        if (e.review === 'sale' && e.pending &&
+            Number(e.pending.price) > 0 && e.pending.date) {
+          e.rejected = { price: Number(e.pending.price), date: e.pending.date };
+        }
+        e.review = undefined; e.pending = undefined; e.reviewSrc = undefined;
+      }, only, function(list){
+        var adds = list.filter(function(e){ return e.review === 'new'; }).length;
+        var sold = list.length - adds;
+        return '<p class="hint">' +
+          (sold ? (sold === 1 ? 'The sale is discarded and ' : sold + ' sales are discarded and ') +
+                  (sold === 1 ? 'the property stays' : 'the properties stay') +
+                  ' on the register exactly as ' + (sold === 1 ? 'it is' : 'they are') +
+                  '. The same sale will not be offered again. ' : '') +
+          (adds ? (adds === 1 ? 'One property was added by a check and is removed'
+                              : adds + ' properties were added by a check and are removed') +
+                  ' — the record is kept in the <strong>History</strong>, where ' +
+                  (adds === 1 ? 'it' : 'they') + ' can be restored. The tracking sheets still ' +
+                  'list ' + (adds === 1 ? 'it' : 'them') + ', so a later check can offer ' +
+                  (adds === 1 ? 'it' : 'them') + ' again.' : '') +
+          '</p>';
+      });
   }
 
   function chkLoadSheet(){
@@ -7970,7 +8028,7 @@ var MHP_FROM='1980-03', MHP={
       (loose[looseKey(a)] = loose[looseKey(a)] || []).push(e);
     });
     var out = { sales:[], fresh:[], agreed:[], differs:[],
-                waiting:[], archived:[], partial:[], ambiguous:[] };
+                waiting:[], archived:[], partial:[], ambiguous:[], rejected:[] };
     rows.forEach(function(r){
       var a = splitAddr(r.address);
       var t = tight[tightKey(a)], m = (t && t.length === 1) ? t[0] : null;
@@ -7993,6 +8051,8 @@ var MHP_FROM='1980-03', MHP={
       if (isPending(m))  { out.waiting.push(r);  return; }
       if (m.outside)     { out.archived.push(r); return; }
       if (!isHeld(m))    { (adlSame(m, r) ? out.agreed : out.differs).push(r); return; }
+      /* already looked at and refused, by these exact figures */
+      if (saleRejected(m, r.soldPrice, r.soldDate)) { out.rejected.push(r); return; }
       (adlWhole(r) ? out.sales : out.partial).push(r);
     });
     return out;
@@ -8074,7 +8134,7 @@ var MHP_FROM='1980-03', MHP={
         var b = trackBuckets(rows);
         var sales = b.sales, fresh = b.fresh, agreed = b.agreed, differs = b.differs,
             waiting = b.waiting, archived = b.archived, partial = b.partial,
-            ambiguous = b.ambiguous;
+            ambiguous = b.ambiguous, refused = b.rejected;
 
         adlFound = { sales: sales, fresh: fresh, differs: differs,
                      sources: d.sources || [] };
@@ -8099,6 +8159,7 @@ var MHP_FROM='1980-03', MHP={
             (waiting.length ? ', ' + n(waiting, 'is', 'are') + ' already waiting in For review' : '') +
             (archived.length ? ', ' + n(archived, 'is', 'are') + ' set outside of advice' : '') +
             (partial.length ? ', ' + n(partial, 'has', 'have') + ' no price and date' : '') +
+            (refused.length ? ', ' + n(refused, 'was', 'were') + ' rejected here before' : '') +
             (ambiguous.length ? ', ' + n(ambiguous, 'matches', 'match') + ' more than one property' : '') +
             '.'));
           return;
@@ -8114,11 +8175,13 @@ var MHP_FROM='1980-03', MHP={
              ' not on the register at all. ' + (fresh.length === 1 ? 'It' : 'They') +
              ' would be added, waiting for review, and counted in nothing until approved.</li>' : '') +
           '</ul>' +
-          (differs.length || waiting.length || archived.length || partial.length || ambiguous.length
+          (differs.length || waiting.length || archived.length || partial.length ||
+           ambiguous.length || refused.length
             ? '<p class="hint">Left alone: ' +
               [differs.length  ? differs.length + ' already sold on the register for a different figure' : '',
                waiting.length  ? waiting.length + ' already waiting in For review' : '',
                archived.length ? archived.length + ' set outside of advice' : '',
+               refused.length  ? refused.length + ' rejected here before' : '',
                partial.length  ? partial.length + ' without both a price and a date' : '',
                ambiguous.length ? ambiguous.length + ' matching more than one property' : ''
               ].filter(Boolean).join(', ') + '.</p>'
@@ -9960,7 +10023,7 @@ var MHP_FROM='1980-03', MHP={
      all, silently. revAct guards the type as well; this is the other half. */
   $('btnRevApprove').addEventListener('click', function(){ reviewApprove(); });
   $('btnRevArchive').addEventListener('click', function(){ reviewArchive(); });
-  $('btnRevDelete').addEventListener('click', function(){ reviewDelete(); });
+  $('btnRevDelete').addEventListener('click', function(){ reviewReject(); });
   /* One property, from its own row. The tick boxes and the buttons under the
      table still do the same three things to a set; this is the same code with
      a set of one, so there is no second way for any of it to behave. */
@@ -9972,7 +10035,7 @@ var MHP_FROM='1980-03', MHP={
         del = b.getAttribute('data-rev-del');
     if (rec) { revSay(''); reviewApprove(rec); return; }
     if (arc) { revSay(''); reviewArchive(arc); return; }
-    if (del) { revSay(''); reviewDelete(del); return; }
+    if (del) { revSay(''); reviewReject(del); return; }
   });
   $('revBody').addEventListener('change', function(ev){
     var t = ev.target;
@@ -10267,7 +10330,7 @@ var MHP_FROM='1980-03', MHP={
      field goes in here in the same breath as it is invented. */
   var SHARE_FIELDS = ['name','category','ptype','purchasePrice','purchaseDate',
     'soldPrice','soldDate','soldVerified','soldLink','soldCheck','note',
-    'outsideReason','review','pending','reviewSrc'];
+    'outsideReason','review','pending','reviewSrc','rejected'];
   function shareBody(){
     var list = loadProps().map(function(e){
       var o = { id:e.id };
