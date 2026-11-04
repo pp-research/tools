@@ -514,6 +514,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
 }
 /* Something is waiting that nobody has looked at. The other badges are counts;
    this one is a flag, so it does not wear the same grey. */
+/* currentColor, so it reads on the selected tab's teal fill and on the plain
+   ones without a second rule for each. */
+@keyframes pp-spin{to{transform:rotate(360deg)}}
+.pp-spin{display:inline-block;width:12px;height:12px;margin-left:6px;
+  border:2px solid currentColor;border-top-color:transparent;border-radius:50%;
+  vertical-align:-1px;opacity:.8;animation:pp-spin .7s linear infinite}
+/* [hidden] loses to a display rule, which is how a "hidden" spinner ends up
+   spinning for ever in the corner of the screen. */
+.pp-spin[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){ .pp-spin{animation-duration:2.4s} }
 .badge.badge-alert{background:var(--red);color:#fff}
 .tabs button[aria-selected="true"] .badge.badge-alert{background:#fff;color:var(--red)}
 .panel{display:flex;flex-direction:column;gap:var(--sp-4)}
@@ -1235,7 +1245,7 @@ details .body strong{color:var(--text)}
         <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
         <button type="button" role="tab" id="tab-growth" aria-controls="panel-growth" aria-selected="false" tabindex="-1">Growth comparison</button>
         <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
-        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check <span class="badge" id="badgeCheck" hidden>0</span></button>
+        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check <span class="badge" id="badgeCheck" hidden>0</span><span class="pp-spin" id="chkSpin" hidden aria-hidden="true"></span></button>
         <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" tabindex="-1">For review <span class="badge" id="badgeReview">0</span></button>
         <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
       </div>
@@ -7912,6 +7922,7 @@ var MHP_FROM='1980-03', MHP={
     var u = sheetUrl();
     if (!u) { if (onDone) onDone(); return; }
     showTab('check');
+    chkBusy(true);
     chkSay(msg('ok','Reading the Google Sheet…'));
     fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'rows=1')
       .then(function(r){ return r.json(); })
@@ -7920,6 +7931,7 @@ var MHP_FROM='1980-03', MHP={
         var all = d.rows || [];
         if (!all.length) {
           chkSay(msg('err','The sheet has no rows yet — run the RP Data check first.'));
+          chkBusy(false);
           if (onDone) onDone();
           return;
         }
@@ -7978,6 +7990,7 @@ var MHP_FROM='1980-03', MHP={
            it found goes to the queue there and then rather than waiting for a
            second press. The automatic path passes `quiet` and leaves them on
            screen to be queued deliberately. */
+        chkBusy(false);
         if (!quiet) queueFound();
         if (onDone) onDone();
       })
@@ -7985,6 +7998,7 @@ var MHP_FROM='1980-03', MHP={
         chkSay(msg('err','Could not read the sheet: '+esc(e.message)+
           '<br>Check <code>localStorage.ppSheetUrl</code> points at the deployment’s '+
           '<code>/exec</code> address, and that it is deployed for “Anyone”.'));
+        chkBusy(false);
         if (onDone) onDone();
       });
   }
@@ -8040,6 +8054,20 @@ var MHP_FROM='1980-03', MHP={
   function trackInvalidate(){
     try { localStorage.removeItem(TRK_KEY); } catch (e) {}
     renderTrackNote(null);
+  }
+  /* A counter rather than a flag: the daily scan, the records load and the
+     tracking check can overlap, and the last one to finish is what "done"
+     means. Clamped at zero so one unpaired call cannot leave it spinning. */
+  var chkBusyN = 0;
+  function chkBusy(on){
+    chkBusyN = Math.max(0, chkBusyN + (on ? 1 : -1));
+    var busy = chkBusyN > 0;
+    var sp = $('chkSpin'); if (sp) sp.hidden = !busy;
+    var tb = $('tab-check'); if (tb) tb.setAttribute('aria-busy', busy ? 'true' : 'false');
+    /* and the buttons that would start another one */
+    ['btnChkSheet','btnChkAdl','btnChkLoadBig','btnChkTrackBig'].forEach(function(id){
+      var b = $(id); if (b) b.disabled = busy;
+    });
   }
   function trackSeen(){
     try { return JSON.parse(localStorage.getItem(TRK_KEY) || 'null') || null; }
@@ -8195,6 +8223,7 @@ var MHP_FROM='1980-03', MHP={
     if (!sheetUrl()) return;                    // nowhere to ask
     if (rec && (Date.now() - rec.at) < TRK_EVERY) return;
     trackRunning = true;
+    chkBusy(true);
     var u = sheetUrl();
     var at = function(p){ return u + (u.indexOf('?') < 0 ? '?' : '&') + p; };
     /* Both reads together. The badge is what is waiting on this tab, and this
@@ -8230,7 +8259,7 @@ var MHP_FROM='1980-03', MHP={
         maybeAutoOpen();               // if they are already looking at the tab
       })
       .catch(function(e){ trackNote(0, [], e.message || 'it did not answer'); })
-      .then(function(){ trackRunning = false; });
+      .then(function(){ trackRunning = false; chkBusy(false); });
   }
 
   /* One check at a time. The tab can start one and a press can start another
@@ -8247,6 +8276,7 @@ var MHP_FROM='1980-03', MHP={
     }
     showTab('check');
     chkTrackBusy = true;
+    chkBusy(true);
     chkSay(msg('ok','Reading the tracking sheets…'));
     fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'tracking=1')
       .then(function(r){ return r.json(); })
@@ -8254,6 +8284,7 @@ var MHP_FROM='1980-03', MHP={
         /* Released here rather than at each exit: everything below is
            synchronous, and three of the branches return early. */
         chkTrackBusy = false;
+        chkBusy(false);
         /* A deployment made before ?adl=1 existed does not reject it — it
            ignores the parameter and answers the liveness reply, which is a
            perfectly well-formed success with no rows on it. Reporting that as
@@ -8349,6 +8380,7 @@ var MHP_FROM='1980-03', MHP={
       .catch(function(e){
         autoOpening = false;
         chkTrackBusy = false;
+        chkBusy(false);
         chkSay(msg('err','Could not read the tracking sheet: '+esc(e.message)));
       });
   }
