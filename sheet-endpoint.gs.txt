@@ -118,17 +118,27 @@ var REG_HEADERS = [
    and the sheet is not public. This script already holds the spreadsheets
    scope, so reading a second file costs no new permission.
 
-   The id is pinned in this file on purpose. Taking it from the request would
-   turn a capability that can append rows to one sheet into one that can read
-   every sheet the owner of this script can see, which is a far larger thing
-   to leave on a bookmarks bar. */
-/* The real id is NOT in this published copy. It is a spreadsheet of client
-   sales, and this file is served on the open web — so the id lives only in
-   the deployed script. Open your tracking sheet, take the long string out of
-   its address between /d/ and /edit, and paste it here before deploying. */
-var ADL_ID   = 'PUT_THE_TRACKING_SHEET_ID_HERE';
-var ADL_TAB  = 'ADL - Sold';
-var ADL_CITY = 'Adelaide';
+   The ids are pinned in this file on purpose. Taking one from the request
+   would turn a capability that can append rows to one sheet into one that can
+   read every sheet the owner of this script can see, which is a far larger
+   thing to leave on a bookmarks bar.
+
+   To add a city: put a row in TRACKING. Nothing else changes — the columns
+   are found by name, so a tab that spells its headers the same way is read
+   the same way even when they sit in different places, which BRI - Sold does
+   (it has no IRR column, so Link is a column to the left of where ADL - Sold
+   keeps it). */
+/* The real ids are NOT in this published copy — these are spreadsheets of
+   client sales and this file is served on the open web, so the ids live only
+   in the deployed script. Open each tracking sheet, take the long string out
+   of its address between /d/ and /edit, and paste it in below before
+   deploying. */
+var TRACKING = [
+  { id: 'PUT_THE_ADL_SHEET_ID_HERE',
+    tab: 'ADL - Sold', city: 'Adelaide' },
+  { id: 'PUT_THE_BRI_SHEET_ID_HERE',
+    tab: 'BRI - Sold', city: 'Brisbane' }
+];
 
 function make_(ss, name) {
   var sh = ss.insertSheet(name);
@@ -386,18 +396,47 @@ function register_(rows) {
    Columns are found by name, never by position. This is a working document —
    a column gets inserted in it now and then — and a reader that counted would
    not fail, it would quietly start returning the wrong field, which is worse. */
-function adlSold_() {
-  var ss;
-  try { ss = SpreadsheetApp.openById(ADL_ID); }
-  catch (err) {
-    return json_({ ok: false, kind: 'adl',
-                   error: 'cannot open the tracking sheet: ' + ((err && err.message) || err) });
+/* Every tracking sheet, in one answer. Each row carries the city it came
+   from, so the caller never has to know which sheet is which.
+
+   A sheet that cannot be read does NOT take the others down with it: it comes
+   back as a source with an `error` on it and no rows. That distinction is the
+   whole point — a failed read and an empty tab look identical from the far
+   end, and "no new sales" is the one wrong answer that reads as good news. */
+function tracking_() {
+  var sources = [], rows = [];
+  for (var i = 0; i < TRACKING.length; i++) {
+    var one = oneTracking_(TRACKING[i]);
+    var meta = { city: TRACKING[i].city, tab: TRACKING[i].tab };
+    if (one.error) {
+      meta.error = one.error;
+      if (one.tabs) meta.tabs = one.tabs;
+      meta.count = 0;
+    } else {
+      meta.title = one.title; meta.sheetUrl = one.sheetUrl;
+      meta.tz = one.tz; meta.count = one.rows.length; meta.collapsed = one.collapsed;
+      rows = rows.concat(one.rows);
+    }
+    sources.push(meta);
   }
-  var sh = ss.getSheetByName(ADL_TAB);
+  var live = sources.filter(function (x) { return !x.error; }).length;
+  return json_({ ok: live > 0, kind: 'tracking',
+                 error: live ? '' : 'none of the tracking sheets could be read',
+                 rows: rows, count: rows.length, sources: sources,
+                 script: Session.getScriptTimeZone() });
+}
+
+/* One sheet. Returns { rows, ... } or { error }. */
+function oneTracking_(src) {
+  var ss;
+  try { ss = SpreadsheetApp.openById(src.id); }
+  catch (err) {
+    return { error: 'cannot open the spreadsheet: ' + ((err && err.message) || err) };
+  }
+  var sh = ss.getSheetByName(src.tab);
   if (!sh) {
-    return json_({ ok: false, kind: 'adl',
-                   error: 'the tracking sheet has no tab named "' + ADL_TAB + '"',
-                   tabs: ss.getSheets().map(function (x) { return x.getName(); }) });
+    return { error: 'no tab named "' + src.tab + '" in "' + ss.getName() + '"',
+             tabs: ss.getSheets().map(function (x) { return x.getName(); }) };
   }
   /* A date cell holds an instant, and which DAY that instant falls on depends
      on the time zone you read it in. The cells in this file were written in
@@ -407,21 +446,16 @@ function adlSold_() {
      tab one day earlier, silently and consistently, which is exactly the kind
      of wrong that gets believed. */
   var tz = ss.getSpreadsheetTimeZone();
-  var out = { ok: true, kind: 'adl', city: ADL_CITY, tab: ADL_TAB,
-              sheetUrl: ss.getUrl(), title: ss.getName(),
-              tz: { sheet: tz, script: Session.getScriptTimeZone() } };
+  var out = { sheetUrl: ss.getUrl(), title: ss.getName(), tz: tz, collapsed: 0 };
   var last = sh.getLastRow();
-  if (last < 2) {
-    out.rows = []; out.count = 0; out.empty = true;
-    return json_(out);
-  }
+  if (last < 2) { out.rows = []; return out; }
   var wide = sh.getLastColumn();
   var head = sh.getRange(1, 1, 1, wide).getValues()[0].map(adlHead_);
   var at = function (name) { return head.indexOf(adlHead_(name)); };
   var iAddr = at('Property'), iSoldD = at('Sold Date'), iSoldP = at('Sold Price');
   if (iAddr < 0 || iSoldD < 0 || iSoldP < 0) {
-    return json_({ ok: false, kind: 'adl', saw: head,
-                   error: 'the tab is missing one of Property / Sold Date / Sold Price' });
+    return { error: '"' + src.tab + '" is missing one of Property / Sold Date / Sold Price',
+             saw: head };
   }
   var iBuyD = at('Purchase Date'), iBuyP = at('Purchase Price'),
       iLink = at('Link'), iType = at('Type');
@@ -439,7 +473,7 @@ function adlSold_() {
        a row somebody started, not a property that is still held. */
     if (!soldDate && soldPrice === '') continue;
     var rec = {
-      address: addr, city: ADL_CITY,
+      address: addr, city: src.city, tab: src.tab,
       purchased: adlDate_(get(v, iBuyD), tz),
       purchasePrice: adlNum_(get(v, iBuyP)),
       soldDate: soldDate, soldPrice: soldPrice,
@@ -459,9 +493,8 @@ function adlSold_() {
   var rows = [];
   for (var j = 0; j < order.length; j++) rows.push(byAddr[order[j]]);
   out.rows = rows;
-  out.count = rows.length;
   out.collapsed = collapsed;
-  return json_(out);
+  return out;
 }
 
 /* Headers in a working sheet carry trailing spaces and the odd line break
@@ -525,16 +558,19 @@ function fmt_(v) {                        // Date cells → "2026-09-18"
                    properties to work through - see REG_TAB above for why it
                    comes from here and not from the database.
 
-   ?adl=1       →  the "ADL - Sold" tab of the Adelaide tracking sheet, one
-                   row per address carrying its latest sale. A different
-                   spreadsheet entirely — see ADL_ID above.
+   ?tracking=1  →  the sold tab of every tracking sheet in TRACKING above —
+                   "ADL - Sold" and "BRI - Sold" today — one row per address
+                   carrying its latest sale and the city it came from. Those
+                   are different spreadsheets entirely. ?adl=1 is the old name
+                   for it and still answers, so a tool published before this
+                   existed keeps working.
 
    ?tab=pricefinder narrows done= to that tab. */
 function doGet(e) {
   var p = (e && e.parameter) || {};
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  if (p.adl) return adlSold_();
+  if (p.adl || p.tracking) return tracking_();
 
   if (!p.rows && !p.done && !p.todo && !p.register) {
     /* `kinds` is how a bookmarklet tells this deployment from an older one.
@@ -542,7 +578,7 @@ function doGet(e) {
        empty worklist and report, perfectly truthfully, that there was
        nothing to do. */
     return json_({ ok: true, endpoint: 'rpdata held check',
-                   kinds: ['type', 'register', 'adl'],
+                   kinds: ['type', 'register', 'adl', 'tracking'],
                    tabs: [TAB, TAB2], sheetUrl: ss.getUrl() });
   }
 
