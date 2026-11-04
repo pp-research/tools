@@ -211,8 +211,18 @@ header img{height:40px;width:auto;display:block}
      top of the window on the way, so the sort you are reading stays named. */
   #propsCard{flex:0 0 auto;display:flex;flex-direction:column}
   #propsBody{flex:0 0 auto;display:flex;flex-direction:column}
-  #propsBody .tbl-scroll{flex:0 0 auto;max-height:none;min-height:0;overflow:visible}
+  #propsBody .tbl-scroll{flex:0 0 auto;min-height:0}
   #propsBody .empty{margin:auto}
+}
+/* The table's floor is 1152px: eight figures that cannot wrap, the address,
+   and five row buttons. Above 1280 it fits inside the card and runs down the
+   page with its headers stuck to the window. Below that it does not fit, and
+   the choice is between a table that hangs out of its panel and one with a
+   window of its own — so it gets the window back, the same one a phone gets.
+   Spilling is the worse of the two: the right-hand columns end up over the
+   page edge where nothing can scroll to them at all. */
+@media (min-width:1280px){
+  #propsBody .tbl-scroll{max-height:none;overflow:visible}
 }
 /* ═══ FORM ═══ */
 .field{margin-bottom:var(--sp-4)}
@@ -801,8 +811,8 @@ tbody tr.is-picked{background:rgba(var(--accent-rgb),.10)}
 .cat.warn-chip{background:rgba(231,35,71,.10);border-color:rgba(231,35,71,.45);color:#ffb3c1;white-space:normal}
 :root[data-theme="light"] .cat.warn-chip{background:rgba(193,18,47,.08);border-color:rgba(193,18,47,.34);color:#8E0F24}
 /* what the last sold-check run said about this row */
-.cat.check-chip{background:var(--note-bg);border-color:var(--note-line);color:var(--note-ink)}
-.cat.aside-chip{background:var(--well);border-color:var(--border-strong);color:var(--muted);
+.cat.check-chip{background:var(--note-bg);border-color:var(--note-line);color:var(--note-ink);white-space:normal}
+.cat.aside-chip{white-space:normal;background:var(--well);border-color:var(--border-strong);color:var(--muted);
   white-space:normal;max-width:100%}
 td.pick input{margin:0}
 th.pick-all input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
@@ -875,18 +885,37 @@ td.pd .src-link:hover{color:var(--text)}
    third row action was the 18px that pushed it over, and a table you have to
    scroll to see the IRR of is a table you misread. Tighter gutters here only —
    the monthly breakdown and the compare table keep the roomier default. */
-#propsBody th,#propsBody td{padding-left:8px;padding-right:8px}
+#propsBody th,#propsBody td{padding-left:6px;padding-right:6px}
+/* The label was deciding how wide the money was allowed to be: "Purchase
+   price" on one line wants 125px, the figures under it want 95px, and eleven
+   columns of that pushed the table 215px past its card at 1280 — where it
+   cannot scroll sideways, so it simply hung out of the panel. The headers wrap
+   to two lines instead, which is what the breakdown table and the swap columns
+   already do, and the figures set the width from here on. */
+#propsBody thead th .sortbtn{white-space:normal}
+/* The address is the one column that should give way as the window narrows:
+   it wraps, everything beside it is a figure that cannot. */
+#propsBody td.name{min-width:132px}
+/* Two figures and a middot on one line is 31px wider than the column needs to
+   be. The council view already wraps this line (vs-wrap) because a council
+   name can be long; the market view wraps for the same reason, in fewer
+   words. */
+#propsBody .vs-parts{white-space:normal}
+/* Four icons and one word. The row's own gutters are the last 12px, and they
+   are gutters beside a button that already has padding of its own. */
+#propsBody td.acts{padding-left:2px;padding-right:4px}
+#propsBody td.acts .btn-sm{padding-left:7px;padding-right:7px}
 /* The three that swap between Returns and vs Market. One width for both sets,
    so nothing to their left moves when the view changes. "Market at purchase"
    is the longest label of the six and wraps to two lines rather than setting
    the width for all of them. */
-#propsBody th.sw,#propsBody td.sw{width:116px;min-width:116px}
-#propsBody th.ptype,#propsBody td.ptype{width:92px;min-width:92px;white-space:nowrap}
+#propsBody th.sw,#propsBody td.sw{width:104px;min-width:104px}
+#propsBody th.ptype,#propsBody td.ptype{width:76px;min-width:76px;white-space:nowrap}
 #propsBody th.sw{white-space:normal;line-height:14px}
 /* The last of the three is wider because in the market view it holds the gap
    and the two growth rates behind it on one line. IRR takes the same width so
    the two views still line up exactly. */
-#propsBody th.sw3,#propsBody td.sw3{width:150px;min-width:150px}
+#propsBody th.sw3,#propsBody td.sw3{width:140px;min-width:140px}
 /* Small, muted, and never coloured: the headline above carries whether we beat
    the market, and repeating the colour here would make three things shout. */
 /* Raised, small and muted. It has to be noticeable enough to ask about and
@@ -973,6 +1002,12 @@ table.mini th,table.mini td{padding:7px 10px;border-bottom:1px solid var(--borde
 table.mini thead th{font-size:11px;line-height:15px;font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;color:var(--muted);white-space:normal}
 table.mini td.num,table.mini thead th.num{text-align:center}
+/* The purchase column: a figure and the date it happened on, stacked. Ranged
+   left like everything else in these tables, and nowrap because a price split
+   across two lines stops reading as a price. */
+table.mini td.buy{white-space:nowrap;vertical-align:top}
+table.mini td.buy b{display:block;font-weight:600}
+table.mini td.buy span{display:block;font-size:11px;line-height:15px;color:var(--faint)}
 table.mini tbody th{font-weight:600;color:var(--text)}
 table.mini tbody tr:last-child th,table.mini tbody tr:last-child td{border-bottom:0}
 .vs-parts{margin-top:2px;font-size:11px;line-height:14px;font-weight:400;
@@ -3650,8 +3685,32 @@ window.stopCheck=false;
      two are not the same string */
   function linkSite(v){
     if (/pricefinder/i.test(v)) return 'Pricefinder';
-    if (/rea\b|realestate/i.test(v)) return 'realestate.com.au';
-    return 'RPData';
+    if (/rea\b|realestate/i.test(v)) return 'REA';
+    return 'RP Data';
+  }
+  /* The chip is a display of verifiedOf(), never a replacement for it: the
+     stored value is what the edit dialog lists, what the CSV carries and what
+     the share writes, so it stays "RPData import" and only the pill is short.
+     "import" was in all four of them and told you nothing the other word did
+     not, and eighteen characters of pill was setting the width of the Sold
+     price column. */
+  function srcChip(v){
+    return /^rp\s*data/i.test(v) ? 'RP Data'
+         : /pricefinder/i.test(v) ? 'Pricefinder'
+         : /^manual/i.test(v) ? 'Manual'
+         : /rea\b|realestate/i.test(v) ? 'REA'
+         : v;
+  }
+  /* Purchase: the price with its date under it, one cell. The register's own
+     purchase when the row is matched to a property on it, because that is the
+     purchase we hold; the sheet's when it is a property the register has
+     never seen, because then it is the only purchase there is. */
+  function buyCell(price, date){
+    var d = date ? new Date(String(date) + 'T00:00:00Z') : null;
+    return '<td class="buy">' +
+      (Number(price) > 0 ? '<b>' + aud(price) + '</b>'
+                         : '<b class="faint">—</b>') +
+      '<span>' + (d && !isNaN(d) ? dLabel(d) : 'no date') + '</span></td>';
   }
   function soldCell(e){
     var v = verifiedOf(e);
@@ -3661,9 +3720,10 @@ window.stopCheck=false;
        figure came from — so they stay in this cell and the date moves out to
        its own column beside it. */
     return '<td class="pd"><b>'+aud(e.soldPrice)+'</b>'+
-      (v ? '<span class="src'+(/^manual/i.test(v) ? '' : ' checked')+'">'+esc(v)+'</span>' : '')+
-      (safe ? '<a class="src-link" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">'+
-              'Open in '+esc(linkSite(v))+' ↗</a>' : '')+
+      (v ? '<span class="src'+(/^manual/i.test(v) ? '' : ' checked')+'" title="'+esc(v)+'">'+esc(srcChip(v))+'</span>' : '')+
+      (safe ? '<a class="src-link" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer"'+
+              ' title="Open in '+esc(linkSite(v))+'">'+
+              'View ↗</a>' : '')+
       '</td>'+
       '<td class="pd"><b class="dcell">'+dLabel(new Date(e.soldDate))+'</b></td>';
   }
@@ -7735,18 +7795,16 @@ var MHP_FROM='1980-03', MHP={
         detail = '<b>' + aud(p.price) + '</b> on ' + (d && !isNaN(d) ? dLabel(d) : '—') +
           recordLink(p.link);
       } else {
-        var bd = e.purchaseDate ? new Date(e.purchaseDate + 'T00:00:00Z') : null;
-        detail = Number(e.purchasePrice) > 0
-          ? 'Bought <b>' + aud(e.purchasePrice) + '</b>' +
-            (bd && !isNaN(bd) ? ' on ' + dLabel(bd) : '')
-          : '<span class="faint">No purchase recorded</span>';
-        /* A property can arrive already sold — one added from the tracking
-           sheet does. Showing only what it cost would hide half of what is
-           being approved. */
+        /* The purchase has a column of its own now, so this cell is only ever
+           about the sale. A property can arrive already sold — one added
+           from the tracking sheet does — and one added by hand has no sale
+           at all, which is worth saying rather than leaving blank. */
         if (Number(e.soldPrice) > 0) {
           var sd = e.soldDate ? new Date(e.soldDate + 'T00:00:00Z') : null;
-          detail += ', sold <b>' + aud(e.soldPrice) + '</b>' +
+          detail = 'Sold <b>' + aud(e.soldPrice) + '</b>' +
             (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '');
+        } else {
+          detail = '<span class="faint">No sale recorded</span>';
         }
       }
       /* Where it came from, under the figures it is the provenance of.
@@ -7772,6 +7830,7 @@ var MHP_FROM='1980-03', MHP={
         '<td>' + esc(e.name) + '</td>' +
         '<td>' + esc((e.category || '').trim() || '—') + '</td>' +
         '<td>' + why + '</td>' +
+        buyCell(e.purchasePrice, e.purchaseDate) +
         '<td>' + detail + '</td>' +
         '<td class="acts">' + act('data-rev-rec', 'Record', 'ok-btn') +
           act('data-rev-arc', 'Archive', '', ASIDE) +
@@ -7781,6 +7840,7 @@ var MHP_FROM='1980-03', MHP={
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
       '<th scope="col">Property</th><th scope="col">City</th>' +
       '<th scope="col">Finding</th>' +
+      '<th scope="col">Purchase</th>' +
       '<th scope="col">What was found</th>' +
       '<th scope="col"><span class="sr-only">Record, archive or reject</span></th>' +
       '</tr></thead><tbody>' + list.map(row).join('') + '</tbody></table></div>';
@@ -8432,18 +8492,12 @@ var MHP_FROM='1980-03', MHP={
     var row = function(r, kind, also){
       var e = r.match;
       var sd = r.soldDate ? new Date(r.soldDate + 'T00:00:00Z') : null;
-      var bought = '';
-      if (kind === 'new') {
-        var bd = r.purchased ? new Date(r.purchased + 'T00:00:00Z') : null;
-        bought = Number(r.purchasePrice) > 0
-          ? 'Bought <b>' + aud(r.purchasePrice) + '</b>' +
-            (bd && !isNaN(bd) ? ' on ' + dLabel(bd) : '') + ', sold '
-          : 'Sold ';
-      }
       return '<tr><td>' + esc(e ? e.name : r.address) + '</td>' +
         '<td>' + esc((r.city || '').trim() || '—') + '</td>' +
         '<td>' + (kind === 'new' ? 'Not on the register' : 'Sale found') + '</td>' +
-        '<td>' + bought + '<b>' + aud(r.soldPrice) + '</b>' +
+        (e ? buyCell(e.purchasePrice, e.purchaseDate)
+           : buyCell(r.purchasePrice, r.purchased)) +
+        '<td><b>' + aud(r.soldPrice) + '</b>' +
           (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '') +
           recordLink(r.link) +
           '<span class="faint src-line">' + esc(r.tab || '') +
@@ -8465,7 +8519,8 @@ var MHP_FROM='1980-03', MHP={
       '<p class="count-line">' + esc(d.head || '') + '</p>' +
       '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
         '<th scope="col">Property</th><th scope="col">City</th>' +
-        '<th scope="col">Finding</th><th scope="col">What was found</th>' +
+        '<th scope="col">Finding</th><th scope="col">Purchase</th>' +
+        '<th scope="col">What was found</th>' +
       '</tr></thead><tbody>' +
         items.map(function(x){ return row(x.r, x.kind, x.also); }).join('') +
       '</tbody></table></div>' +
