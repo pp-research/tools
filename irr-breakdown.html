@@ -8065,7 +8065,7 @@ var MHP_FROM='1980-03', MHP={
       ', ' + String(when.getHours()).padStart(2,'0') + ':' + String(when.getMinutes()).padStart(2,'0');
     if (rec.failed) {
       p.hidden = false;
-      p.innerHTML = 'The daily check could not read the tracking sheets — ' + esc(rec.failed) +
+      p.innerHTML = 'The daily check could not read — ' + esc(rec.failed) +
         ' <span class="faint">(' + esc(stamp) + ')</span>';
       if (b) { b.hidden = true; b.classList.remove('badge-alert'); }
       return;
@@ -8076,12 +8076,19 @@ var MHP_FROM='1980-03', MHP={
       b.classList.toggle('badge-alert', !!rec.found);
     }
     p.hidden = false;
+    var where = (rec.tabs || []).filter(function(x){ return x.count; })
+      .map(function(x){ return '<strong>' + x.count + '</strong> in ' + esc(x.tab); });
+    /* The same property can be in two sheets, so the parts can add up to more
+       than the whole. Say so rather than let it look like an error. */
+    var sum = (rec.tabs || []).reduce(function(a, x){ return a + (x.count || 0); }, 0);
     p.innerHTML = rec.found
-      ? '<strong>' + rec.found + '</strong> sale' + (rec.found === 1 ? '' : 's') +
-        ' in the tracking sheets that the register does not have. ' +
-        'Press <strong>Check tracking sheets</strong> to see them — nothing has been queued. ' +
+      ? '<strong>' + rec.found + '</strong> propert' + (rec.found === 1 ? 'y' : 'ies') +
+        ' the register does not have' +
+        (where.length ? ' — ' + where.join(', ') +
+          (sum > rec.found ? ' <span class="faint">(some in more than one)</span>' : '') : '') +
+        '. Open this tab to work through them — nothing has been queued. ' +
         '<span class="faint">Checked ' + esc(stamp) + '</span>'
-      : 'The tracking sheets have nothing the register does not. ' +
+      : 'The sheets have nothing the register does not. ' +
         '<span class="faint">Checked ' + esc(stamp) + '</span>';
   }
 
@@ -8155,6 +8162,31 @@ var MHP_FROM='1980-03', MHP={
     else chkLoadSheet(true, chkAdlSold);
   }
 
+  /* Three sheets, one question, and the same property can be in two of them —
+     RP Data and the tracking sheet both knowing about one sale is the normal
+     case, not the odd one. So the count is of PROPERTIES, not of rows: a sale
+     found twice is one thing to deal with. */
+  function scanCount(b){
+    var ids = {}, addrs = {};
+    b.sales.forEach(function(r){ if (r.match) ids[r.match.id] = 1; });
+    b.fresh.forEach(function(r){ addrs[addrKey_(r.address)] = 1; });
+    return Object.keys(ids).length + Object.keys(addrs).length;
+  }
+  /* The sold check sheet in the shape trackBuckets reads. Only the rows that
+     say a sale happened after the purchase — a row that is still held carries
+     the purchase as its last sale, and feeding those in would match every
+     property and call it sold. */
+  function sheetAsRows(rows){
+    return (rows || [])
+      .filter(function(r){ return r.address && String(r.status || '') === 'SOLD SINCE PURCHASE'; })
+      .map(function(r){
+        return { address: r.address, city: (r.city || '').trim(),
+                 soldDate: r.soldDate, soldPrice: r.soldPrice,
+                 purchased: r.purchased, purchasePrice: r.purchasePrice,
+                 link: r.resolved || '', tab: 'Sold check sheet' };
+      });
+  }
+
   var trackRunning = false;
   function trackScan(){
     var rec = trackSeen();
@@ -8164,21 +8196,37 @@ var MHP_FROM='1980-03', MHP={
     if (rec && (Date.now() - rec.at) < TRK_EVERY) return;
     trackRunning = true;
     var u = sheetUrl();
-    fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'tracking=1')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
+    var at = function(p){ return u + (u.indexOf('?') < 0 ? '?' : '&') + p; };
+    /* Both reads together. The badge is what is waiting on this tab, and this
+       tab has three sheets behind it, so counting two of them was the whole
+       of the last bug. */
+    Promise.all([
+      fetch(at('tracking=1')).then(function(r){ return r.json(); }),
+      fetch(at('rows=1')).then(function(r){ return r.json(); })
+    ])
+      .then(function(both){
+        var d = both[0], sheet = both[1];
         if (d && d.ok && !d.rows && d.endpoint) throw new Error('the sheet endpoint is an older version');
         if (!d || !d.ok) throw new Error((d && d.error) || 'the sheet did not answer');
         var broken = (d.sources || []).filter(function(x){ return x.error; });
         if (broken.length) {
           /* Saying "nothing new" because a sheet would not open is the one
              wrong answer that reads as good news. */
-          trackNote(0, d.sources || [], broken.map(function(x){ return x.tab; }).join(' and '));
+          trackNote(0, [], broken.map(function(x){ return x.tab; }).join(' and '));
           return;
         }
-        var rows = (d.rows || []).filter(function(x){ return x.address; });
-        var b = trackBuckets(rows);
-        trackNote(b.sales.length + b.fresh.length, d.sources || []);
+        var trk = (d.rows || []).filter(function(x){ return x.address; });
+        var chkRows = (sheet && sheet.ok) ? sheetAsRows(sheet.rows) : [];
+        /* Counted apart as well as together, because "29 waiting" without
+           "20 here and 12 there" is a number you cannot act on. */
+        var per = (d.sources || []).map(function(x){
+          return { tab: x.tab, count: scanCount(trackBuckets(
+            trk.filter(function(r){ return r.tab === x.tab; }))) };
+        });
+        if (chkRows.length) {
+          per.unshift({ tab: 'Sold check sheet', count: scanCount(trackBuckets(chkRows)) });
+        }
+        trackNote(scanCount(trackBuckets(chkRows.concat(trk))), per);
         maybeAutoOpen();               // if they are already looking at the tab
       })
       .catch(function(e){ trackNote(0, [], e.message || 'it did not answer'); })
@@ -8245,12 +8293,10 @@ var MHP_FROM='1980-03', MHP={
 
         adlFound = { sales: sales, fresh: fresh, differs: differs,
                      sources: d.sources || [] };
-        /* The daily check and the button ask the same question, so pressing it
-           answers the day's — and being shown the answer is what "shown"
-           means, so it is set here rather than where the asking was decided.
-           trackNote writes a fresh record with shown:false, so the order of
-           these two lines is the whole of it. */
-        trackNote(sales.length + fresh.length, d.sources || []);
+        /* Being shown the answer is what "shown" means, so it is set here and
+           not where the asking was decided. It does NOT rewrite the count:
+           this button speaks for the tracking sheets only, and the badge is
+           the whole tab's. One owner for that number, which is trackScan. */
         markShown();
         autoOpening = false;
 
