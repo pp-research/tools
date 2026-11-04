@@ -1435,7 +1435,7 @@ details .body strong{color:var(--text)}
             <p class="note note-info" id="chkDaily" hidden></p>
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
-            <p class="count-line" id="chkCount"></p>
+
             <!-- What the tracking sheets have that the register does not, as a
                  list rather than a number in a dialog. Outside #chkBody so
                  that redrawing the match table does not take it away. -->
@@ -3789,11 +3789,9 @@ window.stopCheck=false;
        it is a setup you do once, and a window you have to go looking for
        is one nobody reads. After that it waits behind its button. */
     if (name === 'check') {
-      syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp();
+      syncCheckTab(); maybeOpenChkHelp();
+      drawFound();                     // whatever was found last time, at once
       trackScan();
-      /* trackScan only fetches once a day; the rest of the time this is what
-         acts on what it already knows. */
-      maybeAutoOpen();
     }
     if (name === 'review') drawQueue();
   }
@@ -7272,7 +7270,7 @@ var MHP_FROM='1980-03', MHP={
   function chkReset(){
     chk = null;
     $('btnChkClear').hidden = true;
-    $('chkCount').textContent = '';
+
     /* The same empty state the page ships with, rebuilt rather than
        remembered, so Clear and a first load look identical. */
     $('chkBody').innerHTML = '<div class="empty"><h3>Nothing loaded yet</h3>'+
@@ -8000,13 +7998,16 @@ var MHP_FROM='1980-03', MHP={
               (all.length - sold.length === 1 ? ' is' : ' are')+' still held, so '+
               (all.length - sold.length === 1 ? 'it is' : 'they are')+' not in the match.'
             : '')));
-        chkRun();
-        /* Pressing the button IS the act that finds the sales, so everything
-           it found goes to the queue there and then rather than waiting for a
-           second press. The automatic path passes `quiet` and leaves them on
-           screen to be queued deliberately. */
+        /* chkRun() used to draw the match table here. That was the second
+           table: a different account of the same question, under a row of
+           tallies, with its own way of queueing. It is gone from this tab —
+           chkRun itself stays for the paste-import sold flow, which has its
+           own display. */
+        mergeFound(sheetAsRows(all), ['Sold check sheet'],
+          'Read ' + all.length + ' checked propert' + (all.length === 1 ? 'y' : 'ies') +
+          ' from the sold check sheet.');
+        drawFound();
         chkBusy(false);
-        if (!quiet) queueFound();
         if (onDone) onDone();
       })
       .catch(function(e){
@@ -8175,40 +8176,13 @@ var MHP_FROM='1980-03', MHP={
     return out;
   }
 
-  /* Opening the tab IS the question "what have you got for me", so it should
-     not need a second button press to answer it. Once per scan result: if the
-     check found something and nobody has been shown it yet, the sold check
-     records load and the tracking check opens its confirm.
-
-     Only from the tab, never from the page load. A modal that appears while
-     somebody is reading the Overview is an interruption; one that appears when
-     they open the tab it belongs to is the answer to what they just asked. */
-  function markShown(){
-    var rec = trackSeen();
-    if (!rec) return;
-    rec.shown = true;
-    try { localStorage.setItem(TRK_KEY, JSON.stringify(rec)); } catch (e) {}
-  }
-  var autoOpening = false;
-  function maybeAutoOpen(){
-    if (currentTab() !== 'check') return;
-    if (!sheetUrl()) return;
-    var rec = trackSeen();
-    if (!rec || !rec.found || rec.shown) return;
-    if (autoOpening) return;           // the fetch below has not landed yet
-    autoOpening = true;
-    /* The records first, so the table is populated behind the dialog rather
-       than empty under it — but quietly, queueing nothing. Then the tracking
-       check, chained rather than timed, so it counts the same book the badge
-       counted and the two numbers agree. */
-    if (chk) chkAdlSold();
-    else chkLoadSheet(true, chkAdlSold);
-  }
-
-  /* Three sheets, one question, and the same property can be in two of them —
-     RP Data and the tracking sheet both knowing about one sale is the normal
-     case, not the odd one. So the count is of PROPERTIES, not of rows: a sale
-     found twice is one thing to deal with. */
+  /* There is nothing to "open" any more. The findings are content on the
+     page: showTab draws them when the tab opens, and the scan draws them when
+     it has read something, so the once-per-scan machinery that guarded a
+     dialog has no dialog left to guard. */
+  /* Three sheets, one question, and the same property can be in two of them.
+     The count is of PROPERTIES, not of rows: a sale found twice is one thing
+     to deal with. */
   function scanCount(b){
     var ids = {}, addrs = {};
     b.sales.forEach(function(r){ if (r.match) ids[r.match.id] = 1; });
@@ -8218,7 +8192,8 @@ var MHP_FROM='1980-03', MHP={
   /* The sold check sheet in the shape trackBuckets reads. Only the rows that
      say a sale happened after the purchase — a row that is still held carries
      the purchase as its last sale, and feeding those in would match every
-     property and call it sold. */
+     property and call it sold. The site that answered is kept as `src`, so a
+     parked sale still records whether RP Data or Pricefinder found it. */
   function sheetAsRows(rows){
     return (rows || [])
       .filter(function(r){ return r.address && String(r.status || '') === 'SOLD SINCE PURCHASE'; })
@@ -8226,7 +8201,9 @@ var MHP_FROM='1980-03', MHP={
         return { address: r.address, city: (r.city || '').trim(),
                  soldDate: r.soldDate, soldPrice: r.soldPrice,
                  purchased: r.purchased, purchasePrice: r.purchasePrice,
-                 link: r.resolved || '', tab: 'Sold check sheet' };
+                 link: /^https?:\/\//i.test(r.resolved || '') ? r.resolved : '',
+                 src: srcOf({ src: r.source }) || 'RPData import',
+                 tab: 'Sold check sheet' };
       });
   }
 
@@ -8277,8 +8254,11 @@ var MHP_FROM='1980-03', MHP={
         if (chkRows.length) {
           per.unshift({ tab: 'Sold check sheet', count: scanCount(trackBuckets(chkRows)) });
         }
-        trackNote(scanCount(trackBuckets(chkRows.concat(trk))), per);
-        maybeAutoOpen();               // if they are already looking at the tab
+        var all = chkRows.concat(trk);
+        saveFound(all, 'Read ' + all.length + ' sale' + (all.length === 1 ? '' : 's') +
+          ' from ' + (per.map(function(x){ return x.tab; }).join(', ') || 'the sheets') + '.');
+        trackNote(scanCount(trackBuckets(all.slice())), per);
+        if (currentTab() === 'check') drawFound();
       })
       .catch(function(e){ trackNote(0, [], e.message || 'it did not answer'); })
       .then(function(){ trackRunning = false; chkBusy(false); });
@@ -8337,21 +8317,18 @@ var MHP_FROM='1980-03', MHP={
           return;
         }
 
-        /* Matched the same way a sold import is — see trackBuckets, which the
-           daily check uses too so the two cannot disagree about what is new. */
-        var b = trackBuckets(rows);
+        var mine = (d.sources || []).map(function(x){ return x.tab; });
+        mergeFound(rows, mine);
+        var b = foundBuckets();
         var sales = b.sales, fresh = b.fresh, agreed = b.agreed, differs = b.differs,
             waiting = b.waiting, archived = b.archived, partial = b.partial,
             ambiguous = b.ambiguous, refused = b.rejected;
 
-        adlFound = { sales: sales, fresh: fresh, differs: differs,
-                     sources: d.sources || [] };
+
         /* Being shown the answer is what "shown" means, so it is set here and
            not where the asking was decided. It does NOT rewrite the count:
            this button speaks for the tracking sheets only, and the badge is
            the whole tab's. One owner for that number, which is trackScan. */
-        markShown();
-        autoOpening = false;
 
         var n = function(a, one, many){
           return '<strong>' + a.length + '</strong> ' + (a.length === 1 ? one : many);
@@ -8362,58 +8339,93 @@ var MHP_FROM='1980-03', MHP={
             return '<strong>' + esc(x.tab) + '</strong> (' + x.count + ')'; }).join(' and ') +
           (collapsed ? ' — ' + collapsed + ' address' + (collapsed === 1 ? '' : 'es') +
                        ' sold more than once, latest sale taken' : '') + '.';
+        /* set once `head` exists: declaring it below meant passing it above
+           passed undefined, and the summary line read "undefined" */
+        mergeFound([], [], String(head).replace(/<[^>]*>/g, ''));
 
         if (!sales.length && !fresh.length) {
-          clearFound();
-          chkSay(msg('ok', head + ' Nothing new: ' +
-            n(agreed, 'is', 'are') + ' already on the register with the same figures' +
-            (differs.length ? ', ' + n(differs, 'disagrees', 'disagree') + ' with it' : '') +
-            (waiting.length ? ', ' + n(waiting, 'is', 'are') + ' already waiting in For review' : '') +
-            (archived.length ? ', ' + n(archived, 'is', 'are') + ' set outside of advice' : '') +
-            (partial.length ? ', ' + n(partial, 'has', 'have') + ' no price and date' : '') +
-            (refused.length ? ', ' + n(refused, 'was', 'were') + ' rejected here before' : '') +
-            (ambiguous.length ? ', ' + n(ambiguous, 'matches', 'match') + ' more than one property' : '') +
-            '.'));
+          drawFound();
+          chkSay(msg('ok', head + ' Nothing the register does not already have.'));
           return;
         }
 
-        /* Listed on the page rather than asked about in a dialog: this can be
-           a lot of properties, and a count you have to agree to without
-           seeing what it is made of is not really a question. */
-        adlFound.head = String(head).replace(/<[^>]*>/g, '');
-        adlFound.alone =
-          [differs.length  ? differs.length + ' already sold on the register for a different figure' : '',
-           waiting.length  ? waiting.length + ' already waiting in For review' : '',
-           archived.length ? archived.length + ' set outside of advice' : '',
-           refused.length  ? refused.length + ' rejected here before' : '',
-           partial.length  ? partial.length + ' without both a price and a date' : '',
-           ambiguous.length ? ambiguous.length + ' matching more than one property' : ''
-          ].filter(Boolean).join(', ');
         chkSay('');
         drawFound();
       })
       .catch(function(e){
-        autoOpening = false;
         chkTrackBusy = false;
         chkBusy(false);
         chkSay(msg('err','Could not read the tracking sheet: '+esc(e.message)));
       });
   }
 
+  /* ── what the sheets say we do not have ─────────────────────────────────
+     Kept in this browser, so the tab has its list the moment it opens and
+     still has it after a refresh. Only the ROWS are kept, never the verdict:
+     the buckets are worked out again each time against the register as it is
+     now, so a property dealt with somewhere else drops out by itself rather
+     than sitting in a stale list waiting to be queued twice. */
+  var FOUND_KEY = 'pp-irr-found-v1';
+  function foundStore(){
+    try { return JSON.parse(localStorage.getItem(FOUND_KEY) || 'null'); }
+    catch (e) { return null; }
+  }
+  function saveFound(rows, head){
+    try {
+      localStorage.setItem(FOUND_KEY, JSON.stringify(
+        { at: Date.now(), head: head || '', rows: rows || [] }));
+    } catch (e) {}
+  }
+  function dropFound(){ try { localStorage.removeItem(FOUND_KEY); } catch (e) {} }
+  /* Rows from one set of sheets replace that set and leave the others alone,
+     so pressing one button does not throw away what the other found. */
+  function mergeFound(rows, tabs, head){
+    var st = foundStore();
+    var keep = ((st && st.rows) || []).filter(function(r){ return tabs.indexOf(r.tab) < 0; });
+    saveFound(keep.concat(rows || []), head || (st && st.head) || '');
+  }
+  /* One row per PROPERTY, not per sheet row. RP Data and a tracking sheet
+     both knowing about one sale is the normal case, and listing it twice
+     would make the table disagree with the count on the tab — and ask you to
+     deal with the same property twice. The other sheet's name is kept and
+     shown beside the first. */
+  function foundList(){
+    var b = foundBuckets(), seen = {}, out = [];
+    var take = function(r, kind, key){
+      if (seen[key]) { 
+        if (seen[key].also.indexOf(r.tab) < 0 && r.tab !== seen[key].r.tab) seen[key].also.push(r.tab);
+        return;
+      }
+      seen[key] = { r: r, kind: kind, also: [] };
+      out.push(seen[key]);
+    };
+    b.sales.forEach(function(r){ take(r, 'sale', 'p' + (r.match && r.match.id)); });
+    b.fresh.forEach(function(r){ take(r, 'new', 'a' + addrKey_(r.address)); });
+    return out;
+  }
+  function foundBuckets(){
+    var st = foundStore();
+    return trackBuckets(((st && st.rows) || []).slice());
+  }
+
   /* The found rows, on the page, with one button under them. A dialog asked
-     you to agree to a number; this shows you the thing the number is about,
-     and it stays on screen while you read the table underneath it. */
+     you to agree to a number; this shows you the thing the number is about. */
   function drawFound(){
     var host = $('chkFound');
     if (!host) return;
-    var d = adlFound;
-    if (!d || !(d.sales.length + d.fresh.length)) {
+    var st = foundStore();
+    var items = foundList();
+    var d = { head: (st && st.head) || '',
+              sales: items.filter(function(x){ return x.kind === 'sale'; }).map(function(x){ return x.r; }),
+              fresh: items.filter(function(x){ return x.kind === 'new'; }).map(function(x){ return x.r; }) };
+    adlFound = d;
+    if (!items.length) {
       host.hidden = true; host.innerHTML = '';
       renderTrackNote(trackSeen());
       syncSheetBtn();
       return;
     }
-    var row = function(r, kind){
+    var row = function(r, kind, also){
       var e = r.match;
       var sd = r.soldDate ? new Date(r.soldDate + 'T00:00:00Z') : null;
       var bought = '';
@@ -8431,9 +8443,11 @@ var MHP_FROM='1980-03', MHP={
           (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '') +
           (/^https?:\/\//i.test(r.link || '')
             ? ' <a href="' + esc(r.link) + '" target="_blank" rel="noopener">record</a>' : '') +
-          '<span class="faint src-line">' + esc(r.tab || '') + '</span></td></tr>';
+          '<span class="faint src-line">' + esc(r.tab || '') +
+            ((also && also.length) ? ' · ' + esc(also.join(' · ')) : '') +
+          '</span></td></tr>';
     };
-    var n = d.sales.length + d.fresh.length;
+    var n = items.length;
     /* The daily line is a summary of the same question, and a summary that
        disagrees with the list under it is worse than no summary. The list is
        the more specific statement, so it takes over while it is up. */
@@ -8446,10 +8460,9 @@ var MHP_FROM='1980-03', MHP={
         '<th scope="col">Property</th><th scope="col">City</th>' +
         '<th scope="col">Waiting on</th><th scope="col">What was found</th>' +
       '</tr></thead><tbody>' +
-        d.sales.map(function(r){ return row(r, 'sale'); }).join('') +
-        d.fresh.map(function(r){ return row(r, 'new'); }).join('') +
+        items.map(function(x){ return row(x.r, x.kind, x.also); }).join('') +
       '</tbody></table></div>' +
-      (d.alone ? '<p class="hint">Left alone: ' + esc(d.alone) + '.</p>' : '') +
+
       '<div class="btns">' +
         '<button type="button" class="btn-primary btn-sm" id="btnFoundSend">Send ' + n +
           ' to For review</button>' +
@@ -8460,6 +8473,7 @@ var MHP_FROM='1980-03', MHP={
   }
   function clearFound(){
     adlFound = null;
+    dropFound();
     var host = $('chkFound');
     if (host) { host.hidden = true; host.innerHTML = ''; }
     renderTrackNote(trackSeen());      // the summary comes back
@@ -8480,7 +8494,10 @@ var MHP_FROM='1980-03', MHP={
       e.review = 'sale';
       e.reviewSrc = r.tab || ADL_SRC;
       e.pending = { price: Number(r.soldPrice), date: r.soldDate,
-                    src: r.tab || ADL_SRC,
+                    /* the site that answered where one is known - recording
+                       "Sold check sheet" against a price RP Data found would
+                       lose which site it came from */
+                    src: r.src || r.tab || ADL_SRC,
                     link: /^https?:\/\//i.test(r.link || '') ? r.link : '' };
       parked++;
       touched.push({ action:'sent for review', property:e.name, city:(e.category||'').trim(),
@@ -8498,7 +8515,7 @@ var MHP_FROM='1980-03', MHP={
                 purchasePrice: Number(r.purchasePrice) > 0 ? Number(r.purchasePrice) : '',
                 purchaseDate: r.purchased || '',
                 soldPrice: Number(r.soldPrice), soldDate: r.soldDate,
-                soldVerified: r.tab || ADL_SRC, soldCheck: 'Sold',
+                soldVerified: r.src || r.tab || ADL_SRC, soldCheck: 'Sold',
                 review: 'new', reviewSrc: r.tab || ADL_SRC };
       var t = ptypeFromLabel(r.ptype);
       if (t) e.ptype = t;
@@ -8696,11 +8713,10 @@ var MHP_FROM='1980-03', MHP={
     if (tally.unchecked) bits.push(tally.unchecked + ' never checked');
     if (tally.none) bits.push(tally.none + ' not found');
     if (tally.gap) bits.push(tally.gap + ' in suburbs not checked');
-    $('chkCount').textContent = rs.length
-      ? rs.length + ' held propert' + (rs.length===1?'y':'ies') +
-        ' checked against ' + chk.sales + ' sale' + (chk.sales===1?'':'s') +
-        (bits.length ? ' · ' + bits.join(' · ') : '')
-      : '';
+    /* The tallies line is gone from the Sold check tab: the findings list is
+       the answer, and three counts of the same question above it were noise.
+       chkRun still runs for the paste-import sold flow, which has its own
+       display, so this just no longer has anywhere to write. */
     if (!rs.length) {
       var total = loadProps().length;
       $('chkBody').innerHTML = '<div class="empty"><h3>Nothing is waiting on a sale</h3>'+
