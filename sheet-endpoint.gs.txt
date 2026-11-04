@@ -106,6 +106,26 @@ var REG_HEADERS = [
   'Synced at'
 ];
 
+/* ── the Adelaide tracking sheet ──────────────────────────────────────────
+   A second spreadsheet, and NOT the one this script is bound to: "Adelaide
+   Total Purchases & Sales - TrackingSheet", kept by hand by the advisory
+   team. Its "ADL - Sold" tab is the record of every Adelaide sale, and a sale
+   is written there before anybody thinks about the IRR Calculator — so it is
+   the place a sale shows up first, ahead of RP Data and ahead of the book.
+
+   It is opened here, by id, rather than fetched by the browser, for the same
+   reason the worklist exists: the tool and the sheet are different origins
+   and the sheet is not public. This script already holds the spreadsheets
+   scope, so reading a second file costs no new permission.
+
+   The id is pinned in this file on purpose. Taking it from the request would
+   turn a capability that can append rows to one sheet into one that can read
+   every sheet the owner of this script can see, which is a far larger thing
+   to leave on a bookmarks bar. */
+var ADL_ID   = '1R_RAXWFvX8SOkje4nRDQtj0xnrs_zZ2yVxvrxhV98QM';
+var ADL_TAB  = 'ADL - Sold';
+var ADL_CITY = 'Adelaide';
+
 function make_(ss, name) {
   var sh = ss.insertSheet(name);
   sh.appendRow(HEADERS);
@@ -357,6 +377,127 @@ function register_(rows) {
   return json_({ ok: true, wrote: rows.length, syncedAt: stamp });
 }
 
+/* The tab as the tool needs it: one row per address, latest sale.
+
+   Columns are found by name, never by position. This is a working document —
+   a column gets inserted in it now and then — and a reader that counted would
+   not fail, it would quietly start returning the wrong field, which is worse. */
+function adlSold_() {
+  var ss;
+  try { ss = SpreadsheetApp.openById(ADL_ID); }
+  catch (err) {
+    return json_({ ok: false, kind: 'adl',
+                   error: 'cannot open the tracking sheet: ' + ((err && err.message) || err) });
+  }
+  var sh = ss.getSheetByName(ADL_TAB);
+  if (!sh) {
+    return json_({ ok: false, kind: 'adl',
+                   error: 'the tracking sheet has no tab named "' + ADL_TAB + '"',
+                   tabs: ss.getSheets().map(function (x) { return x.getName(); }) });
+  }
+  /* A date cell holds an instant, and which DAY that instant falls on depends
+     on the time zone you read it in. The cells in this file were written in
+     THIS spreadsheet's zone, so that is the zone they have to be formatted
+     back in — not the script's, which belongs to the other spreadsheet and is
+     not the same. Reading them in the script's zone moved every sale in the
+     tab one day earlier, silently and consistently, which is exactly the kind
+     of wrong that gets believed. */
+  var tz = ss.getSpreadsheetTimeZone();
+  var out = { ok: true, kind: 'adl', city: ADL_CITY, tab: ADL_TAB,
+              sheetUrl: ss.getUrl(), title: ss.getName(),
+              tz: { sheet: tz, script: Session.getScriptTimeZone() } };
+  var last = sh.getLastRow();
+  if (last < 2) {
+    out.rows = []; out.count = 0; out.empty = true;
+    return json_(out);
+  }
+  var wide = sh.getLastColumn();
+  var head = sh.getRange(1, 1, 1, wide).getValues()[0].map(adlHead_);
+  var at = function (name) { return head.indexOf(adlHead_(name)); };
+  var iAddr = at('Property'), iSoldD = at('Sold Date'), iSoldP = at('Sold Price');
+  if (iAddr < 0 || iSoldD < 0 || iSoldP < 0) {
+    return json_({ ok: false, kind: 'adl', saw: head,
+                   error: 'the tab is missing one of Property / Sold Date / Sold Price' });
+  }
+  var iBuyD = at('Purchase Date'), iBuyP = at('Purchase Price'),
+      iLink = at('Link'), iType = at('Type');
+  var get = function (v, i) { return i < 0 ? '' : v[i]; };
+
+  var grid = sh.getRange(2, 1, last - 1, wide).getValues();
+  var byAddr = {}, order = [], collapsed = 0;
+  for (var i = 0; i < grid.length; i++) {
+    var v = grid[i];
+    var addr = String(get(v, iAddr) == null ? '' : get(v, iAddr)).replace(/\s+/g, ' ').trim();
+    if (!addr) continue;
+    var soldDate = adlDate_(get(v, iSoldD), tz);
+    var soldPrice = adlNum_(get(v, iSoldP));
+    /* This is the SOLD tab, so a row with neither a date nor a price on it is
+       a row somebody started, not a property that is still held. */
+    if (!soldDate && soldPrice === '') continue;
+    var rec = {
+      address: addr, city: ADL_CITY,
+      purchased: adlDate_(get(v, iBuyD), tz),
+      purchasePrice: adlNum_(get(v, iBuyP)),
+      soldDate: soldDate, soldPrice: soldPrice,
+      ptype: String(get(v, iType) == null ? '' : get(v, iType)).replace(/\s+/g, ' ').trim(),
+      link: String(get(v, iLink) == null ? '' : get(v, iLink)).trim(),
+      row: i + 2
+    };
+    var k = addr.toLowerCase();
+    if (!byAddr[k]) { byAddr[k] = rec; order.push(k); continue; }
+    /* The same address twice is a property that has been sold twice, or a row
+       entered twice. Either way the latest sale is the one that is true now.
+       Dates are yyyy-mm-dd by here, so comparing them as strings is comparing
+       them as dates. */
+    collapsed++;
+    if (String(rec.soldDate) > String(byAddr[k].soldDate)) byAddr[k] = rec;
+  }
+  var rows = [];
+  for (var j = 0; j < order.length; j++) rows.push(byAddr[order[j]]);
+  out.rows = rows;
+  out.count = rows.length;
+  out.collapsed = collapsed;
+  return json_(out);
+}
+
+/* Headers in a working sheet carry trailing spaces and the odd line break
+   ("Running cost (excld fnce)" then a newline then "Annually"), so they are
+   compared flattened rather than exactly. */
+function adlHead_(s) {
+  return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function pad2_(n) { return (n < 10 ? '0' : '') + n; }
+
+/* A date cell is usually a real date, in which case there is nothing to read.
+   Where somebody has typed one in as text instead, it is day-first: the
+   spreadsheet's own locale is en_GB and its time zone Australia/Adelaide.
+   That is read off the file, not guessed from the numbers — guessing would
+   take 7/8/2016 as 7 August in one row and 8 July in the next, and never say
+   which it had done. */
+function adlDate_(v, tz) {
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, tz || Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  var s = String(v == null ? '' : v).trim();
+  if (!s) return '';
+  var m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (!m) return s;
+  var d = +m[1], mo = +m[2], y = +m[3];
+  if (y < 100) y += 2000;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return s;
+  return y + '-' + pad2_(mo) + '-' + pad2_(d);
+}
+
+/* "$621,000" where the cell holds text rather than a number. An empty cell
+   comes back as '' and not 0, because 0 is a price and '' is the absence of
+   one. */
+function adlNum_(v) {
+  if (typeof v === 'number') return v;
+  var s = String(v == null ? '' : v).replace(/[^0-9.\-]/g, '');
+  return s === '' || isNaN(Number(s)) ? '' : Number(s);
+}
+
 function fmt_(v) {                        // Date cells → "2026-09-18"
   if (v instanceof Date) {
     return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -380,10 +521,16 @@ function fmt_(v) {                        // Date cells → "2026-09-18"
                    properties to work through - see REG_TAB above for why it
                    comes from here and not from the database.
 
+   ?adl=1       →  the "ADL - Sold" tab of the Adelaide tracking sheet, one
+                   row per address carrying its latest sale. A different
+                   spreadsheet entirely — see ADL_ID above.
+
    ?tab=pricefinder narrows done= to that tab. */
 function doGet(e) {
   var p = (e && e.parameter) || {};
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (p.adl) return adlSold_();
 
   if (!p.rows && !p.done && !p.todo && !p.register) {
     /* `kinds` is how a bookmarklet tells this deployment from an older one.
@@ -391,7 +538,7 @@ function doGet(e) {
        empty worklist and report, perfectly truthfully, that there was
        nothing to do. */
     return json_({ ok: true, endpoint: 'rpdata held check',
-                   kinds: ['type', 'register'],
+                   kinds: ['type', 'register', 'adl'],
                    tabs: [TAB, TAB2], sheetUrl: ss.getUrl() });
   }
 
