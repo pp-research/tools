@@ -1371,12 +1371,20 @@ details .body strong{color:var(--text)}
                      screen. Hidden entirely until this browser knows where the
                      sheet is — the address is a capability, never in this file. -->
                 <button type="button" class="btn-primary btn-sm" id="btnChkSheet" hidden>From Google Sheet</button>
-                <!-- A second source, and the only one that is ahead of the book
-                     rather than behind it: the advisory team writes a sale into
-                     the tracking sheet long before RP Data has it. Shown as soon
-                     as this browser knows the /exec address — unlike the reload
-                     beside it, it does not need anything loaded first. -->
-                <button type="button" class="btn-ghost btn-sm" id="btnChkAdl" hidden>Check tracking sheets</button>
+                <!-- The other two sources, and the only ones that are ahead of
+                     the book rather than behind it: the advisory team writes a
+                     sale into a tracking sheet long before RP Data has it. One
+                     button each, because they are two separate decisions about
+                     two separate sets of properties — and in the same shape as
+                     the button beside them, because they do the same kind of
+                     thing. Shown as soon as this browser knows the /exec
+                     address: unlike the reload, they need nothing loaded first.
+                     Adding a city means a row in TRACKING in sheet-endpoint.gs
+                     AND a button here; the check says so if the two disagree. -->
+                <button type="button" class="btn-primary btn-sm" id="btnChkAdl" hidden
+                        data-tab="ADL - Sold">From ADL &ndash; Sold</button>
+                <button type="button" class="btn-primary btn-sm" id="btnChkBri" hidden
+                        data-tab="BRI - Sold">From BRI &ndash; Sold</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkHelp" hidden>How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
@@ -7273,9 +7281,10 @@ var MHP_FROM='1980-03', MHP={
   function syncSheetBtn(){
     var u = !!sheetUrl();
     $('btnChkSheet').hidden = !u || !chk;
-    /* The tracking sheet is a source in its own right, so this one only waits
-       on the address — there is nothing to load first. */
+    /* A tracking sheet is a source in its own right, so these only wait on the
+       address — there is nothing to load first. */
     var adl = $('btnChkAdl'); if (adl) adl.hidden = !u;
+    var bri = $('btnChkBri'); if (bri) bri.hidden = !u;
     var big = $('btnChkLoadBig');          // only exists while the tab is empty
     if (big) big.hidden = !u;
   }
@@ -7575,7 +7584,13 @@ var MHP_FROM='1980-03', MHP={
   function reviewedProps(){
     return loadProps().filter(function(e){ return e.review !== 'new'; });
   }
-  function pendingProps(){ return cityProps(loadProps()).filter(isPending); }
+  /* The whole book, not the city on screen. For review, the Sold check and the
+     History are about the work, and the work is not filed by city: a queue
+     that hid half of itself behind a filter in the header is a queue you
+     cannot trust to be empty. The Register, the Growth comparison and the
+     Calculation stay scoped — those are about a set of properties, and which
+     set is exactly what the filter is for. */
+  function pendingProps(){ return loadProps().filter(isPending); }
   function syncReviewBadge(){
     var b = $('badgeReview'); if (!b) return;
     var n = pendingProps().length;
@@ -7860,7 +7875,7 @@ var MHP_FROM='1980-03', MHP={
            String(e.soldDate || '') === String(r.soldDate || '');
   }
 
-  function chkAdlSold(){
+  function chkAdlSold(want){
     var u = sheetUrl();
     if (!u) {
       chkSay(msg('err','This browser does not know where the sheet is yet — the box for '+
@@ -7868,7 +7883,7 @@ var MHP_FROM='1980-03', MHP={
       return;
     }
     showTab('check');
-    chkSay(msg('ok','Reading the tracking sheets…'));
+    chkSay(msg('ok','Reading <strong>'+esc(want)+'</strong>…'));
     fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'tracking=1')
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -7884,21 +7899,29 @@ var MHP_FROM='1980-03', MHP={
         }
         if (!d || !d.ok) throw new Error(d && d.error ? d.error : 'the sheet did not answer');
 
+        /* The endpoint answers for every sheet it knows; this button is about
+           one of them. A sheet nobody asked about failing is not this
+           button's problem, and reporting it here would be noise. */
+        var mine = (d.sources || []).filter(function(x){ return x.tab === want; })[0];
+        if (!mine) {
+          chkSay(msg('err','The sheet endpoint does not know a tab called <strong>'+esc(want)+
+            '</strong>. It answers for '+
+            ((d.sources || []).map(function(x){ return '<strong>'+esc(x.tab)+'</strong>'; }).join(' and ') || 'nothing')+
+            '. Add it to <code>TRACKING</code> in sheet-endpoint.gs and deploy a new version.'));
+          return;
+        }
         /* A sheet that could not be read is NOT a sheet with nothing in it,
            and the difference is the whole point: "no new sales" is the one
-           wrong answer that reads as good news. So a broken source stops the
-           check rather than quietly shrinking it. */
-        var broken = (d.sources || []).filter(function(x){ return x.error; });
-        if (broken.length) {
-          chkSay(msg('err','Could not read ' +
-            broken.map(function(x){ return '<strong>'+esc(x.tab)+'</strong> — '+esc(x.error); }).join('; ') +
-            '.<br>Nothing has been checked, because a sheet that will not open and a sheet with ' +
+           wrong answer that reads as good news. */
+        if (mine.error) {
+          chkSay(msg('err','Could not read <strong>'+esc(want)+'</strong> — '+esc(mine.error)+
+            '.<br>Nothing has been checked, because a sheet that will not open and a sheet with '+
             'nothing new in it look the same from here.'));
           return;
         }
-        var rows = (d.rows || []).filter(function(r){ return r.address; });
+        var rows = (d.rows || []).filter(function(r){ return r.address && r.tab === want; });
         if (!rows.length) {
-          chkSay(msg('warn','The tracking sheets have no sales in them.'));
+          chkSay(msg('warn','<strong>'+esc(want)+'</strong> has no sales in it.'));
           return;
         }
 
@@ -7941,18 +7964,15 @@ var MHP_FROM='1980-03', MHP={
           (adlWhole(r) ? sales : partial).push(r);
         });
 
-        adlFound = { sales: sales, fresh: fresh, differs: differs,
-                     sources: d.sources || [] };
+        adlFound = { sales: sales, fresh: fresh, differs: differs, tab: want };
 
         var n = function(a, one, many){
           return '<strong>' + a.length + '</strong> ' + (a.length === 1 ? one : many);
         };
-        var collapsed = (d.sources || []).reduce(function(a, x){ return a + (x.collapsed || 0); }, 0);
         var head = 'Read <strong>' + rows.length + '</strong> sale' + (rows.length === 1 ? '' : 's') +
-          ' from ' + (d.sources || []).map(function(x){
-            return '<strong>' + esc(x.tab) + '</strong> (' + x.count + ')'; }).join(' and ') +
-          (collapsed ? ' — ' + collapsed + ' address' + (collapsed === 1 ? '' : 'es') +
-                       ' sold more than once, latest sale taken' : '') + '.';
+          ' from <strong>' + esc(want) + '</strong>' +
+          (mine.collapsed ? ' — ' + mine.collapsed + ' address' + (mine.collapsed === 1 ? '' : 'es') +
+                            ' sold more than once, latest sale taken' : '') + '.';
 
         if (!sales.length && !fresh.length) {
           chkSay(msg('ok', head + ' Nothing new: ' +
@@ -8035,19 +8055,6 @@ var MHP_FROM='1980-03', MHP={
                      detail:'from the ' + (r.tab || ADL_SRC) + ' tab, waiting for review' });
     });
 
-    /* For review is filtered to the city on screen, so anything queued for
-       another one would be invisible — a queue you cannot see is the same as
-       no queue. Say where it went. */
-    var elsewhere = '';
-    if (activeCity) {
-      var other = {};
-      touched.forEach(function(t){ if (t.city && t.city !== activeCity) other[t.city] = (other[t.city] || 0) + 1; });
-      var names = Object.keys(other);
-      if (names.length) elsewhere = ' <strong>' +
-        names.map(function(c){ return other[c] + ' in ' + esc(c); }).join(', ') +
-        '</strong> — switch the city filter to see ' +
-        (names.length === 1 && other[names[0]] === 1 ? 'it' : 'them') + '.';
-    }
     if (!touched.length) { chkSay(msg('warn','Nothing left to send — the register has moved on.')); return; }
     if (!putProps(list)) return;
     logChange(touched);
@@ -8061,7 +8068,7 @@ var MHP_FROM='1980-03', MHP={
       (parked && added ? ' and ' : '') +
       (added ? '<strong>'+added+'</strong> new propert'+(added===1?'y':'ies')+' added' : '') +
       '. '+(parked + added === 1 ? 'It is' : 'They are')+' in <strong>For review</strong>, '+
-      'and nothing is counted until it is recorded there.' + elsewhere));
+      'and nothing is counted until it is recorded there.'));
   }
 
   var pickId = null;
@@ -8144,10 +8151,11 @@ var MHP_FROM='1980-03', MHP={
       (loose[looseKey(a)] = loose[looseKey(a)] || []).push(s);
     });
 
-    /* Scoped like every other tab. The bookmarklet itself still works through
-       the whole register — you run it once, not once per city — so a city
-       narrows what this tab reports on, never what was asked. */
-    var book = cityProps(loadProps());
+    /* The whole register, every city. The bookmarklet works through all of it
+       in one run, and this tab reports on that run — narrowing it to the city
+       in the header made the report disagree with the thing it was reporting
+       on. See pendingProps() for where the filter does still apply. */
+    var book = loadProps();
     var pool = book.filter(isHeld);     // held only; see above
     var results = pool.map(function(e){
       var a = splitAddr(e.name);
@@ -8237,10 +8245,9 @@ var MHP_FROM='1980-03', MHP={
         (bits.length ? ' · ' + bits.join(' · ') : '')
       : '';
     if (!rs.length) {
-      var total = cityProps(loadProps()).length;
+      var total = loadProps().length;
       $('chkBody').innerHTML = '<div class="empty"><h3>Nothing is waiting on a sale</h3>'+
-        '<p>All '+total+' propert'+(total===1?'y':'ies')+' in '+
-        (activeCity ? esc(cityLabel()) : 'the register')+' already '+
+        '<p>All '+total+' propert'+(total===1?'y':'ies')+' on the register already '+
         'ha'+(total===1?'s':'ve')+' a sale recorded, so there is nothing for the check '+
         'to ask about.</p></div>';
       return;
@@ -9459,7 +9466,12 @@ var MHP_FROM='1980-03', MHP={
      log column existed, or renamed since — is SHOWN, not hidden. Restore lives
      on these rows, and a row hidden by a guess is a property with no way back. */
   function histInCity(rows){
-    if (!activeCity) return rows;
+    /* The History is the whole book's, whichever city is on screen. What
+       happened, happened; filing it away behind a filter means a change you
+       made this morning can vanish from the log this afternoon because you
+       switched city. The lookup below is kept because it still answers "which
+       city was this?" for anything that wants to ask. */
+    return rows;
     var byName = {};
     loadProps().forEach(function(e){
       byName[String(e.name||'').trim().toLowerCase()] = (e.category||'').trim();
@@ -9496,9 +9508,7 @@ var MHP_FROM='1980-03', MHP={
         var rows = histInCity(r.data || []);
         if (!rows.length) {
           $('histBody').innerHTML = '<div class="empty"><h3>Nothing logged yet</h3>'+
-            '<p>'+(activeCity
-              ? 'Nothing has changed in ' + esc(cityLabel()) + '. Another city in the header may have a log of its own.'
-              : 'Changes are recorded from now on — archiving, restoring, re-filing and deleting.')+'</p></div>';
+            '<p>Changes are recorded from now on — archiving, restoring, re-filing and deleting.</p></div>';
           return;
         }
         histRows = {};
@@ -9861,7 +9871,8 @@ var MHP_FROM='1980-03', MHP={
 
   /* ── sold check ── */
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
-  $('btnChkAdl').addEventListener('click', chkAdlSold);
+  $('btnChkAdl').addEventListener('click', function(){ chkAdlSold(this.getAttribute('data-tab')); });
+  $('btnChkBri').addEventListener('click', function(){ chkAdlSold(this.getAttribute('data-tab')); });
   /* Typed in, never in this file. Saved as it is typed so there is no
      button to forget to press. */
   $('bmSheet').addEventListener('input', function(){
