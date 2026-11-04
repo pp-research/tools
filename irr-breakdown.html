@@ -8123,6 +8123,15 @@ var MHP_FROM='1980-03', MHP={
      more automatic one. */
   var TRK_KEY = 'pp-irr-trackseen-v1';
   var TRK_EVERY = 20 * 60 * 60 * 1000;      // once a working day, not once per visit
+  /* A read that did not happen is not the day's read. The first open of the
+     morning is the likeliest one to fail — a laptop coming out of sleep restores
+     its tabs before the wifi is back, and the scan fires 1.2 seconds in — and
+     under the old rule that one "Failed to fetch" stood in for the whole day:
+     no badge, no retry, nothing until tomorrow. A failure stands for two
+     minutes instead — long enough that clicking between tabs cannot hammer an
+     endpoint that is genuinely down, short enough that the next time she
+     comes back to the tab it tries again. */
+  var TRK_RETRY = 2 * 60 * 1000;
 
   /* Throw away what the last check found, so the next one actually looks.
      It does NOT fetch here: a review session is twenty clicks, and twenty
@@ -8172,7 +8181,9 @@ var MHP_FROM='1980-03', MHP={
     if (rec.failed) {
       p.hidden = false;
       p.innerHTML = 'The daily check could not read — ' + esc(rec.failed) +
-        ' <span class="faint">(' + esc(stamp) + ')</span>';
+        ' <span class="faint">(' + esc(stamp) + ')</span>' +
+        '<span class="faint"> It will try again the next time this tab is ' +
+        'opened, or press <strong>Check tracking sheets</strong> to try now.</span>';
       if (b) { b.hidden = true; b.classList.remove('badge-alert'); }
       return;
     }
@@ -8279,7 +8290,8 @@ var MHP_FROM='1980-03', MHP={
   function trackDue(){
     if (!sheetUrl()) return false;
     var rec = trackSeen();
-    return !rec || (Date.now() - rec.at) >= TRK_EVERY;
+    if (!rec) return true;
+    return (Date.now() - rec.at) >= (rec.failed ? TRK_RETRY : TRK_EVERY);
   }
   function trackScan(){
     var rec = trackSeen();
