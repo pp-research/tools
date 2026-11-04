@@ -587,6 +587,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkFound .hint{margin:var(--sp-3) 0 0}
 #chkFound .btns{margin:var(--sp-4) 0 0}
 #chkFound .src-line{display:block;margin-top:2px;font-size:12px;line-height:16px}
+.rec-link{white-space:nowrap}
 #chkFound table.mini td:nth-child(1),
 #chkFound table.mini td:nth-child(4){white-space:normal}
 #panel-review #revNote{display:block;margin:0 0 var(--sp-4)}
@@ -7732,7 +7733,7 @@ var MHP_FROM='1980-03', MHP={
       if (e.review === 'sale') {
         var d = p.date ? new Date(p.date + 'T00:00:00Z') : null;
         detail = '<b>' + aud(p.price) + '</b> on ' + (d && !isNaN(d) ? dLabel(d) : '—') +
-          (p.link ? ' <a href="' + esc(p.link) + '" target="_blank" rel="noopener">record</a>' : '');
+          recordLink(p.link);
       } else {
         var bd = e.purchaseDate ? new Date(e.purchaseDate + 'T00:00:00Z') : null;
         detail = Number(e.purchasePrice) > 0
@@ -8444,8 +8445,7 @@ var MHP_FROM='1980-03', MHP={
         '<td>' + (kind === 'new' ? 'Not on the register' : 'Sale found') + '</td>' +
         '<td>' + bought + '<b>' + aud(r.soldPrice) + '</b>' +
           (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '') +
-          (/^https?:\/\//i.test(r.link || '')
-            ? ' <a href="' + esc(r.link) + '" target="_blank" rel="noopener">record</a>' : '') +
+          recordLink(r.link) +
           '<span class="faint src-line">' + esc(r.tab || '') +
             ((also && also.length) ? ' · ' + esc(also.join(' · ')) : '') +
           '</span></td></tr>';
@@ -8830,6 +8830,24 @@ var MHP_FROM='1980-03', MHP={
      the same breath as "RPData import" and "Pricefinder import", so a figure
      can always be traced back to where it came from. */
   var ADL_SRC = 'ADL tracking sheet';
+  /* "record" said nothing about where it went, and these do not all go to the
+     same place: a sold check row links to RP Data, a tracking sheet row to the
+     listing its own Link column points at. So the label is read off the
+     address rather than assumed — calling a realestate.com.au page "RP Data"
+     would be a small lie on every tracking row. */
+  function recordLink(url){
+    if (!/^https?:\/\//i.test(url || '')) return '';
+    var host = '';
+    try { host = new URL(url).hostname.replace(/^www\./, '').toLowerCase(); }
+    catch (e) { host = ''; }
+    var where = /corelogic|rpdata/.test(host) ? 'RP Data'
+              : /realestate\.com\.au/.test(host) ? 'realestate.com.au'
+              : /pricefinder/.test(host) ? 'Pricefinder'
+              : '';
+    return ' <a href="' + esc(url) + '" target="_blank" rel="noopener" class="rec-link">' +
+      'View' + (where ? ' in ' + esc(where) : ' record') +
+      '<span aria-hidden="true"> ↗</span></a>';
+  }
   function srcOf(hit){
     var s = (hit && hit.src) || '';
     if (/pricefinder/i.test(s)) return 'Pricefinder import';
