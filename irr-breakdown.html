@@ -7796,6 +7796,7 @@ var MHP_FROM='1980-03', MHP={
         revPicked = {};
         renderProps();
         ovStale = true; gcStale = true;     // the figures just changed
+        trackInvalidate();                  // and so did what the check would find
         drawQueue();
         revSay(msg('ok', touched.length + ' propert' + (touched.length === 1 ? 'y' : 'ies') +
           ' ' + verb + '. Each one is in <strong>History</strong>.'));
@@ -8010,6 +8011,15 @@ var MHP_FROM='1980-03', MHP={
   var TRK_KEY = 'pp-irr-trackseen-v1';
   var TRK_EVERY = 20 * 60 * 60 * 1000;      // once a working day, not once per visit
 
+  /* Throw away what the last check found, so the next one actually looks.
+     It does NOT fetch here: a review session is twenty clicks, and twenty
+     fetches to keep a badge honest is a worse trade than one on the next
+     open. The badge goes blank rather than stale in the meantime, which is
+     the honest state — we no longer know. */
+  function trackInvalidate(){
+    try { localStorage.removeItem(TRK_KEY); } catch (e) {}
+    renderTrackNote(null);
+  }
   function trackSeen(){
     try { return JSON.parse(localStorage.getItem(TRK_KEY) || 'null') || null; }
     catch (e) { return null; }
@@ -8269,6 +8279,9 @@ var MHP_FROM='1980-03', MHP={
     logChange(touched);
     renderProps();
     ovStale = true; gcStale = true;
+    /* What was just queued is no longer something the next check should
+       count as new, so the stored answer is wrong the moment this runs. */
+    trackInvalidate();
     syncReviewBadge();
     if (chk) chkRun();
     chkSay(msg('ok',
