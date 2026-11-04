@@ -8130,7 +8130,10 @@ var MHP_FROM='1980-03', MHP={
         ' the register does not have' +
         (where.length ? ' — ' + where.join(', ') +
           (sum > rec.found ? ' <span class="faint">(some in more than one)</span>' : '') : '') +
-        '. Open this tab to work through them — nothing has been queued. ' +
+        /* It used to say "Open this tab to work through them", on the tab it
+           was telling you to open. What matters is that none of it has moved
+           yet, and what moves it. */
+        '. Nothing has been queued for review until you send them. ' +
         '<span class="faint">Checked ' + esc(stamp) + '</span>'
       : 'No sale in the sheets that the register does not already have. ' +
         '<span class="faint">Checked ' + esc(stamp) + '</span>';
