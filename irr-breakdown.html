@@ -558,7 +558,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkBm .field{margin-bottom:var(--sp-5)}
 #chkBm #bmSheetLine{margin:0 0 var(--sp-4);font-size:13px;line-height:19px;color:var(--text)}
 #chkBm #bmWorklist{margin:calc(var(--sp-4) * -1) 0 var(--sp-4);font-size:12px;line-height:17px}
-#panel-review #revNote{margin:0 0 var(--sp-4)}
+/* .note is a flex row so an icon can sit beside its text. These two carry no
+   icon, and in a flex container every inline child becomes its own column —
+   which turned a two-sentence explanation into a wall of narrow columns. They
+   are ordinary blocks. */
+#panel-review #revNote{display:block;margin:0 0 var(--sp-4)}
+#chkBm #bmSheetLine{display:block}
 #panel-review table.mini td:first-child,
 #panel-review table.mini th:first-child{width:28px;text-align:center}
 #panel-review .btns{margin-top:var(--sp-4)}
@@ -959,6 +964,21 @@ table.mini tbody tr:last-child th,table.mini tbody tr:last-child td{border-botto
   height:32px;min-height:32px;padding:0 10px;margin-right:3px;
 }
 #propsBody .acts .icon-btn{width:28px;padding:0}
+/* The source sits under the price and the date rather than in a column of its
+   own: it is the provenance OF those figures, not a separate fact about the
+   property, and a column for it pushed the row off the panel. */
+#revBody .src-line{display:block;margin-top:2px;font-size:12px;line-height:16px}
+#revBody td.acts .icon-btn{width:28px;padding:0}
+/* A word beside two icons: without this they sit on different baselines and
+   the row reads as two lines pretending to be one. */
+#revBody td.acts button{vertical-align:middle}
+/* table.mini keeps every cell on one line, which suits figures and made this
+   table 17px wider than the panel it sits in. The two columns that hold
+   sentences are allowed to wrap; the figures, the city and the buttons are
+   not. */
+#panel-review table.mini td:nth-child(2),
+#panel-review table.mini td:nth-child(5){white-space:normal}
+#panel-review table.mini td.acts{white-space:nowrap}
 td.acts{white-space:nowrap}
 td.acts button{margin-right:6px}
 td.acts button:last-child{margin-right:0}
@@ -7624,10 +7644,15 @@ var MHP_FROM='1980-03', MHP={
     var live = {}; list.forEach(function(e){ live[e.id] = 1; });
     Object.keys(revPicked).forEach(function(id){ if (!live[id]) delete revPicked[id]; });
 
-    if (note) note.innerHTML = 'Nothing is counted in the <strong>Overview</strong> or the ' +
-      '<strong>Growth comparison</strong> until it has been approved here, and no sale is ' +
-      'written onto a property until then either. Every decision goes to the ' +
-      '<strong>History</strong> with whatever you type as the reason.';
+    if (note) note.innerHTML =
+      '<strong>Sale found</strong> &mdash; the property is already on the register and a sale ' +
+      'has turned up against it. The price and date are <em>parked</em>, not written: the ' +
+      'property still reads as held until you record it.<br>' +
+      '<strong>Added</strong> &mdash; the property is new to the register. Recording it accepts ' +
+      'the whole record, and until then it is counted in nothing at all.<br>' +
+      'Either way the <strong>Overview</strong> and the <strong>Growth comparison</strong> ignore ' +
+      'it until it is recorded, and every decision goes to the <strong>History</strong> with ' +
+      'whatever you type as the reason.';
     if (!list.length) {
       host.innerHTML = '<div class="empty"><h3>Nothing waiting</h3>' +
         '<p>Properties arrive here when they are added to the register, when the ' +
@@ -7645,7 +7670,6 @@ var MHP_FROM='1980-03', MHP={
       if (e.review === 'sale') {
         var d = p.date ? new Date(p.date + 'T00:00:00Z') : null;
         detail = '<b>' + aud(p.price) + '</b> on ' + (d && !isNaN(d) ? dLabel(d) : '—') +
-          (p.src ? ' <span class="faint">· ' + esc(p.src) + '</span>' : '') +
           (p.link ? ' <a href="' + esc(p.link) + '" target="_blank" rel="noopener">record</a>' : '');
       } else {
         var bd = e.purchaseDate ? new Date(e.purchaseDate + 'T00:00:00Z') : null;
@@ -7659,18 +7683,25 @@ var MHP_FROM='1980-03', MHP={
         if (Number(e.soldPrice) > 0) {
           var sd = e.soldDate ? new Date(e.soldDate + 'T00:00:00Z') : null;
           detail += ', sold <b>' + aud(e.soldPrice) + '</b>' +
-            (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '') +
-            (e.soldVerified ? ' <span class="faint">· ' + esc(e.soldVerified) + '</span>' : '');
+            (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '');
         }
       }
-      /* Where it came from. reviewSrc is stamped at the door; anything queued
-         before that field existed still knows which site answered, so fall
-         back to that rather than printing a dash over information we have. */
+      /* Where it came from, under the figures it is the provenance of.
+         reviewSrc is stamped at the door; anything queued before that field
+         existed still knows which site answered, so fall back to that rather
+         than losing information we have. */
       var from = e.reviewSrc || (e.pending && e.pending.src) || '';
-      var act = function(attr, label, cls){
-        return '<button type="button" class="btn-ghost btn-sm ' + cls + '" ' +
-          attr + '="' + esc(e.id) + '" aria-label="' + label + ' ' + esc(e.name) + '">' +
-          label + '</button>';
+      if (from) detail += '<span class="faint src-line">' + esc(from) + '</span>';
+      /* Record keeps its word because it is the one that changes the figures
+         and should be read before it is pressed. The other two are icons so
+         the row fits the panel; the name lives on the button for anyone not
+         looking at it. */
+      var act = function(attr, label, cls, icon){
+        return '<button type="button" class="btn-ghost btn-sm ' + cls +
+          (icon ? ' icon-btn' : '') + '" ' +
+          attr + '="' + esc(e.id) + '" title="' + label + '"' +
+          ' aria-label="' + label + ' ' + esc(e.name) + '">' +
+          (icon || label) + '</button>';
       };
       return '<tr><td><input type="checkbox" data-rev="' + esc(e.id) + '"' +
           (revPicked[e.id] ? ' checked' : '') +
@@ -7678,16 +7709,15 @@ var MHP_FROM='1980-03', MHP={
         '<td>' + esc(e.name) + '</td>' +
         '<td>' + esc((e.category || '').trim() || '—') + '</td>' +
         '<td>' + why + '</td>' +
-        '<td>' + (from ? esc(from) : '<span class="faint">—</span>') + '</td>' +
         '<td>' + detail + '</td>' +
         '<td class="acts">' + act('data-rev-rec', 'Record', 'ok-btn') +
-          act('data-rev-arc', 'Archive', '') +
-          act('data-rev-del', 'Delete', 'danger') + '</td></tr>';
+          act('data-rev-arc', 'Archive', '', ASIDE) +
+          act('data-rev-del', 'Delete', 'danger', TRASH) + '</td></tr>';
     };
     host.innerHTML = '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
       '<th scope="col">Property</th><th scope="col">City</th>' +
-      '<th scope="col">Waiting on</th><th scope="col">Source</th>' +
+      '<th scope="col">Waiting on</th>' +
       '<th scope="col">What was found</th>' +
       '<th scope="col"><span class="sr-only">Record, archive or delete</span></th>' +
       '</tr></thead><tbody>' + list.map(row).join('') + '</tbody></table></div>';
