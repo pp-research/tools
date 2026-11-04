@@ -1005,6 +1005,7 @@ table.mini td.num,table.mini thead th.num{text-align:center}
 /* The purchase column: a figure and the date it happened on, stacked. Ranged
    left like everything else in these tables, and nowrap because a price split
    across two lines stops reading as a price. */
+table.mini td.buy,table.mini thead th.buy{text-align:center}
 table.mini td.buy{white-space:nowrap;vertical-align:top}
 table.mini td.buy b{display:block;font-weight:600}
 table.mini td.buy span{display:block;font-size:11px;line-height:15px;color:var(--faint)}
@@ -7840,7 +7841,7 @@ var MHP_FROM='1980-03', MHP={
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
       '<th scope="col">Property</th><th scope="col">City</th>' +
       '<th scope="col">Finding</th>' +
-      '<th scope="col">Purchase</th>' +
+      '<th scope="col" class="buy">Purchase</th>' +
       '<th scope="col">What was found</th>' +
       '<th scope="col"><span class="sr-only">Record, archive or reject</span></th>' +
       '</tr></thead><tbody>' + list.map(row).join('') + '</tbody></table></div>';
@@ -8519,7 +8520,7 @@ var MHP_FROM='1980-03', MHP={
       '<p class="count-line">' + esc(d.head || '') + '</p>' +
       '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
         '<th scope="col">Property</th><th scope="col">City</th>' +
-        '<th scope="col">Finding</th><th scope="col">Purchase</th>' +
+        '<th scope="col">Finding</th><th scope="col" class="buy">Purchase</th>' +
         '<th scope="col">What was found</th>' +
       '</tr></thead><tbody>' +
         items.map(function(x){ return row(x.r, x.kind, x.also); }).join('') +
