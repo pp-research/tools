@@ -8878,16 +8878,28 @@ var MHP_FROM='1980-03', MHP={
     aYield:'Rental yield', aNorm:'Normalised cash rate', aTax:'Marginal tax rate',
     aComm:'Selling commission', aSpend:'Selling market spend',
     aMargin:'Bank margin', aApra:'APRA buffer' };
+  /* A toggle's VALUE and the word on its button are not always the same: the
+     rent basis is stored as 'Flat' and the button says "Midpoint". The log is
+     read by people, so it gets the word they can see — looked up from the
+     button itself rather than from a second list, because a second list is a
+     thing that goes out of step. */
+  function togWord(name, value){
+    var el = document.querySelector('input[name="' + name + '"][value="' +
+               String(value).replace(/"/g, '') + '"]');
+    var lab = el && el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+    return (lab && lab.textContent.trim()) || String(value);
+  }
   function logSettings(was, now){
     if (!was) return;
     var rows = [];
-    var note = function(k, label, action){
+    var note = function(k, label, action, isToggle){
       if (was[k] === undefined) return;
       if (String(was[k]) === String(now[k])) return;
-      rows.push({ action: action, property: label,
-                  detail: String(was[k]) + ' → ' + String(now[k]) });
+      var a = isToggle ? togWord(k, was[k]) : String(was[k]);
+      var b = isToggle ? togWord(k, now[k]) : String(now[k]);
+      rows.push({ action: action, property: label, detail: a + ' → ' + b });
     };
-    Object.keys(TOG_LABEL).forEach(function(k){ note(k, TOG_LABEL[k], 'setting'); });
+    Object.keys(TOG_LABEL).forEach(function(k){ note(k, TOG_LABEL[k], 'setting', true); });
     OPT_IDS.forEach(function(k){ note(k, OPT_LABEL[k] || k, 'assumption'); });
     if (rows.length) logChange(rows);
   }
@@ -9738,7 +9750,15 @@ var MHP_FROM='1980-03', MHP={
           if (deleted) histRows[x.id] = x.detail;
           /* a deleted row's detail is the whole record — showing that JSON helps
              nobody, so the cell says what it is instead */
-          var det = deleted ? '<span class="faint">record kept</span>' : esc(x.detail||'');
+          /* Rows written before the line above said "Flat", which is a word
+             that appears nowhere in the tool. Same setting, same meaning, one
+             name — so the old rows are shown under the name on the button.
+             Only for the rent basis, and only for display: the stored row is
+             left exactly as it was written. */
+          var det = deleted ? '<span class="faint">record kept</span>'
+            : esc(x.action === 'setting' && /rent/i.test(x.property || '')
+                    ? String(x.detail || '').replace(/\bFlat\b/g, 'Midpoint')
+                    : (x.detail || ''));
           h += '<tr><td>'+esc(dLabel(dt))+' '+String(dt.getHours()).padStart(2,'0')+':'+
                String(dt.getMinutes()).padStart(2,'0')+'</td>'+
                '<td>'+esc((x.who||'—').split('@')[0])+'</td>'+
