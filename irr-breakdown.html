@@ -8841,7 +8841,7 @@ var MHP_FROM='1980-03', MHP={
     try { host = new URL(url).hostname.replace(/^www\./, '').toLowerCase(); }
     catch (e) { host = ''; }
     var where = /corelogic|rpdata/.test(host) ? 'RP Data'
-              : /realestate\.com\.au/.test(host) ? 'realestate.com.au'
+              : /realestate\.com\.au/.test(host) ? 'REA'
               : /pricefinder/.test(host) ? 'Pricefinder'
               : '';
     return ' <a href="' + esc(url) + '" target="_blank" rel="noopener" class="rec-link">' +
