@@ -1376,7 +1376,7 @@ details .body strong{color:var(--text)}
                      the tracking sheet long before RP Data has it. Shown as soon
                      as this browser knows the /exec address — unlike the reload
                      beside it, it does not need anything loaded first. -->
-                <button type="button" class="btn-ghost btn-sm" id="btnChkAdl" hidden>Check ADL &ndash; Sold</button>
+                <button type="button" class="btn-ghost btn-sm" id="btnChkAdl" hidden>Check tracking sheets</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkHelp" hidden>How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
@@ -1409,7 +1409,7 @@ details .body strong{color:var(--text)}
           <div id="revMsg"></div>
           <div id="revBody"></div>
           <div class="btns" id="revActions" hidden>
-            <button type="button" class="btn-primary btn-sm" id="btnRevApprove">Approve</button>
+            <button type="button" class="btn-primary btn-sm" id="btnRevApprove">Record</button>
             <button type="button" class="btn-ghost btn-sm" id="btnRevArchive">Archive</button>
             <button type="button" class="btn-ghost btn-sm danger" id="btnRevDelete">Delete</button>
           </div>
@@ -3834,6 +3834,7 @@ window.stopCheck=false;
            the property was approved once and a refreshed purchase price is
            not a new property. */
         e.review = 'new';
+        e.reviewSrc = addOrigin();
         list.push(e); added++; fresh.push(e);
       }
     });
@@ -6470,7 +6471,8 @@ var MHP_FROM='1980-03', MHP={
       var k = String(e.name||'').trim().toLowerCase(), at = idx[k];
       /* New on the register, so it waits for review — the same rule
          addEntries follows, in the other of the two add paths. */
-      if (at === undefined) { e.review = 'new'; list.push(e); idx[k] = list.length - 1; added++; fresh.push(e); return; }
+      if (at === undefined) { e.review = 'new'; e.reviewSrc = addOrigin();
+                              list.push(e); idx[k] = list.length - 1; added++; fresh.push(e); return; }
       var old = list[at];
       if (sameDeal(old, e)) return;            // this import would change nothing
       var m = mergeFields(old, e);
@@ -6606,6 +6608,7 @@ var MHP_FROM='1980-03', MHP={
       /* Parked, not written — approving in For review is the only thing that
          turns a found sale into a sale, whichever way it was found. */
       e.review = 'sale';
+      e.reviewSrc = chkOrigin();
       e.pending = { price: s.price, date: s.date, src: verified,
                     link: /^https?:\/\//i.test(s.link || '') ? s.link : '' };
       done++;
@@ -6621,7 +6624,7 @@ var MHP_FROM='1980-03', MHP={
                     soldVerified: verified,
                     soldLink: /^https?:\/\//i.test(s.link || '') ? s.link : undefined,
                     /* a property nobody has reviewed, like any other */
-                    review: 'new',
+                    review: 'new', reviewSrc: chkOrigin(),
                     savedAt: new Date().toISOString() };
         list.push(fresh); newOnes.push(fresh);
         added++;
@@ -7552,6 +7555,20 @@ var MHP_FROM='1980-03', MHP={
      headline figures only ever come from reviewed data. It still shows on the
      Register, because a queue you cannot see the contents of is no use. */
   function isPending(e){ return e.review === 'new' || e.review === 'sale'; }
+  /* Which list a queued property came out of, in the words the For review tab
+     prints. This is a different question from pending.src, which records the
+     SITE that answered for a price — RP Data or Pricefinder — and still rides
+     onto the record when the sale is written. One says who said it; this says
+     where it was found. */
+  function chkOrigin(){
+    var n = (chk && chk.name) || '';
+    return n === 'Google Sheet' ? 'Sold check sheet' : (n || 'Sold check');
+  }
+  function addOrigin(){
+    var src = (window.addPending && addPending.source) || '';
+    if (!src) return 'Added by hand';
+    return src === 'the paste' ? 'Pasted in' : src;
+  }
   /* What the figures are allowed to read. A pending SALE is not excluded:
      the property is unchanged and dropping it would make the Overview flinch
      every time the sold check ran. */
@@ -7631,19 +7648,34 @@ var MHP_FROM='1980-03', MHP={
             (e.soldVerified ? ' <span class="faint">· ' + esc(e.soldVerified) + '</span>' : '');
         }
       }
+      /* Where it came from. reviewSrc is stamped at the door; anything queued
+         before that field existed still knows which site answered, so fall
+         back to that rather than printing a dash over information we have. */
+      var from = e.reviewSrc || (e.pending && e.pending.src) || '';
+      var act = function(attr, label, cls){
+        return '<button type="button" class="btn-ghost btn-sm ' + cls + '" ' +
+          attr + '="' + esc(e.id) + '" aria-label="' + label + ' ' + esc(e.name) + '">' +
+          label + '</button>';
+      };
       return '<tr><td><input type="checkbox" data-rev="' + esc(e.id) + '"' +
           (revPicked[e.id] ? ' checked' : '') +
           ' aria-label="Select ' + esc(e.name) + '"></td>' +
         '<td>' + esc(e.name) + '</td>' +
         '<td>' + esc((e.category || '').trim() || '—') + '</td>' +
         '<td>' + why + '</td>' +
-        '<td>' + detail + '</td></tr>';
+        '<td>' + (from ? esc(from) : '<span class="faint">—</span>') + '</td>' +
+        '<td>' + detail + '</td>' +
+        '<td class="acts">' + act('data-rev-rec', 'Record', 'ok-btn') +
+          act('data-rev-arc', 'Archive', '') +
+          act('data-rev-del', 'Delete', 'danger') + '</td></tr>';
     };
-    host.innerHTML = '<table class="mini"><thead><tr>' +
+    host.innerHTML = '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
       '<th scope="col">Property</th><th scope="col">City</th>' +
-      '<th scope="col">Waiting on</th><th scope="col">What was found</th>' +
-      '</tr></thead><tbody>' + list.map(row).join('') + '</tbody></table>';
+      '<th scope="col">Waiting on</th><th scope="col">Source</th>' +
+      '<th scope="col">What was found</th>' +
+      '<th scope="col"><span class="sr-only">Record, archive or delete</span></th>' +
+      '</tr></thead><tbody>' + list.map(row).join('') + '</tbody></table></div>';
   }
 
   function revSelected(){
@@ -7654,11 +7686,23 @@ var MHP_FROM='1980-03', MHP={
   /* One shape for all three, because the difference between them is only what
      happens to the property — the asking, the note, the logging and the
      redraw are the same every time. */
-  function revAct(title, body, okLabel, verb, apply){
-    var ids = revSelected(); if (!ids) return;
+  function revAct(title, body, okLabel, verb, apply, only){
+    /* `only` is one property, from its own row button. Without it the ticked
+       ones, from the buttons under the table. Everything after this point is
+       the same either way, which is why there is one of these and not six. */
+    var ids = (typeof only === 'string' && only) ? [only] : revSelected();
+    if (!ids || !ids.length) return;
     var want = {}; ids.forEach(function(i){ want[i] = 1; });
-    askPrompt(title, body + ' <strong>' + ids.length + '</strong> propert' +
-        (ids.length === 1 ? 'y' : 'ies') + '.',
+    /* Asking "Record 1 property." about a row you just pressed the button on
+       is a worse question than naming it. */
+    var named = null;
+    if (ids.length === 1) {
+      named = loadProps().filter(function(e){ return e.id === ids[0]; })[0];
+    }
+    askPrompt(title, body + ' ' + (named
+        ? '<strong>' + esc(named.name) + '</strong>.'
+        : '<strong>' + ids.length + '</strong> propert' +
+          (ids.length === 1 ? 'y' : 'ies') + '.'),
       'Reason (goes to the History)', '', okLabel, function(value){
         var reason = String(value || '').trim();
         var list = loadProps(), touched = [], keep = [];
@@ -7679,8 +7723,8 @@ var MHP_FROM='1980-03', MHP={
           ' ' + verb + '. Each one is in <strong>History</strong>.'));
       }, true);
   }
-  function reviewApprove(){
-    revAct('Approve', 'Approve', 'Approve', 'approved', function(e){
+  function reviewApprove(only){
+    revAct('Record', 'Record', 'Record', 'recorded', function(e){
       /* The one place a parked sale becomes a sale. */
       if (e.review === 'sale' && e.pending) {
         e.soldPrice = e.pending.price;
@@ -7689,10 +7733,10 @@ var MHP_FROM='1980-03', MHP={
         e.soldLink = e.pending.link || undefined;
         e.soldCheck = 'Sold';
       }
-      e.review = undefined; e.pending = undefined;
-    });
+      e.review = undefined; e.pending = undefined; e.reviewSrc = undefined;
+    }, only);
   }
-  function reviewArchive(){
+  function reviewArchive(only){
     revAct('Archive', 'Set outside of advice', 'Archive', 'archived', function(e, reason){
       e.outside = 1;
       /* The Register shows this, so what was typed here is what it shows —
@@ -7701,13 +7745,13 @@ var MHP_FROM='1980-03', MHP={
       e.outsideReason = reason || 'Archived at review';
       /* The parked sale goes with it: it was never approved, so it is not a
          fact about the property and must not sit there looking like one. */
-      e.review = undefined; e.pending = undefined;
-    });
+      e.review = undefined; e.pending = undefined; e.reviewSrc = undefined;
+    }, only);
   }
-  function reviewDelete(){
+  function reviewDelete(only){
     revAct('Delete', 'Permanently remove', 'Delete', 'deleted', function(){
       return false;
-    });
+    }, only);
   }
 
   function chkLoadSheet(){
@@ -7802,6 +7846,9 @@ var MHP_FROM='1980-03', MHP={
      where the spreadsheet id is pinned so that holding the address still only
      buys you this one sheet. */
   var adlFound = null;                     // the last check, waiting on a yes
+  /* Both sheets today, and whatever is added to TRACKING in the Apps Script
+     tomorrow. The tool is told which sheets exist by the reply; it does not
+     keep its own list, because two lists is one list too many. */
 
   /* A sale needs both halves. Approving a pending sale writes the price and
      the date onto the property, and a blank date would leave it reading as
@@ -7821,8 +7868,8 @@ var MHP_FROM='1980-03', MHP={
       return;
     }
     showTab('check');
-    chkSay(msg('ok','Reading the ADL &ndash; Sold tab…'));
-    fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'adl=1')
+    chkSay(msg('ok','Reading the tracking sheets…'));
+    fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'tracking=1')
       .then(function(r){ return r.json(); })
       .then(function(d){
         /* A deployment made before ?adl=1 existed does not reject it — it
@@ -7836,9 +7883,22 @@ var MHP_FROM='1980-03', MHP={
             'Manage deployments → pencil → Version: New version.');
         }
         if (!d || !d.ok) throw new Error(d && d.error ? d.error : 'the sheet did not answer');
+
+        /* A sheet that could not be read is NOT a sheet with nothing in it,
+           and the difference is the whole point: "no new sales" is the one
+           wrong answer that reads as good news. So a broken source stops the
+           check rather than quietly shrinking it. */
+        var broken = (d.sources || []).filter(function(x){ return x.error; });
+        if (broken.length) {
+          chkSay(msg('err','Could not read ' +
+            broken.map(function(x){ return '<strong>'+esc(x.tab)+'</strong> — '+esc(x.error); }).join('; ') +
+            '.<br>Nothing has been checked, because a sheet that will not open and a sheet with ' +
+            'nothing new in it look the same from here.'));
+          return;
+        }
         var rows = (d.rows || []).filter(function(r){ return r.address; });
         if (!rows.length) {
-          chkSay(msg('warn','The <strong>'+esc(d.tab || 'ADL &ndash; Sold')+'</strong> tab has no sales in it.'));
+          chkSay(msg('warn','The tracking sheets have no sales in them.'));
           return;
         }
 
@@ -7881,16 +7941,18 @@ var MHP_FROM='1980-03', MHP={
           (adlWhole(r) ? sales : partial).push(r);
         });
 
-        adlFound = { sales: sales, fresh: fresh, differs: differs, tab: d.tab,
-                     title: d.title, sheetUrl: d.sheetUrl };
+        adlFound = { sales: sales, fresh: fresh, differs: differs,
+                     sources: d.sources || [] };
 
         var n = function(a, one, many){
           return '<strong>' + a.length + '</strong> ' + (a.length === 1 ? one : many);
         };
+        var collapsed = (d.sources || []).reduce(function(a, x){ return a + (x.collapsed || 0); }, 0);
         var head = 'Read <strong>' + rows.length + '</strong> sale' + (rows.length === 1 ? '' : 's') +
-          ' from <strong>' + esc(d.tab || 'ADL – Sold') + '</strong>' +
-          (d.collapsed ? ' (' + d.collapsed + ' address' + (d.collapsed === 1 ? '' : 'es') +
-                         ' sold more than once, latest sale taken)' : '') + '.';
+          ' from ' + (d.sources || []).map(function(x){
+            return '<strong>' + esc(x.tab) + '</strong> (' + x.count + ')'; }).join(' and ') +
+          (collapsed ? ' — ' + collapsed + ' address' + (collapsed === 1 ? '' : 'es') +
+                       ' sold more than once, latest sale taken' : '') + '.';
 
         if (!sales.length && !fresh.length) {
           chkSay(msg('ok', head + ' Nothing new: ' +
@@ -7942,11 +8004,13 @@ var MHP_FROM='1980-03', MHP={
       var e = byId[r.match.id];
       if (!e) return;                        // the book moved under us
       e.review = 'sale';
-      e.pending = { price: Number(r.soldPrice), date: r.soldDate, src: ADL_SRC,
+      e.reviewSrc = r.tab || ADL_SRC;
+      e.pending = { price: Number(r.soldPrice), date: r.soldDate,
+                    src: r.tab || ADL_SRC,
                     link: /^https?:\/\//i.test(r.link || '') ? r.link : '' };
       parked++;
-      touched.push({ action:'sent for review', property:e.name,
-                     detail:'sale found in the ' + (d.tab || 'ADL – Sold') + ' tab' });
+      touched.push({ action:'sent for review', property:e.name, city:(e.category||'').trim(),
+                     detail:'sale found in the ' + (r.tab || ADL_SRC) + ' tab' });
     });
 
     d.fresh.forEach(function(r){
@@ -7960,17 +8024,30 @@ var MHP_FROM='1980-03', MHP={
                 purchasePrice: Number(r.purchasePrice) > 0 ? Number(r.purchasePrice) : '',
                 purchaseDate: r.purchased || '',
                 soldPrice: Number(r.soldPrice), soldDate: r.soldDate,
-                soldVerified: ADL_SRC, soldCheck: 'Sold',
-                review: 'new' };
+                soldVerified: r.tab || ADL_SRC, soldCheck: 'Sold',
+                review: 'new', reviewSrc: r.tab || ADL_SRC };
       var t = ptypeFromLabel(r.ptype);
       if (t) e.ptype = t;
       if (/^https?:\/\//i.test(r.link || '')) e.soldLink = r.link;
       list.push(e);
       added++;
-      touched.push({ action:'added', property:e.name,
-                     detail:'from the ' + (d.tab || 'ADL – Sold') + ' tab, waiting for review' });
+      touched.push({ action:'added', property:e.name, city:(e.category||'').trim(),
+                     detail:'from the ' + (r.tab || ADL_SRC) + ' tab, waiting for review' });
     });
 
+    /* For review is filtered to the city on screen, so anything queued for
+       another one would be invisible — a queue you cannot see is the same as
+       no queue. Say where it went. */
+    var elsewhere = '';
+    if (activeCity) {
+      var other = {};
+      touched.forEach(function(t){ if (t.city && t.city !== activeCity) other[t.city] = (other[t.city] || 0) + 1; });
+      var names = Object.keys(other);
+      if (names.length) elsewhere = ' <strong>' +
+        names.map(function(c){ return other[c] + ' in ' + esc(c); }).join(', ') +
+        '</strong> — switch the city filter to see ' +
+        (names.length === 1 && other[names[0]] === 1 ? 'it' : 'them') + '.';
+    }
     if (!touched.length) { chkSay(msg('warn','Nothing left to send — the register has moved on.')); return; }
     if (!putProps(list)) return;
     logChange(touched);
@@ -7984,7 +8061,7 @@ var MHP_FROM='1980-03', MHP={
       (parked && added ? ' and ' : '') +
       (added ? '<strong>'+added+'</strong> new propert'+(added===1?'y':'ies')+' added' : '') +
       '. '+(parked + added === 1 ? 'It is' : 'They are')+' in <strong>For review</strong>, '+
-      'and nothing is counted until approved.'));
+      'and nothing is counted until it is recorded there.' + elsewhere));
   }
 
   var pickId = null;
@@ -8284,6 +8361,7 @@ var MHP_FROM='1980-03', MHP={
          was until somebody approves it in For review — see reviewApprove,
          which is the only place these four become a sale. */
       e.review = 'sale';
+      e.reviewSrc = chkOrigin();
       e.pending = { price: r.hit.price, date: r.hit.date,
         /* The row knows which site answered; the dropdown is only the
            fallback for a list that does not say. Recording "RPData import"
@@ -9748,9 +9826,26 @@ var MHP_FROM='1980-03', MHP={
 
   /* ── for review ── */
   $('btnRevRefresh').addEventListener('click', function(){ revSay(''); drawQueue(); });
-  $('btnRevApprove').addEventListener('click', reviewApprove);
-  $('btnRevArchive').addEventListener('click', reviewArchive);
-  $('btnRevDelete').addEventListener('click', reviewDelete);
+  /* Wrapped, not passed straight in: addEventListener hands the handler the
+     click Event, which would arrive as `only` and be read as a property id
+     that matches nothing — the buttons under the table would do nothing at
+     all, silently. revAct guards the type as well; this is the other half. */
+  $('btnRevApprove').addEventListener('click', function(){ reviewApprove(); });
+  $('btnRevArchive').addEventListener('click', function(){ reviewArchive(); });
+  $('btnRevDelete').addEventListener('click', function(){ reviewDelete(); });
+  /* One property, from its own row. The tick boxes and the buttons under the
+     table still do the same three things to a set; this is the same code with
+     a set of one, so there is no second way for any of it to behave. */
+  $('revBody').addEventListener('click', function(ev){
+    var b = ev.target && ev.target.closest && ev.target.closest('button');
+    if (!b) return;
+    var rec = b.getAttribute('data-rev-rec'),
+        arc = b.getAttribute('data-rev-arc'),
+        del = b.getAttribute('data-rev-del');
+    if (rec) { revSay(''); reviewApprove(rec); return; }
+    if (arc) { revSay(''); reviewArchive(arc); return; }
+    if (del) { revSay(''); reviewDelete(del); return; }
+  });
   $('revBody').addEventListener('change', function(ev){
     var t = ev.target;
     if (t && t.id === 'revAll') {
@@ -10038,7 +10133,7 @@ var MHP_FROM='1980-03', MHP={
      field goes in here in the same breath as it is invented. */
   var SHARE_FIELDS = ['name','category','ptype','purchasePrice','purchaseDate',
     'soldPrice','soldDate','soldVerified','soldLink','soldCheck','note',
-    'outsideReason','review','pending'];
+    'outsideReason','review','pending','reviewSrc'];
   function shareBody(){
     var list = loadProps().map(function(e){
       var o = { id:e.id };
