@@ -8126,13 +8126,13 @@ var MHP_FROM='1980-03', MHP={
        than the whole. Say so rather than let it look like an error. */
     var sum = (rec.tabs || []).reduce(function(a, x){ return a + (x.count || 0); }, 0);
     p.innerHTML = rec.found
-      ? '<strong>' + rec.found + '</strong> propert' + (rec.found === 1 ? 'y' : 'ies') +
+      ? '<strong>' + rec.found + '</strong> sale' + (rec.found === 1 ? '' : 's') +
         ' the register does not have' +
         (where.length ? ' — ' + where.join(', ') +
           (sum > rec.found ? ' <span class="faint">(some in more than one)</span>' : '') : '') +
         '. Open this tab to work through them — nothing has been queued. ' +
         '<span class="faint">Checked ' + esc(stamp) + '</span>'
-      : 'The sheets have nothing the register does not. ' +
+      : 'No sale in the sheets that the register does not already have. ' +
         '<span class="faint">Checked ' + esc(stamp) + '</span>';
   }
 
@@ -8345,7 +8345,7 @@ var MHP_FROM='1980-03', MHP={
 
         if (!sales.length && !fresh.length) {
           drawFound();
-          chkSay(msg('ok', head + ' Nothing the register does not already have.'));
+          chkSay(msg('ok', head + ' No sale the register does not already have.'));
           return;
         }
 
@@ -8453,7 +8453,11 @@ var MHP_FROM='1980-03', MHP={
        the more specific statement, so it takes over while it is up. */
     var dl = $('chkDaily'); if (dl) dl.hidden = true;
     host.innerHTML =
-      '<h3>' + n + ' propert' + (n === 1 ? 'y' : 'ies') +
+      /* Not "properties the register does not have": it has nearly all of
+         them. What it does not have is the sale — and for the handful that
+         are new, it does not have the property either, which the Waiting on
+         column says row by row. */
+      '<h3>' + n + ' sale' + (n === 1 ? '' : 's') +
         ' the register does not have</h3>' +
       '<p class="count-line">' + esc(d.head || '') + '</p>' +
       '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
