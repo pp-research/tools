@@ -418,6 +418,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:
 }
 .modal-x:hover{color:var(--text);background:var(--panel-2)}
 .modal-sm{width:min(440px,calc(100vw - 32px))}
+/* Three buttons do not fit 440px, and a Cancel that has wrapped onto its own
+   line reads as a mistake rather than a choice. Only the prompt grows, and
+   only when it is offering two ways of saying yes. */
+#promptDialog:has(#prAlt:not([hidden])){width:min(540px,calc(100vw - 32px))}
 .modal-lg{width:min(860px,calc(100vw - 32px))}
 .modal-body{padding:var(--sp-6);overflow:auto;flex:1 1 auto}
 .modal-body p{font-size:14px;line-height:21px;color:var(--muted)}
@@ -1947,15 +1951,14 @@ details .body strong{color:var(--text)}
               <textarea id="prArea" rows="3" hidden
                         style="width:100%;resize:vertical;min-height:72px"></textarea>
             </div>
-            <!-- One optional question, for the actions that have a second one
-                 worth asking. Hidden unless the caller sets it. -->
-            <label class="check-row" id="prOptRow" hidden>
-              <input type="checkbox" id="prOpt">
-              <span id="prOptLabel"></span>
-            </label>
+
           </div>
           <div class="modal-foot">
             <button type="button" class="btn-primary" id="prYes">Rename</button>
+            <!-- A second way of saying yes, for the actions that have two. It
+                 is a button and not a tick box because a tick box has to be
+                 read to be understood, and a button says what it does. -->
+            <button type="button" class="btn-ghost" id="prAlt" hidden></button>
             <button type="button" class="btn-ghost" id="prNo">Cancel</button>
           </div>
         </div>
@@ -7845,11 +7848,11 @@ var MHP_FROM='1980-03', MHP={
           extra.push({ action:'deleted', property:e.name, detail: JSON.stringify(e) });
           return false;
         }
-        /* Unticked is "no": the figures are remembered and the same sale is
-           not raised again. Ticked is "not now": the queue is cleared and the
-           next check finds it exactly as it did this time. Two different
-           answers, and guessing which one somebody meant is how a queue ends
-           up lying about what is outstanding. */
+        /* "Reject forever" is no: the figures are remembered and the same sale
+           is not raised again. "Reject for now" clears the queue entry and
+           remembers nothing, so the next check finds it exactly as it did this
+           time. Two different answers, and guessing which one somebody meant
+           is how a queue ends up lying about what is outstanding. */
         if (!again && e.review === 'sale' && e.pending &&
             Number(e.pending.price) > 0 && e.pending.date) {
           e.rejected = { price: Number(e.pending.price), date: e.pending.date };
@@ -7862,7 +7865,9 @@ var MHP_FROM='1980-03', MHP={
           (sold ? (sold === 1 ? 'The sale is discarded and ' : sold + ' sales are discarded and ') +
                   (sold === 1 ? 'the property stays' : 'the properties stay') +
                   ' on the register exactly as ' + (sold === 1 ? 'it is' : 'they are') +
-                  '. The same sale will not be offered again. ' : '') +
+                  '. <strong>Reject forever</strong> means the same sale is never raised again; ' +
+                  '<strong>Reject for now</strong> means the next check finds it exactly as it ' +
+                  'did this time. ' : '') +
           (adds ? (adds === 1 ? 'One property was added by a check and is removed'
                               : adds + ' properties were added by a check and are removed') +
                   ' — the record is kept in the <strong>History</strong>, where ' +
@@ -7876,10 +7881,12 @@ var MHP_FROM='1980-03', MHP={
          nothing on the register left to remember a decision on. */
       function(list){
         var sold = list.filter(function(e){ return e.review === 'sale'; }).length;
+        /* Only where it means something. A property the check ADDED always
+           comes back — the sheet still lists it and there is nothing left on
+           the register to hang a decision on — so it gets one button and the
+           note says why. */
         if (!sold) return null;
-        return { checked: false,
-                 label: 'Put it back on the next check <span class="faint">— leave this ' +
-                        'unticked and the same sale will not be raised again</span>' };
+        return { label: 'Reject for now', okLabel: 'Reject forever' };
       });
   }
 
@@ -8992,13 +8999,13 @@ var MHP_FROM='1980-03', MHP={
   function askPrompt(title, bodyHtml, label, initial, okLabel, onOk, area, opt){
     pendingPrompt = onOk;
     promptArea = !!area;
-    /* opt is {label, checked}: one extra question, asked where it belongs —
-       beside the reason, not as a fourth button nobody has room for. */
-    var row = $('prOptRow');
-    if (row) {
-      row.hidden = !opt;
-      if (opt) { $('prOptLabel').innerHTML = opt.label; $('prOpt').checked = !!opt.checked; }
-      else $('prOpt').checked = false;
+    /* opt is {label, okLabel}: a second way of saying yes. The primary button
+       takes okLabel so the two read as a pair — "Reject forever" beside
+       "Reject for now" rather than "Reject" beside something longer. */
+    var alt = $('prAlt');
+    if (alt) {
+      alt.hidden = !opt;
+      alt.textContent = opt ? opt.label : '';
     }
     $('pr-h').textContent = title;
     $('prBody').innerHTML = bodyHtml;
@@ -9007,7 +9014,7 @@ var MHP_FROM='1980-03', MHP={
     $('prInput').hidden = promptArea; $('prArea').hidden = !promptArea;
     var f = promptArea ? $('prArea') : $('prInput');
     f.value = initial || '';
-    $('prYes').textContent = okLabel;
+    $('prYes').textContent = (opt && opt.okLabel) || okLabel;
     var d = $('promptDialog');
     if (!d.open) d.showModal();
     f.focus();
@@ -9168,8 +9175,12 @@ var MHP_FROM='1980-03', MHP={
   $('btnRenameCat').addEventListener('click', renameCategory);
   $('prYes').addEventListener('click', function(){
     var fn = pendingPrompt, v = (promptArea ? $('prArea') : $('prInput')).value;
-    var opted = !!($('prOpt') && !$('prOptRow').hidden && $('prOpt').checked);
-    closePrompt(); if (fn) fn(v, opted);
+    closePrompt(); if (fn) fn(v, false);
+  });
+  /* the second yes. Same reason, same handler, the other answer. */
+  $('prAlt').addEventListener('click', function(){
+    var fn = pendingPrompt, v = (promptArea ? $('prArea') : $('prInput')).value;
+    closePrompt(); if (fn) fn(v, true);
   });
   $('prNo').addEventListener('click', closePrompt);
   $('prClose').addEventListener('click', closePrompt);
