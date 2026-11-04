@@ -562,6 +562,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
    icon, and in a flex container every inline child becomes its own column —
    which turned a two-sentence explanation into a wall of narrow columns. They
    are ordinary blocks. */
+#panel-check #chkDaily{display:block;margin:0 0 var(--sp-4)}
 #panel-review #revNote{display:block;margin:0 0 var(--sp-4)}
 #chkBm #bmSheetLine{display:block}
 #panel-review table.mini td:first-child,
@@ -1226,7 +1227,7 @@ details .body strong{color:var(--text)}
         <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="false" tabindex="-1">Overview</button>
         <button type="button" role="tab" id="tab-growth" aria-controls="panel-growth" aria-selected="false" tabindex="-1">Growth comparison</button>
         <button type="button" role="tab" id="tab-calc" aria-controls="panel-calc" aria-selected="false" tabindex="-1">Calculation</button>
-        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check</button>
+        <button type="button" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">Sold check <span class="badge" id="badgeCheck" hidden>0</span></button>
         <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" tabindex="-1">For review <span class="badge" id="badgeReview">0</span></button>
         <button type="button" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
       </div>
@@ -1390,25 +1391,22 @@ details .body strong{color:var(--text)}
                      empty state carries it, so there is only ever one of it on
                      screen. Hidden entirely until this browser knows where the
                      sheet is — the address is a capability, never in this file. -->
-                <button type="button" class="btn-primary btn-sm" id="btnChkSheet" hidden>From Google Sheet</button>
-                <!-- The other two sources, and the only ones that are ahead of
-                     the book rather than behind it: the advisory team writes a
-                     sale into a tracking sheet long before RP Data has it. One
-                     button each, because they are two separate decisions about
-                     two separate sets of properties — and in the same shape as
-                     the button beside them, because they do the same kind of
-                     thing. Shown as soon as this browser knows the /exec
-                     address: unlike the reload, they need nothing loaded first.
-                     Adding a city means a row in TRACKING in sheet-endpoint.gs
-                     AND a button here; the check says so if the two disagree. -->
-                <button type="button" class="btn-primary btn-sm" id="btnChkAdl" hidden
-                        data-tab="ADL - Sold">From ADL &ndash; Sold</button>
-                <button type="button" class="btn-primary btn-sm" id="btnChkBri" hidden
-                        data-tab="BRI - Sold">From BRI &ndash; Sold</button>
+                <button type="button" class="btn-primary btn-sm" id="btnChkSheet" hidden>Load sold check records (RP&nbsp;Data)</button>
+                <!-- The other source, and the only one that is ahead of the
+                     book rather than behind it: the advisory team writes a sale
+                     into a tracking sheet long before RP Data has it. One
+                     button for every sheet in TRACKING, because it is one
+                     question — "what do the sheets know that we do not" — and
+                     the answer names each sheet separately anyway. -->
+                <button type="button" class="btn-primary btn-sm" id="btnChkAdl" hidden>Check tracking sheets (ADL &amp; BRI &ndash; Sold)</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkHelp" hidden>How this works</button>
                 <button type="button" class="btn-ghost btn-sm" id="btnChkClear" hidden>Clear</button>
               </div>
             </div>
+            <!-- What the daily check found, if anything. It is separate from
+                 chkMsg because chkMsg is the running commentary of whatever
+                 you just pressed, and this has to survive that. -->
+            <p class="note note-info" id="chkDaily" hidden></p>
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
             <p class="count-line" id="chkCount"></p>
@@ -1416,8 +1414,12 @@ details .body strong{color:var(--text)}
               <div class="empty">
                 <h3>Nothing loaded yet</h3>
                 <p>Check <strong>How this works</strong> for the step-by-step guide.</p>
-                <button type="button" class="btn-primary" id="btnChkLoadBig" hidden
-                        style="margin-top:var(--sp-4)">Load sold check records from Google Sheet</button>
+                <!-- The same two buttons the card head carries once something
+                     is loaded. Only one pair is on screen at a time. -->
+                <div class="btns" id="chkBigBtns" style="margin-top:var(--sp-4);justify-content:center">
+                  <button type="button" class="btn-primary" id="btnChkLoadBig" hidden>Load sold check records (RP&nbsp;Data)</button>
+                  <button type="button" class="btn-primary" id="btnChkTrackBig" hidden>Check tracking sheets (ADL &amp; BRI &ndash; Sold)</button>
+                </div>
               </div>
             </div>
           </section>
@@ -3751,7 +3753,7 @@ window.stopCheck=false;
     /* The how-to shows itself the first time this browser opens the tab —
        it is a setup you do once, and a window you have to go looking for
        is one nobody reads. After that it waits behind its button. */
-    if (name === 'check') { syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp(); }
+    if (name === 'check') { syncCheckTab(); if (chk) chkRun(); maybeOpenChkHelp(); trackScan(); }
     if (name === 'review') drawQueue();
   }
   function currentTab(){
@@ -7234,8 +7236,11 @@ var MHP_FROM='1980-03', MHP={
        remembered, so Clear and a first load look identical. */
     $('chkBody').innerHTML = '<div class="empty"><h3>Nothing loaded yet</h3>'+
       '<p>Check <strong>How this works</strong> for the step-by-step guide.</p>'+
-      '<button type="button" class="btn-primary" id="btnChkLoadBig" hidden '+
-      'style="margin-top:var(--sp-4)">Load sold check records from Google Sheet</button></div>';
+      '<div class="btns" id="chkBigBtns" style="margin-top:var(--sp-4);justify-content:center">'+
+      '<button type="button" class="btn-primary" id="btnChkLoadBig" hidden>'+
+      'Load sold check records (RP&nbsp;Data)</button>'+
+      '<button type="button" class="btn-primary" id="btnChkTrackBig" hidden>'+
+      'Check tracking sheets (ADL &amp; BRI &ndash; Sold)</button></div></div>';
     chkSay('');
     syncSheetBtn();
     syncCheckTab();
@@ -7301,12 +7306,12 @@ var MHP_FROM='1980-03', MHP={
   function syncSheetBtn(){
     var u = !!sheetUrl();
     $('btnChkSheet').hidden = !u || !chk;
-    /* A tracking sheet is a source in its own right, so these only wait on the
-       address — there is nothing to load first. */
-    var adl = $('btnChkAdl'); if (adl) adl.hidden = !u;
-    var bri = $('btnChkBri'); if (bri) bri.hidden = !u;
-    var big = $('btnChkLoadBig');          // only exists while the tab is empty
+    /* The pair moves together: the empty state carries both until something is
+       loaded, the card head carries both afterwards. */
+    var adl = $('btnChkAdl'); if (adl) adl.hidden = !u || !chk;
+    var big = $('btnChkLoadBig');          // only exist while the tab is empty
     if (big) big.hidden = !u;
+    var trk = $('btnChkTrackBig'); if (trk) trk.hidden = !u;
   }
 
   /* ── building the bookmarklet, here in the browser ──────────────────────
@@ -7905,7 +7910,124 @@ var MHP_FROM='1980-03', MHP={
            String(e.soldDate || '') === String(r.soldDate || '');
   }
 
-  function chkAdlSold(want){
+  /* ── the daily check ─────────────────────────────────────────────────────
+     A web page cannot run while it is closed. There is no background job here
+     and there cannot be one: nothing in this tool exists until somebody opens
+     it. So "daily" means the first time it is opened on a given day it asks
+     the tracking sheets what they know, and says so.
+
+     It only ever LOOKS. Nothing is queued, nothing is written, no dialog
+     appears — it leaves a line on the Sold check tab and a count on the tab
+     itself, and the button is still what acts. A check that quietly changed
+     the book while you were reading the Overview would be a worse tool, not a
+     more automatic one. */
+  var TRK_KEY = 'pp-irr-trackseen-v1';
+  var TRK_EVERY = 20 * 60 * 60 * 1000;      // once a working day, not once per visit
+
+  function trackSeen(){
+    try { return JSON.parse(localStorage.getItem(TRK_KEY) || 'null') || null; }
+    catch (e) { return null; }
+  }
+  function trackNote(found, sources, failed){
+    var rec = { at: Date.now(), found: found, failed: failed || '',
+                tabs: (sources || []).map(function(x){ return { tab:x.tab, count:x.count }; }) };
+    try { localStorage.setItem(TRK_KEY, JSON.stringify(rec)); } catch (e) {}
+    renderTrackNote(rec);
+  }
+  function renderTrackNote(rec){
+    var p = $('chkDaily'), b = $('badgeCheck');
+    if (!p) return;
+    if (!rec) { p.hidden = true; if (b) b.hidden = true; return; }
+    var when = new Date(rec.at);
+    var stamp = isNaN(when.getTime()) ? '' :
+      dLabel(new Date(Date.UTC(when.getFullYear(), when.getMonth(), when.getDate()))) +
+      ', ' + String(when.getHours()).padStart(2,'0') + ':' + String(when.getMinutes()).padStart(2,'0');
+    if (rec.failed) {
+      p.hidden = false;
+      p.innerHTML = 'The daily check could not read the tracking sheets — ' + esc(rec.failed) +
+        ' <span class="faint">(' + esc(stamp) + ')</span>';
+      if (b) b.hidden = true;
+      return;
+    }
+    if (b) { b.textContent = rec.found; b.hidden = !rec.found; }
+    p.hidden = false;
+    p.innerHTML = rec.found
+      ? '<strong>' + rec.found + '</strong> sale' + (rec.found === 1 ? '' : 's') +
+        ' in the tracking sheets that the register does not have. ' +
+        'Press <strong>Check tracking sheets</strong> to see them — nothing has been queued. ' +
+        '<span class="faint">Checked ' + esc(stamp) + '</span>'
+      : 'The tracking sheets have nothing the register does not. ' +
+        '<span class="faint">Checked ' + esc(stamp) + '</span>';
+  }
+
+  /* The same matching the button does, with none of the writing. Lifted out
+     so the two can never drift into disagreeing about what "new" means. */
+  function trackBuckets(rows){
+    var book = loadProps(), tight = {}, loose = {};
+    book.forEach(function(e){
+      var a = splitAddr(e.name);
+      (tight[tightKey(a)] = tight[tightKey(a)] || []).push(e);
+      (loose[looseKey(a)] = loose[looseKey(a)] || []).push(e);
+    });
+    var out = { sales:[], fresh:[], agreed:[], differs:[],
+                waiting:[], archived:[], partial:[], ambiguous:[] };
+    rows.forEach(function(r){
+      var a = splitAddr(r.address);
+      var t = tight[tightKey(a)], m = (t && t.length === 1) ? t[0] : null;
+      var many = !!(t && t.length > 1);
+      if (!m && !many) {
+        var l = loose[looseKey(a)];
+        if (l && l.length === 1) m = l[0];
+        else if (l && l.length > 1) many = true;
+      }
+      if (many) { out.ambiguous.push(r); return; }
+      if (!m) {
+        /* Not on the register at all. It still has to be a whole sale before
+           it is worth adding as one. */
+        (adlWhole(r) ? out.fresh : out.partial).push(r);
+        return;
+      }
+      r.match = m;
+      /* Already waiting on somebody, or set outside of advice. Queueing either
+         again would undo a decision that has been made. */
+      if (isPending(m))  { out.waiting.push(r);  return; }
+      if (m.outside)     { out.archived.push(r); return; }
+      if (!isHeld(m))    { (adlSame(m, r) ? out.agreed : out.differs).push(r); return; }
+      (adlWhole(r) ? out.sales : out.partial).push(r);
+    });
+    return out;
+  }
+
+  var trackRunning = false;
+  function trackScan(){
+    var rec = trackSeen();
+    renderTrackNote(rec);                       // whatever was found last time
+    if (trackRunning) return;
+    if (!sheetUrl()) return;                    // nowhere to ask
+    if (rec && (Date.now() - rec.at) < TRK_EVERY) return;
+    trackRunning = true;
+    var u = sheetUrl();
+    fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'tracking=1')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.ok && !d.rows && d.endpoint) throw new Error('the sheet endpoint is an older version');
+        if (!d || !d.ok) throw new Error((d && d.error) || 'the sheet did not answer');
+        var broken = (d.sources || []).filter(function(x){ return x.error; });
+        if (broken.length) {
+          /* Saying "nothing new" because a sheet would not open is the one
+             wrong answer that reads as good news. */
+          trackNote(0, d.sources || [], broken.map(function(x){ return x.tab; }).join(' and '));
+          return;
+        }
+        var rows = (d.rows || []).filter(function(x){ return x.address; });
+        var b = trackBuckets(rows);
+        trackNote(b.sales.length + b.fresh.length, d.sources || []);
+      })
+      .catch(function(e){ trackNote(0, [], e.message || 'it did not answer'); })
+      .then(function(){ trackRunning = false; });
+  }
+
+  function chkAdlSold(){
     var u = sheetUrl();
     if (!u) {
       chkSay(msg('err','This browser does not know where the sheet is yet — the box for '+
@@ -7913,7 +8035,7 @@ var MHP_FROM='1980-03', MHP={
       return;
     }
     showTab('check');
-    chkSay(msg('ok','Reading <strong>'+esc(want)+'</strong>…'));
+    chkSay(msg('ok','Reading the tracking sheets…'));
     fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'tracking=1')
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -7929,80 +8051,46 @@ var MHP_FROM='1980-03', MHP={
         }
         if (!d || !d.ok) throw new Error(d && d.error ? d.error : 'the sheet did not answer');
 
-        /* The endpoint answers for every sheet it knows; this button is about
-           one of them. A sheet nobody asked about failing is not this
-           button's problem, and reporting it here would be noise. */
-        var mine = (d.sources || []).filter(function(x){ return x.tab === want; })[0];
-        if (!mine) {
-          chkSay(msg('err','The sheet endpoint does not know a tab called <strong>'+esc(want)+
-            '</strong>. It answers for '+
-            ((d.sources || []).map(function(x){ return '<strong>'+esc(x.tab)+'</strong>'; }).join(' and ') || 'nothing')+
-            '. Add it to <code>TRACKING</code> in sheet-endpoint.gs and deploy a new version.'));
-          return;
-        }
         /* A sheet that could not be read is NOT a sheet with nothing in it,
            and the difference is the whole point: "no new sales" is the one
-           wrong answer that reads as good news. */
-        if (mine.error) {
-          chkSay(msg('err','Could not read <strong>'+esc(want)+'</strong> — '+esc(mine.error)+
-            '.<br>Nothing has been checked, because a sheet that will not open and a sheet with '+
+           wrong answer that reads as good news. So one broken sheet stops the
+           check rather than quietly shrinking it. */
+        var broken = (d.sources || []).filter(function(x){ return x.error; });
+        if (broken.length) {
+          chkSay(msg('err','Could not read ' +
+            broken.map(function(x){ return '<strong>'+esc(x.tab)+'</strong> — '+esc(x.error); }).join('; ') +
+            '.<br>Nothing has been checked, because a sheet that will not open and a sheet with ' +
             'nothing new in it look the same from here.'));
           return;
         }
-        var rows = (d.rows || []).filter(function(r){ return r.address && r.tab === want; });
+        var rows = (d.rows || []).filter(function(r){ return r.address; });
         if (!rows.length) {
-          chkSay(msg('warn','<strong>'+esc(want)+'</strong> has no sales in it.'));
+          chkSay(msg('warn','The tracking sheets have no sales in them.'));
           return;
         }
 
-        /* Matched the same way a sold import is: the unit and the street type
-           have to agree for a tight match, the number, street and suburb for a
-           loose one, and an address that matches two properties matches
-           neither. */
-        var book = loadProps(), tight = {}, loose = {};
-        book.forEach(function(e){
-          var a = splitAddr(e.name);
-          (tight[tightKey(a)] = tight[tightKey(a)] || []).push(e);
-          (loose[looseKey(a)] = loose[looseKey(a)] || []).push(e);
-        });
+        /* Matched the same way a sold import is — see trackBuckets, which the
+           daily check uses too so the two cannot disagree about what is new. */
+        var b = trackBuckets(rows);
+        var sales = b.sales, fresh = b.fresh, agreed = b.agreed, differs = b.differs,
+            waiting = b.waiting, archived = b.archived, partial = b.partial,
+            ambiguous = b.ambiguous;
 
-        var sales = [], fresh = [], agreed = [], differs = [],
-            waiting = [], archived = [], partial = [], ambiguous = [];
-        rows.forEach(function(r){
-          var a = splitAddr(r.address);
-          var t = tight[tightKey(a)], m = (t && t.length === 1) ? t[0] : null;
-          var many = !!(t && t.length > 1);
-          if (!m && !many) {
-            var l = loose[looseKey(a)];
-            if (l && l.length === 1) m = l[0];
-            else if (l && l.length > 1) many = true;
-          }
-          if (many) { ambiguous.push(r); return; }
-          if (!m) {
-            /* Not on the register at all. It still has to be a whole sale
-               before it is worth adding as one. */
-            (adlWhole(r) ? fresh : partial).push(r);
-            return;
-          }
-          r.match = m;
-          /* Already waiting on somebody, or set outside of advice. Queueing
-             either again would undo a decision that has been made — the same
-             rule the sheet load follows. */
-          if (isPending(m))  { waiting.push(r);  return; }
-          if (m.outside)     { archived.push(r); return; }
-          if (!isHeld(m))    { (adlSame(m, r) ? agreed : differs).push(r); return; }
-          (adlWhole(r) ? sales : partial).push(r);
-        });
-
-        adlFound = { sales: sales, fresh: fresh, differs: differs, tab: want };
+        adlFound = { sales: sales, fresh: fresh, differs: differs,
+                     sources: d.sources || [] };
+        /* The daily check and the button ask the same question, so pressing it
+           answers the day's. */
+        trackNote(sales.length + fresh.length, d.sources || []);
 
         var n = function(a, one, many){
           return '<strong>' + a.length + '</strong> ' + (a.length === 1 ? one : many);
         };
+        var collapsed = (d.sources || []).reduce(function(a, x){ return a + (x.collapsed || 0); }, 0);
         var head = 'Read <strong>' + rows.length + '</strong> sale' + (rows.length === 1 ? '' : 's') +
-          ' from <strong>' + esc(want) + '</strong>' +
-          (mine.collapsed ? ' — ' + mine.collapsed + ' address' + (mine.collapsed === 1 ? '' : 'es') +
-                            ' sold more than once, latest sale taken' : '') + '.';
+          ' from ' + (d.sources || []).map(function(x){
+            return '<strong>' + esc(x.tab) + '</strong> (' + x.count + ')'; }).join(' and ') +
+          (collapsed ? ' — ' + collapsed + ' address' + (collapsed === 1 ? '' : 'es') +
+                       ' sold more than once, latest sale taken' : '') + '.';
 
         if (!sales.length && !fresh.length) {
           chkSay(msg('ok', head + ' Nothing new: ' +
@@ -9901,8 +9989,7 @@ var MHP_FROM='1980-03', MHP={
 
   /* ── sold check ── */
   $('btnChkSheet').addEventListener('click', chkLoadSheet);
-  $('btnChkAdl').addEventListener('click', function(){ chkAdlSold(this.getAttribute('data-tab')); });
-  $('btnChkBri').addEventListener('click', function(){ chkAdlSold(this.getAttribute('data-tab')); });
+  $('btnChkAdl').addEventListener('click', function(){ chkAdlSold(); });
   /* Typed in, never in this file. Saved as it is typed so there is no
      button to forget to press. */
   $('bmSheet').addEventListener('input', function(){
@@ -9941,6 +10028,7 @@ var MHP_FROM='1980-03', MHP={
      to a node that is no longer in the page. */
   $('chkBody').addEventListener('click', function(ev){
     if (ev.target.closest && ev.target.closest('#btnChkLoadBig')) chkLoadSheet();
+    if (ev.target.closest && ev.target.closest('#btnChkTrackBig')) chkAdlSold();
   });
   syncSheetBtn();
   /* Clicking either bookmarklet would run it against this page, which is
@@ -10136,6 +10224,11 @@ var MHP_FROM='1980-03', MHP={
   syncCheckTab();
   setAddMode('purchased');
   showTab('register');
+  /* Once a day, on the first open of the day, and never in the way: it reads
+     the tracking sheets and leaves a count on the tab. Deferred a moment so it
+     is not competing with the first paint and with applyShared() for the same
+     tick - nothing on screen is waiting for it. */
+  setTimeout(trackScan, 1200);
   // deliberately no auto-open: a modal appearing unprompted on load is jarring,
   // and the empty state already points at the button
 
