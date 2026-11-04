@@ -8231,12 +8231,19 @@ var MHP_FROM='1980-03', MHP={
   }
 
   var trackRunning = false;
+  /* Is a scan going to happen? Asked at startup as well as inside the scan,
+     so the tab can say it is about to read rather than looking idle for the
+     length of the pause. */
+  function trackDue(){
+    if (!sheetUrl()) return false;
+    var rec = trackSeen();
+    return !rec || (Date.now() - rec.at) >= TRK_EVERY;
+  }
   function trackScan(){
     var rec = trackSeen();
     renderTrackNote(rec);                       // whatever was found last time
     if (trackRunning) return;
-    if (!sheetUrl()) return;                    // nowhere to ask
-    if (rec && (Date.now() - rec.at) < TRK_EVERY) return;
+    if (!trackDue()) return;                    // nowhere to ask, or asked today
     trackRunning = true;
     chkBusy(true);
     var u = sheetUrl();
@@ -10599,10 +10606,23 @@ var MHP_FROM='1980-03', MHP={
   setAddMode('purchased');
   showTab('register');
   /* Once a day, on the first open of the day, and never in the way: it reads
-     the tracking sheets and leaves a count on the tab. Deferred a moment so it
-     is not competing with the first paint and with applyShared() for the same
-     tick - nothing on screen is waiting for it. */
-  setTimeout(trackScan, 1200);
+     the sheets and leaves a count on the tab. Deferred a moment so it is not
+     competing with the first paint and with applyShared() for the same tick —
+     nothing on screen is waiting for it.
+
+     The ring goes on NOW though, not after the pause. The pause is for the
+     first paint; leaving the tab looking idle for a second and a bit while a
+     read is already decided on is just a tab that looks idle. The counter
+     makes the overlap safe: this one is released the moment trackScan has
+     taken its own. */
+  (function(){
+    var due = trackDue();
+    if (due) chkBusy(true);
+    setTimeout(function(){
+      trackScan();
+      if (due) chkBusy(false);
+    }, 1200);
+  })();
   // deliberately no auto-open: a modal appearing unprompted on load is jarring,
   // and the empty state already points at the button
 
