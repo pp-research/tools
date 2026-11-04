@@ -581,6 +581,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
    which turned a two-sentence explanation into a wall of narrow columns. They
    are ordinary blocks. */
 #panel-check #chkDaily{display:block;margin:0 0 var(--sp-4)}
+#chkFound{border:1px solid var(--border);border-radius:var(--r-md);
+  background:var(--well);padding:var(--sp-4);margin:0 0 var(--sp-4)}
+#chkFound h3{margin:0 0 var(--sp-2);font-size:14px;line-height:20px}
+#chkFound .hint{margin:var(--sp-3) 0 0}
+#chkFound .btns{margin:var(--sp-4) 0 0}
+#chkFound .src-line{display:block;margin-top:2px;font-size:12px;line-height:16px}
+#chkFound table.mini td:nth-child(1),
+#chkFound table.mini td:nth-child(4){white-space:normal}
 #panel-review #revNote{display:block;margin:0 0 var(--sp-4)}
 #chkBm #bmSheetLine{display:block}
 #panel-review table.mini td:first-child,
@@ -1428,6 +1436,10 @@ details .body strong{color:var(--text)}
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
             <p class="count-line" id="chkCount"></p>
+            <!-- What the tracking sheets have that the register does not, as a
+                 list rather than a number in a dialog. Outside #chkBody so
+                 that redrawing the match table does not take it away. -->
+            <section id="chkFound" hidden></section>
             <div id="chkBody">
               <div class="empty">
                 <h3>Nothing loaded yet</h3>
@@ -7334,13 +7346,16 @@ var MHP_FROM='1980-03', MHP={
      stay away entirely until this browser knows where the sheet is. */
   function syncSheetBtn(){
     var u = !!sheetUrl();
-    $('btnChkSheet').hidden = !u || !chk;
-    /* The pair moves together: the empty state carries both until something is
-       loaded, the card head carries both afterwards. */
-    var adl = $('btnChkAdl'); if (adl) adl.hidden = !u || !chk;
+    /* The pair moves together, and moves up as soon as there is anything to
+       read on the tab — a loaded table or a list of findings. Before that the
+       empty state carries them, because that is the only thing on screen. */
+    var fnd = $('chkFound');
+    var listed = !!chk || !!(fnd && !fnd.hidden);
+    $('btnChkSheet').hidden = !u || !listed;
+    var adl = $('btnChkAdl'); if (adl) adl.hidden = !u || !listed;
     var big = $('btnChkLoadBig');          // only exist while the tab is empty
-    if (big) big.hidden = !u;
-    var trk = $('btnChkTrackBig'); if (trk) trk.hidden = !u;
+    if (big) big.hidden = !u || listed;
+    var trk = $('btnChkTrackBig'); if (trk) trk.hidden = !u || listed;
   }
 
   /* ── building the bookmarklet, here in the browser ──────────────────────
@@ -8342,6 +8357,7 @@ var MHP_FROM='1980-03', MHP={
                        ' sold more than once, latest sale taken' : '') + '.';
 
         if (!sales.length && !fresh.length) {
+          clearFound();
           chkSay(msg('ok', head + ' Nothing new: ' +
             n(agreed, 'is', 'are') + ' already on the register with the same figures' +
             (differs.length ? ', ' + n(differs, 'disagrees', 'disagree') + ' with it' : '') +
@@ -8354,28 +8370,20 @@ var MHP_FROM='1980-03', MHP={
           return;
         }
 
-        /* Said before anything is written, because this can be a lot of
-           properties at once and the count is the thing worth seeing. */
-        var body = '<p>' + head + '</p><ul>' +
-          (sales.length ? '<li>' + n(sales, 'property is', 'properties are') +
-             ' held on the register and sold in the sheet. The sale is parked, not written — ' +
-             'approving it in <strong>For review</strong> is what writes it.</li>' : '') +
-          (fresh.length ? '<li>' + n(fresh, 'is', 'are') +
-             ' not on the register at all. ' + (fresh.length === 1 ? 'It' : 'They') +
-             ' would be added, waiting for review, and counted in nothing until approved.</li>' : '') +
-          '</ul>' +
-          (differs.length || waiting.length || archived.length || partial.length ||
-           ambiguous.length || refused.length
-            ? '<p class="hint">Left alone: ' +
-              [differs.length  ? differs.length + ' already sold on the register for a different figure' : '',
-               waiting.length  ? waiting.length + ' already waiting in For review' : '',
-               archived.length ? archived.length + ' set outside of advice' : '',
-               refused.length  ? refused.length + ' rejected here before' : '',
-               partial.length  ? partial.length + ' without both a price and a date' : '',
-               ambiguous.length ? ambiguous.length + ' matching more than one property' : ''
-              ].filter(Boolean).join(', ') + '.</p>'
-            : '');
-        askConfirm(body, 'Send ' + (sales.length + fresh.length) + ' to For review', adlApply);
+        /* Listed on the page rather than asked about in a dialog: this can be
+           a lot of properties, and a count you have to agree to without
+           seeing what it is made of is not really a question. */
+        adlFound.head = String(head).replace(/<[^>]*>/g, '');
+        adlFound.alone =
+          [differs.length  ? differs.length + ' already sold on the register for a different figure' : '',
+           waiting.length  ? waiting.length + ' already waiting in For review' : '',
+           archived.length ? archived.length + ' set outside of advice' : '',
+           refused.length  ? refused.length + ' rejected here before' : '',
+           partial.length  ? partial.length + ' without both a price and a date' : '',
+           ambiguous.length ? ambiguous.length + ' matching more than one property' : ''
+          ].filter(Boolean).join(', ');
+        chkSay('');
+        drawFound();
       })
       .catch(function(e){
         autoOpening = false;
@@ -8385,10 +8393,76 @@ var MHP_FROM='1980-03', MHP={
       });
   }
 
+  /* The found rows, on the page, with one button under them. A dialog asked
+     you to agree to a number; this shows you the thing the number is about,
+     and it stays on screen while you read the table underneath it. */
+  function drawFound(){
+    var host = $('chkFound');
+    if (!host) return;
+    var d = adlFound;
+    if (!d || !(d.sales.length + d.fresh.length)) {
+      host.hidden = true; host.innerHTML = '';
+      renderTrackNote(trackSeen());
+      syncSheetBtn();
+      return;
+    }
+    var row = function(r, kind){
+      var e = r.match;
+      var sd = r.soldDate ? new Date(r.soldDate + 'T00:00:00Z') : null;
+      var bought = '';
+      if (kind === 'new') {
+        var bd = r.purchased ? new Date(r.purchased + 'T00:00:00Z') : null;
+        bought = Number(r.purchasePrice) > 0
+          ? 'Bought <b>' + aud(r.purchasePrice) + '</b>' +
+            (bd && !isNaN(bd) ? ' on ' + dLabel(bd) : '') + ', sold '
+          : 'Sold ';
+      }
+      return '<tr><td>' + esc(e ? e.name : r.address) + '</td>' +
+        '<td>' + esc((r.city || '').trim() || '—') + '</td>' +
+        '<td>' + (kind === 'new' ? 'Not on the register' : 'Sale found') + '</td>' +
+        '<td>' + bought + '<b>' + aud(r.soldPrice) + '</b>' +
+          (sd && !isNaN(sd) ? ' on ' + dLabel(sd) : '') +
+          (/^https?:\/\//i.test(r.link || '')
+            ? ' <a href="' + esc(r.link) + '" target="_blank" rel="noopener">record</a>' : '') +
+          '<span class="faint src-line">' + esc(r.tab || '') + '</span></td></tr>';
+    };
+    var n = d.sales.length + d.fresh.length;
+    /* The daily line is a summary of the same question, and a summary that
+       disagrees with the list under it is worse than no summary. The list is
+       the more specific statement, so it takes over while it is up. */
+    var dl = $('chkDaily'); if (dl) dl.hidden = true;
+    host.innerHTML =
+      '<h3>' + n + ' propert' + (n === 1 ? 'y' : 'ies') +
+        ' the register does not have</h3>' +
+      '<p class="count-line">' + esc(d.head || '') + '</p>' +
+      '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
+        '<th scope="col">Property</th><th scope="col">City</th>' +
+        '<th scope="col">Waiting on</th><th scope="col">What was found</th>' +
+      '</tr></thead><tbody>' +
+        d.sales.map(function(r){ return row(r, 'sale'); }).join('') +
+        d.fresh.map(function(r){ return row(r, 'new'); }).join('') +
+      '</tbody></table></div>' +
+      (d.alone ? '<p class="hint">Left alone: ' + esc(d.alone) + '.</p>' : '') +
+      '<div class="btns">' +
+        '<button type="button" class="btn-primary btn-sm" id="btnFoundSend">Send ' + n +
+          ' to For review</button>' +
+        '<button type="button" class="btn-ghost btn-sm" id="btnFoundClose">Not now</button>' +
+      '</div>';
+    host.hidden = false;
+    syncSheetBtn();
+  }
+  function clearFound(){
+    adlFound = null;
+    var host = $('chkFound');
+    if (host) { host.hidden = true; host.innerHTML = ''; }
+    renderTrackNote(trackSeen());      // the summary comes back
+    syncSheetBtn();
+  }
+
   function adlApply(){
     var d = adlFound;
     if (!d) return;
-    adlFound = null;
+    clearFound();
     var list = loadProps(), byId = {};
     list.forEach(function(e){ byId[e.id] = e; });
     var touched = [], parked = 0, added = 0;
@@ -10322,6 +10396,13 @@ var MHP_FROM='1980-03', MHP={
   $('chkBody').addEventListener('click', function(ev){
     if (ev.target.closest && ev.target.closest('#btnChkLoadBig')) chkLoadSheet();
     if (ev.target.closest && ev.target.closest('#btnChkTrackBig')) chkAdlSold();
+  });
+  /* The found list is a sibling of #chkBody, not a child, so it needs its own
+     listener — delegating from the body reached the buttons it ships with and
+     silently nothing else. */
+  $('chkFound').addEventListener('click', function(ev){
+    if (ev.target.closest && ev.target.closest('#btnFoundSend')) adlApply();
+    if (ev.target.closest && ev.target.closest('#btnFoundClose')) clearFound();
   });
   syncSheetBtn();
   /* Clicking either bookmarklet would run it against this page, which is
