@@ -122,7 +122,11 @@ var REG_HEADERS = [
    turn a capability that can append rows to one sheet into one that can read
    every sheet the owner of this script can see, which is a far larger thing
    to leave on a bookmarks bar. */
-var ADL_ID   = '1R_RAXWFvX8SOkje4nRDQtj0xnrs_zZ2yVxvrxhV98QM';
+/* The real id is NOT in this published copy. It is a spreadsheet of client
+   sales, and this file is served on the open web — so the id lives only in
+   the deployed script. Open your tracking sheet, take the long string out of
+   its address between /d/ and /edit, and paste it here before deploying. */
+var ADL_ID   = 'PUT_THE_TRACKING_SHEET_ID_HERE';
 var ADL_TAB  = 'ADL - Sold';
 var ADL_CITY = 'Adelaide';
 
