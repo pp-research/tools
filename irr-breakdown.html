@@ -7846,6 +7846,10 @@ var MHP_FROM='1980-03', MHP={
     var n = pendingProps().length;
     b.textContent = n;
     b.hidden = !n;
+    /* Red, like the Sold check badge: both mean the same thing — there is
+       work here that nobody has dealt with. A count in the quiet colour reads
+       as a total rather than as something to do. */
+    b.classList.toggle('badge-alert', !!n);
   }
   function revSay(html){ var m = $('revMsg'); if (m) m.innerHTML = html || ''; }
   var revPicked = {};
