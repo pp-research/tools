@@ -601,6 +601,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkFound table.mini td:nth-child(1),
 #chkFound table.mini td:nth-child(4){white-space:normal}
 #panel-review #revNote{display:block;margin:0 0 var(--sp-4)}
+/* sits in the card head with Refresh, and stays on one line */
+.rev-before{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto}
+.rev-before label{margin:0;white-space:nowrap;font-size:11px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.rev-before input[type="date"]{min-height:0;padding:5px 8px;width:auto}
 #chkBm #bmSheetLine{display:block}
 #panel-review table.mini td:first-child,
 #panel-review table.mini th:first-child{width:28px;text-align:center}
@@ -1500,6 +1505,18 @@ details .body strong{color:var(--text)}
         <section class="card" aria-labelledby="rev-h">
           <div class="card-head">
             <h2 id="rev-h">For review</h2>
+            <!-- The one decision this queue makes most: 443 of the 444
+                 properties set outside of advice were archived for having
+                 sold before the sell rating, and every one of those has a
+                 sale date. This narrows the queue to them so they can be
+                 cleared in one action. It reads the FOUND sale date, the one
+                 parked on the row, because the sale is not written yet. -->
+            <div class="rev-before">
+              <label for="revBefore">Sold before</label>
+              <input type="date" id="revBefore">
+              <button type="button" class="btn-ghost btn-sm" id="btnRevBeforeClear"
+                      hidden>Clear</button>
+            </div>
             <button type="button" class="btn-ghost btn-sm" id="btnRevRefresh">Refresh</button>
           </div>
           <p class="note note-info" id="revNote"></p>
@@ -7783,8 +7800,49 @@ var MHP_FROM='1980-03', MHP={
       ' — switch city in the header to work through ' +
       (total === 1 ? 'it' : 'them') + '.</p>';
   }
+  /* Kept per browser: it is how somebody is working through the queue today,
+     not a property of the book. */
+  var REV_BEFORE_KEY = 'pp-irr-revbefore-v1';
+  function revBefore(){
+    try { return localStorage.getItem(REV_BEFORE_KEY) || ''; } catch (e) { return ''; }
+  }
+  function setRevBefore(v){
+    try {
+      if (v) localStorage.setItem(REV_BEFORE_KEY, v);
+      else localStorage.removeItem(REV_BEFORE_KEY);
+    } catch (e) {}
+  }
+  /* The date the finding is about: the parked sale where there is one, the
+     property's own sale where it arrived already sold. */
+  function queueSaleDate(e){
+    if (e.review === 'sale' && e.pending && e.pending.date) return e.pending.date;
+    return e.soldDate || '';
+  }
+  function queueShown(){
+    var before = revBefore();
+    if (!before) return pendingProps();
+    return pendingProps().filter(function(e){
+      var d = queueSaleDate(e);
+      return d && String(d) < before;
+    });
+  }
+  /* Never silently: an empty queue has to be unambiguous between no work and
+     a filter, which is the whole reason the city scope carries a line too. */
+  function beforeLine(){
+    var before = revBefore();
+    if (!before) return '';
+    var all = pendingProps().length, shown = queueShown().length;
+    var d = new Date(before + 'T00:00:00Z');
+    return '<p class="count-line">Showing <strong>' + shown + '</strong> of ' + all +
+      ' — only sales before <strong>' +
+      (isNaN(d) ? esc(before) : dLabel(d)) + '</strong>. ' +
+      'Press <strong>Clear</strong> beside the date to see ' +
+      (all === 1 ? 'it' : 'all ' + all) + '.</p>';
+  }
   function syncReviewBadge(){
     var b = $('badgeReview'); if (!b) return;
+    /* The badge counts the city's work, not today's way of looking at it:
+       a tab badge answers "is there anything waiting". */
     var n = pendingProps().length;
     b.textContent = n;
     b.hidden = !n;
@@ -7811,10 +7869,13 @@ var MHP_FROM='1980-03', MHP={
   }
 
   function drawQueue(){
-    var list = pendingProps();
+    var list = queueShown();
     var host = $('revBody'), note = $('revNote'), acts = $('revActions');
     if (!host) return;
     syncReviewBadge();
+    var bf = $('revBefore');
+    if (bf && bf.value !== revBefore()) bf.value = revBefore();
+    var bc = $('btnRevBeforeClear'); if (bc) bc.hidden = !revBefore();
     /* A tick that outlived the row it was on would act on the wrong property. */
     var live = {}; list.forEach(function(e){ live[e.id] = 1; });
     Object.keys(revPicked).forEach(function(id){ if (!live[id]) delete revPicked[id]; });
@@ -7831,7 +7892,7 @@ var MHP_FROM='1980-03', MHP={
       '<strong>Record</strong> accepts it · <strong>Archive</strong> records it too but sets the ' +
       'property outside of advice · <strong>Reject</strong> throws away what was found, not the property.';
     if (!list.length) {
-      host.innerHTML = elsewhereLine() +
+      host.innerHTML = beforeLine() + elsewhereLine() +
         '<div class="empty"><h3>Nothing waiting' +
         (activeCity ? ' in ' + esc(cityLabel()) : '') + '</h3>' +
         '<p>Properties arrive here when they are added to the register, when the ' +
@@ -7907,7 +7968,7 @@ var MHP_FROM='1980-03', MHP={
             act('data-rev-del', 'Reject', 'danger', CROSS)
           : '') + '</td></tr>';
     };
-    host.innerHTML = elsewhereLine() +
+    host.innerHTML = beforeLine() + elsewhereLine() +
       '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
       '<th scope="col">Property</th><th scope="col">City</th>' +
@@ -10514,6 +10575,12 @@ var MHP_FROM='1980-03', MHP={
 
   /* ── for review ── */
   $('btnRevRefresh').addEventListener('click', function(){ revSay(''); drawQueue(); });
+  $('revBefore').addEventListener('change', function(){
+    setRevBefore(this.value); revSay(''); drawQueue();
+  });
+  $('btnRevBeforeClear').addEventListener('click', function(){
+    setRevBefore(''); $('revBefore').value = ''; revSay(''); drawQueue();
+  });
   /* Wrapped, not passed straight in: addEventListener hands the handler the
      click Event, which would arrive as `only` and be read as a property id
      that matches nothing — the buttons under the table would do nothing at
