@@ -1818,6 +1818,12 @@ details .body strong{color:var(--text)}
               <div class="field">
                 <label for="ePType">Property type</label>
                 <select id="ePType">
+                  <!-- First, and what an unrecorded property opens on. Without
+                       it the field opened on House and saving anything else on
+                       the row — a price, a date, a note — stamped House as though
+                       somebody had checked. 22 sold properties have no type;
+                       every one of them was one edit away from claiming one. -->
+                  <option value="">Not recorded</option>
                   <option value="H">House</option>
                   <option value="U">Unit</option>
                   <option value="D">Development site</option>
@@ -6158,7 +6164,11 @@ var MHP_FROM='1980-03', MHP={
     $('editMsg').innerHTML = '';
     $('eName').value   = e.name || '';
     $('eCat').value    = (e.category || '').trim();
-    $('ePType').value  = ptypeOf(e);
+    /* ptypeOf answers "which series is this measured against" and says House
+       for a blank, which is right for the maths and wrong for a form: the
+       field has to show what is recorded, not what it is read as. */
+    $('ePType').value  = /^[HUD]$/.test(String(e.ptype || '').toUpperCase().charAt(0))
+      ? String(e.ptype).toUpperCase().charAt(0) : '';
     $('ePrice').value  = e.purchasePrice != null ? e.purchasePrice : '';
     $('eDate').value   = (e.purchaseDate || '').slice(0,10);
     $('eSPrice').value = Number(e.soldPrice) > 0 ? e.soldPrice : '';
