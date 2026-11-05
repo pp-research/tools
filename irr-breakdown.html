@@ -10789,6 +10789,16 @@ var MHP_FROM='1980-03', MHP={
     a.tRate = radioVal('tRate'); a.tNg = radioVal('tNg'); a.tRent = radioVal('tRent');
     return { properties: list, assumptions: a, rev: Date.now() };
   }
+  /* rev is a timestamp, so two copies of the same book never stringify alike.
+     Anything asking "is this the copy I already have?" has to leave it out —
+     a comparison that is always false is not a comparison. */
+  function bodyKey(b){
+    try {
+      var c = (typeof b === 'string') ? JSON.parse(b) : b;
+      if (!c) return '';
+      return JSON.stringify({ properties: c.properties, assumptions: c.assumptions });
+    } catch (e) { return ''; }
+  }
   /* One body, two possible homes. The artifact keeps it in its own store; a
      published web page keeps it in Supabase. Neither is present on a plain
      local copy, and then this does nothing at all. */
@@ -11009,19 +11019,53 @@ var MHP_FROM='1980-03', MHP={
       applyShareMode(); authLabel();
       loadSharedSheet();      // the sheet address, for anyone who can sign in
       return load();
-    }).then(function(){
-      /* other people's changes arrive without anyone reloading */
-      share.sb.channel('irr_book_live')
+    }).then(function(){ liveSubscribe(); });
+
+    /* Other people's changes arrive without anyone reloading — while the socket
+       is up. A websocket does not survive a laptop sleeping, and nothing used
+       to re-read afterwards, so a record made in Adelaide at 09:14 was still
+       missing in a tab that had been open since the morning. The channel
+       reports its state now, and coming back to the tab re-reads. */
+    function liveSubscribe(){
+      if (share.chan) { try { share.sb.removeChannel(share.chan); } catch (e) {} }
+      share.live = false;
+      share.chan = share.sb.channel('irr_book_live')
         .on('postgres_changes',
             { event: '*', schema: 'public', table: 'irr_book', filter: 'id=eq.' + share.row },
             function(p){
-              if (p && p.new && p.new.body) {
-                var json = JSON.stringify(p.new.body);
-                if (json !== share.sent) applyShared(p.new.body);
-              }
+              if (p && p.new && p.new.body &&
+                  bodyKey(p.new.body) !== bodyKey(share.sent)) applyShared(p.new.body);
             })
-        .subscribe();
+        .subscribe(function(status){ share.live = (status === 'SUBSCRIBED'); });
+    }
+
+    /* A pull replaces the book with the shared one, which is right on a reload
+       and wrong on top of work that has not been sent yet — so it only runs
+       when this browser has nothing outstanding. A push that failed sets
+       share.sent to null, which is exactly the state this refuses to overwrite. */
+    var lastPull = 0;
+    function pullShared(force){
+      if (!share.sb || !share.ready || share.applying) return;
+      if (!force && Date.now() - lastPull < 15000) return;
+      /* An empty key means nothing has been sent, or the last send failed —
+         either way there may be work here that the shared copy has not got. */
+      var sent = bodyKey(share.sent);
+      if (!sent || bodyKey(shareBody()) !== sent) return;
+      lastPull = Date.now();
+      share.sb.from('irr_book').select('body').eq('id', share.row).maybeSingle()
+        .then(function(r){
+          if (!r || r.error || !r.data || !r.data.body) return;
+          if (bodyKey(r.data.body) !== bodyKey(share.sent)) applyShared(r.data.body);
+          if (!share.live) liveSubscribe();     // the socket is gone; start again
+        })
+        .catch(function(){});
+    }
+    share.pull = pullShared;
+    document.addEventListener('visibilitychange', function(){
+      if (!document.hidden) pullShared();
     });
+    window.addEventListener('focus', function(){ pullShared(); });
+    window.addEventListener('online', function(){ pullShared(true); });
 
     /* returning from the emailed link signs you in without a reload */
     share.sb.auth.onAuthStateChange(function(evt, session){
