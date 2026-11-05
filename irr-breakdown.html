@@ -4041,6 +4041,7 @@ window.stopCheck=false;
     picked = [];
     irrBand = null;
     renderProps();
+    drawQueue();          // the queue is this city's now, so it switches too
     if (chk) chkRun(); else syncCheckTab();
     if (currentTab() === 'history') showHistory();
   }
@@ -7751,7 +7752,37 @@ var MHP_FROM='1980-03', MHP={
      cannot trust to be empty. The Register, the Growth comparison and the
      Calculation stay scoped — those are about a set of properties, and which
      set is exactly what the filter is for. */
-  function pendingProps(){ return loadProps().filter(isPending); }
+  /* For review is scoped to the city in the header, like the Register. The
+     reason it was not, for a while, is a real one: a queue that hides half of
+     itself behind a filter is a queue you cannot trust to be empty, which is
+     the only thing a queue is for. So the scope comes with the part that was
+     missing — the badge counts this city, and a line under the table names
+     what is waiting in the others. Nothing can sit there unseen.
+     The Sold check and the History stay whole: those are about the work, and
+     the work is not filed by city. */
+  function pendingProps(){ return cityProps(loadProps()).filter(isPending); }
+  function pendingElsewhere(){
+    var here = {};
+    pendingProps().forEach(function(e){ here[e.id] = 1; });
+    var out = [], at = {};
+    loadProps().filter(isPending).forEach(function(e){
+      if (here[e.id]) return;
+      var c = (e.category || '').trim() || 'Not set';
+      if (!(c in at)) { at[c] = out.length; out.push({ city: c, n: 0 }); }
+      out[at[c]].n++;
+    });
+    return out.sort(function(a, b){ return b.n - a.n; });
+  }
+  function elsewhereLine(){
+    var other = pendingElsewhere();
+    if (!other.length) return '';
+    var total = 0;
+    other.forEach(function(x){ total += x.n; });
+    return '<p class="count-line"><strong>' + total + '</strong> also waiting in ' +
+      other.map(function(x){ return esc(x.city) + ' (' + x.n + ')'; }).join(' and ') +
+      ' — switch city in the header to work through ' +
+      (total === 1 ? 'it' : 'them') + '.</p>';
+  }
   function syncReviewBadge(){
     var b = $('badgeReview'); if (!b) return;
     var n = pendingProps().length;
@@ -7800,7 +7831,9 @@ var MHP_FROM='1980-03', MHP={
       '<strong>Record</strong> accepts it · <strong>Archive</strong> records it too but sets the ' +
       'property outside of advice · <strong>Reject</strong> throws away what was found, not the property.';
     if (!list.length) {
-      host.innerHTML = '<div class="empty"><h3>Nothing waiting</h3>' +
+      host.innerHTML = elsewhereLine() +
+        '<div class="empty"><h3>Nothing waiting' +
+        (activeCity ? ' in ' + esc(cityLabel()) : '') + '</h3>' +
         '<p>Properties arrive here when they are added to the register, when the ' +
         '<strong>Sold check</strong> finds a sale against one, and when the ' +
         '<strong>ADL &ndash; Sold</strong> tab of the tracking sheet has a sale the ' +
@@ -7874,7 +7907,8 @@ var MHP_FROM='1980-03', MHP={
             act('data-rev-del', 'Reject', 'danger', CROSS)
           : '') + '</td></tr>';
     };
-    host.innerHTML = '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
+    host.innerHTML = elsewhereLine() +
+      '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
       '<th scope="col">Property</th><th scope="col">City</th>' +
       '<th scope="col">Finding</th>' +
