@@ -2289,8 +2289,7 @@ window.stopCheck=false;
     .filter(r =>
       r.address &&
       (!CITY || (r.city || '').trim() === CITY) &&
-      (TYPES_ONLY ? !r.ptype
-                  : (!r.outside && !(r.soldDate && r.soldPrice))))
+      (TYPES_ONLY ? !r.ptype : !!r.check))
     .map(r => ({
       name:          r.address,
       category:      r.city,
@@ -7800,18 +7799,33 @@ var MHP_FROM='1980-03', MHP={
      sheet keeps those columns and they come back blank, so an older
      bookmarklet reading them is unchanged. */
   function registerRows(){
-    return loadProps().filter(function(e){
-      if (!e.name) return false;
-      if (e.outside) return false;                       // not in advice: never checked
-      if (Number(e.soldPrice) > 0 && e.soldDate) return false;   // answered already
-      return true;
-    }).map(function(e){
-      return { address: e.name,
-               city: (e.category || '').trim(),
-               purchased: e.purchaseDate || '',
-               purchasePrice: e.purchasePrice || '',
-               ptype: e.ptype || '' };
-    });
+    return loadProps().map(function(e){
+      if (!e.name) return null;
+      /* Two different runs read this one list, and they want different
+         properties. The sold check wants the ones still open: in advice and
+         without a sale. The type sweep wants the ones with no type, and a
+         property can be sold, or outside the advice, and still have no type
+         — 247 of the 818 untyped are exactly that, and narrowing this list to
+         sold-check work alone put them out of its reach. */
+      var check = !e.outside && !(Number(e.soldPrice) > 0 && e.soldDate);
+      var type  = !e.ptype;
+      if (!check && !type) return null;
+      /* Each row carries what its own job needs and no more. A row that is
+         only here to be typed needs an address to search for; it does not
+         need what the property cost. */
+      var r = { address: e.name,
+                city: (e.category || '').trim(),
+                ptype: e.ptype || '',
+                check: check ? 1 : 0 };
+      if (check) {
+        r.purchased = e.purchaseDate || '';
+        /* Load-bearing: soldVerdict() matches a found sale against this to
+           within two per cent to tell our own purchase, appearing in RP Data
+           as a transfer, from a genuine resale. */
+        r.purchasePrice = e.purchasePrice || '';
+      }
+      return r;
+    }).filter(Boolean);
   }
   /* Opening the tab is the trigger, so this can run several times in a
      sitting. Once a minute is plenty: the register does not change while you
