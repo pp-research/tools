@@ -743,6 +743,21 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* Below 1024px the register keeps a window of its own — a phone would
    otherwise get a page tens of thousands of pixels long — but a tall one. */
 .tbl-scroll.short{max-height:min(75vh, 900px)}
+/* The queue gets the same tall window on a narrow screen, for the same
+   reason: 520px of two-line rows is seven of them, and a worklist you read
+   seven at a time is a worklist you lose your place in. */
+#revBody .tbl-scroll{max-height:min(75vh, 900px)}
+/* And above 1280 it has no window at all. A review row is two lines tall, so
+   even the tall box holds nine of twenty-four: you worked the queue by
+   dragging a short scrollbar inside a card on a page that was not itself
+   scrolling. Same treatment as the register — the page scrolls and the
+   column headers stick to the top of the screen on the way down. Below 1280
+   the table cannot fit side to side either, so the window stays there.
+   This has to sit AFTER the rule above: same specificity, and a media query
+   does not win the cascade on its own. */
+@media (min-width:1280px){
+  #revBody .tbl-scroll{max-height:none;overflow:visible}
+}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;line-height:18px}
 th,td{padding:9px 12px;text-align:left;white-space:nowrap}
 thead th{
