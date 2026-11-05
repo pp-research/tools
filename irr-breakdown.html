@@ -7752,16 +7752,40 @@ var MHP_FROM='1980-03', MHP={
      wants the ones with no type, the sold check wants the held ones — so the
      list carries the facts and lets it choose. */
   var regSentAt = 0;             // last successful POST, as this page saw it
+  /* What the bookmarklets are given, and nothing else.
+
+     This leaves the browser, crosses to a Google Sheet, and comes back out of
+     an endpoint that answers anyone holding its address — so the question is
+     not "what might be useful over there", it is "what is the run unable to
+     proceed without".
+
+     It used to send the whole book: 1,214 rows, every purchase and sale price,
+     including the 444 set outside of advice and the 600 already sold — half of
+     which the bookmarklet discarded on arrival with this same test. Sending
+     them was a copy of the client register sitting behind one address.
+
+     What stays: the address and city to search on, the purchase date, and the
+     purchase PRICE, which is load-bearing — soldVerdict() matches a sale against
+     it to within two per cent to tell our own purchase, showing up in RP Data
+     as a transfer, from a genuine resale. Without it every settlement record
+     is announced as a sale. The type goes because the types pass fills it in.
+
+     What goes: soldDate and soldPrice (every row here is unsold by
+     definition now) and the outside flag (every row here is in advice). The
+     sheet keeps those columns and they come back blank, so an older
+     bookmarklet reading them is unchanged. */
   function registerRows(){
-    return loadProps().filter(function(e){ return e.name; }).map(function(e){
+    return loadProps().filter(function(e){
+      if (!e.name) return false;
+      if (e.outside) return false;                       // not in advice: never checked
+      if (Number(e.soldPrice) > 0 && e.soldDate) return false;   // answered already
+      return true;
+    }).map(function(e){
       return { address: e.name,
                city: (e.category || '').trim(),
                purchased: e.purchaseDate || '',
                purchasePrice: e.purchasePrice || '',
-               soldDate: e.soldDate || '',
-               soldPrice: e.soldPrice || '',
-               ptype: e.ptype || '',
-               outside: e.outside ? 1 : 0 };
+               ptype: e.ptype || '' };
     });
   }
   /* Opening the tab is the trigger, so this can run several times in a
