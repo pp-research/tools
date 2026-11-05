@@ -610,6 +610,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
   font:700 11px/14px 'Montserrat',sans-serif;letter-spacing:.04em;
   text-transform:uppercase;color:var(--muted);border-radius:var(--r-sm)}
 .note-hide:hover{color:var(--text);background:rgba(var(--accent-rgb),.10)}
+/* A circle with a question mark. The words live in the title and the aria
+   label — a screen reader still hears "What these mean", and the card head
+   keeps the room for the date box beside it. */
+.help-dot{width:28px;min-width:28px;height:28px;min-height:28px;padding:0;
+  border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:14px;line-height:1}
 /* sits in the card head with Refresh, and stays on one line */
 .rev-before{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto}
 .rev-before label{margin:0;white-space:nowrap;font-size:11px;font-weight:700;
@@ -1538,8 +1544,9 @@ details .body strong{color:var(--text)}
             <!-- The note is a setup you read once. It waits behind this
                  afterwards, the same way the Sold check's guide does, so
                  hiding it is not a one-way door. -->
-            <button type="button" class="btn-ghost btn-sm" id="btnRevNoteShow"
-                    hidden>What these mean</button>
+            <button type="button" class="btn-ghost btn-sm help-dot" id="btnRevNoteShow"
+                    title="What these mean" aria-label="What these mean"
+                    hidden><span aria-hidden="true">?</span></button>
             <div class="rev-before">
               <label for="revBefore">Sold before</label>
               <input type="date" id="revBefore">
