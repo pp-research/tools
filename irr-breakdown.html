@@ -8508,9 +8508,24 @@ var MHP_FROM='1980-03', MHP={
     try { localStorage.setItem(TRK_KEY, JSON.stringify(rec)); } catch (e) {}
     renderTrackNote(rec);
   }
+  /* The badge counts what is still OUTSTANDING, not what the last scan found.
+     Those are the same number right up until something else deals with the
+     findings — a colleague recording them, a register imported from the other
+     copy of this tool — and then the scan record is the only thing still saying
+     27 while the list under it is empty. That is the badge lying, and a badge
+     that disagrees with the thing it counts is the bug we have already had
+     twice. So when findings are held, they decide it. */
   function renderTrackNote(rec){
     var p = $('chkDaily'), b = $('badgeCheck');
     if (!p) return;
+    if (rec && !rec.failed && foundStore()) {
+      var live = foundList().length;
+      if (live !== rec.found) {
+        var fixed = {}; for (var kk in rec) fixed[kk] = rec[kk];
+        fixed.found = live;
+        rec = fixed;
+      }
+    }
     if (!rec) {
       p.hidden = true;
       if (b) { b.hidden = true; b.classList.remove('badge-alert'); }
