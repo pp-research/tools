@@ -6175,7 +6175,19 @@ var MHP_FROM='1980-03', MHP={
     $('eSDate').value  = (e.soldDate || '').slice(0,10);
     $('eVerified').innerHTML = VERIFIED.map(function(v){
       return '<option value="'+esc(v)+'">'+esc(v)+'</option>'; }).join('');
-    $('eVerified').value = verifiedOf(e) || 'Manual import';
+    /* The list holds the four sites that can answer for a price. A sale that
+       came off a tracking sheet carries the sheet instead — "ADL - Sold" —
+       which is not in the list, so the select fell back to no selection and
+       saving wrote undefined over it. Anything stored that the list does not
+       have is added to it, so an edit to the note cannot quietly throw away
+       where the figure came from. */
+    var have = verifiedOf(e) || 'Manual import';
+    if (VERIFIED.indexOf(have) < 0) {
+      var extra = document.createElement('option');
+      extra.value = have; extra.textContent = have;
+      $('eVerified').appendChild(extra);
+    }
+    $('eVerified').value = have;
     $('eLink').value   = e.soldLink || '';
     $('eNote').value   = e.note || '';
     $('eReasonWrap').hidden = !e.outside;
@@ -7780,7 +7792,7 @@ var MHP_FROM='1980-03', MHP={
       '<strong>Sale found:</strong> the property is already on the register and a sale ' +
       'has turned up against it. The price and date are <em>parked</em>, not written: the ' +
       'property still reads as held until you record it.<br>' +
-      '<strong>Added:</strong> the property is new to the register. Recording it accepts ' +
+      '<strong>Not on the register:</strong> the property is new to the register. Recording it accepts ' +
       'the whole record, and until then it is counted in nothing at all.<br>' +
       'Either way the <strong>Overview</strong> and the <strong>Growth comparison</strong> ignore ' +
       'it until it is recorded, and every decision goes to the <strong>History</strong> with ' +
@@ -7809,7 +7821,9 @@ var MHP_FROM='1980-03', MHP={
       'through, so Record, Archive and Reject need a sign-in — otherwise the ' +
       'change would only ever exist in this browser.';
     var row = function(e){
-      var why = e.review === 'sale' ? 'Sale found' : 'Added';
+      /* The same words the Sold check list uses for the same finding: one
+         thing should not be called two names on two tabs. */
+      var why = e.review === 'sale' ? 'Sale found' : 'Not on the register';
       var p = e.pending || {};
       var detail;
       if (e.review === 'sale') {
