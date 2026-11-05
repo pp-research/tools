@@ -7786,7 +7786,18 @@ var MHP_FROM='1980-03', MHP={
       if (acts) acts.hidden = true;
       return;
     }
-    if (acts) acts.hidden = false;
+    /* Every other tab drops its write controls when the sign-in has gone —
+       the register's row buttons, the sold check's, the whole WRITE_CONTROLS
+       list. This one did not, so Record, Archive and Reject stayed pressable
+       while signed out: the row left the queue, nothing reached the shared
+       copy, nothing was logged, and the next reload brought it back. Reading
+       the queue is still fine; acting on it is what needs the sign-in. */
+    var canAct = (share.canWrite !== false);
+    if (acts) acts.hidden = !canAct;
+    if (!canAct && note) note.innerHTML +=
+      '<br><strong>You are signed out.</strong> These are everybody’s to work ' +
+      'through, so Record, Archive and Reject need a sign-in — otherwise the ' +
+      'change would only ever exist in this browser.';
     var row = function(e){
       var why = e.review === 'sale' ? 'Sale found' : 'Added';
       var p = e.pending || {};
@@ -7833,9 +7844,11 @@ var MHP_FROM='1980-03', MHP={
         '<td>' + why + '</td>' +
         buyCell(e.purchasePrice, e.purchaseDate) +
         '<td>' + detail + '</td>' +
-        '<td class="acts">' + act('data-rev-rec', 'Record', 'ok-btn') +
-          act('data-rev-arc', 'Archive', '', ASIDE) +
-          act('data-rev-del', 'Reject', 'danger', CROSS) + '</td></tr>';
+        '<td class="acts">' + (canAct
+          ? act('data-rev-rec', 'Record', 'ok-btn') +
+            act('data-rev-arc', 'Archive', '', ASIDE) +
+            act('data-rev-del', 'Reject', 'danger', CROSS)
+          : '') + '</td></tr>';
     };
     host.innerHTML = '<div class="tbl-scroll"><table class="mini"><thead><tr>' +
       '<th scope="col"><input type="checkbox" id="revAll" aria-label="Select every property waiting"></th>' +
@@ -10803,7 +10816,18 @@ var MHP_FROM='1980-03', MHP={
      published web page keeps it in Supabase. Neither is present on a plain
      local copy, and then this does nothing at all. */
   function pushShared(){
-    if (share.applying || share.canWrite === false) return;
+    if (share.applying) return;
+    /* It used to return here without a word. A change made while signed out
+       is saved in this browser and nowhere else, and the person who made it
+       has no way to tell — which is how a reject went missing between two
+       browsers on 5 Nov. The 42501 branch below says this when the server
+       refuses; it has to be said when we refuse ourselves too. */
+    if (share.canWrite === false) {
+      $('messages').innerHTML = msg('warn','That change is saved in this browser only '+
+        '— you are signed out, so the shared list has not been updated. '+
+        'Sign in and make it again.');
+      return;
+    }
     if (!share.ready || (!share.db && !share.sb)) return;
     var body = shareBody(), json = JSON.stringify(body);
     if (json === share.sent) return;                 // nothing actually changed
@@ -10938,6 +10962,7 @@ var MHP_FROM='1980-03', MHP={
     var ab = $('btnShareAuth'); if (ab) ab.hidden = !(share.db || share.sb);
     syncEditBtn();                       // nothing to edit with when you cannot write
     if (ro) renderProps();   // drops the per-row delete and archive buttons
+    drawQueue();             // and the queue's Record, Archive and Reject
     syncBmBox();             // signing out takes the bookmarklet away with it
   }
   /* ── the shared list on a published web page ──
