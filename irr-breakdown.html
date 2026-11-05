@@ -1675,6 +1675,12 @@ details .body strong{color:var(--text)}
                  goes away and stays away: it is a thing you do once, not a
                  setting to keep an eye on. Without it a new browser — a new
                  person signing in — has no way to point the tool anywhere. -->
+            <!-- Open until there is an address, shut afterwards, and always
+                 re-openable from the button below. Shut-for-ever is what made
+                 a leaked address unrotatable without editing the DOM. -->
+            <button type="button" class="btn-ghost btn-sm" id="btnBmSetup" hidden>
+              Change the sheet address or key</button>
+            <div id="bmSetup">
             <div class="field" id="bmSheetField" hidden>
               <label for="bmSheet">Google Sheet address</label>
               <input type="text" id="bmSheet" spellcheck="false" autocomplete="off"
@@ -1702,6 +1708,12 @@ details .body strong{color:var(--text)}
                  Set it in both places, then <strong>drag the bookmarks again</strong>:
                  they carry the key, and an old one stops being answered.</p>
               <p class="hint" id="bmKeyShared" hidden></p>
+            </div>
+              <div class="btns" style="margin-top:var(--sp-3)">
+                <button type="button" class="btn-primary btn-sm" id="btnBmSave">Save</button>
+                <button type="button" class="btn-ghost btn-sm" id="btnBmCancel" hidden>Cancel</button>
+              </div>
+              <p class="hint" id="bmSaveMsg" hidden></p>
             </div>
 
             <h3>1 · RP Data — the first run, then the weekly catch-up</h3>
@@ -7559,7 +7571,24 @@ var MHP_FROM='1980-03', MHP={
   }
   var bmLast = null;             // what the href was last built from
   var bmReady = false;           // signed in, with something to check
-  var bmShareT = null, bmKeyT = null;           // debounce for sharing a typed-in address
+  var bmShareT = null, bmKeyT = null;
+  /* Shut once there is an address to shut over, open while there is not, and
+     opened again by the button whenever somebody needs to change either. */
+  var bmSetupOpen = false;
+  function syncBmSetup(){
+    var wrap = $('bmSetup'), btn = $('btnBmSetup'), cancel = $('btnBmCancel');
+    if (!wrap || !btn) return;
+    var configured = !!sheetUrl();
+    var open = bmSetupOpen || !configured;
+    wrap.hidden = !open;
+    btn.hidden = open;
+    if (cancel) cancel.hidden = !configured;
+    if (open) {
+      var i = $('bmSheet'), k = $('bmKey');
+      if (i && document.activeElement !== i) i.value = sheetUrl();
+      if (k && document.activeElement !== k) k.value = sheetKey();
+    }
+  }           // debounce for sharing a typed-in address
   function syncBm(){
     var a = $('bmLink');
     if (!a) return;
@@ -7700,14 +7729,10 @@ var MHP_FROM='1980-03', MHP={
 
     /* The address field used to disappear the moment one was set, which made
        the address unchangeable from the UI — discovered the hard way while
-       rotating a leaked one. It stays. */
+       rotating a leaked one. It is behind a button now, not gone. */
     var field = $('bmSheetField');
     if (field) field.hidden = false;
-    var inp = $('bmSheet');
-    if (inp && document.activeElement !== inp && inp.value.trim() !== u) inp.value = u;
-    var kin = $('bmKey');
-    if (kin && document.activeElement !== kin && kin.value.trim() !== sheetKey())
-      kin.value = sheetKey();
+    syncBmSetup();
     p.hidden = !u;
     if (!p.hidden) {
       /* A sheet with a page corner and lines on it. Decorative — the sentence
@@ -10793,57 +10818,64 @@ var MHP_FROM='1980-03', MHP={
   $('btnChkAdl').addEventListener('click', function(){ chkAdlSold(); });
   /* Typed in, never in this file. Saved as it is typed so there is no
      button to forget to press. */
-  $('bmKey').addEventListener('input', function(){
-    var v = this.value.trim();
-    try {
-      if (v) localStorage.setItem('ppSheetKey', v);
-      else   localStorage.removeItem('ppSheetKey');
-    } catch (e) {}
-    syncBm();                       // the bookmarklets carry it, so rebuild them
-    clearTimeout(bmKeyT);
-    if (!v) return;
-    bmKeyT = setTimeout(function(){
-      shareSheetKey(v).then(function(ok){
-        var p = $('bmKeyShared');
-        if (!p) return;
-        p.hidden = false;
-        p.innerHTML = ok
-          ? '✓ Shared — everyone signed in picks this up on their next visit.'
-          : 'Saved in this browser. It could not be shared, so anyone else has to set it too.';
-      });
-    }, 700);
+  /* Typing no longer commits anything. It used to save on every keystroke,
+     which works and tells you nothing — there was no moment at which you had
+     done it. Save is that moment. */
+  function bmTouched(){
+    var m = $('bmSaveMsg'); if (m) { m.hidden = true; m.innerHTML = ''; }
+    var k = $('bmKeyShared'); if (k) k.hidden = true;
+    var h = $('bmSheetShared'); if (h) h.hidden = true;
+  }
+  $('bmKey').addEventListener('input', bmTouched);
+  $('btnBmSetup').addEventListener('click', function(){
+    bmSetupOpen = true; syncBmSetup();
+    var i = $('bmSheet'); if (i) i.focus();
   });
-  $('bmSheet').addEventListener('input', function(){
-    var v = this.value.trim();
+  $('btnBmCancel').addEventListener('click', function(){
+    bmSetupOpen = false; bmTouched(); syncBmSetup();
+  });
+  $('btnBmSave').addEventListener('click', function(){
+    var m = $('bmSaveMsg');
+    var url = ($('bmSheet').value || '').trim();
+    var key = ($('bmKey').value || '').trim();
+    var say = function(html){ if (m) { m.hidden = false; m.innerHTML = html; } };
+    /* A shape test, not a regex for its own sake: this only has to tell a
+       finished address from half of one pasted by accident. */
+    if (url && (url.indexOf('https://script.google.com/macros/s/') !== 0 ||
+                url.slice(-5) !== '/exec')) {
+      say('That does not look like an <code>/exec</code> address. It should start ' +
+          '<code>https://script.google.com/macros/s/</code> and end <code>/exec</code>. ' +
+          'Nothing has been changed.');
+      return;
+    }
+    var before = sheetUrl();
     try {
-      if (v !== sheetUrl()) localStorage.removeItem('ppSheetView');
-      if (v) localStorage.setItem('ppSheetUrl', v);
-      else   localStorage.removeItem('ppSheetUrl');
+      if (url) localStorage.setItem('ppSheetUrl', url); else localStorage.removeItem('ppSheetUrl');
+      if (key) localStorage.setItem('ppSheetKey', key); else localStorage.removeItem('ppSheetKey');
+      /* a different address is a different book; the cached link to the old
+         one would send you to the wrong place */
+      if (url !== before) localStorage.removeItem('ppSheetView');
     } catch (e) { /* private window: this session only, still useful */ }
     syncSheetBtn();
-    syncBm();
-    /* Shared the moment it looks like a finished address, because the
-       whole point is that nobody else has to do this. Debounced: this
-       fires on every keystroke and the last one is the real one. */
-    clearTimeout(bmShareT);
-    /* A plain shape test, not a regex: this only has to tell a finished
-       address from one still being typed. */
-    if (v.indexOf('https://script.google.com/macros/s/') !== 0) return;
-    if (v.slice(-5) !== '/exec') return;
-    bmShareT = setTimeout(function(){
-      shareSheetUrl(v).then(function(ok){
-        var p = $('bmSheetShared');
-        if (!p) return;
-        p.hidden = false;
-        p.innerHTML = ok
-          ? '✓ Shared — everyone signed in picks this up on their next visit. ' +
-            'Nobody else has to set it up.'
-          : 'Saved in this browser, but it could not be shared with the team. ' +
-            'The <code>irr_config</code> table is missing or not writable, so ' +
-            'everyone else will have to paste it in themselves.';
+    syncBm();                       // the bookmarklets carry both, so rebuild them
+    Promise.all([ url ? shareSheetUrl(url) : Promise.resolve(false),
+                  key ? shareSheetKey(key) : Promise.resolve(false) ])
+      .then(function(r){
+        var shared = r[0] || r[1];
+        say((shared
+              ? '✓ Saved and shared — everyone signed in picks this up on their next visit.'
+              : '✓ Saved in this browser. It could not be shared, so anyone else has to set it too.') +
+            (key ? '' : ' No key set, so the endpoint is open to anyone holding its address.') +
+            ' <strong>Drag the bookmarks again</strong> — they carry both, and the old ones ' +
+            'stop being answered.');
+        bmSetupOpen = false;
+        syncBmSetup();
       });
-    }, 600);
   });
+  /* Typing changes nothing until Save: a half-typed address used to be
+     written to storage and, once it happened to look finished, shared
+     with everyone. */
+  $('bmSheet').addEventListener('input', bmTouched);
   /* Delegated, because the empty state is rebuilt from scratch on every
      Clear: a listener bound to the button it shipped with would be bound
      to a node that is no longer in the page. */
