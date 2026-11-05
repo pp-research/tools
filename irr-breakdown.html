@@ -11201,7 +11201,11 @@ var MHP_FROM='1980-03', MHP={
     }
     if (!share.ready || (!share.db && !share.sb)) return;
     var body = shareBody(), json = JSON.stringify(body);
-    if (json === share.sent) return;                 // nothing actually changed
+    /* bodyKey, not the raw string: shareBody() ends `rev: Date.now()`, so two
+       copies of the same book never stringify alike and this check could only
+       ever be false — every save was a real write to a shared row, however
+       little had changed. */
+    if (bodyKey(json) === bodyKey(share.sent)) return;      // nothing actually changed
     /* The 200 KB guard belongs to the artifact's document store, which has a
        256 KiB ceiling per document. Supabase has no such limit: body is jsonb
        and Postgres holds up to a gigabyte in one field. Applying the artifact's
