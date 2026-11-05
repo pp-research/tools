@@ -601,6 +601,15 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #chkFound table.mini td:nth-child(1),
 #chkFound table.mini td:nth-child(4){white-space:normal}
 #panel-review #revNote{display:block;margin:0 0 var(--sp-4)}
+/* Top right of the note, out of the text rather than in the flow of it:
+   the note is display:block here, so a floated button lets the sentences
+   wrap around nothing and keeps its own corner. */
+#revNote{position:relative;padding-right:64px}
+.note-hide{position:absolute;top:8px;right:10px;background:transparent;
+  border:0;padding:2px 4px;min-height:0;cursor:pointer;
+  font:700 11px/14px 'Montserrat',sans-serif;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--muted);border-radius:var(--r-sm)}
+.note-hide:hover{color:var(--text);background:rgba(var(--accent-rgb),.10)}
 /* sits in the card head with Refresh, and stays on one line */
 .rev-before{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto}
 .rev-before label{margin:0;white-space:nowrap;font-size:11px;font-weight:700;
@@ -1526,6 +1535,11 @@ details .body strong{color:var(--text)}
                  sale date. This narrows the queue to them so they can be
                  cleared in one action. It reads the FOUND sale date, the one
                  parked on the row, because the sale is not written yet. -->
+            <!-- The note is a setup you read once. It waits behind this
+                 afterwards, the same way the Sold check's guide does, so
+                 hiding it is not a one-way door. -->
+            <button type="button" class="btn-ghost btn-sm" id="btnRevNoteShow"
+                    hidden>What these mean</button>
             <div class="rev-before">
               <label for="revBefore">Sold before</label>
               <input type="date" id="revBefore">
@@ -7817,6 +7831,22 @@ var MHP_FROM='1980-03', MHP={
   }
   /* Kept per browser: it is how somebody is working through the queue today,
      not a property of the book. */
+  var REV_NOTE_KEY = 'pp-irr-revnote-v1';
+  function revNoteHidden(){
+    try { return localStorage.getItem(REV_NOTE_KEY) === 'off'; } catch (e) { return false; }
+  }
+  function setRevNoteHidden(off){
+    try {
+      if (off) localStorage.setItem(REV_NOTE_KEY, 'off');
+      else localStorage.removeItem(REV_NOTE_KEY);
+    } catch (e) {}
+  }
+  function syncRevNote(){
+    var n = $('revNote'), b = $('btnRevNoteShow');
+    var off = revNoteHidden();
+    if (n) n.hidden = off;
+    if (b) b.hidden = !off;
+  }
   var REV_BEFORE_KEY = 'pp-irr-revbefore-v1';
   function revBefore(){
     try { return localStorage.getItem(REV_BEFORE_KEY) || ''; } catch (e) { return ''; }
@@ -7892,6 +7922,7 @@ var MHP_FROM='1980-03', MHP={
     var host = $('revBody'), note = $('revNote'), acts = $('revActions');
     if (!host) return;
     syncReviewBadge();
+    syncRevNote();
     var bf = $('revBefore');
     if (bf && bf.value !== revBefore()) bf.value = revBefore();
     var bc = $('btnRevBeforeClear'); if (bc) bc.hidden = !revBefore();
@@ -7909,7 +7940,9 @@ var MHP_FROM='1980-03', MHP={
       'it until it is recorded, and every decision goes to the <strong>History</strong> with ' +
       'whatever you type as the reason.<br>' +
       '<strong>Record</strong> accepts it · <strong>Archive</strong> records it too but sets the ' +
-      'property outside of advice · <strong>Reject</strong> throws away what was found, not the property.';
+      'property outside of advice · <strong>Reject</strong> throws away what was found, not the property.' +
+      '<button type="button" class="note-hide" id="btnRevNoteHide" ' +
+      'aria-label="Hide this explanation">Hide</button>';
     if (!list.length) {
       host.innerHTML = beforeLine() + elsewhereLine() +
         '<div class="empty"><h3>Nothing waiting' +
@@ -10594,6 +10627,15 @@ var MHP_FROM='1980-03', MHP={
 
   /* ── for review ── */
   $('btnRevRefresh').addEventListener('click', function(){ revSay(''); drawQueue(); });
+  /* The hide button is written into the note, which is rebuilt on every
+     draw, so the listener is delegated rather than bound to the element. */
+  $('revNote').addEventListener('click', function(ev){
+    var t = ev.target;
+    if (t && t.id === 'btnRevNoteHide') { setRevNoteHidden(true); syncRevNote(); }
+  });
+  $('btnRevNoteShow').addEventListener('click', function(){
+    setRevNoteHidden(false); syncRevNote();
+  });
   $('revBefore').addEventListener('change', function(){
     setRevBefore(this.value); revSay(''); drawQueue();
   });
