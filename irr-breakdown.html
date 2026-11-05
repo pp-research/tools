@@ -7775,8 +7775,8 @@ var MHP_FROM='1980-03', MHP={
       'Either way the <strong>Overview</strong> and the <strong>Growth comparison</strong> ignore ' +
       'it until it is recorded, and every decision goes to the <strong>History</strong> with ' +
       'whatever you type as the reason.<br>' +
-      '<strong>Record</strong> accepts it · <strong>Archive</strong> keeps the property but sets it ' +
-      'outside of advice · <strong>Reject</strong> throws away what was found, not the property.';
+      '<strong>Record</strong> accepts it · <strong>Archive</strong> records it too but sets the ' +
+      'property outside of advice · <strong>Reject</strong> throws away what was found, not the property.';
     if (!list.length) {
       host.innerHTML = '<div class="empty"><h3>Nothing waiting</h3>' +
         '<p>Properties arrive here when they are added to the register, when the ' +
@@ -7910,30 +7910,38 @@ var MHP_FROM='1980-03', MHP={
           ' ' + verb + '. Each one is in <strong>History</strong>.'));
       }, true, optFor ? optFor(picked) : null);
   }
+  /* The one place a parked sale becomes a sale. Record and Archive both go
+     through it: "outside of advice" is a decision about whether a property
+     counts towards the advice, not a claim that the sale never happened.
+     Archive used to drop the figures, which left a sold property reading as
+     held for ever — and the sold check skips anything archived, so it was never
+     offered again either. The sale was lost rather than set aside. */
+  function takeSale(e){
+    if (e.review !== 'sale' || !e.pending) return false;
+    e.soldPrice = e.pending.price;
+    e.soldDate = e.pending.date;
+    e.soldVerified = e.pending.src || undefined;
+    e.soldLink = e.pending.link || undefined;
+    e.soldCheck = 'Sold';
+    return true;
+  }
   function reviewApprove(only){
     revAct('Record', 'Record', 'Record', 'recorded', function(e){
-      /* The one place a parked sale becomes a sale. */
-      if (e.review === 'sale' && e.pending) {
-        e.soldPrice = e.pending.price;
-        e.soldDate = e.pending.date;
-        e.soldVerified = e.pending.src || undefined;
-        e.soldLink = e.pending.link || undefined;
-        e.soldCheck = 'Sold';
-      }
+      takeSale(e);
       e.review = undefined; e.pending = undefined; e.reviewSrc = undefined;
       e.rejected = undefined;
     }, only);
   }
   function reviewArchive(only){
-    revAct('Archive', 'Set outside of advice', 'Archive', 'archived', function(e, reason){
+    revAct('Archive', 'Record the sale and set outside of advice', 'Archive', 'archived',
+      function(e, reason){
+      takeSale(e);                 // the sale happened either way
       e.outside = 1;
       /* The Register shows this, so what was typed here is what it shows —
          rather than a generic line that sends you to the History to find out
          what actually happened. */
       e.outsideReason = reason || 'Archived at review';
       e.rejected = undefined;
-      /* The parked sale goes with it: it was never approved, so it is not a
-         fact about the property and must not sit there looking like one. */
       e.review = undefined; e.pending = undefined; e.reviewSrc = undefined;
     }, only);
   }
