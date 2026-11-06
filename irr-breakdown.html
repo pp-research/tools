@@ -481,6 +481,8 @@ button{
   font:700 14px/20px 'Montserrat',sans-serif;border-radius:var(--r-md);border:1px solid transparent;
   padding:11px 20px;min-height:44px;cursor:pointer;transition:background .15s ease,border-color .15s ease;
 }
+.moved-bar{margin:0 0 var(--sp-3);padding:10px 14px;border-radius:10px;background:var(--accent-soft,rgba(0,160,180,.12));color:var(--ink,inherit);font-size:13px;line-height:18px}
+.moved-bar a{font-weight:600}
 .btn-primary{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
 .btn-primary:hover{background-color:var(--grad-accent-hover-base);background-image:var(--grad-accent-hover);color:var(--on-accent-deep)}
 .btn-primary:active{background-color:var(--grad-accent-active-base);background-image:var(--grad-accent-active);color:var(--on-accent-deep);box-shadow:none}
@@ -1283,6 +1285,7 @@ details .body strong{color:var(--text)}
 
     <!-- ══════════ THE TABS AND WHAT THEY SHOW ══════════ -->
     <div class="main">
+      <div id="movedBar" class="moved-bar" hidden>Read-only copy &mdash; the IRR Calculator moved to the hub&rsquo;s Vault on <strong>6 November 2026</strong>. <a href="https://tools.performanceproperty.com.au/tools/irr-calculator.html">Open the hub IRR Calculator</a></div>
       <div id="messages" role="status" aria-live="polite"></div>
 
       <!-- ══ SEARCH AND FILTERS ══
@@ -2159,12 +2162,11 @@ details .body strong{color:var(--text)}
             <button type="button" class="modal-x" id="mvClose" aria-label="Close">&times;</button>
           </div>
           <div class="modal-body">
-            <p>The IRR Calculator is now merged into the hub&rsquo;s <strong>Vault</strong>. Please make all changes there, so the shared register stays one.</p>
-            <p class="faint">This copy is kept for reference. Anything recorded here does not reach the hub.</p>
+            <p>The IRR Calculator officially moved to the hub&rsquo;s <strong>Vault</strong> on <strong>6 November 2026</strong>. Please make all changes there, so the shared register stays one.</p>
+            <p class="faint">This copy is read-only and kept for reference. Nothing can be recorded here, and nothing here reaches the hub.</p>
           </div>
           <div class="modal-foot">
-            <a class="btn-primary" id="mvGo" href="https://tools.performanceproperty.com.au/tools/irr-calculator.html">Open the hub IRR Calculator</a>
-            <button type="button" class="btn-ghost" id="mvStay">Stay here</button>
+            <button type="button" class="btn-primary" id="mvGo">Open the hub IRR Calculator</button>
           </div>
         </div>
       </dialog>
@@ -4043,6 +4045,7 @@ window.stopCheck=false;
      already has it and holding it in the tab loses nothing. An EDIT is the
      other case, and it is only safe if the record will take it. */
   function putProps(list, fromRecord){
+    if (frozen()) { $('messages').innerHTML = frozenWarn(); return false; }
     try {
       localStorage.setItem(STORE, JSON.stringify(list));
       memProps = null; storageFull = false;
@@ -9668,6 +9671,7 @@ var MHP_FROM='1980-03', MHP={
     if (rows.length) logChange(rows);
   }
   function saveAssumptions(){
+    if (frozen()) { $('messages').innerHTML = frozenWarn(); return; }
     var o = {};
     OPT_IDS.forEach(function(id){ o[id] = (committedOpts || fieldOpts())[id]; });
     o.tRate = radioVal('tRate'); o.tNg = radioVal('tNg'); o.tRent = radioVal('tRent');
@@ -10594,6 +10598,7 @@ var MHP_FROM='1980-03', MHP={
       .catch(function(e){ bookNote('Export failed: ' + ((e && e.message) || e), true); });
   }
   function importBook(file){
+    if (frozen()) { bookNote('This copy is read-only — import into the hub’s IRR Calculator instead.', true); return; }
     if (!share.sb || share.canWrite === false) { bookNote('Importing needs a sign-in that can write.', true); return; }
     bookNote('Reading ' + file.name + '…');
     var fr = new FileReader();
@@ -10653,7 +10658,7 @@ var MHP_FROM='1980-03', MHP={
        which, from here, looks exactly like someone at this desk changing
        them. The history is how you tell your own changes from theirs, so a
        change that was received must not be written down as made. */
-    if (share.applying) return;
+    if (frozen() || share.applying) return;
     if (!share.sb || share.canWrite === false || !rows || !rows.length) return;
     var who = whoAmI();
     var body = rows.slice(0, 500).map(function(r){
@@ -10895,6 +10900,7 @@ var MHP_FROM='1980-03', MHP={
     bmSetupOpen = false; bmTouched(); syncBmSetup();
   });
   $('btnBmSave').addEventListener('click', function(){
+    if (frozen()) { $('messages').innerHTML = frozenWarn(); return; }
     var m = $('bmSaveMsg');
     var url = ($('bmSheet').value || '').trim();
     var key = ($('bmKey').value || '').trim();
@@ -11245,7 +11251,7 @@ var MHP_FROM='1980-03', MHP={
     $('messages').innerHTML = (share.canWrite === false) ? unsharedWarn() : html;
   }
   function pushShared(){
-    if (share.applying) return;
+    if (frozen() || share.applying) return;
     /* It used to return here without a word. A change made while signed out
        is saved in this browser and nowhere else, and the person who made it
        has no way to tell — which is how a reject went missing between two
@@ -11382,7 +11388,7 @@ var MHP_FROM='1980-03', MHP={
                         'btnAside','btnSaveAssump','btnDiscardAssump','btnResetAssump',
                         'btnBookImport'];
   function applyShareMode(){
-    var ro = (share.canWrite === false);
+    var ro = frozen() || (share.canWrite === false);
     WRITE_CONTROLS.forEach(function(id){ var el = $(id); if (el) el.hidden = ro; });
     /* Signing in does not re-render, so Rename is set here as well as in
        syncCategoryControls — both conditions, in both places. */
@@ -11598,13 +11604,25 @@ var MHP_FROM='1980-03', MHP={
      and must never announce its own retirement, and a local harness is not
      pp-research. Every load, by request - there is no "don't show again",
      because the point is that nobody works here by habit. */
+  /* The pp-research copy is frozen: officially moved to the hub's Vault on
+     6 November 2026. Keyed to the host, because the hub serves this same
+     file. Every door a change can come through asks this first, so a change
+     made here by habit is refused with the reason rather than saved into a
+     register nobody reads any more. */
+  var MOVED = { host: 'pp-research.github.io', date: '6 November 2026' };
+  function frozen(){ return location.hostname === MOVED.host; }
+  function frozenWarn(){
+    return msg('warn', 'This copy is read-only — the IRR Calculator moved to the hub’s Vault on ' + MOVED.date +
+      '. <a href="https://tools.performanceproperty.com.au/tools/irr-calculator.html">Make the change there</a>.');
+  }
   (function movedNote(){
+    var bar = $('movedBar'); if (bar) bar.hidden = !frozen();
     var d = $('movedDialog'); if (!d) return;
     /* the buttons work wherever the dialog is; only the showing is keyed
        to the host, so a harness can open it by hand and still close it */
     var shut = function(){ if (d.open) d.close(); };
     $('mvClose').addEventListener('click', shut);
-    $('mvStay').addEventListener('click', shut);
+    $('mvGo').addEventListener('click', function(){ location.href = 'https://tools.performanceproperty.com.au/tools/irr-calculator.html'; });
     if (location.hostname !== 'pp-research.github.io') return;
     try { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); } catch (e) {}
   })();
