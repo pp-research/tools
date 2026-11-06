@@ -5475,10 +5475,10 @@ var MHP_FROM='1980-03', MHP={
     };
     /* ── eight cards, two rows of four ──
        The top row is the result: what the book returned. The bottom row is
-       what it was made of. The two price medians carry their own dates now
-       rather than having a card each — a date is an attribute of the price it
-       belongs to, and splitting them put a figure on screen next to a date
-       that belonged to a different property.
+       what it was made of. The price medians carry no date: the day the
+       property on a median price changed hands read as a "median date", which
+       is a different thing - the Median dates card strikes that one the way
+       the Growth comparison's method B does, so the two tabs agree.
 
        Each median is struck over its OWN count, not over the property count:
        a property with no price filled in is left out of a price median, and a
@@ -5495,6 +5495,20 @@ var MHP_FROM='1980-03', MHP={
         joinNote(countOf(vals.length, one, many),
                  span(vals, function(v){ return audShort(v); })));
     };
+    /* The median purchase and sale dates, struck the way the Growth
+       comparison's method B strikes them: the middle date of the sold,
+       not-archived set; on an even count BOTH middle dates, shown as a span,
+       because a midpoint is a day nothing happened on. The same set method B
+       reads, so this card and that tab say the same thing. */
+    var dated = data.filter(function(d){ return kindOf(d.e) === 'sold' && Number(d.e.purchasePrice) > 0; });
+    var midLabel = function(sp){
+      if (!sp) return '—';
+      var a = new Date(sp.lo), b = new Date(sp.hi);
+      if (sp.lo === sp.hi) return dLabel(a);
+      var sameYear = a.getUTCFullYear() === b.getUTCFullYear();
+      return (sameYear ? a.getUTCDate() + ' ' + MONTHS[a.getUTCMonth()] : dLabel(a)) + ' – ' + dLabel(b);
+    };
+    var medBuy = gcMidSpan(dated, 'purchaseDate'), medSell = gcMidSpan(dated, 'soldDate');
     var h = '<div class="kpis">'+
       card('Median IRR', irrs.length ? pct(median(irrs)) : '—',
            'half the book did better', 'lead')+
@@ -5510,7 +5524,11 @@ var MHP_FROM='1980-03', MHP={
       priceCard('Median sale price', sells, 'sale', 'sales')+
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
-      card('Properties', sold,
+      card('Median dates',
+           '<ul class="k-cmp">' +
+             '<li><span>Bought</span><b>' + midLabel(medBuy) + '</b></li>' +
+             '<li><span>Sold</span><b>' + midLabel(medSell) + '</b></li></ul>',
+           'median date first (method B) · ' + sold + ' propert' + (sold === 1 ? 'y' : 'ies') + ' · ' +
            winners + ' profitable of ' + nets.length +
            (heldN ? ' · ' + heldN + ' held' : '') +
            (sold - nets.length - heldN > 0
@@ -10128,6 +10146,12 @@ var MHP_FROM='1980-03', MHP={
     L.push(['Median IRR', median(irrs)]);
     L.push(['Median purchase price', median(buys)]);
     L.push(['Median sale price', median(sells)]);
+    /* method B, as the card: a span on an even count, written as two ISO
+       dates so a spreadsheet can read either end */
+    var datedX = data.filter(function(d){ return kindOf(d.e) === 'sold' && Number(d.e.purchasePrice) > 0; });
+    var spanIso = function(sp){ return sp ? (sp.lo === sp.hi ? iso(new Date(sp.lo)) : iso(new Date(sp.lo)) + ' to ' + iso(new Date(sp.hi))) : ''; };
+    L.push(['Median purchase date (method B)', spanIso(gcMidSpan(datedX, 'purchaseDate'))]);
+    L.push(['Median sale date (method B)', spanIso(gcMidSpan(datedX, 'soldDate'))]);
     L.push(['Median hold period (yrs)', median(holds)]);
     L.push(['Median CAGR', median(cagrs)]);
     L.push(['Median return', median(rets)]);
