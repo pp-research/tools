@@ -4674,11 +4674,6 @@ var MHP_FROM='1980-03', MHP={
     return { median: median(vals), n: vals.length, skipped: skipped, carried: carried,
              kinds: kinds, first: new Date(days[0]), last: new Date(days[days.length - 1]) };
   }
-  function midDay(m){
-    if (!m || !m.days.length) return null;
-    var d = new Date(m.days[0]);
-    return isFinite(d.getTime()) ? d : null;
-  }
   var IRR_BINS = [
     { lo:-Infinity, hi:-0.30,    label:'under −30%',  full:'under −30%' },
     { lo:-0.30,     hi:-0.20,    label:'−30 to −20',  full:'−30% to −20%' },
@@ -5467,38 +5462,9 @@ var MHP_FROM='1980-03', MHP={
     var joinNote = function(){
       return [].slice.call(arguments).filter(Boolean).join(' · ');
     };
-    /* ── which property the median price actually is ──
-       A median is a number; it only sometimes belongs to a property. On an
-       even count it is the mean of the two middle ones and belongs to neither,
-       and on any count several properties can share the middle price. Rather
-       than leave that to be discovered by counting rows in the register, the
-       card names the date it changed hands — or both dates, or how many share
-       the price — so the figure can be checked against the list. */
-    /* The date the median price belongs to. One property → its own, named
-       outright. Several → the earliest of them, with the rest in the list
-       below; "earliest" rather than a midpoint because a midpoint is a day
-       nothing happened on and no use for reading a market figure off. */
-    var whenNote = function(m, verb){
-      if (!m || !m.days.length) return '';
-      var first = dLabel(new Date(m.days[0]));
-      return m.at.length === 1 ? verb + ' ' + first : 'earliest ' + first;
-    };
-    /* date — price, one line each, for every property the median price was
-       read off. This is the working behind the figure, so nothing is dropped. */
-    var dateList = function(m, pk){
-      if (!m) return '';
-      return m.at.map(function(x){
-        var v = Number(x.e[pk]);
-        return '<li>' + (x.t === null ? '<span class="faint">no date</span>' : dLabel(new Date(x.t))) +
-               ' — ' + ((isFinite(v) && v > 0) ? aud(v) : '<span class="faint">no price</span>') + '</li>';
-      }).join('');
-    };
-    var buyMid  = medianRow(data, 'purchasePrice', 'purchaseDate');
-    var sellMid = medianRow(data, 'soldPrice', 'soldDate');
 
-    /* Ten cards: two full rows of four and a closing pair, with each date
-       beside the price it belongs to so purchase and sale read as one thing
-       each. "Profitable" rides along as the note on the count. */
+    /* Ten cards: two full rows of four and a closing pair. "Profitable" rides
+       along as the note on the count. */
     var card = function(label, value, note, cls, list){
       return '<div class="kpi'+(cls?' '+cls:'')+'">'+
         '<div class="k-label">'+label+'</div>'+
@@ -5519,16 +5485,15 @@ var MHP_FROM='1980-03', MHP={
        held one has no sale price at all. Counting to the middle row of the
        register to check a median lands on the wrong row unless you know which
        number it was struck over, so every one of them says. */
-    var priceCard = function(label, vals, m, one, many, pk, verb){
+    /* No date under a median price. The card used to name the day the
+       property on the median price changed hands, and list every property
+       sharing it - the working behind the figure. Read quickly it was a
+       "median date", which the Growth comparison strikes quite differently,
+       and two medians that look alike and are not is worse than one. */
+    var priceCard = function(label, vals, one, many){
       return card(label, vals.length ? aud(median(vals)) : '—',
         joinNote(countOf(vals.length, one, many),
-                 span(vals, function(v){ return audShort(v); }),
-                 whenNote(m, verb)),
-        '',
-        /* the list is the working, so it only earns its place when there is
-           more than one row behind the figure — with a single property the
-           note above already names its date */
-        (m && m.at.length > 1) ? dateList(m, pk) : '');
+                 span(vals, function(v){ return audShort(v); })));
     };
     var h = '<div class="kpis">'+
       card('Median IRR', irrs.length ? pct(median(irrs)) : '—',
@@ -5541,10 +5506,8 @@ var MHP_FROM='1980-03', MHP={
            'sold over purchase')+
       card('Median CAGR', cagrs.length ? pct(median(cagrs)) : '—',
            'compounded over the hold')+
-      priceCard('Median purchase price', buys, buyMid, 'price', 'prices',
-                'purchasePrice', 'bought')+
-      priceCard('Median sale price', sells, sellMid, 'sale', 'sales',
-                'soldPrice', 'sold')+
+      priceCard('Median purchase price', buys, 'price', 'prices')+
+      priceCard('Median sale price', sells, 'sale', 'sales')+
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Properties', sold,
@@ -10163,16 +10126,8 @@ var MHP_FROM='1980-03', MHP={
     L.push(['Properties', data.length]);
     L.push(['Profitable', nets.filter(function(v){ return v>0; }).length, 'of', nets.length]);
     L.push(['Median IRR', median(irrs)]);
-    /* The same pairing the tab shows: the median price, then the date the
-       properties it was read off changed hands. Dates written plain ISO so the
-       column sorts in a spreadsheet instead of reading as text. */
-    var buyMid = medianRow(data, 'purchasePrice', 'purchaseDate');
-    var sellMid = medianRow(data, 'soldPrice', 'soldDate');
-    var midIso = function(m){ var d = midDay(m); return d ? iso(d) : ''; };
     L.push(['Median purchase price', median(buys)]);
-    L.push(['Median purchase date', midIso(buyMid)]);
     L.push(['Median sale price', median(sells)]);
-    L.push(['Median sale date', midIso(sellMid)]);
     L.push(['Median hold period (yrs)', median(holds)]);
     L.push(['Median CAGR', median(cagrs)]);
     L.push(['Median return', median(rets)]);
