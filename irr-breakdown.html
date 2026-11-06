@@ -9182,7 +9182,7 @@ var MHP_FROM='1980-03', MHP={
         'to ask about.</p></div>';
       return;
     }
-    var canWrite = (share.canWrite !== false);
+    var canWrite = !frozen() && (share.canWrite !== false);
     var body = rs.map(function(r){
       var h = r.hit;
       /* With more than one candidate there is no "the" price, and showing the
@@ -9683,6 +9683,7 @@ var MHP_FROM='1980-03', MHP={
   }
   /* take what is in the fields, make it what is in force, and write it down */
   function commitAssumptions(){
+    if (frozen()) { $('messages').innerHTML = frozenWarn(); return; }
     committedOpts = fieldOpts();
     saveAssumptions();
   }
@@ -9716,6 +9717,7 @@ var MHP_FROM='1980-03', MHP={
     $('messages').innerHTML = msg('ok','Assumptions are back to the workbook defaults.');
   }
   function applyAssumptions(){
+    if (frozen()) { $('messages').innerHTML = frozenWarn(); return; }
     if (!assumptionsDirty()) return;
     var was = committedOpts;
     commitAssumptions();
@@ -11394,6 +11396,10 @@ var MHP_FROM='1980-03', MHP={
        syncCategoryControls — both conditions, in both places. */
     var ren = $('btnRenameCat'); if (ren) ren.hidden = ro || !activeCity;
     document.body.classList.toggle('read-only', ro);
+    /* the Calculation tab's Save is allowed signed-out on a working copy
+       (it saves to this browser); on the frozen copy there is nothing it
+       could save to */
+    var sv = $('btnSave'); if (sv && frozen()) sv.hidden = true;
     /* The button says everything the sentence did: if it offers you a sign-in,
        you cannot edit yet. */
     var ab = $('btnShareAuth'); if (ab) ab.hidden = !(share.db || share.sb);
