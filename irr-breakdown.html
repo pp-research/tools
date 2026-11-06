@@ -2149,6 +2149,25 @@ details .body strong{color:var(--text)}
           </div>
         </div>
       </dialog>
+      <!-- Shown on every load of the pp-research copy only (see movedNote):
+           this calculator now lives in the hub's Vault, and a change made
+           here is a change made in the wrong register. -->
+      <dialog class="modal modal-sm" id="movedDialog" aria-labelledby="mv-h">
+        <div class="modal-inner">
+          <div class="modal-head">
+            <h2 id="mv-h">This calculator has moved</h2>
+            <button type="button" class="modal-x" id="mvClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>The IRR Calculator is now merged into the hub&rsquo;s <strong>Vault</strong>. Please make all changes there, so the shared register stays one.</p>
+            <p class="faint">This copy is kept for reference. Anything recorded here does not reach the hub.</p>
+          </div>
+          <div class="modal-foot">
+            <a class="btn-primary" id="mvGo" href="https://tools.performanceproperty.com.au/tools/irr-calculator.html">Open the hub IRR Calculator</a>
+            <button type="button" class="btn-ghost" id="mvStay">Stay here</button>
+          </div>
+        </div>
+      </dialog>
     </div>
   </div>
 </div>
@@ -11573,6 +11592,21 @@ var MHP_FROM='1980-03', MHP={
         }, function(){ /* terminal: keep working locally */ });
       });
     }).catch(function(){});
+  })();
+
+  /* The pp-research copy, and only that copy: the hub serves this same file
+     and must never announce its own retirement, and a local harness is not
+     pp-research. Every load, by request - there is no "don't show again",
+     because the point is that nobody works here by habit. */
+  (function movedNote(){
+    var d = $('movedDialog'); if (!d) return;
+    /* the buttons work wherever the dialog is; only the showing is keyed
+       to the host, so a harness can open it by hand and still close it */
+    var shut = function(){ if (d.open) d.close(); };
+    $('mvClose').addEventListener('click', shut);
+    $('mvStay').addEventListener('click', shut);
+    if (location.hostname !== 'pp-research.github.io') return;
+    try { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); } catch (e) {}
   })();
 
   window.runSelfTest = function(){
