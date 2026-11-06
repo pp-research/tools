@@ -483,6 +483,16 @@ button{
 }
 .moved-bar{margin:0 0 var(--sp-3);padding:10px 14px;border-radius:10px;background:var(--accent-soft,rgba(0,160,180,.12));color:var(--ink,inherit);font-size:13px;line-height:18px}
 .moved-bar a{font-weight:600}
+/* The frozen copy hides every control that changes the register or the
+   queue. Each of them is refused on press anyway (putProps asks frozen()
+   first); hiding them is so the page does not look like somewhere to work.
+   Copy, Open, Export and the views stay - reading is what this copy is for. */
+body.frozen [data-edit],body.frozen [data-aside],body.frozen [data-del],body.frozen [data-pick],
+body.frozen [data-rev-rec],body.frozen [data-rev-arc],body.frozen [data-rev-del],body.frozen [data-rev],
+body.frozen #revActions,body.frozen #revAll,body.frozen #selBar,body.frozen #btnFoundSend,body.frozen #btnPutBack,
+body.frozen #histBody button,body.frozen #bmSetup,body.frozen #btnBmSetup,
+body.frozen #btnChkSheet,body.frozen #btnChkAdl,body.frozen #btnChkLoadBig,body.frozen #btnChkTrackBig,body.frozen #btnChkClear,
+body.frozen #btnSave,body.frozen #btnSaveAssump,body.frozen #btnBookImport{display:none !important}
 .btn-primary{background-color:var(--grad-accent-base);background-image:var(--grad-accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
 .btn-primary:hover{background-color:var(--grad-accent-hover-base);background-image:var(--grad-accent-hover);color:var(--on-accent-deep)}
 .btn-primary:active{background-color:var(--grad-accent-active-base);background-image:var(--grad-accent-active);color:var(--on-accent-deep);box-shadow:none}
@@ -11623,6 +11633,7 @@ var MHP_FROM='1980-03', MHP={
   }
   (function movedNote(){
     var bar = $('movedBar'); if (bar) bar.hidden = !frozen();
+    document.body.classList.toggle('frozen', frozen());
     var d = $('movedDialog'); if (!d) return;
     /* the buttons work wherever the dialog is; only the showing is keyed
        to the host, so a harness can open it by hand and still close it */
