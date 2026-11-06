@@ -4352,7 +4352,7 @@ window.stopCheck=false;
                       : mhpLook(city || activeCity, new Date(t), type);
   }
   function deriveOne(e, opts){
-    var d = { e:e, irr:null, net:null, hold:null, held:isHeld(e),
+    var d = { e:e, s:null, irr:null, net:null, hold:null, held:isHeld(e),
               mkBuy:null, mkSell:null, vsMkt:null, ourCagr:null, mktCagr:null,
               ourTotal:null, mktTotal:null, vsMktTotal:null,
               lga:'', lgaBuy:null, lgaSell:null, lgaTotal:null, vsLgaTotal:null,
@@ -4360,6 +4360,7 @@ window.stopCheck=false;
     if (d.held) return d;          /* nothing to discount until there is a sale */
     try {
       var r = window.IRRBreakdown.computeBreakdown(e, opts);
+      d.s = r.summary;
       d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears;
       /* What the market did over THIS property's own months — the only
          comparison where both sides faced the same years. Per year, because
@@ -9521,24 +9522,39 @@ var MHP_FROM='1980-03', MHP={
     if (!all.length) { $('messages').innerHTML = msg('warn', activeCity
       ? 'Nothing is filed under ' + cityLabel() + ' to export.' : 'No properties to export yet.'); return; }
     var f = readFilters(), xOpts = readOpts();
-    var derived = filterEntries(all, f).map(function(e){
-      var d = { e:e, irr:null, net:null, hold:null, s:null, held:isHeld(e) };
-      if (d.held) return d;
-      try { var r = window.IRRBreakdown.computeBreakdown(e, xOpts);
-            d.s = r.summary; d.irr = r.summary.irr; d.net = r.summary.netProfit; d.hold = r.summary.holdYears; }
-      catch (err) {}
-      return d;
-    });
+    /* The same derivation the register draws from, so the market and council
+       figures in the file are the ones on screen - not a second reading that
+       could drift from the first. */
+    var derived = filterEntries(all, f).map(function(e){ return deriveOne(e, xOpts); });
     var list = derived.filter(function(d){ return passDerived(d, f, false) && passDerived(d, f, true); });
     if (!list.length) { $('messages').innerHTML = msg('warn','Nothing matches the current filters, so there is nothing to export.'); return; }
     /* The stored fields first, the computed ones last. Everything the register
        holds about a property is in here, so an export is a full record and
        re-importing one restores it — which it would not if the sale's source,
        its link or the archive reason were left out. */
+    /* The two views the register can show beside the sale - vs Market and vs
+       Council - were not in the file at all, so an export of the register was
+       not the register. Both sets ride along, as the raw figures the cells are
+       made from: the growth columns and the two "vs" columns are fractions,
+       like IRR, so a spreadsheet can format them as percentages itself. */
     var L = [['Property','Capital city','Property type','Scope','Reason outside advice',
               'Purchase price','Purchase date','Sold price','Sold date',
               'Sold verified by','Sale record link','Sold check','Note',
-              'Hold period (yrs)','Gross profit','Net profit','IRR']];
+              'Hold period (yrs)','Gross profit','Net profit','IRR',
+              'Market at purchase','Market at sale','Market growth','vs Market',
+              'Council','Council at purchase','Council at sale','Council growth','vs Council',
+              'Market figure note']];
+    var nz = function(v){ return (v === null || v === undefined) ? '' : v; };
+    /* The register marks a borrowed month with an asterisk on the figure. A
+       star inside a number cell would stop it being a number, so the file
+       says it in words, in a column of its own. */
+    var carryNote = function(d){
+      var parts = [];
+      if (d.mkBuyCarried)  parts.push('purchase figure carried ' + d.mkBuyCarried + ' month' + (d.mkBuyCarried === 1 ? '' : 's'));
+      if (d.mkSellCarried) parts.push('sale figure carried ' + d.mkSellCarried + ' month' + (d.mkSellCarried === 1 ? '' : 's'));
+      return parts.join('; ');
+    };
+    var EMPTY_MKT = ['', '', '', '', '', '', '', '', '', ''];
     list.forEach(function(d){
       var e = d.e, s = d.s;
       var stored = [e.name, e.category||'', ptypeLabel(ptypeOf(e)),
@@ -9546,11 +9562,14 @@ var MHP_FROM='1980-03', MHP={
                     e.outsideReason||''];
       var extra = [verifiedOf(e), e.soldLink||'', e.soldCheck||'', e.note||''];
       if (s) L.push(stored.concat([s.purchasePrice, iso(s.purchaseDate), s.soldPrice, iso(s.soldDate)],
-                     extra, [s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr]));
+                     extra, [s.holdYears, s.grossProfit, s.netProfit, s.irr === null ? '' : s.irr],
+                     [nz(d.mkBuy), nz(d.mkSell), nz(d.mktTotal), nz(d.vsMktTotal),
+                      d.lga || '', nz(d.lgaBuy), nz(d.lgaSell), nz(d.lgaTotal), nz(d.vsLgaTotal),
+                      carryNote(d)]));
       /* held, or it would not compute: the stored figures, and the derived
          columns left empty rather than filled with something made up */
       else   L.push(stored.concat([e.purchasePrice, e.purchaseDate, e.soldPrice, e.soldDate],
-                     extra, ['', '', '', '']));
+                     extra, ['', '', '', ''], EMPTY_MKT));
     });
     /* The register and the archive are two tabs over one table, so exporting
        both used to write the same filename twice and the second file quietly
