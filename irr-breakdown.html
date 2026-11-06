@@ -7555,8 +7555,7 @@ var MHP_FROM='1980-03', MHP={
     /* The sheet is shared, so a row has to say who put it there. The
        bookmarklet cannot ask — it runs on RP Data, signed in to nothing of
        ours — so the answer is baked in here, where the sign-in is known. */
-    var who = '';
-    try { who = (localStorage.getItem('pp-irr-email') || '').trim(); } catch (e) {}
+    var who = whoAmI();
     src = src.replace(/__SHEET_URL__/g, function(){ return url; })
              .replace(/__READ_KEY__/g,  function(){ return key; })
              .replace(/__CITY__/g,      function(){ return ''; })
@@ -7598,8 +7597,7 @@ var MHP_FROM='1980-03', MHP={
     /* syncCheckTab runs on every render, and rebuilding the bookmarklets means
        a regex pass and a URL-encode over twenty-five kilobytes. Nothing has
        changed most times. */
-    var who = '';
-    try { who = localStorage.getItem('pp-irr-email') || ''; } catch (e) {}
+    var who = whoAmI();
     var sig = (sheetUrl() || '-') + ' :: ' + who;
     if (sig === bmLast) return;
     bmLast = sig;
@@ -10623,8 +10621,7 @@ var MHP_FROM='1980-03', MHP={
   }
   function logChange(rows){
     if (!share.sb || share.canWrite === false || !rows || !rows.length) return;
-    var who = '';
-    try { who = localStorage.getItem('pp-irr-email') || ''; } catch (e) {}
+    var who = whoAmI();
     var body = rows.slice(0, 500).map(function(r){
       return { who: who, action: r.action, property: r.property || null, detail: r.detail || null };
     });
@@ -11367,6 +11364,31 @@ var MHP_FROM='1980-03', MHP={
     if (/^YOUR_/.test(c.url) || /^YOUR_/.test(c.key)) return null;   // not filled in yet
     return c;
   }
+  /* ══════════ WHO ══════════
+     The name that goes against a change, and against a row in the shared
+     sheet. This build asks for the address in its own sign-in dialog and
+     keeps it here; the hub build has no dialog - its appbar signs you in -
+     so there, nothing ever wrote this key and every change was logged as
+     nobody. The session has the address in both builds, so take it from
+     there and keep the dialog as one way of arriving at it rather than the
+     only one. */
+  function whoAmI(){
+    try { return (localStorage.getItem('pp-irr-email') || '').trim(); }
+    catch (e) { return ''; }
+  }
+  /* Called wherever a session turns up: at startup, and again when one
+     arrives or goes. Signing out does not forget it - the dialog offers it
+     back as the address to sign in with, and the bookmarklet you dragged
+     yesterday is still yours. */
+  function rememberWho(session){
+    var e = '';
+    try { e = ((session && session.user && session.user.email) || '').trim(); }
+    catch (x) { e = ''; }
+    if (!e || e === whoAmI()) return;
+    try { localStorage.setItem('pp-irr-email', e); } catch (x) {}
+    /* the bookmarklets bake it in, so the ones on the page are now stale */
+    try { syncBm(); } catch (x) {}
+  }
   function authLabel(){
     var b = $('btnShareAuth'); if (!b || !share.sb) return;
     b.hidden = false;
@@ -11431,6 +11453,7 @@ var MHP_FROM='1980-03', MHP={
 
     share.sb.auth.getSession().then(function(r){
       share.canWrite = !!(r && r.data && r.data.session);
+      rememberWho(r && r.data && r.data.session);
       applyShareMode(); authLabel();
       loadSharedSheet();      // the sheet address, for anyone who can sign in
       return load();
@@ -11486,6 +11509,7 @@ var MHP_FROM='1980-03', MHP={
     share.sb.auth.onAuthStateChange(function(evt, session){
       var was = share.canWrite;
       share.canWrite = !!session;
+      rememberWho(session);
       if (was !== share.canWrite) { applyShareMode(); authLabel(); }
       if (share.canWrite) loadSharedSheet();
     });
