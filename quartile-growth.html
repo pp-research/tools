@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quartile growth</title>
+<meta name="description" content="Cotality lower-quartile, median and upper-quartile sale prices for Adelaide and Brisbane, with the IRR register's hold period marked and each sold property's growth set against the quartile it was bought in.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+<style>
+/* ── tokens: brand first, chart roles second ───────────────────────────── */
+:root{
+  color-scheme: light;
+  --teal:#00A0B4; --dark-teal:#171B24; --dark-gray:#63666A; --light-gray:#D9D9D6;
+  --bg:#FFFFFF; --surface:#FFFFFF; --card:#F7F7F6; --line:#D9D9D6;
+  --ink:#171B24; --ink-2:#63666A; --ink-3:#8A8D91;
+  --grid:#ECECEA; --axis:#C9C9C5;
+  /* quartile lines: one hue, three steps (celestial 500/700/950, validated light) */
+  --q25:#54A6DE; --q50:#2478BC; --q75:#144167;
+  /* the property, against the three: warm vs cool (yellow 700); below 3:1 on
+     white, so every bar carries its own label and the table view is a tab */
+  --prop:#E08A00;
+  --band:rgba(0,160,180,.12); --band-edge:#00A0B4;
+  --pos:#3E7967; --neg:#E72347;
+  --focus:#00A0B4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#171B24; --surface:#171B24; --card:#1F2430; --line:#2E3442;
+    --ink:#F2F2F0; --ink-2:#B8BBC2; --ink-3:#8A8D91;
+    --grid:#262B38; --axis:#3A4152;
+    --q25:#BAD9F2; --q50:#54A6DE; --q75:#216DAB;   /* celestial 200/500/800, validated dark */
+    --prop:#FFB947;
+    --band:rgba(0,196,245,.14); --band-edge:#00C4F5;
+    --pos:#5DAC96; --neg:#F17E93;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#171B24; --surface:#171B24; --card:#1F2430; --line:#2E3442;
+  --ink:#F2F2F0; --ink-2:#B8BBC2; --ink-3:#8A8D91;
+  --grid:#262B38; --axis:#3A4152;
+  --q25:#BAD9F2; --q50:#54A6DE; --q75:#216DAB;
+  --prop:#FFB947;
+  --band:rgba(0,196,245,.14); --band-edge:#00C4F5;
+  --pos:#5DAC96; --neg:#F17E93;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Montserrat,system-ui,sans-serif}
+body{padding:0 16px 48px}
+.wrap{max-width:1180px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0 8px;flex-wrap:wrap}
+header img{height:36px}
+h1{font-size:22px;line-height:28px;margin:0;font-weight:600}
+h2{font-size:16px;line-height:22px;margin:0 0 4px;font-weight:600}
+h3{font-size:14px;line-height:20px;margin:0 0 4px;font-weight:600}
+p{margin:0 0 8px}
+.lede{color:var(--ink-2);max-width:72ch}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:12px 0 16px}
+.tabs button{appearance:none;background:none;border:0;border-bottom:3px solid transparent;color:var(--ink-2);font:inherit;font-weight:600;padding:10px 14px;cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--teal)}
+.tabs button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;border-radius:4px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg label{padding:5px 12px;font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:checked+label{background:var(--teal);color:#fff}
+.seg input:focus-visible+label{outline:2px solid var(--focus);outline-offset:-2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 16px}
+.card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:4px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:14px;height:3px;border-radius:2px}
+.sw.bar{height:10px;border-radius:3px}
+.sw.band{height:10px;background:var(--band);border:1px solid var(--band-edge);border-radius:2px}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;line-height:16px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:160px;z-index:2;display:none}
+.tip b{font-weight:600}
+.tip .k{color:var(--ink-2)}
+.note{color:var(--ink-2);font-size:12px;line-height:17px}
+.muted{color:var(--ink-3)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kpi .v{font-size:20px;line-height:26px;font-weight:600}
+.kpi .l{font-size:12px;color:var(--ink-2)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:600;color:var(--ink-2);white-space:nowrap;position:sticky;top:0;background:var(--card)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl{max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.view{display:inline-flex;gap:4px}
+.view button{appearance:none;font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);padding:4px 10px;border-radius:999px;cursor:pointer}
+.view button[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+.src{border:1px dashed var(--line);border-radius:10px;padding:12px;margin:0 0 16px;font-size:12.5px;color:var(--ink-2)}
+.src strong{color:var(--ink)}
+.src input{font:inherit}
+.hidden{display:none !important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:640px){ body{padding:0 16px 32px} .kpi .v{font-size:17px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Quartile growth</h1>
+      <p class="lede">Cotality lower-quartile, median and upper-quartile sale prices (rolling 12 months) for each capital, with the register&rsquo;s hold period marked &mdash; and each sold property set against the quartile it was bought in.</p>
+    </div>
+    <img id="logo" alt="Performance Property" src="https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/pp-logo-standard.png">
+  </header>
+
+  <div class="src" id="src">
+    <strong>Register:</strong> <span id="srcLine">looking for the IRR Calculator&rsquo;s saved list on this site&hellip;</span>
+    <div class="row" style="margin-top:6px">
+      <label>Or load an <em>Export everything</em> file: <input type="file" id="bookFile" accept="application/json,.json"></label>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:space-between">
+    <div class="tabs" role="tablist" aria-label="Capital city">
+      <button role="tab" id="tab-adelaide" aria-selected="true" aria-controls="panel" data-city="Adelaide">Adelaide</button>
+      <button role="tab" id="tab-brisbane" aria-selected="false" aria-controls="panel" data-city="Brisbane">Brisbane</button>
+    </div>
+    <div class="seg" role="group" aria-label="Property type for the market lines">
+      <input type="radio" name="ptype" id="pt-H" value="H" checked><label for="pt-H">Houses</label>
+      <input type="radio" name="ptype" id="pt-U" value="U"><label for="pt-U">Units</label>
+    </div>
+  </div>
+
+  <div id="panel" role="tabpanel">
+    <!-- ── 1. the three lines, and the hold period ── -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 id="c1Title">Sale price quartiles, rolling 12 months</h2>
+          <p class="note" id="c1Sub"></p>
+        </div>
+        <div class="view" role="group" aria-label="Chart or table">
+          <button type="button" data-view="c1" data-mode="chart" aria-pressed="true">Chart</button>
+          <button type="button" data-view="c1" data-mode="table" aria-pressed="false">Table</button>
+        </div>
+      </div>
+      <div class="legend" id="c1Legend"></div>
+      <div class="chart" id="c1Chart"><div class="tip" id="c1Tip"></div></div>
+      <div class="tbl hidden" id="c1Table"></div>
+      <p class="note" id="c1Note" style="margin-top:8px"></p>
+    </section>
+
+    <!-- ── 2. each property against its quartile ── -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Growth against the quartile each property was bought in</h2>
+          <p class="note">A property is placed by its purchase price against the three lines in its purchase month. Growth is total, purchase to sale, set against what each line did over the same months.</p>
+        </div>
+        <div class="view" role="group" aria-label="Chart or table">
+          <button type="button" data-view="c2" data-mode="chart" aria-pressed="true">Chart</button>
+          <button type="button" data-view="c2" data-mode="table" aria-pressed="false">Table</button>
+        </div>
+      </div>
+      <div class="kpis" id="c2Kpis"></div>
+      <div id="c2ChartWrap">
+        <h3>By quartile group &mdash; median growth</h3>
+        <div class="legend" id="c2Legend"></div>
+        <div class="chart" id="c2Chart"><div class="tip" id="c2Tip"></div></div>
+        <h3 style="margin-top:16px">Each property &mdash; growth beyond its own quartile line</h3>
+        <p class="note" id="c3Sub"></p>
+        <div class="chart" id="c3Chart"><div class="tip" id="c3Tip"></div></div>
+      </div>
+      <div class="tbl hidden" id="c2Table"></div>
+      <p class="note" id="c2Note" style="margin-top:8px"></p>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ══════════ DATA ══════════
+   Cotality Market Trends, "Market Trends (CapitalCities)" sheet, one workbook a
+   month from 2018-07 to 2026-07: 25th percentile, median and 75th percentile
+   sale price over the trailing 12 months, houses and units, Adelaide and
+   Brisbane. Built from the monthly workbooks in projects/Corelogic Filles. */
+var Q = {"Brisbane":{"H":{"2018-07":{"p25":411000,"p50":538000,"p75":717000},"2018-08":{"p25":415000,"p50":550000,"p75":730000},"2018-09":{"p25":415000,"p50":550000,"p75":730000},"2018-10":{"p25":416000,"p50":552000,"p75":735000},"2018-11":{"p25":416000,"p50":550000,"p75":732000},"2018-12":{"p25":418000,"p50":555000,"p75":737500},"2019-01":{"p25":420000,"p50":555000,"p75":740000},"2019-02":{"p25":420000,"p50":556000,"p75":740000},"2019-03":{"p25":420000,"p50":557000,"p75":740000},"2019-04":{"p25":420000,"p50":560000,"p75":740000},"2019-05":{"p25":420000,"p50":560000,"p75":740000},"2019-06":{"p25":420000,"p50":560000,"p75":740000},"2019-07":{"p25":420000,"p50":558000,"p75":740000},"2019-08":{"p25":421742,"p50":560000,"p75":740000},"2019-09":{"p25":422000,"p50":558000,"p75":740000},"2019-10":{"p25":422000,"p50":560000,"p75":740000},"2019-11":{"p25":422500,"p50":560000,"p75":745000},"2019-12":{"p25":424000,"p50":560000,"p75":748000},"2020-01":{"p25":425000,"p50":562000,"p75":750000},"2020-02":{"p25":424000,"p50":562500,"p75":750000},"2020-03":{"p25":415000,"p50":550000,"p75":730000},"2020-04":{"p25":415000,"p50":550000,"p75":733000},"2020-05":{"p25":415000,"p50":550000,"p75":734750},"2020-06":{"p25":415000,"p50":550000,"p75":735000},"2020-07":{"p25":415000,"p50":550000,"p75":740000},"2020-08":{"p25":417000,"p50":550375,"p75":741000},"2020-09":{"p25":420000,"p50":555000,"p75":748000},"2020-10":{"p25":420000,"p50":557500,"p75":750000},"2020-11":{"p25":421000,"p50":560000,"p75":752000},"2020-12":{"p25":425000,"p50":565000,"p75":760000},"2021-01":{"p25":426000,"p50":570000,"p75":761500},"2021-02":{"p25":430000,"p50":573000,"p75":770000},"2021-03":{"p25":435000,"p50":580000,"p75":782500},"2021-04":{"p25":435000,"p50":585000,"p75":790000},"2021-05":{"p25":440000,"p50":590000,"p75":805000},"2021-06":{"p25":445000,"p50":600000,"p75":815000},"2021-07":{"p25":450000,"p50":605944,"p75":826000},"2021-08":{"p25":450000,"p50":615000,"p75":840000},"2021-09":{"p25":457000,"p50":621000,"p75":852000},"2021-10":{"p25":469500,"p50":645000,"p75":886000},"2021-11":{"p25":475000,"p50":656000,"p75":904000},"2021-12":{"p25":482500,"p50":667000,"p75":917500},"2022-01":{"p25":488000,"p50":675000,"p75":925000},"2022-02":{"p25":499000,"p50":687816,"p75":950000},"2022-03":{"p25":506000,"p50":700000,"p75":965000},"2022-04":{"p25":520000,"p50":715000,"p75":980000},"2022-05":{"p25":530000,"p50":725000,"p75":1000000},"2022-06":{"p25":540000,"p50":740000,"p75":1010000},"2022-07":{"p25":550000,"p50":750000,"p75":1025000},"2022-08":{"p25":560000,"p50":755000,"p75":1050000},"2022-09":{"p25":565500,"p50":763000,"p75":1050000},"2022-10":{"p25":573000,"p50":765000,"p75":1050000},"2022-11":{"p25":575000,"p50":765000,"p75":1050000},"2022-12":{"p25":580000,"p50":765000,"p75":1050000},"2023-01":{"p25":580000,"p50":765000,"p75":1050000},"2023-02":{"p25":582000,"p50":761000,"p75":1040000},"2023-03":{"p25":585000,"p50":760000,"p75":1030000},"2023-04":{"p25":585000,"p50":760000,"p75":1025000},"2023-05":{"p25":585000,"p50":760000,"p75":1025000},"2023-06":{"p25":590000,"p50":760000,"p75":1025000},"2023-07":{"p25":590000,"p50":765000,"p75":1031500},"2023-08":{"p25":599000,"p50":770000,"p75":1042000},"2023-09":{"p25":600000,"p50":775000,"p75":1050000},"2023-10":{"p25":605500,"p50":780000,"p75":1060000},"2023-11":{"p25":615000,"p50":790000,"p75":1075000},"2023-12":{"p25":620000,"p50":799000,"p75":1090000},"2024-01":{"p25":625000,"p50":800000,"p75":1100000},"2024-02":{"p25":635000,"p50":810000,"p75":1102666},"2024-03":{"p25":645000,"p50":820000,"p75":1125000},"2024-04":{"p25":650000,"p50":830000,"p75":1150000},"2024-05":{"p25":661000,"p50":840000,"p75":1162000},"2024-06":{"p25":670000,"p50":850000,"p75":1180000},"2024-07":{"p25":680000,"p50":855000,"p75":1187500},"2024-08":{"p25":690000,"p50":860000,"p75":1200000},"2024-09":{"p25":699500,"p50":865000,"p75":1200000},"2024-10":{"p25":701000,"p50":875000,"p75":1210000},"2024-11":{"p25":710000,"p50":882500,"p75":1225000},"2024-12":{"p25":715000,"p50":890000,"p75":1230000},"2025-01":{"p25":720000,"p50":895000,"p75":1240000},"2025-02":{"p25":727443,"p50":900000,"p75":1250000},"2025-03":{"p25":733000,"p50":903500,"p75":1250000},"2025-04":{"p25":740000,"p50":910000,"p75":1260000},"2025-05":{"p25":745000,"p50":915000,"p75":1270000},"2025-06":{"p25":750000,"p50":925000,"p75":1280000},"2025-07":{"p25":760000,"p50":935000,"p75":1290000},"2025-08":{"p25":770000,"p50":950000,"p75":1300000},"2025-09":{"p25":780000,"p50":960000,"p75":1320000},"2025-10":{"p25":790062,"p50":975000,"p75":1339999},"2025-11":{"p25":802000,"p50":990000,"p75":1350026},"2025-12":{"p25":815000,"p50":1000000,"p75":1370000},"2026-01":{"p25":824975,"p50":1010000,"p75":1380000},"2026-02":{"p25":838944,"p50":1035000,"p75":1400000},"2026-03":{"p25":850000,"p50":1050000,"p75":1411375},"2026-04":{"p25":861500,"p50":1075000,"p75":1432500},"2026-05":{"p25":875000,"p50":1100000,"p75":1450000},"2026-06":{"p25":885000,"p50":1100064,"p75":1465000},"2026-07":{"p25":900000,"p50":1120000,"p75":1480000}},"U":{"2018-07":{"p25":327000,"p50":410000,"p75":520000},"2018-08":{"p25":310000,"p50":386950,"p75":499000},"2018-09":{"p25":310000,"p50":385000,"p75":499250},"2018-10":{"p25":310000,"p50":385000,"p75":495000},"2018-11":{"p25":310000,"p50":385000,"p75":497500},"2018-12":{"p25":310000,"p50":385000,"p75":498582},"2019-01":{"p25":308000,"p50":385000,"p75":499000},"2019-02":{"p25":308000,"p50":385000,"p75":500000},"2019-03":{"p25":306000,"p50":383000,"p75":496500},"2019-04":{"p25":305000,"p50":382250,"p75":498000},"2019-05":{"p25":305000,"p50":380000,"p75":496000},"2019-06":{"p25":305000,"p50":380000,"p75":498875},"2019-07":{"p25":305000,"p50":382000,"p75":495000},"2019-08":{"p25":305000,"p50":385000,"p75":495000},"2019-09":{"p25":305000,"p50":385000,"p75":495000},"2019-10":{"p25":305000,"p50":385000,"p75":500000},"2019-11":{"p25":305000,"p50":385000,"p75":500000},"2019-12":{"p25":306062,"p50":387000,"p75":500000},"2020-01":{"p25":307750,"p50":389000,"p75":505000},"2020-02":{"p25":310000,"p50":390000,"p75":505000},"2020-03":{"p25":310000,"p50":390000,"p75":505000},"2020-04":{"p25":310000,"p50":390000,"p75":505000},"2020-05":{"p25":308625,"p50":390000,"p75":500000},"2020-06":{"p25":309000,"p50":390000,"p75":500000},"2020-07":{"p25":310000,"p50":390000,"p75":500000},"2020-08":{"p25":310000,"p50":390000,"p75":500000},"2020-09":{"p25":310000,"p50":390000,"p75":500000},"2020-10":{"p25":310000,"p50":390000,"p75":500000},"2020-11":{"p25":310000,"p50":391757,"p75":505000},"2020-12":{"p25":310000,"p50":395000,"p75":510000},"2021-01":{"p25":315000,"p50":398250,"p75":512500},"2021-02":{"p25":315000,"p50":400000,"p75":516000},"2021-03":{"p25":317000,"p50":405000,"p75":525000},"2021-04":{"p25":318500,"p50":405000,"p75":530000},"2021-05":{"p25":320000,"p50":410000,"p75":532500},"2021-06":{"p25":320000,"p50":410000,"p75":535000},"2021-07":{"p25":322550,"p50":415000,"p75":540000},"2021-08":{"p25":325000,"p50":416000,"p75":542000},"2021-09":{"p25":327000,"p50":420000,"p75":549000},"2021-10":{"p25":330000,"p50":420000,"p75":550000},"2021-11":{"p25":334688,"p50":425000,"p75":550000},"2021-12":{"p25":335500,"p50":428000,"p75":556000},"2022-01":{"p25":340000,"p50":430000,"p75":560000},"2022-02":{"p25":341000,"p50":435000,"p75":565000},"2022-03":{"p25":345000,"p50":440000,"p75":570000},"2022-04":{"p25":350000,"p50":445000,"p75":575000},"2022-05":{"p25":353000,"p50":450000,"p75":579000},"2022-06":{"p25":355000,"p50":450000,"p75":580000},"2022-07":{"p25":360000,"p50":453000,"p75":585000},"2022-08":{"p25":365000,"p50":457500,"p75":590000},"2022-09":{"p25":368000,"p50":460000,"p75":592000},"2022-10":{"p25":370000,"p50":462500,"p75":595000},"2022-11":{"p25":375000,"p50":465000,"p75":595000},"2022-12":{"p25":375000,"p50":465000,"p75":600000},"2023-01":{"p25":378925,"p50":467000,"p75":600000},"2023-02":{"p25":380000,"p50":470000,"p75":600000},"2023-03":{"p25":382000,"p50":472500,"p75":602000},"2023-04":{"p25":385000,"p50":475000,"p75":605000},"2023-05":{"p25":387200,"p50":476000,"p75":608000},"2023-06":{"p25":390000,"p50":480000,"p75":610000},"2023-07":{"p25":395000,"p50":485000,"p75":618000},"2023-08":{"p25":400000,"p50":490000,"p75":622250},"2023-09":{"p25":405000,"p50":495000,"p75":630000},"2023-10":{"p25":410000,"p50":500000,"p75":635000},"2023-11":{"p25":415000,"p50":505944,"p75":641000},"2023-12":{"p25":420000,"p50":511000,"p75":650000},"2024-01":{"p25":420000,"p50":518000,"p75":655000},"2024-02":{"p25":428500,"p50":525000,"p75":664000},"2024-03":{"p25":435000,"p50":535000,"p75":675000},"2024-04":{"p25":441000,"p50":545000,"p75":685000},"2024-05":{"p25":450000,"p50":552000,"p75":697000},"2024-06":{"p25":456340,"p50":560000,"p75":702000},"2024-07":{"p25":465000,"p50":570000,"p75":715000},"2024-08":{"p25":475000,"p50":581550,"p75":726500},"2024-09":{"p25":484000,"p50":591900,"p75":735000},"2024-10":{"p25":490000,"p50":602000,"p75":745000},"2024-11":{"p25":500000,"p50":610525,"p75":750000},"2024-12":{"p25":505000,"p50":620000,"p75":752000},"2025-01":{"p25":512500,"p50":625000,"p75":760000},"2025-02":{"p25":520000,"p50":635000,"p75":770000},"2025-03":{"p25":530000,"p50":642000,"p75":780000},"2025-04":{"p25":540000,"p50":650000,"p75":785000},"2025-05":{"p25":548000,"p50":660000,"p75":795000},"2025-06":{"p25":552000,"p50":670000,"p75":802000},"2025-07":{"p25":565000,"p50":680000,"p75":815000},"2025-08":{"p25":575000,"p50":688000,"p75":825000},"2025-09":{"p25":585000,"p50":700000,"p75":840000},"2025-10":{"p25":600000,"p50":710000,"p75":855000},"2025-11":{"p25":605000,"p50":720000,"p75":867000},"2025-12":{"p25":616000,"p50":730000,"p75":878000},"2026-01":{"p25":625000,"p50":740000,"p75":888000},"2026-02":{"p25":639000,"p50":752000,"p75":900000},"2026-03":{"p25":650000,"p50":765000,"p75":916000},"2026-04":{"p25":665000,"p50":780000,"p75":930000},"2026-05":{"p25":680000,"p50":790000,"p75":949000},"2026-06":{"p25":690000,"p50":800000,"p75":950000},"2026-07":{"p25":700000,"p50":810000,"p75":961100}}},"Adelaide":{"H":{"2018-07":{"p25":345200,"p50":459000,"p75":617500},"2018-08":{"p25":349000,"p50":473500,"p75":639000},"2018-09":{"p25":350000,"p50":475000,"p75":640000},"2018-10":{"p25":350000,"p50":475000,"p75":640000},"2018-11":{"p25":350000,"p50":479000,"p75":642500},"2018-12":{"p25":349125,"p50":475000,"p75":642000},"2019-01":{"p25":348000,"p50":475000,"p75":642000},"2019-02":{"p25":350000,"p50":476000,"p75":648000},"2019-03":{"p25":350000,"p50":479000,"p75":650000},"2019-04":{"p25":350000,"p50":479000,"p75":650000},"2019-05":{"p25":351000,"p50":480000,"p75":650000},"2019-06":{"p25":353375,"p50":480000,"p75":650000},"2019-07":{"p25":352000,"p50":480000,"p75":652000},"2019-08":{"p25":354980,"p50":480000,"p75":650000},"2019-09":{"p25":355000,"p50":484500,"p75":655000},"2019-10":{"p25":357500,"p50":485000,"p75":650000},"2019-11":{"p25":360000,"p50":485000,"p75":655000},"2019-12":{"p25":360000,"p50":486000,"p75":655000},"2020-01":{"p25":360000,"p50":485000,"p75":652500},"2020-02":{"p25":360000,"p50":486150,"p75":651000},"2020-03":{"p25":346500,"p50":465000,"p75":630000},"2020-04":{"p25":348000,"p50":465000,"p75":630325},"2020-05":{"p25":349000,"p50":467000,"p75":635000},"2020-06":{"p25":350000,"p50":468000,"p75":636125},"2020-07":{"p25":350000,"p50":469000,"p75":637500},"2020-08":{"p25":350000,"p50":471500,"p75":641000},"2020-09":{"p25":355000,"p50":477000,"p75":650000},"2020-10":{"p25":369000,"p50":490000,"p75":660000},"2020-11":{"p25":370000,"p50":493000,"p75":660000},"2020-12":{"p25":370000,"p50":493000,"p75":660000},"2021-01":{"p25":375000,"p50":500000,"p75":668000},"2021-02":{"p25":379000,"p50":500000,"p75":670000},"2021-03":{"p25":380000,"p50":507500,"p75":680000},"2021-04":{"p25":385000,"p50":510000,"p75":685000},"2021-05":{"p25":390000,"p50":515000,"p75":690062},"2021-06":{"p25":391000,"p50":520000,"p75":700000},"2021-07":{"p25":396000,"p50":525000,"p75":710000},"2021-08":{"p25":400000,"p50":530000,"p75":720000},"2021-09":{"p25":405000,"p50":535000,"p75":730000},"2021-10":{"p25":411000,"p50":543000,"p75":743500},"2021-11":{"p25":420000,"p50":551000,"p75":760000},"2021-12":{"p25":425000,"p50":560000,"p75":773550},"2022-01":{"p25":430000,"p50":570000,"p75":787000},"2022-02":{"p25":432000,"p50":578000,"p75":800000},"2022-03":{"p25":440000,"p50":585100,"p75":810000},"2022-04":{"p25":445000,"p50":595000,"p75":820000},"2022-05":{"p25":450000,"p50":605000,"p75":835000},"2022-06":{"p25":459750,"p50":617000,"p75":850000},"2022-07":{"p25":469000,"p50":626000,"p75":857000},"2022-08":{"p25":475000,"p50":635000,"p75":866000},"2022-09":{"p25":481125,"p50":640000,"p75":870000},"2022-10":{"p25":490000,"p50":650000,"p75":875000},"2022-11":{"p25":497000,"p50":650000,"p75":880000},"2022-12":{"p25":500000,"p50":655750,"p75":885000},"2023-01":{"p25":500000,"p50":655000,"p75":880000},"2023-02":{"p25":508000,"p50":660000,"p75":885000},"2023-03":{"p25":511000,"p50":660000,"p75":885000},"2023-04":{"p25":515500,"p50":665000,"p75":885000},"2023-05":{"p25":520000,"p50":670000,"p75":890000},"2023-06":{"p25":523375,"p50":672000,"p75":890000},"2023-07":{"p25":525000,"p50":675000,"p75":890000},"2023-08":{"p25":530000,"p50":680000,"p75":891000},"2023-09":{"p25":538000,"p50":687000,"p75":900000},"2023-10":{"p25":544000,"p50":695000,"p75":905000},"2023-11":{"p25":550000,"p50":700000,"p75":912500},"2023-12":{"p25":555667,"p50":710000,"p75":920000},"2024-01":{"p25":562000,"p50":715000,"p75":925000},"2024-02":{"p25":570000,"p50":720000,"p75":930000},"2024-03":{"p25":575500,"p50":725000,"p75":940000},"2024-04":{"p25":584150,"p50":730000,"p75":950000},"2024-05":{"p25":594000,"p50":740000,"p75":955000},"2024-06":{"p25":600000,"p50":750000,"p75":975000},"2024-07":{"p25":610000,"p50":759000,"p75":985000},"2024-08":{"p25":620000,"p50":765000,"p75":995000},"2024-09":{"p25":625000,"p50":770000,"p75":1000000},"2024-10":{"p25":632500,"p50":779000,"p75":1010000},"2024-11":{"p25":642000,"p50":785000,"p75":1030000},"2024-12":{"p25":650000,"p50":800000,"p75":1050000},"2025-01":{"p25":655000,"p50":802500,"p75":1060000},"2025-02":{"p25":660000,"p50":808000,"p75":1065000},"2025-03":{"p25":666008,"p50":818000,"p75":1077000},"2025-04":{"p25":672000,"p50":825000,"p75":1090000},"2025-05":{"p25":680000,"p50":830000,"p75":1100000},"2025-06":{"p25":685000,"p50":831500,"p75":1100000},"2025-07":{"p25":690000,"p50":837050,"p75":1105000},"2025-08":{"p25":700000,"p50":847000,"p75":1125000},"2025-09":{"p25":705000,"p50":850000,"p75":1134000},"2025-10":{"p25":710000,"p50":855000,"p75":1150000},"2025-11":{"p25":715000,"p50":861500,"p75":1160000},"2025-12":{"p25":728250,"p50":880000,"p75":1185000},"2026-01":{"p25":735000,"p50":890000,"p75":1200000},"2026-02":{"p25":740000,"p50":895600,"p75":1205000},"2026-03":{"p25":750000,"p50":901944,"p75":1222500},"2026-04":{"p25":755000,"p50":910000,"p75":1230000},"2026-05":{"p25":765000,"p50":920000,"p75":1245000},"2026-06":{"p25":775000,"p50":926000,"p75":1250000},"2026-07":{"p25":780000,"p50":935000,"p75":1260000}},"U":{"2018-07":{"p25":287000,"p50":380000,"p75":497000},"2018-08":{"p25":264750,"p50":330000,"p75":420000},"2018-09":{"p25":263625,"p50":330000,"p75":420000},"2018-10":{"p25":264000,"p50":330000,"p75":420000},"2018-11":{"p25":263000,"p50":329000,"p75":417500},"2018-12":{"p25":265000,"p50":331000,"p75":424500},"2019-01":{"p25":262000,"p50":330000,"p75":420750},"2019-02":{"p25":262000,"p50":330000,"p75":422400},"2019-03":{"p25":260000,"p50":332000,"p75":425000},"2019-04":{"p25":260000,"p50":335000,"p75":427000},"2019-05":{"p25":260000,"p50":335000,"p75":428000},"2019-06":{"p25":260000,"p50":335000,"p75":426000},"2019-07":{"p25":262000,"p50":338000,"p75":428700},"2019-08":{"p25":260100,"p50":338000,"p75":430000},"2019-09":{"p25":262000,"p50":338000,"p75":425000},"2019-10":{"p25":265000,"p50":340000,"p75":430000},"2019-11":{"p25":262125,"p50":340000,"p75":431350},"2019-12":{"p25":260000,"p50":338500,"p75":430000},"2020-01":{"p25":260000,"p50":337000,"p75":426000},"2020-02":{"p25":260000,"p50":335000,"p75":425000},"2020-03":{"p25":260000,"p50":339000,"p75":432000},"2020-04":{"p25":261000,"p50":339650,"p75":434388},"2020-05":{"p25":260000,"p50":338250,"p75":432000},"2020-06":{"p25":260000,"p50":337500,"p75":433556},"2020-07":{"p25":260000,"p50":335000,"p75":430000},"2020-08":{"p25":260000,"p50":332875,"p75":427625},"2020-09":{"p25":260000,"p50":340000,"p75":440000},"2020-10":{"p25":285000,"p50":375000,"p75":495000},"2020-11":{"p25":285000,"p50":375000,"p75":499000},"2020-12":{"p25":285000,"p50":377500,"p75":500000},"2021-01":{"p25":292500,"p50":388000,"p75":515000},"2021-02":{"p25":295000,"p50":389000,"p75":515000},"2021-03":{"p25":290000,"p50":386000,"p75":511900},"2021-04":{"p25":290000,"p50":385000,"p75":510000},"2021-05":{"p25":290000,"p50":385000,"p75":510000},"2021-06":{"p25":290050,"p50":385000,"p75":510000},"2021-07":{"p25":289150,"p50":380000,"p75":499000},"2021-08":{"p25":289000,"p50":380000,"p75":495000},"2021-09":{"p25":290000,"p50":380000,"p75":490000},"2021-10":{"p25":290000,"p50":379000,"p75":492000},"2021-11":{"p25":290000,"p50":380000,"p75":495000},"2021-12":{"p25":290000,"p50":380000,"p75":495000},"2022-01":{"p25":291500,"p50":380000,"p75":499000},"2022-02":{"p25":295000,"p50":385000,"p75":502875},"2022-03":{"p25":297500,"p50":389000,"p75":510000},"2022-04":{"p25":300000,"p50":390000,"p75":515000},"2022-05":{"p25":304250,"p50":395000,"p75":520000},"2022-06":{"p25":306000,"p50":396000,"p75":520000},"2022-07":{"p25":310000,"p50":400000,"p75":526000},"2022-08":{"p25":315000,"p50":401500,"p75":530000},"2022-09":{"p25":319000,"p50":407000,"p75":533000},"2022-10":{"p25":320000,"p50":412500,"p75":543088},"2022-11":{"p25":325000,"p50":415000,"p75":548000},"2022-12":{"p25":330000,"p50":420000,"p75":550000},"2023-01":{"p25":330000,"p50":421000,"p75":550000},"2023-02":{"p25":335000,"p50":425000,"p75":550600},"2023-03":{"p25":340000,"p50":426000,"p75":555000},"2023-04":{"p25":340000,"p50":430000,"p75":560000},"2023-05":{"p25":345000,"p50":435000,"p75":562564},"2023-06":{"p25":348000,"p50":440000,"p75":570000},"2023-07":{"p25":350000,"p50":444000,"p75":575000},"2023-08":{"p25":356100,"p50":445000,"p75":580000},"2023-09":{"p25":360000,"p50":450000,"p75":582250},"2023-10":{"p25":363000,"p50":451150,"p75":588645},"2023-11":{"p25":366875,"p50":460000,"p75":595000},"2023-12":{"p25":370000,"p50":462500,"p75":600000},"2024-01":{"p25":378000,"p50":470000,"p75":609050},"2024-02":{"p25":380000,"p50":471000,"p75":610050},"2024-03":{"p25":385000,"p50":480000,"p75":620000},"2024-04":{"p25":390000,"p50":485000,"p75":620000},"2024-05":{"p25":399000,"p50":495000,"p75":630000},"2024-06":{"p25":400000,"p50":505000,"p75":640000},"2024-07":{"p25":405000,"p50":510000,"p75":650000},"2024-08":{"p25":420000,"p50":529250,"p75":670000},"2024-09":{"p25":425000,"p50":535000,"p75":675001},"2024-10":{"p25":430000,"p50":541000,"p75":685000},"2024-11":{"p25":438500,"p50":550000,"p75":694000},"2024-12":{"p25":445250,"p50":560000,"p75":705000},"2025-01":{"p25":450000,"p50":565000,"p75":710000},"2025-02":{"p25":457580,"p50":570000,"p75":712000},"2025-03":{"p25":465000,"p50":580000,"p75":722500},"2025-04":{"p25":473000,"p50":586000,"p75":730000},"2025-05":{"p25":480000,"p50":590000,"p75":730000},"2025-06":{"p25":480000,"p50":592000,"p75":731000},"2025-07":{"p25":485000,"p50":595000,"p75":730000},"2025-08":{"p25":490000,"p50":604500,"p75":743475},"2025-09":{"p25":491500,"p50":607000,"p75":750000},"2025-10":{"p25":500000,"p50":615000,"p75":750000},"2025-11":{"p25":503000,"p50":620000,"p75":755000},"2025-12":{"p25":515000,"p50":635000,"p75":780000},"2026-01":{"p25":520000,"p50":640500,"p75":790000},"2026-02":{"p25":520500,"p50":647000,"p75":790000},"2026-03":{"p25":530000,"p50":655000,"p75":800006},"2026-04":{"p25":540000,"p50":661150,"p75":811000},"2026-05":{"p25":545000,"p50":665000,"p75":813000},"2026-06":{"p25":550000,"p50":675000,"p75":820000},"2026-07":{"p25":560000,"p50":680000,"p75":825000}}}};
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var CARRY = 6;   /* a sale after the series ends may borrow the last month, up to this many */
+
+/* ══════════ HELPERS ══════════ */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function aud(n){ if (n === null || n === undefined || !isFinite(n)) return '—'; return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU'); }
+function pct(n, dp){ if (n === null || n === undefined || !isFinite(n)) return '—'; var v = n * 100; return (v > 0 ? '+' : '') + v.toFixed(dp === undefined ? 1 : dp) + '%'; }
+function ym(d){ return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
+function ymLabel(k){ var p = k.split('-'); return MONTHS[Number(p[1]) - 1] + ' ' + p[0]; }
+function day(s){ if (!s) return null; var d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return isFinite(d.getTime()) ? d : null; }
+function dLabel(d){ return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+function median(a){ var b = a.filter(function(x){ return x !== null && isFinite(x); }).sort(function(x, y){ return x - y; }); if (!b.length) return null; var m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; }
+function medianDate(ds){ var t = ds.map(function(d){ return d.getTime(); }).sort(function(a, b){ return a - b; }); if (!t.length) return null; return new Date(t[t.length >> 1]); }
+
+/* the series for a city and type, as ordered months */
+function series(city, type){
+  var s = (Q[city] || {})[type] || {};
+  var keys = Object.keys(s).sort();
+  return { keys: keys, rows: keys.map(function(k){ return { k: k, p25: s[k].p25, p50: s[k].p50, p75: s[k].p75 }; }) };
+}
+/* the three figures at a date; a date past the end borrows the last month */
+function at(city, type, d){
+  var s = series(city, type);
+  if (!s.keys.length || !d) return null;
+  var k = ym(d), last = s.keys[s.keys.length - 1];
+  if (k < s.keys[0]) return { before: true };
+  if (k > last) {
+    var a = k.split('-'), b = last.split('-');
+    var gap = (Number(a[0]) - Number(b[0])) * 12 + (Number(a[1]) - Number(b[1]));
+    if (gap > CARRY) return { after: true };
+    var r = s.rows[s.rows.length - 1]; return { p25: r.p25, p50: r.p50, p75: r.p75, carried: gap, k: last };
+  }
+  var i = s.keys.indexOf(k);
+  if (i < 0) return null;
+  var r2 = s.rows[i]; return { p25: r2.p25, p50: r2.p50, p75: r2.p75, carried: 0, k: k };
+}
+
+/* ══════════ THE REGISTER ══════════ */
+var book = [], bookSrc = '';
+function takeBook(list, src){
+  book = (list || []).filter(function(e){ return e && e.name; });
+  bookSrc = src;
+  $('srcLine').innerHTML = '<strong>' + esc(src) + '</strong> — ' + book.length + ' properties.';
+  draw();
+}
+function readLocal(){
+  try {
+    var v = JSON.parse(localStorage.getItem('pp-irr-saved-v1') || 'null');
+    if (Array.isArray(v) && v.length) { takeBook(v, 'the IRR Calculator’s saved list on this site'); return true; }
+  } catch (e) {}
+  return false;
+}
+$('bookFile').addEventListener('change', function(){
+  var f = this.files && this.files[0]; if (!f) return;
+  var fr = new FileReader();
+  fr.onload = function(){
+    try {
+      var doc = JSON.parse(String(fr.result));
+      var props = [];
+      if (doc && Array.isArray(doc.books)) doc.books.forEach(function(b){ props = props.concat((b.body && b.body.properties) || []); });
+      else if (Array.isArray(doc)) props = doc;
+      if (!props.length) { $('srcLine').textContent = 'That file has no properties in it.'; return; }
+      takeBook(props, f.name);
+    } catch (e) { $('srcLine').textContent = 'That is not an IRR book export.'; }
+  };
+  fr.readAsText(f);
+});
+
+/* what each sold property did, placed against the lines of its purchase month */
+function placeAll(city, type){
+  var out = { placed: [], before: [], after: [], noType: 0, held: 0, outside: 0 };
+  book.forEach(function(e){
+    if ((e.category || '').trim() !== city) return;
+    if (e.outside) { out.outside++; return; }
+    var pb = Number(e.purchasePrice), ps = Number(e.soldPrice);
+    var db = day(e.purchaseDate), ds = day(e.soldDate);
+    if (!(ps > 0) || !ds) { out.held++; return; }
+    if (!(pb > 0) || !db) return;
+    /* the market line is read for the property's own type; untyped is
+       measured as a house, the same call the IRR Calculator makes */
+    var t = (e.ptype === 'U') ? 'U' : 'H';
+    if (!e.ptype) out.noType++;
+    if (t !== type) return;
+    var b = at(city, t, db), s = at(city, t, ds);
+    if (!b || b.before) { out.before.push(e); return; }
+    if (!s || s.after || s.before) { out.after.push(e); return; }
+    var group = pb < b.p25 ? 0 : pb < b.p50 ? 1 : pb < b.p75 ? 2 : 3;
+    var own = group === 0 ? 'p25' : group === 3 ? 'p75' : 'p50';
+    var g = ps / pb - 1;
+    var l = { p25: s.p25 / b.p25 - 1, p50: s.p50 / b.p50 - 1, p75: s.p75 / b.p75 - 1 };
+    out.placed.push({ e: e, group: group, own: own, growth: g, lines: l, vsOwn: g - l[own],
+                      buyAt: b, sellAt: s, hold: (ds - db) / (365.25 * 864e5) });
+  });
+  return out;
+}
+var GROUPS = ['Below the lower quartile', 'Lower quartile to median', 'Median to upper quartile', 'Above the upper quartile'];
+var GROUP_SHORT = ['Below Q1', 'Q1–median', 'Median–Q3', 'Above Q3'];
+var LINE_NAME = { p25: 'Lower quartile', p50: 'Median', p75: 'Upper quartile' };
+
+/* ══════════ STATE ══════════ */
+var city = 'Adelaide', ptype = 'H';
+try { var sv = JSON.parse(localStorage.getItem('pp-qg-view-v1') || '{}'); if (sv.city) city = sv.city; if (sv.ptype) ptype = sv.ptype; } catch (e) {}
+function remember(){ try { localStorage.setItem('pp-qg-view-v1', JSON.stringify({ city: city, ptype: ptype })); } catch (e) {} }
+Array.prototype.forEach.call(document.querySelectorAll('[role="tab"]'), function(b){
+  b.addEventListener('click', function(){ city = b.dataset.city; remember(); draw(); });
+});
+Array.prototype.forEach.call(document.querySelectorAll('input[name="ptype"]'), function(r){
+  r.addEventListener('change', function(){ if (r.checked) { ptype = r.value; remember(); draw(); } });
+});
+Array.prototype.forEach.call(document.querySelectorAll('.view button'), function(b){
+  b.addEventListener('click', function(){
+    var v = b.dataset.view, m = b.dataset.mode;
+    Array.prototype.forEach.call(document.querySelectorAll('.view button[data-view="' + v + '"]'), function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    var chart = v === 'c1' ? $('c1Chart') : $('c2ChartWrap'), table = $(v + 'Table'), legend = v === 'c1' ? $('c1Legend') : null;
+    chart.classList.toggle('hidden', m === 'table'); table.classList.toggle('hidden', m !== 'table');
+    if (legend) legend.classList.toggle('hidden', m === 'table');
+  });
+});
+
+/* ══════════ DRAW ══════════ */
+function draw(){
+  Array.prototype.forEach.call(document.querySelectorAll('[role="tab"]'), function(b){ b.setAttribute('aria-selected', b.dataset.city === city ? 'true' : 'false'); });
+  $('pt-' + ptype).checked = true;
+  drawLines();
+  drawGroups();
+}
+
+/* ── 1 ── */
+function drawLines(){
+  var s = series(city, ptype), rows = s.rows;
+  var typeWord = ptype === 'U' ? 'units' : 'houses';
+  $('c1Title').textContent = city + ' ' + typeWord + ' — sale price quartiles, rolling 12 months';
+  /* the hold period: the register's own median purchase date to its median
+     sale date, over the sales inside the advice for this city */
+  var sold = book.filter(function(e){ return (e.category || '').trim() === city && !e.outside && Number(e.soldPrice) > 0 && day(e.soldDate) && day(e.purchaseDate); });
+  var mb = medianDate(sold.map(function(e){ return day(e.purchaseDate); }));
+  var ms = medianDate(sold.map(function(e){ return day(e.soldDate); }));
+  $('c1Sub').textContent = rows.length ? ymLabel(rows[0].k) + ' to ' + ymLabel(rows[rows.length - 1].k) + ' · ' + rows.length + ' months · Cotality Market Trends' : 'No series for this city and type.';
+  $('c1Legend').innerHTML =
+    '<span><i class="sw" style="background:var(--q75)"></i>Upper quartile (75th)</span>' +
+    '<span><i class="sw" style="background:var(--q50)"></i>Median</span>' +
+    '<span><i class="sw" style="background:var(--q25)"></i>Lower quartile (25th)</span>' +
+    (mb && ms ? '<span><i class="sw band"></i>Register hold period: median purchase ' + dLabel(mb) + ' → median sale ' + dLabel(ms) + ' (' + sold.length + ' sales)</span>' : '');
+
+  var W = 1100, H = 380, L = 72, R = 24, T = 18, B = 40;
+  var w = W - L - R, h = H - T - B;
+  if (!rows.length) { $('c1Chart').innerHTML = '<div class="tip" id="c1Tip"></div><p class="note">No data.</p>'; return; }
+  var t0 = day(rows[0].k + '-01').getTime(), t1 = day(rows[rows.length - 1].k + '-01').getTime();
+  var x = function(t){ return L + (t - t0) / (t1 - t0) * w; };
+  var vals = []; rows.forEach(function(r){ vals.push(r.p25, r.p50, r.p75); });
+  var vmax = Math.max.apply(null, vals), vmin = Math.min.apply(null, vals);
+  var step = niceStep((vmax - vmin) / 5), y0 = Math.floor(vmin / step) * step, y1 = Math.ceil(vmax / step) * step;
+  var y = function(v){ return T + (1 - (v - y0) / (y1 - y0)) * h; };
+  var path = function(key){ return rows.map(function(r, i){ return (i ? 'L' : 'M') + x(day(r.k + '-01').getTime()).toFixed(1) + ',' + y(r[key]).toFixed(1); }).join(''); };
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-labelledby="c1Title" id="c1Svg">';
+  /* grid + y axis */
+  for (var v = y0; v <= y1 + 1; v += step) {
+    svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" stroke="var(--grid)" stroke-width="1"/>' +
+           '<text x="' + (L - 8) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="var(--ink-2)">' + shortAud(v) + '</text>';
+  }
+  /* x axis: January of each year */
+  rows.forEach(function(r){
+    if (r.k.slice(5) === '01') {
+      var xx = x(day(r.k + '-01').getTime());
+      svg += '<line x1="' + xx.toFixed(1) + '" x2="' + xx.toFixed(1) + '" y1="' + T + '" y2="' + (T + h) + '" stroke="var(--grid)" stroke-width="1"/>' +
+             '<text x="' + xx.toFixed(1) + '" y="' + (T + h + 18) + '" text-anchor="middle" font-size="11" fill="var(--ink-2)">' + r.k.slice(0, 4) + '</text>';
+    }
+  });
+  svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + h) + '" y2="' + (T + h) + '" stroke="var(--axis)" stroke-width="1"/>';
+  /* the hold band, clipped to the chart; where it starts before the series
+     the edge is dashed and the label says so */
+  var bandNote = '';
+  if (mb && ms) {
+    var bx0 = Math.max(L, x(mb.getTime())), bx1 = Math.min(W - R, x(ms.getTime()));
+    var clippedStart = mb.getTime() < t0, clippedEnd = ms.getTime() > t1;
+    if (bx1 > bx0) {
+      svg += '<rect x="' + bx0.toFixed(1) + '" y="' + T + '" width="' + (bx1 - bx0).toFixed(1) + '" height="' + h + '" fill="var(--band)"/>' +
+             '<line x1="' + bx0.toFixed(1) + '" x2="' + bx0.toFixed(1) + '" y1="' + T + '" y2="' + (T + h) + '" stroke="var(--band-edge)" stroke-width="1.5"' + (clippedStart ? ' stroke-dasharray="4 3"' : '') + '/>' +
+             '<line x1="' + bx1.toFixed(1) + '" x2="' + bx1.toFixed(1) + '" y1="' + T + '" y2="' + (T + h) + '" stroke="var(--band-edge)" stroke-width="1.5"' + (clippedEnd ? ' stroke-dasharray="4 3"' : '') + '/>' +
+             '<text x="' + (bx0 + 6).toFixed(1) + '" y="' + (T + 14) + '" font-size="11" font-weight="600" fill="var(--band-edge)">Hold period</text>';
+    }
+    bandNote = 'The shaded band is the register’s hold period for ' + city + ': median purchase <strong>' + dLabel(mb) + '</strong> to median sale <strong>' + dLabel(ms) + '</strong>, over the ' + sold.length + ' sales inside the advice.' +
+      (clippedStart ? ' The median purchase is <strong>before this series begins</strong> (' + ymLabel(rows[0].k) + '), so the band starts at the left edge, dashed.' : '') +
+      (clippedEnd ? ' The median sale is after the series ends, so the band runs to the right edge, dashed.' : '');
+  } else {
+    bandNote = 'No sales inside the advice for ' + city + ' in the register, so there is no hold period to mark.';
+  }
+  /* the three lines + end labels */
+  [['p75', 'var(--q75)', 'Upper quartile'], ['p50', 'var(--q50)', 'Median'], ['p25', 'var(--q25)', 'Lower quartile']].forEach(function(l){
+    svg += '<path d="' + path(l[0]) + '" fill="none" stroke="' + l[1] + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    var last = rows[rows.length - 1];
+    svg += '<text x="' + (W - R + 4) + '" y="' + (y(last[l[0]]) + 4).toFixed(1) + '" font-size="11" font-weight="600" fill="' + l[1] + '">' + shortAud(last[l[0]]) + '</text>';
+  });
+  /* crosshair + hit area */
+  svg += '<line id="c1X" x1="0" x2="0" y1="' + T + '" y2="' + (T + h) + '" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>' +
+         '<g id="c1Dots" style="display:none">' +
+         '<circle r="4" fill="var(--q75)" stroke="var(--surface)" stroke-width="2"/><circle r="4" fill="var(--q50)" stroke="var(--surface)" stroke-width="2"/><circle r="4" fill="var(--q25)" stroke="var(--surface)" stroke-width="2"/></g>' +
+         '<rect id="c1Hit" x="' + L + '" y="' + T + '" width="' + w + '" height="' + h + '" fill="transparent"/>';
+  svg += '</svg>';
+  $('c1Chart').innerHTML = svg + '<div class="tip" id="c1Tip"></div>';
+  $('c1Note').innerHTML = bandNote + ' Each point is Cotality’s figure for sales in the 12 months to that month.';
+
+  /* hover */
+  var hit = $('c1Hit'), tip = $('c1Tip'), xl = $('c1X'), dots = $('c1Dots'), svgEl = $('c1Svg');
+  function nearest(clientX){
+    var r = svgEl.getBoundingClientRect(), px = (clientX - r.left) / r.width * W;
+    var best = 0, bd = 1e9;
+    rows.forEach(function(rw, i){ var d = Math.abs(x(day(rw.k + '-01').getTime()) - px); if (d < bd) { bd = d; best = i; } });
+    return best;
+  }
+  hit.addEventListener('mousemove', function(ev){
+    var i = nearest(ev.clientX), r = rows[i], xx = x(day(r.k + '-01').getTime());
+    xl.setAttribute('x1', xx); xl.setAttribute('x2', xx); xl.style.display = '';
+    dots.style.display = '';
+    var cs = dots.querySelectorAll('circle');
+    cs[0].setAttribute('cx', xx); cs[0].setAttribute('cy', y(r.p75));
+    cs[1].setAttribute('cx', xx); cs[1].setAttribute('cy', y(r.p50));
+    cs[2].setAttribute('cx', xx); cs[2].setAttribute('cy', y(r.p25));
+    tip.innerHTML = '<b>' + ymLabel(r.k) + '</b><br><span class="k">Upper quartile</span> ' + aud(r.p75) + '<br><span class="k">Median</span> ' + aud(r.p50) + '<br><span class="k">Lower quartile</span> ' + aud(r.p25) +
+                    '<br><span class="k">Spread Q3/Q1</span> ' + (r.p75 / r.p25).toFixed(2) + '×';
+    tip.style.display = 'block';
+    var cr = $('c1Chart').getBoundingClientRect(), left = ev.clientX - cr.left + 14;
+    if (left + 190 > cr.width) left = ev.clientX - cr.left - 200;
+    tip.style.left = left + 'px'; tip.style.top = (ev.clientY - cr.top - 10) + 'px';
+  });
+  hit.addEventListener('mouseleave', function(){ tip.style.display = 'none'; xl.style.display = 'none'; dots.style.display = 'none'; });
+
+  /* table view */
+  var t = '<table><thead><tr><th>Month</th><th class="n">Lower quartile</th><th class="n">Median</th><th class="n">Upper quartile</th><th class="n">Q3 / Q1</th></tr></thead><tbody>';
+  rows.slice().reverse().forEach(function(r){
+    t += '<tr><td>' + ymLabel(r.k) + '</td><td class="n">' + aud(r.p25) + '</td><td class="n">' + aud(r.p50) + '</td><td class="n">' + aud(r.p75) + '</td><td class="n">' + (r.p75 / r.p25).toFixed(2) + '×</td></tr>';
+  });
+  $('c1Table').innerHTML = t + '</tbody></table>';
+}
+function niceStep(raw){ var p = Math.pow(10, Math.floor(Math.log10(raw))); var m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+function shortAud(n){ if (n >= 1e6) return '$' + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'm'; if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'k'; return '$' + Math.round(n); }
+
+/* ── 2 ── */
+function drawGroups(){
+  var r = placeAll(city, ptype), placed = r.placed;
+  var typeWord = ptype === 'U' ? 'units' : 'houses';
+  /* KPIs */
+  var byG = [0, 1, 2, 3].map(function(g){ return placed.filter(function(p){ return p.group === g; }); });
+  var kp = '';
+  kp += '<div class="kpi"><div class="v">' + placed.length + '</div><div class="l">' + city + ' ' + typeWord + ' sold inside the series</div></div>';
+  byG.forEach(function(list, g){
+    kp += '<div class="kpi"><div class="v">' + list.length + '</div><div class="l">bought ' + GROUP_SHORT[g].toLowerCase() + '</div></div>';
+  });
+  var beat = placed.filter(function(p){ return p.vsOwn > 0; }).length;
+  kp += '<div class="kpi"><div class="v">' + (placed.length ? Math.round(beat / placed.length * 100) + '%' : '—') + '</div><div class="l">beat their own quartile line</div></div>';
+  $('c2Kpis').innerHTML = kp;
+
+  $('c2Legend').innerHTML =
+    '<span><i class="sw bar" style="background:var(--prop)"></i>Our properties (median growth)</span>' +
+    '<span><i class="sw bar" style="background:var(--q25)"></i>Lower quartile line</span>' +
+    '<span><i class="sw bar" style="background:var(--q50)"></i>Median line</span>' +
+    '<span><i class="sw bar" style="background:var(--q75)"></i>Upper quartile line</span>';
+
+  /* grouped bars: per group, median of our growth and median of each line's
+     growth over the same holds */
+  var W = 1100, H = 300, L = 60, R = 16, T = 20, B = 44, w = W - L - R, h = H - T - B;
+  var stats = byG.map(function(list, g){
+    return { g: g, n: list.length,
+             ours: median(list.map(function(p){ return p.growth; })),
+             p25: median(list.map(function(p){ return p.lines.p25; })),
+             p50: median(list.map(function(p){ return p.lines.p50; })),
+             p75: median(list.map(function(p){ return p.lines.p75; })) };
+  });
+  var all = []; stats.forEach(function(s){ ['ours', 'p25', 'p50', 'p75'].forEach(function(k){ if (s[k] !== null) all.push(s[k]); }); });
+  var vmax = all.length ? Math.max(0.05, Math.max.apply(null, all)) : 0.5, vmin = all.length ? Math.min(0, Math.min.apply(null, all)) : 0;
+  var step = niceStep((vmax - vmin) / 4) || 0.1, y0 = Math.floor(vmin / step) * step, y1 = Math.ceil(vmax / step) * step;
+  var y = function(v){ return T + (1 - (v - y0) / (y1 - y0)) * h; };
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Median growth by quartile group" id="c2Svg">';
+  for (var v = y0; v <= y1 + 1e-9; v += step) {
+    svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" stroke="var(--grid)"/>' +
+           '<text x="' + (L - 8) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="var(--ink-2)">' + Math.round(v * 100) + '%</text>';
+  }
+  svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '" stroke="var(--axis)"/>';
+  var gw = w / 4, bw = Math.min(40, (gw - 24) / 4 - 2);
+  var bars = [];
+  stats.forEach(function(s, g){
+    var gx = L + g * gw + gw / 2;
+    svg += '<text x="' + gx.toFixed(1) + '" y="' + (T + h + 18) + '" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">' + GROUP_SHORT[g] + '</text>' +
+           '<text x="' + gx.toFixed(1) + '" y="' + (T + h + 34) + '" text-anchor="middle" font-size="11" fill="var(--ink-2)">' + (s.n ? s.n + ' propert' + (s.n === 1 ? 'y' : 'ies') : 'none') + '</text>';
+    [['ours', 'var(--prop)', 'Our properties'], ['p25', 'var(--q25)', 'Lower quartile line'], ['p50', 'var(--q50)', 'Median line'], ['p75', 'var(--q75)', 'Upper quartile line']].forEach(function(k, i){
+      var v2 = s[k[0]]; if (v2 === null || v2 === undefined) return;
+      var bx = gx - (4 * bw + 3 * 2) / 2 + i * (bw + 2);
+      var top = Math.min(y(v2), y(0)), hh = Math.abs(y(v2) - y(0));
+      svg += '<rect x="' + bx.toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + bw + '" height="' + Math.max(hh, 1).toFixed(1) + '" rx="3" fill="' + k[1] + '" data-g="' + g + '" data-k="' + k[0] + '"/>' +
+             '<text x="' + (bx + bw / 2).toFixed(1) + '" y="' + (v2 >= 0 ? top - 4 : top + hh + 12).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--ink)">' + pct(v2, 0) + '</text>';
+      bars.push({ g: g, k: k[0], name: k[2], v: v2, n: s.n });
+    });
+  });
+  svg += '</svg>';
+  $('c2Chart').innerHTML = svg + '<div class="tip" id="c2Tip"></div>';
+  var tip2 = $('c2Tip');
+  Array.prototype.forEach.call($('c2Svg').querySelectorAll('rect[data-g]'), function(rc){
+    rc.addEventListener('mousemove', function(ev){
+      var g = Number(rc.dataset.g), k = rc.dataset.k, s = stats[g];
+      var name = { ours: 'Our properties', p25: 'Lower quartile line', p50: 'Median line', p75: 'Upper quartile line' }[k];
+      tip2.innerHTML = '<b>' + GROUPS[g] + '</b><br>' + name + ': <b>' + pct(s[k]) + '</b><br><span class="k">median over ' + s.n + ' propert' + (s.n === 1 ? 'y' : 'ies') + '’ own holds</span>';
+      tip2.style.display = 'block';
+      var cr = $('c2Chart').getBoundingClientRect(), left = ev.clientX - cr.left + 14; if (left + 220 > cr.width) left = ev.clientX - cr.left - 230;
+      tip2.style.left = left + 'px'; tip2.style.top = (ev.clientY - cr.top - 10) + 'px';
+    });
+    rc.addEventListener('mouseleave', function(){ tip2.style.display = 'none'; });
+  });
+
+  /* per-property strip: x = growth beyond its own quartile line */
+  drawStrip(placed);
+
+  /* the table: every placed property, and the ones that could not be */
+  var t = '<table><thead><tr><th>Property</th><th>Type</th><th class="n">Bought</th><th class="n">Sold</th><th>Bought in</th><th class="n">Our growth</th><th class="n">vs lower Q</th><th class="n">vs median</th><th class="n">vs upper Q</th><th class="n">vs own line</th></tr></thead><tbody>';
+  placed.slice().sort(function(a, b){ return b.vsOwn - a.vsOwn; }).forEach(function(p){
+    var e = p.e;
+    var cell = function(v){ return '<td class="n ' + (v >= 0 ? 'pos' : 'neg') + '">' + pct(v) + '</td>'; };
+    t += '<tr><td>' + esc(e.name) + '</td><td>' + (e.ptype ? esc(e.ptype) : '<span class="muted">H*</span>') + '</td>' +
+         '<td class="n">' + aud(e.purchasePrice) + '<br><span class="muted">' + dLabel(day(e.purchaseDate)) + '</span></td>' +
+         '<td class="n">' + aud(e.soldPrice) + '<br><span class="muted">' + dLabel(day(e.soldDate)) + (p.sellAt.carried ? ' <abbr title="the series ends ' + ymLabel(p.sellAt.k) + '; that month’s figures are used">*</abbr>' : '') + '</span></td>' +
+         '<td>' + GROUPS[p.group] + '<br><span class="muted">vs ' + aud(p.buyAt.p25) + ' / ' + aud(p.buyAt.p50) + ' / ' + aud(p.buyAt.p75) + '</span></td>' +
+         cell(p.growth) + cell(p.growth - p.lines.p25) + cell(p.growth - p.lines.p50) + cell(p.growth - p.lines.p75) +
+         '<td class="n ' + (p.vsOwn >= 0 ? 'pos' : 'neg') + '"><b>' + pct(p.vsOwn) + '</b><br><span class="muted">' + LINE_NAME[p.own].toLowerCase() + ' did ' + pct(p.lines[p.own]) + '</span></td></tr>';
+  });
+  t += '</tbody></table>';
+  $('c2Table').innerHTML = t;
+
+  var notes = [];
+  notes.push(placed.length + ' ' + city + ' ' + typeWord + ' sold inside the advice could be placed: bought from ' + ymLabel(series(city, ptype).keys[0] || '') + ' on, when the quartile series begins.');
+  if (r.before.length) notes.push(r.before.length + ' more were bought before the series begins, so their quartile at purchase is not known and they are left out.');
+  if (r.after.length) notes.push(r.after.length + ' sold more than ' + CARRY + ' months past the end of the series and are left out.');
+  if (r.noType) notes.push(r.noType + ' of the placed properties have no type on the register and are measured as houses, as the IRR Calculator does (H* in the table).');
+  notes.push('"vs own line" compares each property to the line that bounds the quartile it was bought in: the lower quartile line for those below it, the median for the two middle groups, the upper quartile line for those above it.');
+  $('c2Note').innerHTML = notes.join(' ');
+}
+
+function drawStrip(placed){
+  var W = 1100, H = 190, L = 130, R = 16, T = 12, B = 34, w = W - L - R, h = H - T - B;
+  $('c3Sub').textContent = placed.length ? 'One dot per property, on the row of the quartile it was bought in. Right of the line beat it; left fell short.' : '';
+  if (!placed.length) { $('c3Chart').innerHTML = '<div class="tip" id="c3Tip"></div><p class="note">Nothing to place.</p>'; return; }
+  var vs = placed.map(function(p){ return p.vsOwn; });
+  var lim = Math.max(0.1, Math.max.apply(null, vs.map(Math.abs)));
+  var step = niceStep(lim / 3), x0 = -Math.ceil(lim / step) * step, x1 = Math.ceil(lim / step) * step;
+  var x = function(v){ return L + (v - x0) / (x1 - x0) * w; };
+  var rowH = h / 4;
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Each property’s growth beyond its own quartile line" id="c3Svg">';
+  for (var v = x0; v <= x1 + 1e-9; v += step) {
+    svg += '<line x1="' + x(v).toFixed(1) + '" x2="' + x(v).toFixed(1) + '" y1="' + T + '" y2="' + (T + h) + '" stroke="var(--grid)"/>' +
+           '<text x="' + x(v).toFixed(1) + '" y="' + (T + h + 16) + '" text-anchor="middle" font-size="11" fill="var(--ink-2)">' + (v > 0 ? '+' : '') + Math.round(v * 100) + '%</text>';
+  }
+  svg += '<line x1="' + x(0).toFixed(1) + '" x2="' + x(0).toFixed(1) + '" y1="' + T + '" y2="' + (T + h) + '" stroke="var(--axis)" stroke-width="1.5"/>';
+  GROUP_SHORT.forEach(function(g, i){
+    var cy = T + i * rowH + rowH / 2;
+    svg += '<text x="' + (L - 10) + '" y="' + (cy + 4).toFixed(1) + '" text-anchor="end" font-size="12" font-weight="600" fill="var(--ink)">' + g + '</text>';
+    if (i) svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + i * rowH).toFixed(1) + '" y2="' + (T + i * rowH).toFixed(1) + '" stroke="var(--grid)"/>';
+  });
+  /* dots, jittered within the row so a pile-up at the same value stays countable */
+  placed.forEach(function(p, i){
+    var cy = T + p.group * rowH + rowH / 2 + ((i * 7919) % 11 - 5) * (rowH / 16);
+    svg += '<circle cx="' + x(p.vsOwn).toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="5" fill="var(--prop)" stroke="var(--surface)" stroke-width="1.5" data-i="' + i + '"/>';
+  });
+  svg += '</svg>';
+  $('c3Chart').innerHTML = svg + '<div class="tip" id="c3Tip"></div>';
+  var tip = $('c3Tip');
+  Array.prototype.forEach.call($('c3Svg').querySelectorAll('circle[data-i]'), function(c){
+    c.addEventListener('mousemove', function(ev){
+      var p = placed[Number(c.dataset.i)], e = p.e;
+      tip.innerHTML = '<b>' + esc(e.name) + '</b><br><span class="k">Bought</span> ' + aud(e.purchasePrice) + ' · ' + dLabel(day(e.purchaseDate)) + '<br><span class="k">Sold</span> ' + aud(e.soldPrice) + ' · ' + dLabel(day(e.soldDate)) +
+        '<br><span class="k">Bought in</span> ' + GROUPS[p.group].toLowerCase() + '<br><span class="k">Our growth</span> <b>' + pct(p.growth) + '</b> · ' + LINE_NAME[p.own].toLowerCase() + ' ' + pct(p.lines[p.own]) +
+        '<br><span class="k">Beyond own line</span> <b class="' + (p.vsOwn >= 0 ? 'pos' : 'neg') + '">' + pct(p.vsOwn) + '</b>';
+      tip.style.display = 'block';
+      var cr = $('c3Chart').getBoundingClientRect(), left = ev.clientX - cr.left + 14; if (left + 260 > cr.width) left = ev.clientX - cr.left - 270;
+      tip.style.left = left + 'px'; tip.style.top = (ev.clientY - cr.top - 10) + 'px';
+    });
+    c.addEventListener('mouseleave', function(){ tip.style.display = 'none'; });
+  });
+}
+
+/* ══════════ BOOT ══════════ */
+(function(){
+  /* the logo follows the shade */
+  var dark = function(){ var t = document.documentElement.getAttribute('data-theme'); return t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); };
+  var setLogo = function(){ $('logo').src = 'https://raw.githubusercontent.com/Performance-Property/pp-brand-assets/main/logos/performance-property/' + (dark() ? 'pp-logo-inverted.png' : 'pp-logo-standard.png'); };
+  setLogo();
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', setLogo);
+  if (!readLocal()) {
+    $('srcLine').innerHTML = 'No IRR Calculator list found on this site. Load an <em>Export everything</em> file from the calculator’s History tab, and the properties stay in this browser.';
+    draw();
+  }
+})();
+</script>
+</body>
+</html>
