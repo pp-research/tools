@@ -11381,20 +11381,20 @@ var MHP_FROM='1980-03', MHP={
   }
   /* ══════════ WHO ══════════
      The name that goes against a change, and against a row in the shared
-     sheet. This build asks for the address in its own sign-in dialog and
-     keeps it here; the hub build has no dialog - its appbar signs you in -
-     so there, nothing ever wrote this key and every change was logged as
-     nobody. The session has the address in both builds, so take it from
-     there and keep the dialog as one way of arriving at it rather than the
-     only one. */
+     sheet. The standalone build asks for the address in its own sign-in
+     dialog and keeps it here; the hub build has no dialog - its appbar
+     signs you in - so there, nothing ever wrote this key and every change
+     was logged as nobody. The session has the address either way, so take
+     it from there, and let the dialog be one way of arriving at it rather
+     than the only one. */
   function whoAmI(){
     try { return (localStorage.getItem('pp-irr-email') || '').trim(); }
     catch (e) { return ''; }
   }
   /* Called wherever a session turns up: at startup, and again when one
-     arrives or goes. Signing out does not forget it - the dialog offers it
-     back as the address to sign in with, and the bookmarklet you dragged
-     yesterday is still yours. */
+     arrives or goes. Signing out does not forget it - the standalone's
+     dialog offers it back as the address to sign in with, and either way
+     the bookmarklet you dragged yesterday is still yours. */
   function rememberWho(session){
     var e = '';
     try { e = ((session && session.user && session.user.email) || '').trim(); }
