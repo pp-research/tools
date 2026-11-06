@@ -705,7 +705,15 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .kpi .k-pair .k-sep{font-weight:300;color:var(--faint);flex:0 0 auto}
 /* two cards to a row on a phone: two spans and a bar will not fit on one
    line, so the second figure goes under the first rather than past the edge */
-@media (max-width:640px){ .kpi .k-pair{flex-wrap:wrap} .kpi .k-pair .k-sep{display:none} }
+@media (max-width:640px){
+  .kpi .k-pair{flex-wrap:wrap} .kpi .k-pair .k-sep{display:none}
+  /* two cards to a row leaves ~160px for a value; "$1,240,000" at the full
+     size broke after the last comma, so the value steps down and a sum is
+     never split mid-number. The step-down is for the figures, not the pair,
+     which has its own size above. */
+  .kpi .k-value{font-size:clamp(17px,4.6vw,22px);white-space:nowrap;overflow-wrap:normal}
+  .kpi .k-value .k-pair{white-space:normal}
+}
 .ov-sub{font-size:11px;line-height:16px;font-weight:800;letter-spacing:.08em;
   text-transform:uppercase;color:var(--faint);margin:var(--sp-5) 0 var(--sp-3)}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:var(--sp-4);min-width:0}
