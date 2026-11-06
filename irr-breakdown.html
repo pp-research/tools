@@ -8516,8 +8516,11 @@ var MHP_FROM='1980-03', MHP={
   function renderTrackNote(rec){
     var p = $('chkDaily'), b = $('badgeCheck');
     if (!p) return;
-    if (rec && !rec.failed && foundStore()) {
-      var live = foundList().length;
+    if (rec && !rec.failed) {
+      /* The findings are the thing the number is about. While they are held
+         they decide it; once they are gone there is nothing left to offer,
+         and the scan's own total is a badge with nothing behind it. */
+      var live = foundStore() ? foundList().length : 0;
       if (live !== rec.found) {
         var fixed = {}; for (var kk in rec) fixed[kk] = rec[kk];
         fixed.found = live;
@@ -8852,6 +8855,12 @@ var MHP_FROM='1980-03', MHP={
               fresh: items.filter(function(x){ return x.kind === 'new'; }).map(function(x){ return x.r; }) };
     adlFound = d;
     if (!items.length) {
+      /* Nothing this scan found is work any more - somebody else recorded
+         them, or a register arrived from the other copy of this tool. The
+         rows cost room on an origin already close to its limit and buy
+         nothing: the next scan reads them again. Dropping them first is also
+         what lets the note above say zero rather than the old total. */
+      if (st && st.rows && st.rows.length) dropFound();
       host.hidden = true; host.innerHTML = '';
       renderTrackNote(trackSeen());
       syncSheetBtn();
@@ -10620,6 +10629,12 @@ var MHP_FROM='1980-03', MHP={
     fr.readAsText(file);
   }
   function logChange(rows){
+    /* applyShared() is this browser being told what somebody else decided,
+       and one of the things it does is save the assumptions it received -
+       which, from here, looks exactly like someone at this desk changing
+       them. The history is how you tell your own changes from theirs, so a
+       change that was received must not be written down as made. */
+    if (share.applying) return;
     if (!share.sb || share.canWrite === false || !rows || !rows.length) return;
     var who = whoAmI();
     var body = rows.slice(0, 500).map(function(r){
