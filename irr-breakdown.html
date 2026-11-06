@@ -691,6 +691,17 @@ button:disabled{opacity:.45;cursor:not-allowed}
   font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
 /* the note is about the pair, not about the row above it */
 .kpi .k-cmp + .k-note{margin-top:var(--sp-3)}
+/* Two figures side by side, each captioned beneath: "May 2018 | Apr 2026"
+   over "Purchase  Sale". The figures take the card's own value size. */
+.kpi .k-pair{display:flex;align-items:flex-start;gap:var(--sp-3);flex-wrap:nowrap;
+  /* a step down from the card's value size: two month-years and a bar have
+     to share the width one figure usually has to itself */
+  font-size:clamp(17px,1.75vw,21px);line-height:1.25}
+.kpi .k-pair--span{font-size:clamp(14px,1.45vw,17px)}
+.kpi .k-pair>div{min-width:0}
+.kpi .k-pair b{display:block;font-weight:800;white-space:nowrap;letter-spacing:-.02em}
+.kpi .k-pair span{display:block;font-size:11px;line-height:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+.kpi .k-pair .k-sep{font-weight:300;color:var(--faint);flex:0 0 auto}
 .ov-sub{font-size:11px;line-height:16px;font-weight:800;letter-spacing:.08em;
   text-transform:uppercase;color:var(--faint);margin:var(--sp-5) 0 var(--sp-3)}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:var(--sp-4);min-width:0}
@@ -5501,12 +5512,15 @@ var MHP_FROM='1980-03', MHP={
        because a midpoint is a day nothing happened on. The same set method B
        reads, so this card and that tab say the same thing. */
     var dated = data.filter(function(d){ return kindOf(d.e) === 'sold' && Number(d.e.purchasePrice) > 0; });
+    /* Month and year: the day adds nothing a median of dates can carry. An
+       even count's two middles become a span - "May – Aug 2016" - and
+       collapse to one month when both fall in it. */
     var midLabel = function(sp){
       if (!sp) return '—';
       var a = new Date(sp.lo), b = new Date(sp.hi);
-      if (sp.lo === sp.hi) return dLabel(a);
-      var sameYear = a.getUTCFullYear() === b.getUTCFullYear();
-      return (sameYear ? a.getUTCDate() + ' ' + MONTHS[a.getUTCMonth()] : dLabel(a)) + ' – ' + dLabel(b);
+      var am = mLabel(a), bm = mLabel(b);
+      if (am === bm) return am;
+      return (a.getUTCFullYear() === b.getUTCFullYear() ? MONTHS[a.getUTCMonth()] : am) + '–' + bm;
     };
     var medBuy = gcMidSpan(dated, 'purchaseDate'), medSell = gcMidSpan(dated, 'soldDate');
     var h = '<div class="kpis">'+
@@ -5525,14 +5539,12 @@ var MHP_FROM='1980-03', MHP={
       card('Median hold period', holds.length ? median(holds).toFixed(1) : '—',
            'years · ' + span(holds, function(v){ return v.toFixed(1); }))+
       card('Median dates',
-           '<ul class="k-cmp">' +
-             '<li><span>Bought</span><b>' + midLabel(medBuy) + '</b></li>' +
-             '<li><span>Sold</span><b>' + midLabel(medSell) + '</b></li></ul>',
-           'median date first (method B) · ' + sold + ' propert' + (sold === 1 ? 'y' : 'ies') + ' · ' +
-           winners + ' profitable of ' + nets.length +
-           (heldN ? ' · ' + heldN + ' held' : '') +
-           (sold - nets.length - heldN > 0
-              ? ' · ' + (sold - nets.length - heldN) + ' with no sale price' : ''))+
+           /* a span is longer than a month, so the pair steps down a size
+              when either side is one - two of them and a bar must still fit */
+           '<div class="k-pair' + ((midLabel(medBuy) + midLabel(medSell)).indexOf('–') >= 0 ? ' k-pair--span' : '') + '">' +
+             '<div><b>' + midLabel(medBuy) + '</b><span>Purchase</span></div>' +
+             '<div class="k-sep" aria-hidden="true">|</div>' +
+             '<div><b>' + midLabel(medSell) + '</b><span>Sale</span></div></div>')+
       '</div>';
 
     /* ── distribution ──
