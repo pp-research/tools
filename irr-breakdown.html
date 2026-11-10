@@ -603,6 +603,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
    which turned a two-sentence explanation into a wall of narrow columns. They
    are ordinary blocks. */
 #panel-check #chkDaily{display:block;margin:0 0 var(--sp-4)}
+#panel-check #chkTypes{align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-4)}
+#panel-check #chkTypes > span{flex:1 1 320px}
 #chkFound{border:1px solid var(--border);border-radius:var(--r-md);
   background:var(--well);padding:var(--sp-4);margin:0 0 var(--sp-4)}
 #chkFound h3{margin:0 0 var(--sp-2);font-size:14px;line-height:20px}
@@ -1550,6 +1552,10 @@ details .body strong{color:var(--text)}
                  chkMsg because chkMsg is the running commentary of whatever
                  you just pressed, and this has to survive that. -->
             <p class="note note-info" id="chkDaily" hidden></p>
+            <!-- Property types the bookmarklets read, for properties the register has
+                 no type for. Filled by Load sold check records; separate from chkMsg so
+                 the next message does not take it away. -->
+            <div class="note note-info" id="chkTypes" hidden></div>
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
 
@@ -1828,11 +1834,11 @@ details .body strong{color:var(--text)}
                  leaves <em>Checked at</em> alone — so running it cannot bring forward
                  or cancel the next sold check. Stop it any time with
                  <code>stopCheck = true</code>.</p>
-              <p class="note note-warn"><span>Every type the bookmarklets read — from this
-                 sweep and from Run RPData Check — lands in the sheet's
-                 <strong>Property type</strong> column. The register does not read that
-                 column back yet, so a property's type in the calculator still comes
-                 from editing it or from a paste import.</span></p>
+              <p>Every type the bookmarklets read — from this sweep and from Run RPData
+                 Check — lands in the sheet's <strong>Property type</strong> column.
+                 <strong>Load sold check records</strong> then offers to record the ones
+                 the register is missing, with one button. It only ever fills a missing
+                 type; a type already in the register is never changed.</p>
             </div>
 
             <h3>3 · What it tells you</h3>
@@ -7491,6 +7497,7 @@ var MHP_FROM='1980-03', MHP={
   function chkReset(){
     chk = null;
     $('btnChkClear').hidden = true;
+    drawTypes();
 
     /* The same empty state the page ships with, rebuilt rather than
        remembered, so Clear and a first load look identical. */
@@ -8364,6 +8371,99 @@ var MHP_FROM='1980-03', MHP={
      from here: the findings sit on the tab with a Send button under them,
      and the only automatic read is the daily scan, which goes its own way.
      Only the two buttons call this. */
+  /* ── property types from the sheet ─────────────────────────────────────
+     Every type the bookmarklets read - the sweep, and the check as it goes -
+     lands in the sheet's Property type column, and until 10 Nov 2026 nothing
+     read it back, so the Growth comparison's house/unit split never saw any
+     of them. This gathers the ones the register is missing.
+
+     Only ever FILLS a missing type. A property that already has one keeps
+     it, even where RP Data says otherwise: a type set by hand is a decision,
+     and RP Data's wording is a guess at Cotality's title-based line. Those
+     disagreements are counted, so they can be looked at, and never written.
+
+     Matched on the address exactly as the register spells it, which is how
+     the worklist sent it and so how the sheet wrote it. Two properties with
+     the same address are left alone: a type cannot be pinned on one. */
+  function typesFromSheet(rows){
+    var byKey = {}, dup = {};
+    loadProps().forEach(function(e){
+      var k = addrKey_(e.name);
+      if (!k) return;
+      if (byKey[k]) dup[k] = 1; else byKey[k] = e;
+    });
+    var out = [], seen = {}, differ = 0;
+    (rows || []).forEach(function(r){
+      var t = ptypeFromLabel(r.ptype);
+      var k = addrKey_(r.address);
+      if (!t || !k || seen[k] || dup[k]) return;
+      var e = byKey[k];
+      if (!e) return;
+      seen[k] = 1;
+      if (e.ptype) { if (ptypeOf(e) !== t) differ++; return; }
+      out.push({ id: e.id, name: e.name, city: (e.category || '').trim(), t: t });
+    });
+    out.differ = differ;
+    return out;
+  }
+  function drawTypes(){
+    var box = $('chkTypes');
+    if (!box) return;
+    var list = (chk && chk.types) || [];
+    var differ = (chk && chk.types && chk.types.differ) || 0;
+    if (!list.length && !differ) { box.hidden = true; box.innerHTML = ''; return; }
+    var n = list.length;
+    var tally = { H: 0, U: 0, D: 0 };
+    list.forEach(function(x){ tally[x.t]++; });
+    var parts = [];
+    if (tally.H) parts.push(tally.H + ' house' + (tally.H === 1 ? '' : 's'));
+    if (tally.U) parts.push(tally.U + ' unit' + (tally.U === 1 ? '' : 's'));
+    if (tally.D) parts.push(tally.D + ' development site' + (tally.D === 1 ? '' : 's'));
+    var can = share.canWrite === true && !frozen();
+    box.innerHTML = '<span>' +
+      (n ? '<strong>' + n + ' property type' + (n === 1 ? '' : 's') + '</strong> found by RP Data for ' +
+           'properties the register has no type for (' + parts.join(', ') + ').'
+         : 'No missing property types to record.') +
+      (differ ? ' ' + differ + ' propert' + (differ === 1 ? 'y already has' : 'ies already have') +
+                ' a different type in the register; ' + (differ === 1 ? 'it is' : 'they are') +
+                ' left as ' + (differ === 1 ? 'it is' : 'they are') + '.' : '') +
+      (n && !can ? ' Sign in to record them.' : '') +
+      '</span>' +
+      (n && can ? '<button type="button" class="btn-primary btn-sm" id="btnRecTypes">Record ' + n +
+                  ' type' + (n === 1 ? '' : 's') + '</button>' : '');
+    box.hidden = false;
+  }
+  function recordTypes(){
+    if (frozen()) { $('messages').innerHTML = frozenWarn(); return; }
+    if (share.canWrite !== true) return;
+    var found = (chk && chk.types) || [];
+    if (!found.length) return;
+    var list = loadProps(), byId = {};
+    list.forEach(function(e){ byId[e.id] = e; });
+    var touched = [];
+    found.forEach(function(f){
+      var e = byId[f.id];
+      if (!e || e.ptype) return;           // typed since the sheet was read
+      e.ptype = f.t;
+      touched.push({ action: 'edited', property: e.name, city: (e.category || '').trim(),
+                     detail: 'property type: ' + ptypeLabel(f.t) + ' (from RP Data)' });
+    });
+    if (!touched.length) {
+      chk.types = []; drawTypes();
+      chkSay(msg('warn', 'Nothing to record — those properties have types already.'));
+      return;
+    }
+    if (!putProps(list)) return;
+    logChange(touched);
+    renderProps();
+    ovStale = true; gcStale = true;
+    var differ = found.differ || 0;
+    chk.types = []; chk.types.differ = differ;
+    drawTypes();
+    chkSay(msg('ok', 'Recorded <strong>' + touched.length + '</strong> property type' +
+      (touched.length === 1 ? '' : 's') + ' from RP Data. Each one is in the <strong>History</strong>.'));
+  }
+
   function chkLoadSheet(){
     var u = sheetApi();
     if (!u) return;
@@ -8439,6 +8539,8 @@ var MHP_FROM='1980-03', MHP={
           'Read ' + all.length + ' checked propert' + (all.length === 1 ? 'y' : 'ies') +
           ' from the sold check sheet.');
         drawFound();
+        chk.types = typesFromSheet(all);
+        drawTypes();
         chkBusy(false);
       })
       .catch(function(e){
@@ -11054,6 +11156,9 @@ var MHP_FROM='1980-03', MHP={
   });
   syncBmBox();
   $('btnChkClear').addEventListener('click', chkReset);
+  $('chkTypes').addEventListener('click', function(ev){
+    if (ev.target.closest && ev.target.closest('#btnRecTypes')) recordTypes();
+  });
   $('chkBody').addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button');
     if (!b) return;
