@@ -644,7 +644,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #panel-review .btn-ghost.danger{color:var(--neg)}
 #tab-review .badge[hidden]{display:none}
 #chkBm .bm-row{margin-bottom:var(--sp-4)}
-#bmMonthly{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
+#bmTypes{border-top:1px solid var(--border);padding-top:var(--sp-2);margin-top:var(--sp-5)}
 /* The window's own prose and controls need room between them: a paragraph
    whose last line touches the next field reads as one run-on block. */
 #addPurchased > h3, #addSold > h3{margin:0 0 var(--sp-2)}
@@ -1761,7 +1761,7 @@ details .body strong{color:var(--text)}
               <p class="hint" id="bmSaveMsg" hidden></p>
             </div>
 
-            <h3>1 · RP Data weekly — the catch-up</h3>
+            <h3>1 · Run RPData Check</h3>
             <p>It checks the <strong>held properties in advice</strong> — no sale
                recorded — whatever capital they are in. For each one it types the
                address into RP Data's own search box, opens the property, and reads
@@ -1769,16 +1769,21 @@ details .body strong{color:var(--text)}
                <strong>A last sale newer than your purchase is the signal</strong> —
                it has changed hands since you bought it. A sale at your own purchase
                price is recognised as your purchase, not a resale.</p>
-            <p>It runs in <em>your</em> browser on <em>your</em> RP Data sign-in, at
-               about <strong>20 to 25 seconds a property</strong> with its pauses, and
+            <p>It asks about <strong>every one of them once a month</strong>, whatever
+               it said last time, so a sale that happened since the last check is
+               found. It skips only what has already been checked <strong>this
+               calendar month</strong> — which is also how it resumes — and starts the
+               book over on the <strong>1st</strong>.</p>
+            <p><strong>Click it once a week.</strong> The first click of the month is
+               the long one — every held property at 20 to 25 seconds each, roughly
+               four hours for the book as it stands — so come back to it over a day or
+               two; it carries on from where it stopped. Every click after that, the
+               same month, only asks about properties added since.</p>
+            <p>It runs in <em>your</em> browser on <em>your</em> RP Data sign-in and
                writes each row to the sheet the moment it finds it, with your name on
-               it. <strong>It resumes</strong>: stop whenever you like and click it
-               again later, and it carries on from where it stopped.</p>
-            <p>It only asks about what the sheet has <strong>no answer for</strong> —
-               properties you have just added, and the ones RP Data could not find or
-               open. Anything already answered is left alone for good, so after the
-               first sweep it is a short run. The ones it could not find come round
-               again each <strong>Monday</strong>.</p>
+               it. <strong>One row per property</strong>: a re-check overwrites the
+               row with its latest answer, so a property it could not find this time
+               shows as exactly that — the sheet is where to spot them.</p>
 
             <ol class="bm-steps">
               <li>Show the bookmarks bar if it is hidden — <code>Ctrl+Shift+B</code>.</li>
@@ -1790,56 +1795,32 @@ details .body strong{color:var(--text)}
               <li>Watch it in the sheet, or press <code>F12</code> to watch the console.
                   To stop: <code>stopCheck = true</code> in the console, or just close
                   the tab. Everything found so far is already saved.</li>
-                <li>Come back here and press <strong>Load sold check records</strong>.
-                    Anything found waits in <strong>For review</strong> until someone
-                    records it — nothing is written onto a property by the run itself.</li>
-              </ol>
+              <li>Come back here and press <strong>Load sold check records</strong>.
+                  Anything found waits in <strong>For review</strong> until someone
+                  records it — nothing is written onto a property by the run itself.</li>
+            </ol>
 
             <div class="bm-row">
-              <a class="bm-drag" id="bmLink" href="#" draggable="true">&#128269; RP Data weekly</a>
+              <a class="bm-drag" id="bmLink" href="#" draggable="true">Run RPData Check</a>
               <span class="hint" id="bmNote" style="margin:0">Drag me to your bookmarks bar</span>
             </div>
-
-            <!-- The monthly refresh needs a sheet: what it skips is the sheet's own
-                 date stamps, so without one it has no memory to resume from. -->
-            <div id="bmMonthly" hidden>
-              <h3>2 · RP Data monthly — the refresh</h3>
-              <p>"Still held" goes stale, and the weekly never asks an answered
-                 property again. This one asks about <strong>every held property in
-                 advice again</strong>, whatever it said last time, so a sale that
-                 happened since the last check is found. It reads the same things the
-                 weekly does. It skips only what has already been checked <strong>this
-                 calendar month</strong> — which is also how it resumes — and starts the
-                 book over on the <strong>1st</strong>. Properties it could not find
-                 come round again then too.</p>
-              <p><strong>Clicked once a week, it does the weekly's job as well:</strong>
-                 the first click of the month is the long refresh, and every click after
-                 that only picks up what has been added since. The cost is that a
-                 property RP Data could not find waits for the 1st rather than for
-                 Monday.</p>
-              <div class="bm-row">
-                <a class="bm-drag" id="bmLinkMonthly" href="#" draggable="true">&#128260; RP Data monthly</a>
-                <span class="hint" id="bmNoteMonthly" style="margin:0">Drag me to your bookmarks bar</span>
-              </div>
-              <p class="hint">This is the long one — on the 1st, every held property
-                 at 20 to 25 seconds each, roughly four hours for the book as it stands
-                 — so expect to come back to it over a day or two, and stop it with
-                 <code>stopCheck = true</code> whenever you like. The two bookmarks keep
-                 separate memories, so running one never confuses the other.</p>
-            </div>
+            <p class="hint">It replaces the <strong>RP Data weekly</strong> and
+               <strong>RP Data monthly</strong> bookmarks. Delete those from your bar —
+               an old one still runs, but the weekly never looks at an answered
+               property again.</p>
 
             <div id="bmTypes" hidden>
-              <h3>3 · RP Data types — sold properties only</h3>
-              <p>A different job from the other two. It reads <strong>what kind of
+              <h3>2 · RP Data types — sold properties only</h3>
+              <p>A different job from the check. It reads <strong>what kind of
                  property</strong> each one is — house, unit or development site — and
                  writes nothing else, at about 12 seconds a property. Run it after new
                  sales have been recorded; it only ever asks about the untyped
                  ones.</p>
               <p>It opens <strong>only properties you have already sold</strong>, in
-                 advice or out of it. The other two never open a sold property, and a
-                 sold property is exactly what a growth comparison is built from, so
+                 advice or out of it. Run RPData Check never opens a sold property, and
+                 a sold property is exactly what a growth comparison is built from, so
                  without this they never get a type at all. Held properties are typed
-                 by the weekly and monthly passes as they go.</p>
+                 by Run RPData Check as it goes.</p>
               <p>It skips anything whose <strong>Property type</strong> cell is already
                  filled — the column is its memory, so it resumes by itself and can be
                  run from any machine. To ask about one again, clear its cell.</p>
@@ -1852,13 +1833,13 @@ details .body strong{color:var(--text)}
                  or cancel the next sold check. Stop it any time with
                  <code>stopCheck = true</code>.</p>
               <p class="note note-warn"><span>Every type the bookmarklets read — from this
-                 sweep and from the weekly and monthly passes — lands in the sheet's
+                 sweep and from Run RPData Check — lands in the sheet's
                  <strong>Property type</strong> column. The register does not read that
                  column back yet, so a property's type in the calculator still comes
                  from editing it or from a paste import.</span></p>
             </div>
 
-            <h3>4 · What it tells you</h3>
+            <h3>3 · What it tells you</h3>
             <ol class="bm-steps">
               <li><strong>Sold since purchase.</strong> The last sale on record is newer
                   than your purchase date, so it has changed hands. These are the ones
@@ -1869,8 +1850,7 @@ details .body strong{color:var(--text)}
                   — it is counted separately at the top of the tab.</li>
               <li><strong>Needs a second look.</strong> No suggestion came back, the page
                   did not open, or it opened with no sale on record. The sheet says which.
-                  The weekly pass offers them again each Monday and the monthly on the
-                  1st — or run <code>rpAskAgain = true</code> in the console on an RP
+                  Run RPData Check offers them again on the 1st — or run <code>rpAskAgain = true</code> in the console on an RP
                   Data page to go at them now. Deleting a property's row in the sheet
                   also puts it back in the queue. They are usually an address spelled
                   differently from RP Data's; correcting it in the register is what
@@ -7670,19 +7650,14 @@ var MHP_FROM='1980-03', MHP={
     var sig = (sheetUrl() || '-') + ' :: ' + who;
     if (sig === bmLast) return;
     bmLast = sig;
-    a.href = buildBm('rpBmSrc', 'weekly') || '#';
+    /* One sold-check bookmark now, and it is the monthly pass: clicked
+       weekly it does the catch-up as well (10 Nov 2026). */
+    a.href = buildBm('rpBmSrc', 'monthly') || '#';
     var n = $('bmNote');
     if (n) {
       n.textContent = sheetUrl()
         ? 'Drag me to your bookmarks bar · results go to your sheet'
         : 'Set the Google Sheet address above first · the bookmarks need it to run';
-    }
-    /* The monthly refresh has no CSV fallback: what it skips is the sheet's
-       own date stamps, so without a sheet it has no memory to resume from. */
-    var mo = $('bmLinkMonthly'), box = $('bmMonthly');
-    if (mo && box) {
-      box.hidden = !sheetUrl();
-      if (!box.hidden) mo.href = buildBm('rpBmSrc', 'monthly') || '#';
     }
     /* The sweep needs the sheet for the same reason the monthly does, only
        more so: the Property type column is not just where its answers go, it
@@ -7872,8 +7847,8 @@ var MHP_FROM='1980-03', MHP={
          properties. The sold check wants the ones still open: in advice and
          without a sale. The type sweep wants the SOLD ones with no type, in
          advice or out of it - a growth comparison is purchase against sale,
-         and the weekly and monthly passes never open a sold property again.
-         A held property in advice is typed by those passes as they go; a
+         and Run RPData Check never opens a sold property again.
+         A held property in advice is typed by the check as it goes; a
          held one outside advice is no longer anyone's job (10 Nov 2026). */
       var sold  = Number(e.soldPrice) > 0 && !!e.soldDate;
       var check = !e.outside && !sold;
@@ -11041,8 +11016,7 @@ var MHP_FROM='1980-03', MHP={
   /* Clicking either bookmarklet would run it against this page, which is
      neither site: it would read the register, find no search box and throw.
      Say what to do instead. */
-  [['bmLink','bmNote'], ['bmLinkMonthly','bmNoteMonthly'],
-   ['bmLinkTypes','bmNoteTypes']].forEach(function(pair){
+  [['bmLink','bmNote'], ['bmLinkTypes','bmNoteTypes']].forEach(function(pair){
     $(pair[0]).addEventListener('click', function(ev){
       ev.preventDefault();
       var n = $(pair[1]);
