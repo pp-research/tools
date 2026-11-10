@@ -605,6 +605,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #panel-check #chkDaily{display:block;margin:0 0 var(--sp-4)}
 #panel-check #chkTypes{align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-4)}
 #panel-check #chkTypes > span{flex:1 1 320px}
+#panel-check #chkTypesList{margin:0 0 var(--sp-5)}
+#panel-check #chkTypesList h3{margin:var(--sp-3) 0 var(--sp-2)}
+#panel-check #chkTypesList table.mini{width:100%;table-layout:fixed}
+#panel-check #chkTypesList th:nth-child(1){width:44%}
+#panel-check #chkTypesList th:nth-child(2),#panel-check #chkTypesList th:nth-child(3){width:15%}
+#panel-check #chkTypesList th:nth-child(5){width:52px}
+#panel-check #chkTypesList .hint{font-size:12px;line-height:16px;color:var(--muted);margin:0 0 var(--sp-2)}
+#panel-check #chkTypesList td:first-child{white-space:normal}
 #chkFound{border:1px solid var(--border);border-radius:var(--r-md);
   background:var(--well);padding:var(--sp-4);margin:0 0 var(--sp-4)}
 #chkFound h3{margin:0 0 var(--sp-2);font-size:14px;line-height:20px}
@@ -1556,6 +1564,7 @@ details .body strong{color:var(--text)}
                  no type for. Filled by Load sold check records; separate from chkMsg so
                  the next message does not take it away. -->
             <div class="note note-info" id="chkTypes" hidden></div>
+            <div id="chkTypesList" hidden></div>
             <div id="chkMsg" role="status" aria-live="polite"></div>
 
 
@@ -6406,6 +6415,7 @@ var MHP_FROM='1980-03', MHP={
     /* an edit is how a misspelt suburb gets fixed, so the panel that flagged it
        has to be told — otherwise the count it is still showing is yesterday's */
     syncCheckTab();
+    drawTypes();          // a type changed from the types list leaves it at once
     loadIntoForm(e.name, e, e.category);
     savedNote(changes.length
       ? msg('ok','Saved — '+esc(changes.join(', '))+' updated on '+esc(e.name)+'.')
@@ -8392,7 +8402,7 @@ var MHP_FROM='1980-03', MHP={
       if (!k) return;
       if (byKey[k]) dup[k] = 1; else byKey[k] = e;
     });
-    var out = [], seen = {}, differ = 0;
+    var add = [], differ = [], seen = {};
     (rows || []).forEach(function(r){
       var t = ptypeFromLabel(r.ptype);
       var k = addrKey_(r.address);
@@ -8400,21 +8410,34 @@ var MHP_FROM='1980-03', MHP={
       var e = byKey[k];
       if (!e) return;
       seen[k] = 1;
-      if (e.ptype) { if (ptypeOf(e) !== t) differ++; return; }
-      out.push({ id: e.id, name: e.name, city: (e.category || '').trim(), t: t });
+      var row = { id: e.id, name: e.name, city: (e.category || '').trim(), t: t };
+      if (!e.ptype) { add.push(row); return; }
+      if (ptypeOf(e) !== t) { row.now = ptypeOf(e); differ.push(row); }
     });
-    out.differ = differ;
-    return out;
+    var byName = function(x, y){ return x.name < y.name ? -1 : x.name > y.name ? 1 : 0; };
+    add.sort(byName); differ.sort(byName);
+    return { add: add, differ: differ };
   }
+  /* Worked out afresh from the sheet rows every time it is drawn, so an edit
+     made from the list - or anywhere else - is reflected the moment the
+     register changes, without reading the sheet again. */
+  var typesOpen = false;
   function drawTypes(){
-    var box = $('chkTypes');
+    var box = $('chkTypes'), listBox = $('chkTypesList');
     if (!box) return;
-    var list = (chk && chk.types) || [];
-    var differ = (chk && chk.types && chk.types.differ) || 0;
-    if (!list.length && !differ) { box.hidden = true; box.innerHTML = ''; return; }
-    var n = list.length;
+    if (!chk || !chk.typeRows) {
+      box.hidden = true; box.innerHTML = '';
+      if (listBox) { listBox.hidden = true; listBox.innerHTML = ''; }
+      return;
+    }
+    var r = typesFromSheet(chk.typeRows), n = r.add.length, nd = r.differ.length;
+    if (!n && !nd) {
+      box.hidden = true; box.innerHTML = '';
+      if (listBox) { listBox.hidden = true; listBox.innerHTML = ''; }
+      return;
+    }
     var tally = { H: 0, U: 0, D: 0 };
-    list.forEach(function(x){ tally[x.t]++; });
+    r.add.forEach(function(x){ tally[x.t]++; });
     var parts = [];
     if (tally.H) parts.push(tally.H + ' house' + (tally.H === 1 ? '' : 's'));
     if (tally.U) parts.push(tally.U + ' unit' + (tally.U === 1 ? '' : 's'));
@@ -8424,41 +8447,65 @@ var MHP_FROM='1980-03', MHP={
       (n ? '<strong>' + n + ' property type' + (n === 1 ? '' : 's') + '</strong> found by RP Data for ' +
            'properties the register has no type for (' + parts.join(', ') + ').'
          : 'No missing property types to record.') +
-      (differ ? ' ' + differ + ' propert' + (differ === 1 ? 'y already has' : 'ies already have') +
-                ' a different type in the register; ' + (differ === 1 ? 'it is' : 'they are') +
-                ' left as ' + (differ === 1 ? 'it is' : 'they are') + '.' : '') +
+      (nd ? ' ' + nd + ' propert' + (nd === 1 ? 'y already has' : 'ies already have') +
+            ' a different type in the register; ' + (nd === 1 ? 'it is' : 'they are') +
+            ' left as ' + (nd === 1 ? 'it is' : 'they are') + '.' : '') +
       (n && !can ? ' Sign in to record them.' : '') +
       '</span>' +
+      '<button type="button" class="btn-ghost btn-sm" id="btnTypesList" aria-expanded="' + typesOpen +
+        '" aria-controls="chkTypesList">' + (typesOpen ? 'Hide the list' : 'Show the list') + '</button>' +
       (n && can ? '<button type="button" class="btn-primary btn-sm" id="btnRecTypes">Record ' + n +
                   ' type' + (n === 1 ? '' : 's') + '</button>' : '');
     box.hidden = false;
+    if (!listBox) return;
+    if (!typesOpen) { listBox.hidden = true; listBox.innerHTML = ''; return; }
+    var cityCell = function(x){ return '<td>' + esc(x.city || '—') + '</td>'; };
+    var html = '';
+    if (n) {
+      html += '<h3>To record <span class="faint">· ' + n + '</span></h3>' +
+        '<table class="mini"><thead><tr><th scope="col">Property</th><th scope="col">City</th>' +
+        '<th scope="col">Type now</th><th scope="col">RP Data found</th><th scope="col"><span class="sr-only">Edit</span></th></tr></thead><tbody>' +
+        r.add.map(function(x){
+          return '<tr><td>' + esc(x.name) + '</td>' + cityCell(x) +
+                 '<td class="faint">not recorded</td><td><strong>' + esc(ptypeLabel(x.t)) + '</strong></td><td></td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    if (nd) {
+      html += '<h3>Different from the register <span class="faint">· ' + nd + '</span></h3>' +
+        '<p class="hint">Never written by Record. If RP Data is right, open the property and change its type.</p>' +
+        '<table class="mini"><thead><tr><th scope="col">Property</th><th scope="col">City</th>' +
+        '<th scope="col">Type now</th><th scope="col">RP Data found</th><th scope="col"><span class="sr-only">Edit</span></th></tr></thead><tbody>' +
+        r.differ.map(function(x){
+          return '<tr><td>' + esc(x.name) + '</td>' + cityCell(x) +
+                 '<td>' + esc(ptypeLabel(x.now)) + '</td><td><strong>' + esc(ptypeLabel(x.t)) + '</strong></td>' +
+                 '<td><button type="button" class="btn-ghost btn-sm icon-btn" data-edit="' + esc(x.id) + '" ' +
+                 'title="Edit ' + esc(x.name) + '" aria-label="Edit ' + esc(x.name) + '">' + PENCIL + '</button></td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    listBox.innerHTML = html;
+    listBox.hidden = false;
   }
   function recordTypes(){
     if (frozen()) { $('messages').innerHTML = frozenWarn(); return; }
     if (share.canWrite !== true) return;
-    var found = (chk && chk.types) || [];
+    if (!chk || !chk.typeRows) return;
+    var found = typesFromSheet(chk.typeRows).add;
     if (!found.length) return;
     var list = loadProps(), byId = {};
     list.forEach(function(e){ byId[e.id] = e; });
     var touched = [];
     found.forEach(function(f){
       var e = byId[f.id];
-      if (!e || e.ptype) return;           // typed since the sheet was read
+      if (!e || e.ptype) return;
       e.ptype = f.t;
       touched.push({ action: 'edited', property: e.name, city: (e.category || '').trim(),
                      detail: 'property type: ' + ptypeLabel(f.t) + ' (from RP Data)' });
     });
-    if (!touched.length) {
-      chk.types = []; drawTypes();
-      chkSay(msg('warn', 'Nothing to record — those properties have types already.'));
-      return;
-    }
+    if (!touched.length) { drawTypes(); return; }
     if (!putProps(list)) return;
     logChange(touched);
     renderProps();
     ovStale = true; gcStale = true;
-    var differ = found.differ || 0;
-    chk.types = []; chk.types.differ = differ;
     drawTypes();
     chkSay(msg('ok', 'Recorded <strong>' + touched.length + '</strong> property type' +
       (touched.length === 1 ? '' : 's') + ' from RP Data. Each one is in the <strong>History</strong>.'));
@@ -8539,7 +8586,7 @@ var MHP_FROM='1980-03', MHP={
           'Read ' + all.length + ' checked propert' + (all.length === 1 ? 'y' : 'ies') +
           ' from the sold check sheet.');
         drawFound();
-        chk.types = typesFromSheet(all);
+        chk.typeRows = all;
         drawTypes();
         chkBusy(false);
       })
@@ -11158,6 +11205,13 @@ var MHP_FROM='1980-03', MHP={
   $('btnChkClear').addEventListener('click', chkReset);
   $('chkTypes').addEventListener('click', function(ev){
     if (ev.target.closest && ev.target.closest('#btnRecTypes')) recordTypes();
+    if (ev.target.closest && ev.target.closest('#btnTypesList')) { typesOpen = !typesOpen; drawTypes(); }
+  });
+  /* the register's own way into a property, so the form is the same one */
+  $('chkTypesList').addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('[data-edit]');
+    if (!b) return;
+    openEntryId = b.dataset.edit; syncEditBtn(); openEdit();
   });
   $('chkBody').addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('button');
