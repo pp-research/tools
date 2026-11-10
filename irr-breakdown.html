@@ -1830,15 +1830,14 @@ details .body strong{color:var(--text)}
               <p>A one-off, and a different job from the other two. It reads
                  <strong>what kind of property</strong> each one is — house, unit or
                  development site — and writes nothing else.</p>
-              <p>It is the only one that opens the pages of properties you have
-                 <strong>already sold</strong>. The other two drop those before they
-                 start, and a sold property is exactly what a growth comparison is
-                 built from, so without this they never get a type at all.</p>
+              <p>It opens <strong>only properties you have already sold</strong>, in
+                 advice or out of it. The other two never open a sold property, and a
+                 sold property is exactly what a growth comparison is built from, so
+                 without this they never get a type at all. Held properties are typed
+                 by the weekly and monthly passes as they go.</p>
               <p>It skips anything whose <strong>Property type</strong> cell is already
                  filled — the column is its memory, so it resumes by itself and can be
-                 run from any machine. Sold properties go first, so an interrupted
-                 sweep has done the half that matters. To ask about one again, clear
-                 its cell.</p>
+                 run from any machine. To ask about one again, clear its cell.</p>
               <div class="bm-row">
                 <a class="bm-drag" id="bmLinkTypes" href="#" draggable="true">&#127968; RP Data types</a>
                 <span class="hint" id="bmNoteTypes" style="margin:0">Drag me to your bookmarks bar</span>
@@ -2358,6 +2357,12 @@ window.stopCheck=false;
     }
     return !!(r.purchasePrice || r.purchased);
   };
+  /* The sweep is for SOLD properties, in advice or out of it: the tool sends
+     a sold date on exactly those, through the sheet's own Sold date column,
+     so the deployed script carries it unchanged. A worklist from a tool
+     older than this has no sold dates, so the sweep finds nothing to do
+     rather than wandering off over held properties. */
+  const isSoldRow = r => !!String(r.soldDate || '').trim();
   /* Back into the shape the rest of this file reads. The sheet speaks in
      column names and everything below speaks in register fields; converting
      once, here, keeps that difference in one place. */
@@ -2365,7 +2370,7 @@ window.stopCheck=false;
     .filter(r =>
       r.address &&
       (!CITY || (r.city || '').trim() === CITY) &&
-      (TYPES_ONLY ? !r.ptype : isCheckWork(r)))
+      (TYPES_ONLY ? (!r.ptype && isSoldRow(r)) : isCheckWork(r)))
     .map(r => ({
       name:          r.address,
       category:      r.city,
@@ -7851,12 +7856,14 @@ var MHP_FROM='1980-03', MHP={
       if (!e.name) return null;
       /* Two different runs read this one list, and they want different
          properties. The sold check wants the ones still open: in advice and
-         without a sale. The type sweep wants the ones with no type, and a
-         property can be sold, or outside the advice, and still have no type
-         — 247 of the 818 untyped are exactly that, and narrowing this list to
-         sold-check work alone put them out of its reach. */
-      var check = !e.outside && !(Number(e.soldPrice) > 0 && e.soldDate);
-      var type  = !e.ptype;
+         without a sale. The type sweep wants the SOLD ones with no type, in
+         advice or out of it - a growth comparison is purchase against sale,
+         and the weekly and monthly passes never open a sold property again.
+         A held property in advice is typed by those passes as they go; a
+         held one outside advice is no longer anyone's job (10 Nov 2026). */
+      var sold  = Number(e.soldPrice) > 0 && !!e.soldDate;
+      var check = !e.outside && !sold;
+      var type  = !e.ptype && sold;
       if (!check && !type) return null;
       /* Each row carries what its own job needs and no more. A row that is
          only here to be typed needs an address to search for; it does not
@@ -7872,6 +7879,11 @@ var MHP_FROM='1980-03', MHP={
            as a transfer, from a genuine resale. */
         r.purchasePrice = e.purchasePrice || '';
       }
+      /* The sweep picks its rows by this, so it has to travel: a type-only
+         row otherwise looks exactly like a held one. The date, not the
+         price - it is all the sweep needs, and the sheet already has the
+         column, so the deployed script carries it unchanged. */
+      if (type) r.soldDate = e.soldDate;
       return r;
     }).filter(Boolean);
   }
@@ -7881,7 +7893,10 @@ var MHP_FROM='1980-03', MHP={
      the other end. */
   function syncRegisterToSheet(){
     var u = sheetApi();
-    if (!u || share.canWrite !== true) return;
+    /* frozen(): the pp-research copy holds the old standalone register, and
+       the worklist is shared - sending it would replace the hub's list with
+       a stale one for every bookmarklet. Nothing here reaches the hub. */
+    if (!u || frozen() || share.canWrite !== true) return;
     var rows = registerRows();
     if (!rows.length) return;
     if (!regDirty && Date.now() - regSentAt < 60000) { bmWorklistLine(); return; }
