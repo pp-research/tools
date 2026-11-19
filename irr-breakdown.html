@@ -5808,6 +5808,9 @@ var MHP_FROM='1980-03', MHP={
     /* the badge counts what this view is about, which is what the Show filter
        selects — the other filters narrow it and the count line says by how much */
     $('badgeProps').textContent = scoped.length;
+    /* the tab's count goes with the others while HIDE_TOTALS is on; .badge sets
+       its own display, so the hidden attribute alone would not take */
+    $('badgeProps').style.display = HIDE_TOTALS ? 'none' : '';
     syncReviewBadge();
 
     syncFilterChrome(f);
