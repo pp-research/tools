@@ -6067,7 +6067,8 @@ var MHP_FROM='1980-03', MHP={
        the rest - no council for the address, or a council with no figure for
        that month. */
     var lgaNote = '';
-    if (regView === 'lga') {
+    /* off with the other counts while HIDE_TOTALS is on */
+    if (regView === 'lga' && !HIDE_TOTALS) {
       var got = 0, noCouncil = 0, noFigure = 0;
       data.forEach(function(d){
         if (d.vsLgaTotal !== null) { got++; return; }
