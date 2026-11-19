@@ -4386,14 +4386,12 @@ window.stopCheck=false;
      on every reload is the sort of thing you stop bothering to set. Its own key:
      it is a view preference, not data, and must never ride inside the book. */
   var SORT_KEY = 'pp-irr-sort-v1';
-  /* Which three columns the register is showing. Remembered per browser:
-     somebody comparing against the market is doing it for a while. */
+  /* Which three columns the register is showing. Returns, every time the
+     page opens (by request, 19 Nov 2026): the switch still changes it for the
+     visit, but the choice is no longer carried over to the next one. */
   var REGVIEW_KEY = 'pp-irr-regview-v1';
   var regView = 'returns';
-  try {
-    var rv = localStorage.getItem(REGVIEW_KEY);
-    if (rv === 'market' || rv === 'lga') regView = rv;
-  } catch (e) {}
+  try { localStorage.removeItem(REGVIEW_KEY); } catch (e) {}
   var sortKey = null, sortDir = -1;   // -1 desc, 1 asc
   try {
     var ss = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
@@ -10239,7 +10237,6 @@ var MHP_FROM='1980-03', MHP={
     el.addEventListener('change', function(){
       var v = radioVal('regView');
       regView = (v === 'market' || v === 'lga') ? v : 'returns';
-      try { localStorage.setItem(REGVIEW_KEY, regView); } catch (e) {}
       renderProps();
     });
   });
